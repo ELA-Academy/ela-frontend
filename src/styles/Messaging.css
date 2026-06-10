@@ -1,0 +1,178 @@
+/* === NEW MESSAGING LAYOUT & SCROLLING FIX === */
+.messaging-layout {
+  display: flex;
+  min-height: 520px;
+  width: 100%;
+  overflow: visible;
+}
+
+.conversation-sidebar {
+  width: 320px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+}
+
+.conversation-sidebar .card-header {
+  flex-shrink: 0;
+  /* === THIS IS THE FIX: Better alignment and styling === */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  /* === END OF FIX === */
+}
+
+/* === THIS IS THE FIX: Style the plus button === */
+.new-conversation-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
+}
+.new-conversation-btn:hover {
+  background-color: var(--primary-light);
+}
+/* === END OF FIX === */
+
+.conversation-list {
+  flex-grow: 1; /* Allow this section to fill the space */
+  overflow-y: auto; /* Make ONLY this section scrollable */
+}
+
+.chat-window-area {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 520px;
+}
+
+.workspace-message-panel .chat-header,
+.workspace-message-panel .chat-messages,
+.workspace-message-panel .chat-input-area {
+  width: 100%;
+}
+
+.workspace-message-panel .chat-messages {
+  min-height: 0;
+}
+
+.chat-header {
+  flex-shrink: 0;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--card-bg);
+}
+
+.chat-header h5 {
+  margin: 0;
+}
+
+.chat-messages {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  background-color: #f9fafb;
+}
+
+.chat-input-area {
+  flex-shrink: 0;
+  padding: 1rem;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--card-bg);
+}
+
+.chat-input-area .form-control {
+  border-radius: 1.5rem; /* Pill shape */
+  padding: 0.5rem 1rem;
+  border-right: none;
+  resize: none; /* Disable manual resize */
+  max-height: 150px; /* Prevent it from growing infinitely */
+  overflow-y: auto; /* Add scroll if it gets too long */
+}
+
+.chat-input-area .btn {
+  border-radius: 50% !important; /* Circular button */
+}
+/* === END OF NEW LAYOUT === */
+
+/* --- Bubble styles (from before) --- */
+.conversation-details {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.last-message-preview {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.conversation-list .list-group-item .timestamp {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+.conversation-list .list-group-item.active {
+  background-color: var(--primary-light);
+  border-right: 3px solid var(--primary-color);
+}
+.conversation-list .list-group-item.active .fw-bold {
+  color: var(--primary-text);
+}
+.message-bubble {
+  display: flex;
+  margin-bottom: 1rem;
+  max-width: 75%;
+}
+.message-bubble .message-content {
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  line-height: 1.4;
+}
+.message-bubble .message-content p {
+  margin: 0;
+}
+.message-bubble .message-content .timestamp {
+  font-size: 0.7rem;
+  text-align: right;
+  margin-top: 0.25rem;
+  color: var(--text-muted);
+}
+.message-bubble.sent {
+  margin-left: auto;
+  justify-content: flex-end;
+}
+.message-bubble.sent .message-content {
+  background-color: var(--primary-color);
+  color: #fff;
+  border-bottom-right-radius: 0.25rem;
+}
+.message-bubble.sent .message-content .timestamp {
+  color: rgba(255, 255, 255, 0.7);
+}
+.message-bubble.received {
+  margin-right: auto;
+  justify-content: flex-start;
+}
+.message-bubble.received .message-content {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+  border-bottom-left-radius: 0.25rem;
+}
+.sender-name {
+  font-weight: 600;
+  font-size: 0.8rem;
+  margin-bottom: 0.25rem;
+  color: var(--primary-text);
+}
+.message-bubble.sending .message-content {
+  opacity: 0.7;
+}
+.message-bubble.sending .timestamp::before {
+  content: "Sending...";
+  margin-right: 5px;
+}

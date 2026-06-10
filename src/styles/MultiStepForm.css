@@ -1,0 +1,184 @@
+/* frontend/src/styles/MultiStepForm.css */
+.form-page-container {
+  background-color: #f0f2f5;
+  padding: 50px 20px;
+  min-height: 100vh;
+}
+
+.multistep-form {
+  max-width: 800px;
+  margin: 0 auto;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+/* --- Stepper Navigation --- */
+.stepper-nav {
+  display: flex;
+  justify-content: space-around;
+  padding: 20px 0;
+  background-color: #fafafa;
+  border-bottom: 1px solid #e0e0e0;
+}
+.step {
+  display: flex;
+  align-items: center;
+  color: #a0a0a0;
+  font-weight: 500;
+}
+.step-number {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: #e0e0e0;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+.step.active .step-number,
+.step.completed .step-number {
+  background-color: #007bff;
+}
+.step.active .step-label,
+.step.completed .step-label {
+  color: #333;
+}
+.step.completed .step-number:after {
+  content: "\2713"; /* Checkmark */
+}
+
+/* --- Form Step Content --- */
+.form-step-content {
+  padding: 40px;
+}
+.form-step-content h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 25px;
+}
+
+/* --- Dynamic Entry Styling --- */
+.dynamic-entry {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  position: relative;
+}
+.dynamic-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+.dynamic-entry-header h3 {
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin: 0;
+}
+.btn-remove-entry {
+  background: none;
+  border: none;
+  color: #e74c3c;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+/* --- Input Grid --- */
+.input-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.input-grid .full-width {
+  grid-column: 1 / -1;
+}
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+.form-group label {
+  font-size: 0.9rem;
+  margin-bottom: 5px;
+  color: #555;
+}
+.form-group input,
+.form-group select {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+/* --- Button Styling --- */
+.add-btn {
+  background: none;
+  border: 1px dashed #007bff;
+  color: #007bff;
+  padding: 10px;
+  width: 100%;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+.navigation-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 30px;
+  padding: 20px 40px;
+  border-top: 1px solid #e0e0e0;
+}
+.nav-btn {
+  padding: 10px 30px;
+  border: 1px solid #007bff;
+  background-color: #fff;
+  color: #007bff;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+.nav-btn.primary {
+  background-color: #007bff;
+  color: #fff;
+}
+.nav-btn:disabled {
+  background-color: #e0e0e0;
+  border-color: #e0e0e0;
+  color: #a0a0a0;
+  cursor: not-allowed;
+}
+
+/* --- Policy & Review Steps --- */
+.policy-container {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  color: #495057;
+  line-height: 1.6;
+}
+.review-section {
+  margin-bottom: 30px;
+}
+.review-section h3 {
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+  margin-bottom: 15px;
+}
+.review-grid {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+.review-grid strong {
+  color: #333;
+}

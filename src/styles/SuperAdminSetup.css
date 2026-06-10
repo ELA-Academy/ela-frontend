@@ -1,0 +1,70 @@
+/* Left column with the illustration */
+.illustration-col {
+  background-color: #e3e8ff; /* A light, calming blue-gray */
+}
+
+/* Right column with the form */
+.form-col {
+  background-color: #ffffff;
+}
+
+/* Wrapper to control the width and padding of the form content */
+.form-wrapper {
+  width: 100%;
+  max-width: 450px;
+  padding: 2rem;
+}
+
+/* Main title for the forms */
+.form-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #212529; /* Dark text color */
+  margin-bottom: 0.5rem;
+}
+
+/* Subtitle/description text below the main title */
+.form-subtitle {
+  color: #6c757d; /* Bootstrap's text-muted color */
+  margin-bottom: 2.5rem;
+  font-size: 1rem;
+}
+
+/* Primary action button for all forms */
+.form-button {
+  background-color: #4a55a2; /* The dark blue from the inspiration image */
+  border-color: #4a55a2;
+  padding: 0.8rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+
+.form-button:hover,
+.form-button:focus {
+  background-color: #3a438a;
+  border-color: #3a438a;
+}
+
+.form-button:disabled {
+  background-color: #4a55a2;
+  border-color: #4a55a2;
+}
+
+/* Styling for form labels */
+.form-label {
+  font-weight: 500;
+}
+
+/* Styling for form input fields */
+.form-control {
+  border-radius: 0.5rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid #ced4da;
+}
+
+.form-control:focus {
+  border-color: #4a55a2;
+  box-shadow: 0 0 0 0.25rem rgba(74, 85, 162, 0.25);
+}

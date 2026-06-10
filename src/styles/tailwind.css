@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+/* Additional utility overrides to blend Tailwind and Bootstrap smoothly */
+img {
+  display: inline-block;
+}

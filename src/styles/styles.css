@@ -1,0 +1,328 @@
+/* Import a modern, friendly font */
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap");
+
+/* --- NEW LittleLives-Inspired Color Palette --- */
+:root {
+  --sky-blue: #e0f7ff;
+  --cyan-blue: #00b8d4;
+  --cyan-hover: #0097a7;
+  --dark-text: #0b2f4c;
+  --body-text: #5b6f82;
+  --white: #ffffff;
+  --border-light: #e6eaf0;
+  --footer-bg: #1a3a5a;
+}
+
+/* --- General Body Styles --- */
+body {
+  font-family: "Poppins", sans-serif;
+  color: var(--body-text);
+  background-color: var(--white);
+}
+
+/* --- Reusable Components & Utilities --- */
+.section {
+  padding: 6rem 0;
+  position: relative;
+}
+
+.section-title {
+  font-size: 2.8rem;
+  font-weight: 700;
+  color: var(--dark-text);
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.section-subtitle {
+  text-align: center;
+  color: var(--body-text);
+  font-size: 1.1rem;
+  margin-bottom: 4rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* --- Navbar --- */
+.navbar {
+  background: var(--white);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  padding: 1rem 0;
+}
+.navbar .navbar-brand {
+  color: var(--dark-text);
+  font-weight: 700;
+}
+
+/* --- Hero Section --- */
+/* --- Hero Section --- */
+.hero-section {
+  background-color: var(--sky-blue);
+  padding: 6rem 0; /* Adjusted padding for better balance */
+  min-height: 90vh;
+  display: flex;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-content h1 {
+  font-size: 3.5rem;
+  font-weight: 700;
+  color: var(--dark-text);
+  line-height: 1.2;
+}
+
+.hero-content .lead {
+  font-size: 1.15rem;
+  margin: 1.5rem 0 2.5rem;
+  max-width: 500px;
+}
+
+/* NEW: Styles for the rounded image container */
+.hero-image-styled {
+  border-radius: 24px; /* Creates the soft, rounded corners */
+  overflow: hidden; /* Ensures the image corners are clipped */
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1); /* Adds a subtle, professional shadow */
+}
+
+.hero-image-container {
+  position: relative;
+  text-align: center;
+}
+.hero-image {
+  max-width: 100%;
+  height: auto;
+  position: relative;
+  z-index: 2;
+}
+
+/* Decorative background shapes for hero */
+.hero-shape {
+  position: absolute;
+  z-index: 1;
+  opacity: 0.5;
+}
+.hero-shape.shape-1 {
+  top: 10%;
+  left: 55%;
+  width: 400px;
+}
+
+/* --- Wave Divider --- */
+.wave-divider {
+  position: absolute;
+  bottom: -1px; /* Prevents tiny gaps */
+  left: 0;
+  width: 100%;
+  overflow: hidden;
+  line-height: 0;
+  transform: rotate(180deg);
+}
+.wave-divider svg {
+  position: relative;
+  display: block;
+  width: calc(100% + 1.3px);
+  height: 150px;
+}
+.wave-divider .shape-fill {
+  fill: var(--white);
+}
+
+/* --- Features Section --- */
+.features-section {
+  background-color: var(--white);
+}
+.feature-card {
+  background-color: var(--white);
+  border: 1px solid var(--border-light);
+  border-radius: 20px; /* More rounded corners */
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  height: 100%;
+  padding: 2rem;
+  text-align: center;
+}
+.feature-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 15px 40px rgba(71, 100, 124, 0.15);
+}
+.feature-card-icon {
+  font-size: 3rem;
+  margin-bottom: 1.5rem;
+  color: var(--cyan-blue);
+}
+.feature-card .card-title {
+  color: var(--dark-text);
+  font-weight: 600;
+  font-size: 1.3rem;
+}
+
+/* --- General Button Styles --- */
+.btn-primary {
+  background-color: var(--cyan-blue);
+  border-color: var(--cyan-blue);
+  border-radius: 50px; /* Pill shape */
+  font-weight: 600;
+  padding: 0.8rem 2rem;
+  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+.btn-primary:hover {
+  background-color: var(--cyan-hover);
+  border-color: var(--cyan-hover);
+}
+
+/* --- Login Modal --- */
+.login-modal .modal-content {
+  border-radius: 16px;
+  border: none;
+}
+.login-modal .modal-header {
+  border-bottom: 1px solid var(--border-light);
+}
+.role-card {
+  border: 2px solid var(--border-light);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+.role-card:hover {
+  border-color: var(--cyan-blue);
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* --- Footer --- */
+.footer {
+  background-color: var(--footer-bg);
+  color: rgba(255, 255, 255, 0.8);
+  padding: 4rem 0 2rem;
+}
+.footer h5 {
+  color: var(--white);
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+.footer a {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.footer a:hover {
+  color: var(--cyan-blue);
+}
+.footer-links {
+  list-style: none;
+  padding: 0;
+}
+.footer-links li {
+  margin-bottom: 0.5rem;
+}
+.footer .bottom-bar {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 3rem;
+  padding-top: 2rem;
+}
+
+/* --- Overhauled Login Modal --- */
+.login-modal .modal-content {
+  border-radius: 16px;
+  border: none;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+}
+.login-modal .modal-header {
+  border-bottom: 1px solid var(--border-light);
+  padding: 1.5rem;
+}
+.login-modal .modal-title {
+  color: var(--dark-text);
+  font-weight: 600;
+}
+.login-modal .modal-body {
+  padding: 2rem;
+  background-color: #fcfdff; /* A very subtle off-white */
+}
+
+/* NEW Role Selection Card */
+.role-selection-card {
+  display: block;
+  background-color: var(--white);
+  padding: 2rem 1rem;
+  border: 2px solid var(--border-light);
+  border-radius: 12px;
+  text-align: center;
+  text-decoration: none;
+  transition: all 0.3s ease-in-out;
+}
+
+.role-selection-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--cyan-blue);
+  box-shadow: 0 8px 25px rgba(0, 184, 212, 0.15);
+}
+
+.role-selection-icon {
+  font-size: 3rem;
+  color: var(--cyan-blue);
+  margin-bottom: 1rem;
+}
+
+.role-selection-title {
+  margin: 0;
+  font-weight: 600;
+  color: var(--dark-text);
+  font-size: 1.1rem;
+}
+
+/* --- Info Section (Alternating Layout) --- */
+.info-section {
+  padding: 5rem 0;
+}
+.info-section .row {
+  align-items: center;
+}
+.info-eyebrow {
+  color: #fca311; /* A warm, friendly accent color */
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.info-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--dark-text);
+  margin-bottom: 1.5rem;
+}
+.info-description {
+  font-size: 1.1rem;
+  line-height: 1.8;
+}
+
+.info-image-container {
+  background-color: var(--sky-blue);
+  border-radius: 24px;
+  padding: 1.5rem;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.05);
+}
+.info-image-container img {
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+/* --- Stats Section --- */
+.stats-section {
+  background-color: var(--sky-blue);
+  padding: 5rem 0;
+  text-align: center;
+}
+.stats-number {
+  font-size: 4rem;
+  font-weight: 700;
+  color: var(--cyan-blue);
+}
+.stats-label {
+  font-size: 1.1rem;
+  color: var(--dark-text);
+  margin-top: 0.5rem;
+}
