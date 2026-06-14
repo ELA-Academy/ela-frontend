@@ -37,13 +37,11 @@ const Login = () => {
     <div className="login-page-container">
       {/* Left side: Form */}
       <div className="login-form-side">
-        <a href="/" className="login-brand" style={{ display: "block" }}>
-          ELA Academy
-        </a>
+        <div /> {/* Top spacer */}
         
         <div className="login-form-wrapper">
-          <div className="login-logo-emblem">
-            <img src="/images/ELA-logo.png" alt="ELA logo" />
+          <div className="login-logo-container">
+            <img src="/images/ELA-logo.png" alt="ELA Academy Logo" className="login-logo-img" />
           </div>
           <h2>Welcome Back</h2>
           <p className="subtitle">Please enter your credentials to access your staff dashboard.</p>
