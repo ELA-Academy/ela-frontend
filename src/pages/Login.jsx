@@ -10,11 +10,13 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setSubmitting(true);
     try {
       await staffLogin(email, password);
       // The redirect logic is now handled in AdminLayout,
@@ -25,6 +27,8 @@ const Login = () => {
         err.response?.data?.msg ||
           "Login failed. Please check your credentials."
       );
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -43,8 +47,8 @@ const Login = () => {
           <div className="login-logo-container">
             <img src="/images/ELA-logo.png" alt="ELA Academy Logo" className="login-logo-img" />
           </div>
-          <h2>Welcome Back</h2>
-          <p className="subtitle">Please enter your credentials to access your staff dashboard.</p>
+          <h2>Welcome back to ELA School Management App</h2>
+          <p className="subtitle">Please enter your credentials to access your dashboard.</p>
           
           <form onSubmit={handleSubmit}>
             {error && <p className="error-message">{error}</p>}
@@ -100,8 +104,8 @@ const Login = () => {
               </div>
             </div>
             
-            <button type="submit" className="btn-primary-full" disabled={loading}>
-              {loading ? "Logging in..." : "Login"}
+            <button type="submit" className="btn-primary-full" disabled={submitting}>
+              {submitting ? <span className="login-spinner"></span> : "Login"}
             </button>
           </form>
           

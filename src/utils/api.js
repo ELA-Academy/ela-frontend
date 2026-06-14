@@ -22,9 +22,15 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      console.warn("Session expired or invalid token. Logging out...");
-      localStorage.removeItem("authToken");
-      window.location.href = "/login";
+      const isLoginRequest = error.config.url && (
+        error.config.url.includes("/auth/login") || 
+        error.config.url.includes("/superadmin/login")
+      );
+      if (!isLoginRequest) {
+        console.warn("Session expired or invalid token. Logging out...");
+        localStorage.removeItem("authToken");
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(error);
   }
