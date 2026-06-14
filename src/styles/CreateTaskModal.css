@@ -1,0 +1,304 @@
+/* ClickUp Task Modal Styling */
+.clickup-task-modal .modal-content {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.clickup-modal-container {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12), 0 0 1px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Tabs Bar */
+.clickup-tabs-bar {
+  background: #f7f8fa;
+  border-bottom: 1px solid #e9ebeb;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  height: 44px;
+}
+
+.clickup-tab-btn {
+  background: transparent;
+  border: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #7f8c8d;
+  padding: 0 16px;
+  height: 44px;
+  position: relative;
+  transition: all 0.2s;
+  cursor: pointer;
+  outline: none;
+}
+
+.clickup-tab-btn:hover {
+  color: #2c3e50;
+}
+
+.clickup-tab-btn.active {
+  color: #111827;
+}
+
+.clickup-tab-btn.active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 16px;
+  right: 16px;
+  height: 2px;
+  background: #111827;
+}
+
+.clickup-modal-close {
+  margin-left: auto;
+  background: transparent;
+  border: 0;
+  font-size: 20px;
+  color: #7c8798;
+  cursor: pointer;
+}
+
+/* Content */
+.clickup-modal-content {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Dropdowns */
+.clickup-drop-toggle {
+  background: #f1f2f4 !important;
+  border: 0 !important;
+  color: #4a5568 !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+  border-radius: 6px !important;
+  padding: 5px 10px !important;
+  box-shadow: none !important;
+}
+
+.clickup-drop-menu {
+  border: 0 !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1) !important;
+  border-radius: 10px !important;
+  padding: 6px 0 !important;
+}
+
+.group-bullet-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* Inputs */
+.clickup-title-input {
+  width: 100%;
+  font-size: 20px;
+  font-weight: 500;
+  color: #1f2937;
+  border: 0;
+  padding: 8px 0;
+  outline: none;
+}
+
+.clickup-title-input::placeholder {
+  color: #9ca3af;
+}
+
+.clickup-desc-container {
+  position: relative;
+}
+
+.clickup-desc-textarea {
+  width: 100%;
+  border: 0;
+  resize: none;
+  font-size: 14px;
+  color: #4b5563;
+  outline: none;
+  padding: 4px 0;
+}
+
+.clickup-desc-textarea::placeholder {
+  color: #9ca3af;
+}
+
+.clickup-desc-ai-loader {
+  font-size: 12px;
+  color: #7c3aed;
+  display: flex;
+  align-items: center;
+  margin-top: 5px;
+}
+
+/* AI Button */
+.clickup-ai-btn {
+  border: 1px solid #d1d5db !important;
+  background: transparent !important;
+  color: #4b5563 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  border-radius: 20px !important;
+  padding: 4px 10px !important;
+  transition: all 0.2s !important;
+}
+
+.clickup-ai-btn:hover {
+  background: #f3f4f6 !important;
+  border-color: #9ca3af !important;
+}
+
+/* Attributes Bar */
+.clickup-attributes-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid #f3f4f6;
+}
+
+.attribute-pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 6px;
+  user-select: none;
+}
+
+.clickable-pill {
+  background: #f3f4f6;
+  color: #4b5563;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  height: 26px;
+}
+
+.clickable-pill:hover {
+  background: #e5e7eb;
+}
+
+/* Status Colors */
+.status-pill {
+  cursor: pointer;
+}
+
+.status-not-started {
+  background: #edf2f7;
+  color: #4a5568;
+}
+
+.status-in-progress {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.status-done {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+/* Assignee Initials */
+.assignee-avatar-mini {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #673de6;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  font-weight: bold;
+}
+
+/* Priority Flags */
+.priority-flag-urgent { color: #ef4444; fill: #ef4444; }
+.priority-flag-high { color: #f59e0b; fill: #f59e0b; }
+.priority-flag-normal { color: #3b82f6; fill: #3b82f6; }
+.priority-flag-low { color: #9ca3af; fill: #9ca3af; }
+
+/* Footer */
+.clickup-footer-bar {
+  background: #f7f8fa;
+  border-top: 1px solid #e9ebeb;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+}
+
+.clickup-footer-btn {
+  background: transparent !important;
+  border: 0 !important;
+  color: #4b5563 !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  padding: 4px 8px !important;
+  box-shadow: none !important;
+}
+
+.clickup-footer-btn:hover {
+  background: #e5e7eb !important;
+}
+
+.clickup-icon-btn {
+  background: transparent;
+  border: 0;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clickup-icon-btn:hover {
+  background: #e5e7eb;
+}
+
+.clickup-notif-dot {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 8px;
+  font-weight: bold;
+  border-radius: 50%;
+  width: 11px;
+  height: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clickup-create-btn {
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  font-size: 12px !important;
+}
+
+.clickup-create-split-btn {
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  padding-left: 2px !important;
+  padding-right: 2px !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.2) !important;
+  display: flex;
+  align-items: center;
+}

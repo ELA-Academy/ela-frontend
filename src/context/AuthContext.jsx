@@ -10,6 +10,7 @@ import api from "../utils/api";
 import {
   getNotifications,
   markAllAsRead,
+  markRead,
 } from "../services/notificationService";
 import { getActiveTasksCount } from "../services/taskService";
 import { getUnreadMessagesCount } from "../services/messagingService";
@@ -55,6 +56,17 @@ export const AuthProvider = ({ children }) => {
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
     } catch (error) {
       console.error("Failed to mark notifications as read.");
+    }
+  };
+
+  const markNotificationAsRead = async (id) => {
+    try {
+      await markRead(id);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
+      );
+    } catch (error) {
+      console.error("Failed to mark notification as read.", error);
     }
   };
 
@@ -130,6 +142,7 @@ export const AuthProvider = ({ children }) => {
     unreadTasks,
     unreadMessages,
     markAllNotificationsAsRead,
+    markNotificationAsRead,
     refreshCounts: fetchCounts, // Expose a manual refresh function
   };
 

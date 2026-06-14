@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Badge, Button, Card, Form, Modal, Table } from "react-bootstrap";
+import { Alert, Badge, Button, Card, Form, Modal, Table, Spinner } from "react-bootstrap";
 import { PencilSquare, ShieldLock, Trash } from "react-bootstrap-icons";
+import { Plus } from "lucide-react";
 
 import DeleteConfirmModal from "../../components/admin/DeleteConfirmModal";
 import PageHeader from "../../components/admin/PageHeader";
@@ -65,14 +66,16 @@ const ManageSuperAdmins = () => {
     try {
       setSubmitting(true);
       setError("");
+      
+      const payload = { ...currentAdmin };
+      if (!payload.password) {
+        delete payload.password;
+      }
+      
       if (isEditing) {
-        const payload = { ...currentAdmin };
-        if (!payload.password) {
-          delete payload.password;
-        }
         await updateSuperAdmin(currentAdmin.id, payload);
       } else {
-        await createSuperAdmin(currentAdmin);
+        await createSuperAdmin(payload);
       }
       setShowModal(false);
       setCurrentAdmin(EMPTY_ADMIN);
@@ -202,33 +205,46 @@ const ManageSuperAdmins = () => {
               />
             </Form.Group>
 
-            <Form.Group className="mb-3">
-              <Form.Label>Password</Form.Label>
-              <Form.Control
-                type="password"
-                placeholder={isEditing ? "Leave blank to keep the current password" : ""}
-                value={currentAdmin.password}
-                onChange={(event) => setCurrentAdmin((prev) => ({ ...prev, password: event.target.value }))}
-                required={!isEditing}
-              />
-            </Form.Group>
+            {isEditing && (
+              <>
+                <Form.Group className="mb-3">
+                  <Form.Label>Password</Form.Label>
+                  <Form.Control
+                    type="password"
+                    placeholder="Leave blank to keep the current password"
+                    value={currentAdmin.password}
+                    onChange={(event) => setCurrentAdmin((prev) => ({ ...prev, password: event.target.value }))}
+                  />
+                </Form.Group>
 
-            <Form.Check
-              type="switch"
-              id="super-admin-active"
-              label="Account is active"
-              checked={currentAdmin.is_active}
-              onChange={(event) =>
-                setCurrentAdmin((prev) => ({ ...prev, is_active: event.target.checked }))
-              }
-            />
+                <Form.Check
+                  type="switch"
+                  id="super-admin-active"
+                  label="Account is active"
+                  checked={currentAdmin.is_active}
+                  onChange={(event) =>
+                    setCurrentAdmin((prev) => ({ ...prev, is_active: event.target.checked }))
+                  }
+                />
+              </>
+            )}
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={() => setShowModal(false)} disabled={submitting}>
               Cancel
             </Button>
             <Button variant="primary" type="submit" disabled={submitting}>
-              {submitting ? "Saving..." : "Save Changes"}
+              {submitting ? (
+                <>
+                  <Spinner size="sm" animation="border" className="me-2" />
+                  {isEditing ? "Saving..." : "Adding..."}
+                </>
+              ) : (
+                <>
+                  {!isEditing && <Plus size={16} className="me-1" />}
+                  {isEditing ? "Save Changes" : "Add"}
+                </>
+              )}
             </Button>
           </Modal.Footer>
         </Form>

@@ -233,12 +233,15 @@
 
 .workspace-tab:hover {
   color: #111827;
-  background: #fafafa;
+  background: transparent;
 }
 
 .workspace-tab.active {
-  color: #673de6;
-  border-bottom-color: #673de6;
+  color: #111827;
+  font-weight: 700;
+  border-bottom-color: transparent;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 6px;
 }
 
 .workspace-toolbar-actions {
@@ -1247,6 +1250,7 @@
 }
 
 /* Dropdown layout clipping & scroll overrides */
+.workspace-table-container,
 .workspace-table, 
 .workspace-table td, 
 .workspace-table tr {
@@ -1258,3 +1262,826 @@
   max-height: 250px !important;
   overflow-y: auto !important;
 }
+
+/* ==========================================================================
+   CLICKUP LIST VIEW TABLE & CARD OVERRIDES
+========================================================================== */
+.workspace-table th {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #888d96 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  padding: 8px 10px !important;
+  background-color: #fafbfd !important;
+  border-bottom: 1px solid #e7e8ee !important;
+}
+
+.workspace-table td {
+  font-size: 12px !important;
+  padding: 6px 10px !important;
+  color: #2f3437 !important;
+  border-bottom: 1px solid #f1f3f5 !important;
+}
+
+.cell-editable-text {
+  font-size: 12px !important;
+  padding: 4px 6px !important;
+  color: #2f3437 !important;
+}
+
+.monday-badge {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  padding: 2px 8px !important;
+  border-radius: 999px !important;
+  min-width: 84px !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Assignee ClickUp Layout */
+.clickup-cell-assignee {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+  cursor: pointer !important;
+}
+
+.clickup-avatar-sm {
+  width: 22px !important;
+  height: 22px !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 50% !important;
+  background-color: #e2e8f0 !important;
+  color: #475569 !important;
+  border: 1px solid #cbd5e1 !important;
+  flex-shrink: 0 !important;
+}
+
+.clickup-unassigned-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px dashed #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  background-color: #fafbfc;
+  transition: all 0.15s ease;
+}
+
+.clickup-unassigned-icon:hover {
+  background-color: #f1f5f9;
+  color: #475569;
+  border-color: #94a3b8;
+}
+
+/* Priority Flag ClickUp Layout */
+.clickup-cell-priority {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Hidden Date Input & Display */
+.clickup-date-input-hidden {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.clickup-date-display {
+  position: relative;
+  z-index: 1;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  pointer-events: none;
+}
+
+.clickup-date-text {
+  color: #334155 !important;
+  margin-left: 2px !important;
+}
+
+/* ClickUp List View Collapsible Pill Groups */
+.group-header {
+  padding: 8px 12px !important;
+  border-bottom: 1px solid #e7e8ee !important;
+  background-color: #fafbfd !important;
+  border-radius: 6px 6px 0 0 !important;
+}
+
+.group-title {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #1f2937 !important;
+}
+
+/* ClickUp Board View Cards UI */
+.kanban-column {
+  background-color: #f7f8fa !important;
+  border-radius: 8px !important;
+  padding: 10px !important;
+  min-height: 500px !important;
+}
+
+.kanban-column-header {
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #4b5563 !important;
+  text-transform: none !important;
+  margin-bottom: 12px !important;
+}
+
+.kanban-card {
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  padding: 10px 12px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  transition: all 0.15s ease !important;
+  margin-bottom: 8px !important;
+}
+
+.kanban-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+  border-color: #cbd5e1 !important;
+}
+
+.kanban-card-title {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #1f2937 !important;
+  line-height: 1.4 !important;
+  margin-bottom: 8px !important;
+}
+
+/* === Dropdown Overflow Fixes === */
+.workspace-table-container {
+  overflow: visible !important;
+}
+
+.group-container {
+  overflow: visible !important;
+}
+
+.board-dropdown-menu {
+  z-index: 1050 !important;
+  position: absolute !important;
+}
+
+/* Make sure dropdown menus don't get clipped */
+.workspace-table .dropdown {
+  position: static;
+}
+
+.workspace-table .dropdown-menu {
+  position: fixed !important;
+  z-index: 1060 !important;
+}
+
+/* === Skeleton Loaders === */
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-loader {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 37%, #f0f0f0 63%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.skeleton-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.skeleton-text {
+  height: 14px;
+  border-radius: 4px;
+}
+
+.skeleton-text-sm {
+  height: 10px;
+  border-radius: 3px;
+}
+
+.skeleton-text-lg {
+  height: 20px;
+  border-radius: 5px;
+}
+
+.skeleton-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #f0f0f0;
+}
+
+.skeleton-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+}
+
+.skeleton-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+}
+
+.skeleton-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 16px;
+}
+
+.skeleton-group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+}
+
+.skeleton-table-row {
+  display: grid;
+  grid-template-columns: 3% 32% 16% 12% 12% 10% 10% 10% 10%;
+  gap: 8px;
+  padding: 10px 16px;
+  align-items: center;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.skeleton-badge {
+  height: 24px;
+  width: 70px;
+  border-radius: 12px;
+}
+
+/* Timer Status Dot & Pulsing */
+.timer-status-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #8c9baf;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.timer-status-dot.timer-pulsing {
+  background-color: #ef4444;
+  animation: timerPulse 1.5s infinite;
+}
+
+@keyframes timerPulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 5px rgba(239, 68, 68, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+.time-entries-stack .border-bottom-subtle {
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+/* Workspace Wiki Docs Layout */
+.workspace-docs-layout {
+  display: flex;
+  height: calc(100vh - 220px);
+  border: 1px solid #dddfe5;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.docs-list-sidebar {
+  width: 240px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.docs-list-scroll {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.doc-sidebar-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #f0f0f0;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.doc-sidebar-item:hover {
+  background-color: #f8fafc;
+}
+
+.doc-sidebar-item.active {
+  background-color: rgba(103, 61, 230, 0.06);
+}
+
+.doc-sidebar-item.active .doc-sidebar-title {
+  color: #673de6;
+  font-weight: 700;
+}
+
+.doc-sidebar-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #344054;
+}
+
+.doc-sidebar-item .delete-doc-btn {
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.15s ease;
+}
+
+.doc-sidebar-item:hover .delete-doc-btn {
+  opacity: 1;
+  visibility: visible;
+}
+
+.docs-content-editor {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.doc-editor-surface {
+  display: flex;
+  flex-direction: column;
+}
+
+.doc-title-input {
+  border: none;
+  font-family: inherit;
+  font-weight: 800;
+  color: #111827;
+}
+
+.doc-formatting-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-color: #e2e8f0;
+}
+
+.doc-formatting-toolbar .btn-link {
+  color: #64748b;
+  text-decoration: none;
+  font-size: 0.82rem;
+  border-radius: 4px;
+}
+
+.doc-formatting-toolbar .btn-link:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.doc-editable-content-area {
+  background-color: #ffffff;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: #334155;
+  border-color: #e2e8f0 !important;
+}
+
+.doc-editable-content-area:focus {
+  border-color: #cbd5e1 !important;
+}
+
+.add-task-input-clickup {
+  border: none !important;
+  background: transparent !important;
+  outline: none !important;
+  font-size: 0.8rem !important;
+  color: #334155 !important;
+  width: 100% !important;
+  padding: 4px 8px !important;
+  font-weight: 500 !important;
+}
+
+.add-task-input-clickup::placeholder {
+  color: #94a3b8 !important;
+  font-style: italic !important;
+}
+
+.add-task-input-clickup:focus {
+  border-bottom: 1px solid #cbd5e1 !important;
+}
+
+.status-group-header {
+  border-radius: 4px;
+  background-color: rgba(248, 250, 252, 0.5);
+  margin-top: 12px;
+}
+
+.status-group-section {
+  position: relative;
+}
+
+/* === ClickUp Inline Task Builder === */
+.clickup-inline-builder-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 6px 12px;
+  margin-top: 4px;
+  margin-bottom: 4px;
+  width: 100%;
+}
+
+.clickup-inline-builder-input {
+  flex-grow: 1;
+  border: none !important;
+  outline: none !important;
+  font-size: 13px !important;
+  color: #334155 !important;
+  padding: 4px 0 !important;
+  background: transparent !important;
+}
+
+.clickup-inline-builder-input::placeholder {
+  color: #94a3b8 !important;
+  font-style: italic !important;
+}
+
+.clickup-inline-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.clickup-inline-pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 2px 8px;
+  height: 22px;
+}
+
+.clickup-inline-icon-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  height: 24px;
+  width: 24px;
+}
+
+.clickup-inline-icon-btn:hover {
+  color: #64748b;
+  background-color: #f1f5f9;
+}
+
+.clickup-inline-icon-btn.has-value {
+  color: #673de6;
+}
+
+.clickup-inline-btn-cancel {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.clickup-inline-btn-cancel:hover {
+  color: #1e293b;
+}
+
+.clickup-inline-btn-save {
+  background-color: #1e1f22;
+  border: none;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.clickup-inline-btn-save:hover {
+  background-color: #0f172a;
+}
+
+/* === ClickUp Header "+ Task" Button === */
+.clickup-top-task-btn {
+  background-color: #1e1f22 !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 6px 12px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  cursor: pointer !important;
+  transition: background-color 0.15s ease !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+}
+
+
+
+/* ==========================================================================
+   CLICKUP SLEEK LIST VIEW OVERHAUL
+========================================================================== */
+
+/* Remove box shadows from status group sections */
+.status-group-section {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin-bottom: 4px !important;
+  border-radius: 0 !important;
+}
+
+/* Status group header - flat ClickUp style */
+.status-group-header {
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 6px 0 !important;
+  margin-bottom: 0 !important;
+  border-left-width: 3px !important;
+  border-left-style: solid !important;
+}
+
+/* Status collapse chevron */
+.status-collapse-btn {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+}
+
+.status-collapse-btn:hover {
+  background-color: #f1f5f9;
+}
+
+.status-chevron {
+  font-size: 9px !important;
+  color: #64748b;
+  transition: transform 0.2s ease;
+}
+
+.status-chevron.collapsed {
+  transform: rotate(-90deg);
+}
+
+/* Workspace table - ClickUp flat style */
+.workspace-list-view .workspace-table {
+  border-collapse: collapse !important;
+  width: 100% !important;
+  margin: 0 !important;
+}
+
+.workspace-list-view .workspace-table th {
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  color: #7c8898 !important;
+  text-transform: capitalize !important;
+  letter-spacing: 0 !important;
+  padding: 4px 12px !important;
+  background-color: transparent !important;
+  border-bottom: 1px solid #eef0f4 !important;
+}
+
+.workspace-list-view .workspace-table td {
+  padding: 4px 12px !important;
+  border-bottom: 1px solid #f4f5f7 !important;
+  vertical-align: middle !important;
+}
+
+.workspace-list-view .workspace-table-container {
+  margin-left: 0 !important;
+}
+
+/* Task row hover - ClickUp style */
+.workspace-list-view .workspace-row {
+  transition: background-color 0.1s ease;
+}
+
+.workspace-list-view .workspace-row:hover {
+  background-color: #f8f9fb !important;
+}
+
+/* Task complete dot - ClickUp circle status icon */
+.workspace-list-view .task-complete-dot {
+  width: 18px !important;
+  height: 18px !important;
+  border-radius: 50% !important;
+  border: 2px solid #8c9baf !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: transparent !important;
+  transition: all 0.15s ease !important;
+  flex-shrink: 0 !important;
+}
+
+.workspace-list-view .task-complete-dot:hover {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+  transform: scale(1.1) !important;
+}
+
+/* Task title cell */
+.workspace-list-view .cell-editable-text {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: #1f2937 !important;
+  padding: 2px 4px !important;
+  border: none !important;
+  background: transparent !important;
+  outline: none !important;
+  width: 100% !important;
+}
+
+.workspace-list-view .cell-editable-text:focus {
+  background-color: #f8fafc !important;
+  border-bottom: 1px solid #673de6 !important;
+}
+
+/* Three dot menu button for each task row */
+.task-row-menu-btn {
+  background: transparent !important;
+  border: none !important;
+  color: #94a3b8 !important;
+  padding: 2px !important;
+  border-radius: 4px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  opacity: 0;
+  width: 24px;
+  height: 24px;
+}
+
+.workspace-row:hover .task-row-menu-btn {
+  opacity: 1;
+}
+
+.task-row-menu-btn:hover {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+}
+
+/* Task row context menu */
+.task-context-menu {
+  min-width: 200px !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12) !important;
+  padding: 4px 0 !important;
+  font-size: 13px !important;
+}
+
+.task-context-menu .dropdown-item {
+  padding: 7px 14px !important;
+  font-size: 13px !important;
+  color: #1f2937 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  transition: background-color 0.1s ease !important;
+}
+
+.task-context-menu .dropdown-item:hover {
+  background-color: #f3f4f6 !important;
+}
+
+.task-context-menu .dropdown-item svg {
+  flex-shrink: 0;
+  color: #6b7280;
+}
+
+.task-context-menu .dropdown-divider {
+  margin: 4px 0 !important;
+  border-color: #f3f4f6 !important;
+}
+
+.task-context-menu .dropdown-item.text-danger {
+  color: #ef4444 !important;
+}
+
+.task-context-menu .dropdown-item.text-danger svg {
+  color: #ef4444;
+}
+
+/* ClickUp + Add Task link at bottom of each status section */
+.clickup-add-task-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: color 0.15s ease;
+  border: none;
+  background: transparent;
+}
+
+.clickup-add-task-link:hover {
+  color: #475569;
+}
+
+/* Chat/Updates bubble on hover only */
+.workspace-list-view .chat-bubble-btn {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.workspace-row:hover .chat-bubble-btn {
+  opacity: 1;
+}
+
+/* Sleek status pills */
+.workspace-list-view .monday-badge {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  padding: 3px 10px !important;
+  border-radius: 3px !important;
+  letter-spacing: 0.02em !important;
+  text-transform: uppercase !important;
+}
+
+/* Priority column - centered flag */
+.workspace-list-view .clickup-cell-priority .dropdown-toggle {
+  padding: 4px !important;
+}
+
+
+
+
+
+
+

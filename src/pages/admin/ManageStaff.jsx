@@ -9,8 +9,10 @@ import {
   Card,
   Tooltip,
   OverlayTrigger,
+  Spinner,
 } from "react-bootstrap";
 import { PencilSquare, Trash } from "react-bootstrap-icons";
+import { Plus } from "lucide-react";
 import Select from "react-select"; // --- NEW IMPORT ---
 import api from "../../utils/api";
 import PageHeader from "../../components/admin/PageHeader";
@@ -24,6 +26,7 @@ const ManageStaff = () => {
   const [error, setError] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [currentStaff, setCurrentStaff] = useState({
     id: null,
     name: "",
@@ -83,6 +86,8 @@ const ManageStaff = () => {
     if (isEditing && !payload.password) delete payload.password;
 
     try {
+      setSubmitting(true);
+      setError("");
       if (isEditing) {
         await api.put(`/staff/${payload.id}`, payload);
       } else {
@@ -92,6 +97,8 @@ const ManageStaff = () => {
       handleCloseModal();
     } catch (err) {
       setError(err.response?.data?.error || "Failed to save staff member.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -218,19 +225,7 @@ const ManageStaff = () => {
                 required
               />
             </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Password</Form.Label>
-              <Form.Control
-                type="password"
-                placeholder={isEditing ? "Leave blank to keep current" : ""}
-                onChange={(e) =>
-                  setCurrentStaff({ ...currentStaff, password: e.target.value })
-                }
-                required={!isEditing}
-              />
-            </Form.Group>
 
-            {/* --- NEW MULTI-SELECT --- */}
             <Form.Group className="mb-3">
               <Form.Label>Departments</Form.Label>
               <Select
@@ -249,25 +244,50 @@ const ManageStaff = () => {
               />
             </Form.Group>
 
-            <Form.Check
-              type="switch"
-              id="active-switch"
-              label="Account is Active"
-              checked={currentStaff.is_active}
-              onChange={(e) =>
-                setCurrentStaff({
-                  ...currentStaff,
-                  is_active: e.target.checked,
-                })
-              }
-            />
+            {isEditing && (
+              <>
+                <Form.Group className="mb-3">
+                  <Form.Label>Password</Form.Label>
+                  <Form.Control
+                    type="password"
+                    placeholder="Leave blank to keep current"
+                    onChange={(e) =>
+                      setCurrentStaff({ ...currentStaff, password: e.target.value })
+                    }
+                  />
+                </Form.Group>
+
+                <Form.Check
+                  type="switch"
+                  id="active-switch"
+                  label="Account is Active"
+                  checked={currentStaff.is_active}
+                  onChange={(e) =>
+                    setCurrentStaff({
+                      ...currentStaff,
+                      is_active: e.target.checked,
+                    })
+                  }
+                />
+              </>
+            )}
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" onClick={handleCloseModal}>
+            <Button variant="secondary" onClick={handleCloseModal} disabled={submitting}>
               Cancel
             </Button>
-            <Button variant="primary" type="submit">
-              Save Changes
+            <Button variant="primary" type="submit" disabled={submitting}>
+              {submitting ? (
+                <>
+                  <Spinner size="sm" animation="border" className="me-2" />
+                  {isEditing ? "Saving..." : "Adding..."}
+                </>
+              ) : (
+                <>
+                  {!isEditing && <Plus size={16} className="me-1" />}
+                  {isEditing ? "Save Changes" : "Add"}
+                </>
+              )}
             </Button>
           </Modal.Footer>
         </Form>

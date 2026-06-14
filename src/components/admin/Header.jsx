@@ -29,7 +29,7 @@ const timeAgo = (dateString) => {
 };
 
 const Header = () => {
-  const { user, unreadCount, notifications, markAllNotificationsAsRead } =
+  const { user, unreadCount, notifications, markAllNotificationsAsRead, markNotificationAsRead } =
     useAuth();
   const navigate = useNavigate();
 
@@ -227,7 +227,12 @@ const Header = () => {
                     !notif.is_read ? "bg-slate-50/50" : ""
                   }`}
                   style={{ color: "inherit", display: "flex" }}
-                  onClick={() => setShowNotifications(false)}
+                  onClick={() => {
+                    setShowNotifications(false);
+                    if (!notif.is_read) {
+                      markNotificationAsRead(notif.id);
+                    }
+                  }}
                 >
                   {/* Unread pulsing marker */}
                   {!notif.is_read && (

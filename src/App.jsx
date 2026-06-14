@@ -12,6 +12,7 @@ import { AuthProvider } from "./context/AuthContext";
 import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
 import SuperAdminSetup from "./pages/SuperAdminSetup";
+import SetupPassword from "./pages/SetupPassword";
 import AdminLayout from "./components/admin/AdminLayout";
 import DashboardOverview from "./pages/admin/DashboardOverview";
 import ManageDepartments from "./pages/admin/ManageDepartments";
@@ -47,6 +48,7 @@ import ManageSuperAdmins from "./pages/admin/ManageSuperAdmins";
 // Workspace boards
 import BoardsPage from "./pages/admin/BoardsPage";
 import BoardDetailPage from "./pages/admin/BoardDetailPage";
+import WorkspaceLayout from "./components/admin/workspace/WorkspaceLayout";
 
 function App() {
   return (
@@ -71,6 +73,7 @@ function App() {
           <Route path="/logout" element={<Logout />} />
           <Route path="/admissions/apply" element={<AdmissionForm />} />
           <Route path="/enrollment/:token" element={<PublicEnrollmentForm />} />
+          <Route path="/setup-password" element={<SetupPassword />} />
 
           <Route element={<ProtectedRoute />}>
             <Route path="/admin" element={<AdminLayout />}>
@@ -89,12 +92,14 @@ function App() {
               />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="settings" element={<ProfilePage />} />
-              <Route path="messaging" element={<MessagingPage />} />
               <Route path="tasks" element={<AllTasksPage />} />
               
-              {/* Workspace Boards */}
-              <Route path="boards" element={<BoardsPage />} />
-              <Route path="boards/:boardId" element={<BoardDetailPage />} />
+              {/* Workspace — shared sidebar layout */}
+              <Route element={<WorkspaceLayout />}>
+                <Route path="boards" element={<BoardsPage />} />
+                <Route path="boards/:boardId" element={<BoardDetailPage />} />
+                <Route path="messaging" element={<MessagingPage />} />
+              </Route>
               <Route path="admissions" element={<AdmissionsDashboard />} />
               <Route path="admissions/leads" element={<LeadsListPage />} />
               <Route

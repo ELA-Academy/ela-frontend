@@ -1,6 +1,6 @@
 .workspace-shell {
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-columns: 220px minmax(0, 1fr);
   min-height: calc(100vh - 80px);
   align-items: start;
   background: #f4f5f8;
@@ -19,7 +19,7 @@
 }
 
 .workspace-secondary-header {
-  padding: 24px 20px 18px;
+  padding: 12px 14px 10px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -30,7 +30,7 @@
 .workspace-secondary-eyebrow {
   display: block;
   color: #8a90a0;
-  font-size: 11px;
+  font-size: 9.5px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -39,7 +39,7 @@
 
 .workspace-secondary-header h2 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 800;
   letter-spacing: -0.03em;
   color: #111827;
@@ -71,10 +71,10 @@
   min-height: 0;
   max-height: calc(100vh - 155px);
   overflow-y: auto;
-  padding: 18px 14px 28px;
+  padding: 10px 8px 16px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
   scrollbar-width: thin;
   scrollbar-color: #c3c6d1 transparent;
 }
@@ -112,33 +112,29 @@
 .workspace-secondary-links {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .workspace-secondary-link {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  border: 1px solid transparent;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 6px;
   text-decoration: none;
   color: #4b5563;
-  transition: all 0.18s ease;
+  transition: background-color 0.12s ease, color 0.12s ease;
 }
 
 .workspace-secondary-link:hover {
-  background: #ffffff;
+  background: rgba(0, 0, 0, 0.04);
   color: #111827;
-  border-color: #e6e8ef;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
 }
 
 .workspace-secondary-link.active {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(240, 235, 255, 0.95));
+  background: rgba(103, 61, 230, 0.08);
   color: #673de6;
-  border-color: rgba(103, 61, 230, 0.22);
-  box-shadow: 0 10px 24px rgba(103, 61, 230, 0.12);
+  font-weight: 600;
 }
 
 .workspace-secondary-link.restricted .workspace-secondary-link-icon {
@@ -159,7 +155,7 @@
 
 .workspace-secondary-link-title {
   color: inherit;
-  font-size: 0.84rem;
+  font-size: 0.78rem;
   font-weight: 700;
   line-height: 1.3;
 }
@@ -202,12 +198,12 @@
 .workspace-space-group-link {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 7px 10px;
-  border-radius: 10px;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
   text-decoration: none;
   color: #5f6472;
-  font-size: 0.79rem;
+  font-size: 0.74rem;
   font-weight: 600;
 }
 
@@ -435,7 +431,7 @@
 
 @media (max-width: 1260px) {
   .workspace-shell {
-    grid-template-columns: 280px minmax(0, 1fr);
+    grid-template-columns: 220px minmax(0, 1fr);
   }
 
   .workspace-overview-layout {
@@ -478,4 +474,25 @@
   .workspace-list-summary-row {
     grid-template-columns: 1fr;
   }
+}
+
+/* === Chat Viewport Constrainment & Scrolling Fix === */
+.admin-layout:has(.workspace-message-panel) .main-content {
+  overflow: hidden !important;
+  height: 100vh !important;
+}
+
+.workspace-shell:has(.workspace-message-panel) {
+  height: calc(100vh - 80px) !important;
+  align-items: stretch !important;
+  overflow: hidden !important;
+}
+
+.workspace-content-pane:has(.workspace-message-panel) {
+  height: 100% !important;
+  max-height: calc(100vh - 80px) !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 20px !important;
 }

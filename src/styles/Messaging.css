@@ -51,54 +51,447 @@
   min-height: 520px;
 }
 
-.workspace-message-panel .chat-header,
-.workspace-message-panel .chat-messages,
-.workspace-message-panel .chat-input-area {
+.workspace-message-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* === ClickUp Chat Layout === */
+.clickup-chat-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   width: 100%;
+  background-color: #ffffff;
 }
 
-.workspace-message-panel .chat-messages {
-  min-height: 0;
-}
-
-.chat-header {
+.clickup-chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+  padding: 0 20px;
+  border-bottom: 1px solid #e7e8ee;
+  background-color: #ffffff;
   flex-shrink: 0;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--border-color);
-  background-color: var(--card-bg);
 }
 
-.chat-header h5 {
+.clickup-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.clickup-header-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 13px;
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.2);
+}
+
+.clickup-header-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.clickup-header-info h5 {
   margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1f2937;
 }
 
-.chat-messages {
+.clickup-header-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #10b981;
+}
+
+.clickup-header-tabs {
+  display: flex;
+  gap: 20px;
+  height: 100%;
+}
+
+.clickup-header-tab {
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  height: 100%;
+  position: relative;
+  padding: 0 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.clickup-header-tab:hover {
+  color: #1f2937;
+}
+
+.clickup-header-tab.active {
+  color: #7c3aed;
+}
+
+.clickup-header-tab.active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background-color: #7c3aed;
+  border-top-left-radius: 3px;
+  border-top-right-radius: 3px;
+}
+
+.clickup-chat-messages {
   flex-grow: 1;
   overflow-y: auto;
-  padding: 1.5rem;
+  padding: 24px;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+/* === Intro Section === */
+.clickup-intro-section {
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #f3f4f6;
+  flex-shrink: 0;
+}
+
+.clickup-intro-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 22px;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25);
+}
+
+.clickup-intro-section h3 {
+  margin: 0 0 4px;
+  font-size: 19px;
+  font-weight: 800;
+  color: #1f2937;
+}
+
+.clickup-intro-subtitle {
+  color: #6b7280;
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+.clickup-intro-btn {
+  border: 1px solid #dddfe5;
+  background-color: #ffffff;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4b5563;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.clickup-intro-btn:hover {
+  background-color: #f9fafb;
+  color: #111827;
+  border-color: #c3c6d1;
+}
+
+.clickup-intro-cards {
+  display: flex;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.clickup-intro-card {
+  flex: 1;
+  border-radius: 12px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid transparent;
+}
+
+.clickup-intro-card.pink-card {
+  background-color: #fff5f5;
+  border-color: #ffcdd2;
+}
+
+.clickup-intro-card.green-card {
+  background-color: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.pink-icon {
+  background-color: #ffe4e6;
+  color: #e11d48;
+}
+
+.green-icon {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.card-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.card-details strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.card-details span {
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+/* === ClickUp Messages List === */
+.clickup-messages-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.clickup-message-row {
+  display: flex;
+  gap: 12px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  transition: background-color 0.15s ease;
+}
+
+.clickup-message-row:hover {
   background-color: #f9fafb;
 }
 
-.chat-input-area {
+.clickup-message-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #f3f4f6;
+  color: #4b5563;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
   flex-shrink: 0;
-  padding: 1rem;
-  border-top: 1px solid var(--border-color);
-  background-color: var(--card-bg);
+  border: 1px solid #e5e7eb;
 }
 
-.chat-input-area .form-control {
-  border-radius: 1.5rem; /* Pill shape */
-  padding: 0.5rem 1rem;
-  border-right: none;
-  resize: none; /* Disable manual resize */
-  max-height: 150px; /* Prevent it from growing infinitely */
-  overflow-y: auto; /* Add scroll if it gets too long */
+.clickup-message-row.is-me .clickup-message-avatar {
+  background-color: #f3e8ff;
+  color: #6b21a8;
+  border-color: #e9d5ff;
 }
 
-.chat-input-area .btn {
-  border-radius: 50% !important; /* Circular button */
+.clickup-message-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
-/* === END OF NEW LAYOUT === */
+
+.clickup-message-header {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.clickup-message-sender {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.clickup-message-time {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.clickup-message-content {
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.clickup-message-content p {
+  margin: 0;
+}
+
+.clickup-message-row.sending {
+  opacity: 0.6;
+}
+
+/* === ClickUp Input Footer === */
+.clickup-chat-footer {
+  padding: 16px 20px;
+  background-color: #f3f4f6;
+  border-top: 1px solid #e7e8ee;
+  flex-shrink: 0;
+}
+
+.clickup-footer-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background-color: #1e1f22;
+  color: #ffffff;
+  border-radius: 8px;
+  font-size: 12px;
+  margin-bottom: 12px;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.clickup-banner-dismiss-btn {
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  font-size: 11px;
+  transition: color 0.15s ease;
+}
+
+.clickup-banner-dismiss-btn:hover {
+  color: #ffffff;
+}
+
+.clickup-input-card {
+  background-color: #ffffff;
+  border: 1px solid #dddfe5;
+  border-radius: 8px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.02);
+}
+
+.clickup-textarea {
+  border: none !important;
+  outline: none !important;
+  resize: none;
+  width: 100%;
+  font-size: 13px;
+  padding: 6px 4px !important;
+  max-height: 120px;
+  background-color: transparent !important;
+  color: #1f2937 !important;
+}
+
+.clickup-textarea:focus {
+  box-shadow: none !important;
+}
+
+.clickup-toolbar-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 4px 2px;
+  border-top: 1px solid #f3f4f6;
+  margin-top: 4px;
+}
+
+.clickup-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar-btn {
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toolbar-btn:hover {
+  background-color: #f3f4f6;
+  color: #1f2937;
+}
+
+.plus-btn {
+  color: #7c3aed;
+}
+
+.plus-btn:hover {
+  background-color: #f3e8ff;
+  color: #7c3aed;
+}
+
+.clickup-send-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  background-color: #7c3aed;
+  border: none;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.clickup-send-btn:hover {
+  background-color: #6d28d9;
+}
+
+.clickup-send-btn:disabled {
+  background-color: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
 
 /* --- Bubble styles (from before) --- */
 .conversation-details {
@@ -176,3 +569,27 @@
   content: "Sending...";
   margin-right: 5px;
 }
+
+/* === Dock Messaging Panel at Viewport Bottom (Upwork/ClickUp style) === */
+.content-area-workspace:has(.workspace-message-panel) {
+  overflow-y: hidden !important;
+  height: calc(100vh - 80px);
+}
+
+.workspace-content-pane:has(.workspace-message-panel) {
+  height: 100%;
+  overflow: hidden !important;
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace-message-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100% !important;
+  border: 1px solid #dddfe5;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
