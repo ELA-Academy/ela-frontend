@@ -9,6 +9,7 @@ import {
   Spinner,
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 import api from "../utils/api";
 import { useAuth } from "../context/AuthContext"; // Import useAuth
 import "../styles/SuperAdminSetup.css";
@@ -93,6 +94,7 @@ const SuperAdminSignupForm = () => {
   });
   const [otp, setOtp] = useState("");
   const [view, setView] = useState("register"); // 'register' or 'verify'
+  const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -169,15 +171,26 @@ const SuperAdminSignupForm = () => {
           </Form.Group>
           <Form.Group className="mb-3" controlId="formBasicPassword">
             <Form.Label>Password</Form.Label>
-            <Form.Control
-              type="password"
-              name="password"
-              placeholder="Password"
-              value={formData.password}
-              onChange={handleChange}
-              minLength="6"
-              required
-            />
+            <div className="position-relative">
+              <Form.Control
+                type={showPassword ? "text" : "password"}
+                name="password"
+                placeholder="Password"
+                value={formData.password}
+                onChange={handleChange}
+                minLength="6"
+                required
+                className="pe-5"
+              />
+              <button
+                type="button"
+                className="btn border-0 position-absolute end-0 top-50 translate-middle-y text-muted px-3"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{ zIndex: 10, background: "none", boxShadow: "none" }}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </Form.Group>
           <div className="d-grid mt-4">
             <Button
@@ -236,6 +249,7 @@ const SuperAdminLoginForm = () => {
   const { superAdminLogin } = useAuth(); // Get login function from context
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ email: "", password: "" });
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -277,14 +291,25 @@ const SuperAdminLoginForm = () => {
         </Form.Group>
         <Form.Group className="mb-3" controlId="loginPassword">
           <Form.Label>Password</Form.Label>
-          <Form.Control
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={formData.password}
-            onChange={handleChange}
-            required
-          />
+          <div className="position-relative">
+            <Form.Control
+              type={showPassword ? "text" : "password"}
+              name="password"
+              placeholder="Password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+              className="pe-5"
+            />
+            <button
+              type="button"
+              className="btn border-0 position-absolute end-0 top-50 translate-middle-y text-muted px-3"
+              onClick={() => setShowPassword(!showPassword)}
+              style={{ zIndex: 10, background: "none", boxShadow: "none" }}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
         </Form.Group>
         <div className="d-grid mt-4">
           <Button className="form-button" type="submit" disabled={isSubmitting}>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Container, Card, Form, Button, Alert, Spinner } from "react-bootstrap";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 import api from "../utils/api";
 
 const SetupPassword = () => {
@@ -13,6 +14,8 @@ const SetupPassword = () => {
   const [userEmail, setUserEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -97,28 +100,48 @@ const SetupPassword = () => {
 
               <Form.Group className="mb-3">
                 <Form.Label className="small fw-semibold text-slate-700">New Password</Form.Label>
-                <Form.Control
-                  type="password"
-                  placeholder="Enter at least 6 characters"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  minLength={6}
-                  required
-                  className="rounded-3 py-2"
-                />
+                <div className="position-relative">
+                  <Form.Control
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter at least 6 characters"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    minLength={6}
+                    required
+                    className="rounded-3 py-2 pe-5"
+                  />
+                  <button
+                    type="button"
+                    className="btn border-0 position-absolute end-0 top-50 translate-middle-y text-muted px-3"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{ zIndex: 10, background: "none", boxShadow: "none" }}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </Form.Group>
 
               <Form.Group className="mb-4">
                 <Form.Label className="small fw-semibold text-slate-700">Confirm Password</Form.Label>
-                <Form.Control
-                  type="password"
-                  placeholder="Re-type your password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  minLength={6}
-                  required
-                  className="rounded-3 py-2"
-                />
+                <div className="position-relative">
+                  <Form.Control
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="Re-type your password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    minLength={6}
+                    required
+                    className="rounded-3 py-2 pe-5"
+                  />
+                  <button
+                    type="button"
+                    className="btn border-0 position-absolute end-0 top-50 translate-middle-y text-muted px-3"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={{ zIndex: 10, background: "none", boxShadow: "none" }}
+                  >
+                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </Form.Group>
 
               <Button
