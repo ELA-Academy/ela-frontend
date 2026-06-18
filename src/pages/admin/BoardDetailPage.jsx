@@ -83,10 +83,11 @@ const BoardDetailPage = () => {
   const [activeView, setActiveView] = useState("list");
   const [collapsedStatuses, setCollapsedStatuses] = useState({});
   const [activeTaskId, setActiveTaskId] = useState(null);
-  const [activeTask, setActiveTask] = useState(null);
   const [newTaskTitles, setNewTaskTitles] = useState({});
   const [addingTask, setAddingTask] = useState({});
   const [inlineTaskBuilders, setInlineTaskBuilders] = useState({});
+  const [inlineSubtaskBuilders, setInlineSubtaskBuilders] = useState({});
+  const [inlineSubtaskMeta, setInlineSubtaskMeta] = useState({});
   const [addingGroup, setAddingGroup] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -162,6 +163,24 @@ const BoardDetailPage = () => {
       }))
     );
   }, [board]);
+
+  const activeTask = useMemo(() => {
+    if (!activeTaskId || !board?.groups) return null;
+    for (const group of board.groups) {
+      for (const task of group.tasks) {
+        if (task.id === activeTaskId) {
+          return { ...task, group_id: group.id };
+        }
+        if (task.subtasks) {
+          const sub = task.subtasks.find((s) => s.id === activeTaskId);
+          if (sub) {
+            return { ...sub, group_id: group.id, parent_task_id: task.id };
+          }
+        }
+      }
+    }
+    return null;
+  }, [activeTaskId, board]);
 
   // Load templates and saved views
   const fetchTemplates = useCallback(async () => {
@@ -383,7 +402,7 @@ const BoardDetailPage = () => {
 
   // Filtered & Sorted Tasks
   const filteredTasks = useMemo(() => {
-    let result = [...allTasks];
+    let result = allTasks.filter((task) => !task.parent_task_id);
 
     if (filterQuery.trim()) {
       const q = filterQuery.toLowerCase();
@@ -391,13 +410,15 @@ const BoardDetailPage = () => {
         (t) =>
           t.title.toLowerCase().includes(q) ||
           (t.notes && t.notes.toLowerCase().includes(q)) ||
-          (t.assignee_name && t.assignee_name.toLowerCase().includes(q))
+          getTaskAssignees(t).some((assignee) =>
+            assignee.name?.toLowerCase().includes(q)
+          )
       );
     }
 
     if (filterAssignee) {
-      result = result.filter(
-        (t) => String(t.assignee_id) === String(filterAssignee)
+      result = result.filter((t) =>
+        getTaskAssignees(t).some((assignee) => getAssigneeKey(assignee) === filterAssignee)
       );
     }
 
@@ -416,8 +437,8 @@ const BoardDetailPage = () => {
       let valB = b[sortBy];
 
       if (sortBy === "assignee") {
-        valA = a.assignee_name || "";
-        valB = b.assignee_name || "";
+        valA = getTaskAssignees(a).map((assignee) => assignee.name).join(", ");
+        valB = getTaskAssignees(b).map((assignee) => assignee.name).join(", ");
       }
 
       if (valA === undefined || valA === null) valA = "";
@@ -481,8 +502,10 @@ const BoardDetailPage = () => {
 
     if (groupBy === "assignee") {
       const groups = assignees.map((member) => {
-        const tasks = filteredTasks.filter(
-          (t) => t.assignee_id === member.id && t.assignee_role === member.role
+        const tasks = filteredTasks.filter((t) =>
+          getTaskAssignees(t).some(
+            (assignee) => assignee.id === member.id && assignee.role === member.role
+          )
         );
         return {
           id: `${member.role}_${member.id}`,
@@ -491,7 +514,7 @@ const BoardDetailPage = () => {
           tasks
         };
       });
-      const unassignedTasks = filteredTasks.filter((t) => !t.assignee_id);
+      const unassignedTasks = filteredTasks.filter((t) => getTaskAssignees(t).length === 0);
       groups.push({
         id: "unassigned",
         name: "Unassigned",
@@ -561,9 +584,11 @@ const BoardDetailPage = () => {
       tasks = tasks.filter(t => t.group_id === Number(swimlaneId));
     } else if (kanbanGrouping === "assignee") {
       if (swimlaneId === "unassigned") {
-        tasks = tasks.filter(t => !t.assignee_id);
+        tasks = tasks.filter(t => getTaskAssignees(t).length === 0);
       } else {
-        tasks = tasks.filter(t => `${t.assignee_role}_${t.assignee_id}` === swimlaneId);
+        tasks = tasks.filter(t =>
+          getTaskAssignees(t).some((assignee) => getAssigneeKey(assignee) === swimlaneId)
+        );
       }
     }
 
@@ -577,14 +602,32 @@ const BoardDetailPage = () => {
     const taskIdParam = Number(params.get("task"));
     if (!taskIdParam) {
       setActiveTaskId(null);
-      setActiveTask(null);
       return;
     }
 
     const task = allTasks.find((item) => item.id === taskIdParam);
     setActiveTaskId(task ? taskIdParam : null);
-    setActiveTask(task || null);
   }, [location.search, board, allTasks]);
+
+  const getTaskAssignees = (task) => {
+    if (Array.isArray(task.assignees) && task.assignees.length > 0) {
+      return task.assignees;
+    }
+    if (task.assignee_id) {
+      return [{
+        id: task.assignee_id,
+        role: task.assignee_role,
+        name: task.assignee_name,
+        email: task.assignee_email,
+      }];
+    }
+    return [];
+  };
+
+  const getAssigneeKey = (assignee) => `${assignee.role}_${assignee.id}`;
+
+  const getIncompleteSubtasks = (task) =>
+    (task.subtasks || []).filter((subtask) => subtask.status !== "Done");
 
   const boardStats = useMemo(() => {
     const total = allTasks.length;
@@ -615,8 +658,15 @@ const BoardDetailPage = () => {
 
     const counts = new Map();
     allTasks.forEach((task) => {
-      const label = task.assignee_name || "Unassigned";
-      counts.set(label, (counts.get(label) || 0) + 1);
+      const taskAssignees = getTaskAssignees(task);
+      if (taskAssignees.length === 0) {
+        counts.set("Unassigned", (counts.get("Unassigned") || 0) + 1);
+        return;
+      }
+      taskAssignees.forEach((assignee) => {
+        const label = assignee.name || "Unnamed";
+        counts.set(label, (counts.get(label) || 0) + 1);
+      });
     });
 
     const palette = ["#673de6", "#00b67a", "#ff9f1a", "#ff59a3", "#1a73e8", "#111827"];
@@ -659,7 +709,18 @@ const BoardDetailPage = () => {
         ...prev,
         groups: prev.groups.map((group) => ({
           ...group,
-          tasks: group.tasks.map((task) => (task.id === taskId ? updater(task) : task)),
+          tasks: group.tasks.map((task) => {
+            if (task.id === taskId) {
+              return updater(task);
+            }
+            if (task.subtasks && task.subtasks.some((sub) => sub.id === taskId)) {
+              return {
+                ...task,
+                subtasks: task.subtasks.map((sub) => (sub.id === taskId ? updater(sub) : sub)),
+              };
+            }
+            return task;
+          }),
         })),
       };
     });
@@ -668,25 +729,34 @@ const BoardDetailPage = () => {
   const handleTaskCellChange = async (taskId, field, value) => {
     setSaving(true);
 
+    const currentTask = allTasks.find((task) => task.id === taskId);
+    if (field === "status" && value === "Done" && currentTask && getIncompleteSubtasks(currentTask).length > 0) {
+      setError("Complete all subtasks before marking this task complete.");
+      setSaving(false);
+      return;
+    }
+
     patchTaskInState(taskId, (task) => {
       const nextTask = { ...task, [field]: value };
-      if (field === "assignee") {
-        nextTask.assignee_id = value?.id || null;
-        nextTask.assignee_name = value?.name || "";
-        nextTask.assignee_email = value?.email || "";
-        nextTask.assignee_role = value?.role || "";
+      if (field === "assignees") {
+        nextTask.assignees = value || [];
+        const primary = nextTask.assignees[0];
+        nextTask.assignee_id = primary?.id || null;
+        nextTask.assignee_name = primary?.name || "";
+        nextTask.assignee_email = primary?.email || "";
+        nextTask.assignee_role = primary?.role || "";
       }
       return nextTask;
     });
 
     try {
       const payload =
-        field === "assignee"
-          ? { assignee_id: value?.id || null, assignee_role: value?.role || null }
+        field === "assignees"
+          ? { assignees: value || [] }
           : { [field]: value };
       await updateTask(taskId, payload);
     } catch (updateError) {
-      setError("Failed to save task changes.");
+      setError(updateError.response?.data?.error || "Failed to save task changes.");
       fetchWorkspace(false);
     } finally {
       setSaving(false);
@@ -760,8 +830,7 @@ const BoardDetailPage = () => {
         due_date: builder?.dueDate || null
       };
       if (builder?.assignee) {
-        payload.assignee_id = builder.assignee.id;
-        payload.assignee_role = builder.assignee.role;
+        payload.assignees = [builder.assignee];
       }
       const created = await createTask(groupId, payload);
       setBoard((prev) => ({
@@ -778,6 +847,47 @@ const BoardDetailPage = () => {
       setError("Failed to create task.");
     } finally {
       setAddingTask((prev) => ({ ...prev, [key]: false }));
+      setSaving(false);
+    }
+  };
+
+  const handleAddSubtaskFromList = async (parentTask, title) => {
+    const cleanTitle = (title || "").trim();
+    if (!cleanTitle) return;
+
+    const meta = inlineSubtaskMeta[parentTask.id] || { assignees: [], due_date: "", priority: "Normal" };
+
+    try {
+      setSaving(true);
+      const created = await createTask(parentTask.group_id, {
+        title: cleanTitle,
+        parent_task_id: parentTask.id,
+        status: "Not Started",
+        priority: meta.priority || "Normal",
+        due_date: meta.due_date || null,
+        assignees: meta.assignees || [],
+      });
+      setBoard((prev) => ({
+        ...prev,
+        groups: prev.groups.map((group) =>
+          group.id === parentTask.group_id
+            ? {
+                ...group,
+                tasks: group.tasks.map((task) =>
+                  task.id === parentTask.id
+                    ? { ...task, subtasks: [...(task.subtasks || []), created] }
+                    : task
+                ).concat(created),
+              }
+            : group
+        ),
+      }));
+      setInlineSubtaskBuilders((prev) => ({ ...prev, [parentTask.id]: "" }));
+      setInlineSubtaskMeta((prev) => ({ ...prev, [parentTask.id]: undefined }));
+    } catch (createError) {
+      setError("Failed to create subtask.");
+      fetchWorkspace(false);
+    } finally {
       setSaving(false);
     }
   };
@@ -840,13 +950,11 @@ const BoardDetailPage = () => {
 
   const handleOpenUpdatesDrawer = (task) => {
     setActiveTaskId(task.id);
-    setActiveTask(task);
     navigate(`/admin/boards/${boardId}?task=${task.id}`, { replace: true });
   };
 
   const handleCloseUpdatesDrawer = () => {
     setActiveTaskId(null);
-    setActiveTask(null);
     navigate(`/admin/boards/${boardId}`, { replace: true });
     fetchWorkspace(false);
   };
@@ -902,14 +1010,37 @@ const BoardDetailPage = () => {
     );
   };
 
-  const renderAssigneeCell = (task) => (
+  const renderAssigneeCell = (task) => {
+    const selectedAssignees = getTaskAssignees(task);
+    const selectedKeys = new Set(selectedAssignees.map(getAssigneeKey));
+    const toggleAssignee = (participant) => {
+      const participantKey = getAssigneeKey(participant);
+      const nextAssignees = selectedKeys.has(participantKey)
+        ? selectedAssignees.filter((assignee) => getAssigneeKey(assignee) !== participantKey)
+        : [...selectedAssignees, participant];
+      handleTaskCellChange(task.id, "assignees", nextAssignees);
+    };
+
+    return (
     <Dropdown className="w-100">
       <Dropdown.Toggle as="div" className="assignee-cell clickup-cell-assignee">
-        {task.assignee_id ? (
-          <>
-            <div className="assignee-avatar clickup-avatar-sm">{getInitials(task.assignee_name)}</div>
-            <span className="assignee-name-txt">{task.assignee_name}</span>
-          </>
+        {selectedAssignees.length > 0 ? (
+          <div className="assignee-stack">
+            {selectedAssignees.slice(0, 3).map((assignee) => (
+              <div
+                key={getAssigneeKey(assignee)}
+                className="assignee-avatar clickup-avatar-sm"
+                title={assignee.name}
+              >
+                {getInitials(assignee.name)}
+              </div>
+            ))}
+            <span className="assignee-name-txt">
+              {selectedAssignees.length === 1
+                ? selectedAssignees[0].name
+                : `${selectedAssignees.length} assigned`}
+            </span>
+          </div>
         ) : (
           <div className="clickup-unassigned-icon mx-auto" title="Unassigned">
             <User size={13} strokeWidth={2.5} />
@@ -917,24 +1048,37 @@ const BoardDetailPage = () => {
         )}
       </Dropdown.Toggle>
       <Dropdown.Menu className="board-dropdown-menu">
-        <Dropdown.Item onClick={() => handleTaskCellChange(task.id, "assignee", null)}>
+        <Dropdown.Item onClick={() => handleTaskCellChange(task.id, "assignees", [])}>
           <span className="text-muted">Unassigned</span>
         </Dropdown.Item>
         <Dropdown.Divider />
         {assignees.map((participant) => (
           <Dropdown.Item
             key={`${participant.role}_${participant.id}`}
-            onClick={() => handleTaskCellChange(task.id, "assignee", participant)}
+            onClick={(event) => {
+              event.preventDefault();
+              toggleAssignee(participant);
+            }}
+            className="d-flex align-items-start gap-2"
           >
-            <strong className="text-truncate d-block">{participant.name}</strong>
-            <div className="text-muted small text-truncate">
-              {participant.email || participant.role}
+            <input
+              type="checkbox"
+              readOnly
+              checked={selectedKeys.has(getAssigneeKey(participant))}
+              className="mt-1"
+            />
+            <div className="min-w-0">
+              <strong className="text-truncate d-block">{participant.name}</strong>
+              <div className="text-muted small text-truncate">
+                {participant.email || participant.role}
+              </div>
             </div>
           </Dropdown.Item>
         ))}
       </Dropdown.Menu>
     </Dropdown>
-  );
+    );
+  };
 
   const renderStatusDropdown = (task) => {
     const meta = STATUS_META[task.status] || STATUS_META["Not Started"];
@@ -1004,9 +1148,13 @@ const BoardDetailPage = () => {
           <div className="kanban-task-title fw-bold" onClick={() => handleOpenUpdatesDrawer(task)} style={{ cursor: "pointer" }}>
             {task.title}
           </div>
-          {task.assignee_id && (
-            <div className="assignee-avatar ms-auto flex-shrink-0" title={task.assignee_name}>
-              {getInitials(task.assignee_name)}
+          {getTaskAssignees(task).length > 0 && (
+            <div className="assignee-stack ms-auto flex-shrink-0">
+              {getTaskAssignees(task).slice(0, 3).map((assignee) => (
+                <div key={getAssigneeKey(assignee)} className="assignee-avatar" title={assignee.name}>
+                  {getInitials(assignee.name)}
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -1189,11 +1337,21 @@ const BoardDetailPage = () => {
                     </thead>
                     <tbody>
                       {statusTasks.map((task) => (
-                        <tr key={task.id} className="workspace-row">
+                        <React.Fragment key={task.id}>
+                        <tr className="workspace-row" onDoubleClick={() => handleOpenUpdatesDrawer(task)}>
                           <td style={{ textAlign: "center", verticalAlign: "middle" }}>
                             <span
                               className="task-complete-dot"
-                              style={{ borderColor: statusMeta.color || "#8c9baf", cursor: "pointer" }}
+                              style={{
+                                borderColor: statusMeta.color || "#8c9baf",
+                                cursor: getIncompleteSubtasks(task).length > 0 ? "not-allowed" : "pointer",
+                                opacity: getIncompleteSubtasks(task).length > 0 && task.status !== "Done" ? 0.6 : 1
+                              }}
+                              title={
+                                getIncompleteSubtasks(task).length > 0
+                                  ? "Complete subtasks before marking this task complete"
+                                  : "Mark complete"
+                              }
                               onClick={() =>
                                 handleTaskCellChange(
                                   task.id,
@@ -1224,6 +1382,19 @@ const BoardDetailPage = () => {
                                   }
                                 }}
                               />
+                              <button
+                                type="button"
+                                className="clickup-inline-icon-btn"
+                                onClick={() =>
+                                  setInlineSubtaskBuilders((prev) => ({
+                                    ...prev,
+                                    [task.id]: prev[task.id] === undefined ? "" : undefined,
+                                  }))
+                                }
+                                title="Add subtask"
+                              >
+                                <PlusSquare size={13} className="text-slate-400" />
+                              </button>
                               <button
                                 type="button"
                                 className="chat-bubble-btn"
@@ -1291,6 +1462,201 @@ const BoardDetailPage = () => {
                             </Dropdown>
                           </td>
                         </tr>
+                        {(task.subtasks || []).map((subtask) => {
+                          const subtaskFull = { ...subtask, group_id: task.group_id, parent_task_id: task.id };
+                          return (
+                            <tr
+                              key={`subtask_${subtask.id}`}
+                              className="workspace-row workspace-subtask-row"
+                              onDoubleClick={() => handleOpenUpdatesDrawer(subtaskFull)}
+                            >
+                              <td style={{ textAlign: "center", verticalAlign: "middle" }}>
+                                <span
+                                  className="task-complete-dot"
+                                  style={{
+                                    borderColor: STATUS_META[subtask.status]?.color || "#8c9baf",
+                                    cursor: "pointer"
+                                  }}
+                                  title={subtask.status === "Done" ? "Mark subtask as to do" : "Mark subtask complete"}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    handleTaskCellChange(
+                                      subtask.id,
+                                      "status",
+                                      subtask.status === "Done" ? "Not Started" : "Done"
+                                    );
+                                  }}
+                                >
+                                  {subtask.status === "Done" && (
+                                    <CheckCircleFill size={14} style={{ color: STATUS_META.Done.color }} />
+                                  )}
+                                </span>
+                              </td>
+                              <td>
+                                <div className="d-flex align-items-center gap-2 ps-4">
+                                  <GitFork size={13} className="text-slate-300" style={{ transform: "rotate(180deg)" }} />
+                                  <input
+                                    type="text"
+                                    className="cell-editable-text flex-grow-1"
+                                    value={subtask.title}
+                                    onChange={(event) => {
+                                      const val = event.target.value;
+                                      patchTaskInState(subtask.id, (s) => ({ ...s, title: val }));
+                                    }}
+                                    onBlur={(event) =>
+                                      handleTaskCellChange(subtask.id, "title", event.target.value)
+                                    }
+                                    onKeyDown={(event) => {
+                                      if (event.key === "Enter") {
+                                        event.target.blur();
+                                      }
+                                    }}
+                                  />
+                                </div>
+                              </td>
+                              <td>{renderAssigneeCell(subtaskFull)}</td>
+                              <td>{renderDateCell(subtaskFull, "due_date")}</td>
+                              <td>{renderPriorityDropdown(subtaskFull)}</td>
+                              <td>{renderStatusDropdown(subtaskFull)}</td>
+                              <td />
+                              <td />
+                            </tr>
+                          );
+                        })}
+                        {inlineSubtaskBuilders[task.id] !== undefined && (() => {
+                          const subtaskMeta = inlineSubtaskMeta[task.id] || { assignees: [], due_date: "", priority: "Normal" };
+                          const updateMeta = (parentTaskId, field, value) => {
+                            setInlineSubtaskMeta((prev) => ({
+                              ...prev,
+                              [parentTaskId]: {
+                                ...(prev[parentTaskId] || { assignees: [], due_date: "", priority: "Normal" }),
+                                [field]: value,
+                              },
+                            }));
+                          };
+                          return (
+                            <tr className="workspace-subtask-builder-row">
+                              <td />
+                              <td colSpan="7">
+                                <div className="clickup-inline-builder-row subtask-builder d-flex align-items-center justify-content-between">
+                                  <div className="d-flex align-items-center flex-grow-1 gap-2">
+                                    <GitFork size={13} className="text-slate-400" style={{ transform: "rotate(180deg)" }} />
+                                    <input
+                                      type="text"
+                                      placeholder="Subtask name or type '/' for commands"
+                                      className="clickup-inline-builder-input flex-grow-1"
+                                      value={inlineSubtaskBuilders[task.id] || ""}
+                                      onChange={(e) =>
+                                        setInlineSubtaskBuilders((prev) => ({ ...prev, [task.id]: e.target.value }))
+                                      }
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault();
+                                          handleAddSubtaskFromList(task, inlineSubtaskBuilders[task.id]);
+                                        }
+                                        if (e.key === "Escape") {
+                                          setInlineSubtaskBuilders((prev) => ({ ...prev, [task.id]: undefined }));
+                                          setInlineSubtaskMeta((prev) => ({ ...prev, [task.id]: undefined }));
+                                        }
+                                      }}
+                                      autoFocus
+                                    />
+                                  </div>
+                                  <div className="subtask-builder-meta-icons d-flex align-items-center gap-2 mx-2">
+                                    {/* Assignee Selector Dropdown */}
+                                    <Dropdown>
+                                      <Dropdown.Toggle as="div" className="cursor-pointer text-slate-400 hover:text-slate-700">
+                                        {subtaskMeta.assignees.length > 0 ? (
+                                          <div className="d-flex -space-x-1" style={{ marginRight: "4px" }}>
+                                            {subtaskMeta.assignees.slice(0, 2).map((a) => (
+                                              <div key={getAssigneeKey(a)} className="assignee-avatar clickup-avatar-sm" title={a.name}>
+                                                {getInitials(a.name)}
+                                              </div>
+                                            ))}
+                                            {subtaskMeta.assignees.length > 2 && (
+                                              <div className="assignee-avatar clickup-avatar-sm bg-slate-200 text-slate-600 font-bold d-flex align-items-center justify-content-center" style={{ fontSize: "10px" }}>
+                                                +{subtaskMeta.assignees.length - 2}
+                                              </div>
+                                            )}
+                                          </div>
+                                        ) : (
+                                          <User size={14} className="text-slate-400" />
+                                        )}
+                                      </Dropdown.Toggle>
+                                      <Dropdown.Menu className="board-dropdown-menu">
+                                        <Dropdown.Item onClick={() => updateMeta(task.id, "assignees", [])}>
+                                          <span className="text-muted">Unassigned</span>
+                                        </Dropdown.Item>
+                                        <Dropdown.Divider />
+                                        {assignees.map((p) => {
+                                          const isSelected = subtaskMeta.assignees.some((a) => getAssigneeKey(a) === getAssigneeKey(p));
+                                          return (
+                                            <Dropdown.Item
+                                              key={`${p.role}_${p.id}`}
+                                              onClick={(e) => {
+                                                e.preventDefault();
+                                                const nextList = isSelected
+                                                  ? subtaskMeta.assignees.filter((a) => getAssigneeKey(a) !== getAssigneeKey(p))
+                                                  : [...subtaskMeta.assignees, p];
+                                                updateMeta(task.id, "assignees", nextList);
+                                              }}
+                                              className="d-flex align-items-center gap-2"
+                                            >
+                                              <input type="checkbox" checked={isSelected} readOnly className="me-2" />
+                                              <span>{p.name}</span>
+                                            </Dropdown.Item>
+                                          );
+                                        })}
+                                      </Dropdown.Menu>
+                                    </Dropdown>
+
+                                    {/* Due Date Picker Hidden Input */}
+                                    <div className="position-relative d-flex align-items-center">
+                                      <input
+                                        type="date"
+                                        className="clickup-date-input-hidden"
+                                        value={subtaskMeta.due_date || ""}
+                                        onChange={(e) => updateMeta(task.id, "due_date", e.target.value)}
+                                        style={{ position: "absolute", opacity: 0, width: "16px", height: "16px", cursor: "pointer" }}
+                                      />
+                                      <div className="text-slate-400 hover:text-slate-700 cursor-pointer d-flex align-items-center gap-1">
+                                        <Calendar size={14} className={subtaskMeta.due_date ? "text-primary" : ""} />
+                                        {subtaskMeta.due_date && <span className="small text-primary" style={{ fontSize: "11px" }}>{format(parseISO(subtaskMeta.due_date), "MMM d")}</span>}
+                                      </div>
+                                    </div>
+
+                                    {/* Priority Dropdown */}
+                                    <Dropdown>
+                                      <Dropdown.Toggle as="div" className="cursor-pointer text-slate-400 hover:text-slate-700">
+                                        {getPriorityFlag(subtaskMeta.priority, 14)}
+                                      </Dropdown.Toggle>
+                                      <Dropdown.Menu className="board-dropdown-menu">
+                                        {PRIORITY_OPTIONS.map((prio) => (
+                                          <Dropdown.Item
+                                            key={prio}
+                                            onClick={() => updateMeta(task.id, "priority", prio)}
+                                            className="d-flex align-items-center gap-2"
+                                          >
+                                            {getPriorityFlag(prio, 12)}
+                                            <span>{prio}</span>
+                                          </Dropdown.Item>
+                                        ))}
+                                      </Dropdown.Menu>
+                                    </Dropdown>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    className="clickup-inline-save-btn"
+                                    onClick={() => handleAddSubtaskFromList(task, inlineSubtaskBuilders[task.id])}
+                                  >
+                                    Save
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })()}
+                        </React.Fragment>
                       ))}
 
                       {/* Inline Add Task Builder Row */}
@@ -1708,7 +2074,7 @@ const BoardDetailPage = () => {
               >
                 <option value="">Filter Owner</option>
                 {assignees.map((a) => (
-                  <option key={`${a.role}_${a.id}`} value={a.id}>
+                  <option key={`${a.role}_${a.id}`} value={`${a.role}_${a.id}`}>
                     {a.name}
                   </option>
                 ))}
@@ -1928,7 +2294,15 @@ const BoardDetailPage = () => {
       )}
 
       {activeTaskId && activeTask && (
-        <UpdatesDrawer taskId={activeTaskId} task={activeTask} onClose={handleCloseUpdatesDrawer} allTasks={allTasks} />
+        <UpdatesDrawer
+          taskId={activeTaskId}
+          task={activeTask}
+          onClose={handleCloseUpdatesDrawer}
+          allTasks={allTasks}
+          onTaskUpdated={(tId, updates) => patchTaskInState(tId, (t) => ({ ...t, ...updates }))}
+          groupName={board?.groups?.find((g) => g.id === activeTask.group_id)?.name}
+          boardName={board?.name}
+        />
       )}
 
       <DeleteConfirmModal

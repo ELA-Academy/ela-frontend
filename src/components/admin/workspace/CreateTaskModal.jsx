@@ -41,7 +41,7 @@ const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initial
   const [status, setStatus] = useState("Not Started");
   const [priority, setPriority] = useState("Normal");
   const [dueDate, setDueDate] = useState(null);
-  const [selectedAssignee, setSelectedAssignee] = useState(null);
+  const [selectedAssignees, setSelectedAssignees] = useState([]);
   const [tags, setTags] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [aiWriting, setAiWriting] = useState(false);
@@ -228,9 +228,8 @@ const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initial
         mentions: activeMentions.map((m) => ({ type: m.type, id: m.id }))
       };
 
-      if (selectedAssignee) {
-        payload.assignee_id = selectedAssignee.id;
-        payload.assignee_role = selectedAssignee.role;
+      if (selectedAssignees.length > 0) {
+        payload.assignees = selectedAssignees;
       }
 
       await onTaskCreated(selectedGroupId, payload);
@@ -240,7 +239,7 @@ const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initial
       setStatus("Not Started");
       setPriority("Normal");
       setDueDate(null);
-      setSelectedAssignee(null);
+      setSelectedAssignees([]);
       setTags([]);
       onHide();
     } catch (err) {
@@ -266,6 +265,18 @@ const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initial
 
   const getInitials = (name) => {
     return (name || "").split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+  };
+
+  const getAssigneeKey = (assignee) => `${assignee.role}_${assignee.id}`;
+
+  const toggleAssignee = (member) => {
+    const memberKey = getAssigneeKey(member);
+    setSelectedAssignees((current) => {
+      if (current.some((assignee) => getAssigneeKey(assignee) === memberKey)) {
+        return current.filter((assignee) => getAssigneeKey(assignee) !== memberKey);
+      }
+      return [...current, member];
+    });
   };
 
   const selectedBoard = boards?.find((b) => b.id === Number(selectedBoardId));
@@ -413,28 +424,44 @@ const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initial
             {/* Assignee Dropdown */}
             <Dropdown className="attribute-dropdown">
               <Dropdown.Toggle as="div" className="attribute-pill clickable-pill">
-                {selectedAssignee ? (
+                {selectedAssignees.length > 0 ? (
                   <div className="d-flex align-items-center gap-1">
-                    <div className="assignee-avatar-mini">{getInitials(selectedAssignee.name)}</div>
-                    <span>{selectedAssignee.name}</span>
+                    <div className="assignee-avatar-mini">{getInitials(selectedAssignees[0].name)}</div>
+                    <span>
+                      {selectedAssignees.length === 1
+                        ? selectedAssignees[0].name
+                        : `${selectedAssignees.length} Assignees`}
+                    </span>
                   </div>
                 ) : (
                   <>+ Assignee</>
                 )}
               </Dropdown.Toggle>
               <Dropdown.Menu className="clickup-drop-menu">
-                <Dropdown.Item onClick={() => setSelectedAssignee(null)}>
+                <Dropdown.Item onClick={() => setSelectedAssignees([])}>
                   <span className="text-muted">Unassigned</span>
                 </Dropdown.Item>
                 <Dropdown.Divider />
                 {members?.map((m) => (
                   <Dropdown.Item
                     key={`${m.role}_${m.id}`}
-                    onClick={() => setSelectedAssignee(m)}
-                    active={selectedAssignee?.id === m.id && selectedAssignee?.role === m.role}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      toggleAssignee(m);
+                    }}
+                    active={selectedAssignees.some((assignee) => getAssigneeKey(assignee) === getAssigneeKey(m))}
+                    className="d-flex align-items-start gap-2"
                   >
-                    <strong>{m.name}</strong>
-                    <div className="small text-muted">{m.email}</div>
+                    <input
+                      type="checkbox"
+                      readOnly
+                      checked={selectedAssignees.some((assignee) => getAssigneeKey(assignee) === getAssigneeKey(m))}
+                      className="mt-1"
+                    />
+                    <div>
+                      <strong>{m.name}</strong>
+                      <div className="small text-muted">{m.email}</div>
+                    </div>
                   </Dropdown.Item>
                 ))}
               </Dropdown.Menu>

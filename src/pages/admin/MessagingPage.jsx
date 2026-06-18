@@ -13,6 +13,7 @@ const MessagingPage = () => {
   const [searchParams] = useSearchParams();
   const {
     conversations,
+    auditConversations,
     workspaceLoading: loading,
     openCreateChannelModal,
     openNewMessageModal,
@@ -21,8 +22,11 @@ const MessagingPage = () => {
   const activeConversationId = Number(searchParams.get("conversation")) || null;
 
   const activeConversation = useMemo(
-    () => conversations.find((conversation) => conversation.id === activeConversationId),
-    [conversations, activeConversationId]
+    () =>
+      [...conversations, ...(auditConversations || [])].find(
+        (conversation) => conversation.id === activeConversationId
+      ),
+    [conversations, auditConversations, activeConversationId]
   );
 
   return (
@@ -63,4 +67,3 @@ const MessagingPage = () => {
 };
 
 export default MessagingPage;
-

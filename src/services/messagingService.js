@@ -75,6 +75,16 @@ export const startConversation = async (participant_ids) => {
   }
 };
 
+export const getAuditConversations = async () => {
+  try {
+    const response = await api.get("/messaging/conversations/audit");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching audit conversations:", error);
+    throw error;
+  }
+};
+
 export const createChannel = async (channelData) => {
   try {
     const response = await api.post("/messaging/channels", channelData);

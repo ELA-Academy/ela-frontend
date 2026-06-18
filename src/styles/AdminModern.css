@@ -2646,8 +2646,9 @@ body {
 }
 
 .sidebar-nav-item {
-  width: 42px !important;
-  height: 44px !important;
+  width: 58px !important;
+  min-height: 52px !important;
+  height: auto !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
@@ -2663,17 +2664,18 @@ body {
 }
 
 .sidebar-label {
-  font-size: 9px !important;
+  display: block !important;
+  font-size: 10px !important;
   font-weight: 500 !important;
   margin-top: 3px !important;
   color: inherit !important;
   text-align: center !important;
-  max-width: 40px !important;
+  max-width: 54px !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
   letter-spacing: 0.01em !important;
-  opacity: 0.6 !important;
+  opacity: 0.82 !important;
   transition: opacity 0.15s ease !important;
 }
 

@@ -14,6 +14,7 @@ import "../../../styles/WorkspaceShell.css";
 
 const WorkspaceSecondarySidebar = ({
   conversations = [],
+  auditConversations = [],
   boards = [],
   selectedBoardId = null,
   selectedBoardGroups = [],
@@ -28,6 +29,9 @@ const WorkspaceSecondarySidebar = ({
   const publicChannels = conversations.filter((item) => item.conversation_type === "channel");
   const departmentThreads = conversations.filter((item) => item.conversation_type === "department");
   const directMessages = conversations.filter((item) => item.conversation_type === "direct");
+  const auditOnlyConversations = auditConversations.filter(
+    (item) => !conversations.some((conversation) => conversation.id === item.id)
+  );
 
   const isBoardsHome = location.pathname === "/admin/boards";
 
@@ -82,6 +86,23 @@ const WorkspaceSecondarySidebar = ({
             {publicChannels.length === 0 && <p className="workspace-empty-copy">No public channels yet.</p>}
           </div>
         </section>
+
+        {auditOnlyConversations.length > 0 && (
+          <section className="workspace-secondary-section workspace-superadmin-audit">
+            <div className="workspace-secondary-section-header">
+              <span>All Messages</span>
+            </div>
+            <div className="workspace-secondary-links">
+              {auditOnlyConversations.map((conversation) =>
+                renderConversationLink(
+                  conversation,
+                  conversation.conversation_type === "direct" ? <MessageCircle size={15} /> : <Lock size={14} />,
+                  "audit-only"
+                )
+              )}
+            </div>
+          </section>
+        )}
 
         <section className="workspace-secondary-section">
           <div className="workspace-secondary-section-header">

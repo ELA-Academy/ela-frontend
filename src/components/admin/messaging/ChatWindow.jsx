@@ -98,7 +98,7 @@ const ChatWindow = ({ conversationId, conversation }) => {
 
     const socketUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
     const socket = io(socketUrl, {
-      transports: ["websocket", "polling"]
+      transports: ["polling"]
     });
 
     socket.emit("join", { conversation_id: conversationId });

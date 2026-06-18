@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { getBoards } from "../../../services/boardService";
-import { getConversations, getUsersForMessaging, createChannel } from "../../../services/messagingService";
+import { getConversations, getAuditConversations, getUsersForMessaging, createChannel } from "../../../services/messagingService";
 import { getAllDepartments } from "../../../services/departmentService";
 import WorkspaceSecondarySidebar from "./WorkspaceSecondarySidebar";
 import CreateChannelModal from "./CreateChannelModal";
@@ -25,6 +25,7 @@ const WorkspaceLayout = () => {
   // Shared workspace data
   const [boards, setBoards] = useState([]);
   const [conversations, setConversations] = useState([]);
+  const [auditConversations, setAuditConversations] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [assignees, setAssignees] = useState([]);
   const [workspaceLoading, setWorkspaceLoading] = useState(true);
@@ -53,15 +54,17 @@ const WorkspaceLayout = () => {
   const fetchWorkspaceData = useCallback(async (showLoading = true) => {
     try {
       if (showLoading) setWorkspaceLoading(true);
-      const [boardData, conversationData, departmentData, messagingUsers] = await Promise.all([
+      const [boardData, conversationData, auditConversationData, departmentData, messagingUsers] = await Promise.all([
         getBoards(),
         getConversations(),
+        user?.role === "superadmin" ? getAuditConversations() : Promise.resolve([]),
         getAllDepartments(),
         getUsersForMessaging(),
       ]);
 
       setBoards(Array.isArray(boardData) ? boardData : []);
       setConversations(Array.isArray(conversationData) ? conversationData : []);
+      setAuditConversations(Array.isArray(auditConversationData) ? auditConversationData : []);
       setDepartments(Array.isArray(departmentData) ? departmentData : []);
 
       const normalizedAssignees = [
@@ -94,7 +97,7 @@ const WorkspaceLayout = () => {
   // Socket.io for live updates
   useEffect(() => {
     const socketUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-    const socket = io(socketUrl, { transports: ["websocket", "polling"] });
+    const socket = io(socketUrl, { transports: ["polling"] });
 
     socket.on("conversation_updated", (data) => {
       if (user && data.recipient_id === user.id && data.recipient_role === user.role) {
@@ -154,6 +157,7 @@ const WorkspaceLayout = () => {
     boards,
     setBoards,
     conversations,
+    auditConversations,
     setConversations,
     departments,
     assignees,
@@ -169,6 +173,7 @@ const WorkspaceLayout = () => {
       <div className="workspace-shell">
         <WorkspaceSecondarySidebar
           conversations={conversations}
+          auditConversations={auditConversations}
           boards={boards}
           selectedBoardId={activeBoardId}
           selectedBoardGroups={activeBoard?.groups || []}
