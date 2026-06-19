@@ -995,16 +995,17 @@
 }
 
 .drawer-body {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   overflow: hidden;
-  padding: 0;
   background: #f6f7fb;
 }
 
 .task-detail-split {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 520px;
-  height: 100%;
+  flex: 1;
   min-height: 0;
 }
 
@@ -3321,4 +3322,18 @@
 
 .autocomplete-item:hover {
   background: #f1f5f9;
+}
+
+/* Proper Table View Dividers */
+.clickup-proper-table .workspace-table {
+  border: 1px solid #e2e8f0;
+  border-collapse: collapse;
+}
+.clickup-proper-table .workspace-table th,
+.clickup-proper-table .workspace-table td {
+  border: 1px solid #e2e8f0 !important;
+}
+.clickup-proper-table .workspace-table th {
+  border-bottom: 2px solid #cbd5e1 !important;
+  background-color: #fafbfd !important;
 }

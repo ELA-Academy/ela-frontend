@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Button, Form, Spinner, Alert, Dropdown } from "react-bootstrap";
 import { HandThumbsUp, HandThumbsUpFill, Reply, Send, X, Trash, Paperclip, Eye, EyeSlash } from "react-bootstrap-icons";
 import {
@@ -54,13 +54,25 @@ const UpdatesDrawer = ({
   allTasks = [],
   onTaskUpdated,
   groupName,
-  boardName
+  boardName,
+  customStatuses
 }) => {
   const [activeTab, setActiveTab] = useState("updates");
   const [updates, setUpdates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState("");
+
+  const statusOptionsList = useMemo(() => {
+    if (customStatuses && customStatuses.length > 0) {
+      return customStatuses;
+    }
+    return [
+      { id: "Not Started", label: "To do", color: "#7c8798" },
+      { id: "In Progress", label: "In progress", color: "#6d45f7" },
+      { id: "Done", label: "Complete", color: "#00b67a" }
+    ];
+  }, [customStatuses]);
 
   // Task inline metadata states
   const [status, setStatus] = useState(task.status || "Not Started");
@@ -72,6 +84,8 @@ const UpdatesDrawer = ({
   const [tagsInput, setTagsInput] = useState(task.tags || "");
   const [descriptionHtml, setDescriptionHtml] = useState(task.description_html || "");
   const [editingDesc, setEditingDesc] = useState(false);
+  const [savingDesc, setSavingDesc] = useState(false);
+  const [assigneeSearchQuery, setAssigneeSearchQuery] = useState("");
 
   const [checklist, setChecklist] = useState(task.checklist || []);
   const [watchers, setWatchers] = useState(task.watchers || []);
@@ -118,6 +132,7 @@ const UpdatesDrawer = ({
   // Threaded replies local input states
   const [replyInputs, setReplyInputs] = useState({}); // {updateId: string}
   const [postingReplies, setPostingReplies] = useState({}); // {updateId: boolean}
+  const [expandedReplyThreads, setExpandedReplyThreads] = useState({}); // {updateId: boolean}
 
   // Database listings for autocomplete
   const [mentionOptions, setMentionOptions] = useState([]); // [{type: 'staff'|'department'|'superadmin', id, label, searchStr}]
@@ -509,12 +524,15 @@ const UpdatesDrawer = ({
 
   const saveDescription = async () => {
     try {
+      setSavingDesc(true);
       await updateTask(taskId, { description_html: descriptionHtml.trim() || null });
       if (onTaskUpdated) onTaskUpdated(taskId, { description_html: descriptionHtml.trim() || null });
       setEditingDesc(false);
       refreshHistoryLogs();
     } catch (err) {
       setError("Failed to save description.");
+    } finally {
+      setSavingDesc(false);
     }
   };
 
@@ -1048,21 +1066,18 @@ const UpdatesDrawer = ({
                     </button>
                     <Dropdown>
                       <Dropdown.Toggle as="div" className="cu-status-badge" style={{
-                        backgroundColor: status === "Done" ? "#00ca72" : (status === "In Progress" ? "#fdab3d" : "#c4c4c4"),
-                        color: "#fff"
+                        backgroundColor: (statusOptionsList.find(s => s.id === status) || statusOptionsList[0]).color,
+                        color: "#fff",
+                        cursor: "pointer"
                       }}>
-                        {status === "Done" ? "COMPLETE" : (status === "In Progress" ? "IN PROGRESS" : "TO DO")}
+                        {(statusOptionsList.find(s => s.id === status) || statusOptionsList[0]).label.toUpperCase()}
                       </Dropdown.Toggle>
                       <Dropdown.Menu className="board-dropdown-menu">
-                        <Dropdown.Item onClick={() => handleStatusChange({ target: { value: "Not Started" } })}>
-                          <span className="cu-status-dot" style={{ background: "#c4c4c4" }} /> To Do
-                        </Dropdown.Item>
-                        <Dropdown.Item onClick={() => handleStatusChange({ target: { value: "In Progress" } })}>
-                          <span className="cu-status-dot" style={{ background: "#fdab3d" }} /> In Progress
-                        </Dropdown.Item>
-                        <Dropdown.Item onClick={() => handleStatusChange({ target: { value: "Done" } })}>
-                          <span className="cu-status-dot" style={{ background: "#00ca72" }} /> Complete
-                        </Dropdown.Item>
+                        {statusOptionsList.map((opt) => (
+                          <Dropdown.Item key={opt.id} onClick={() => handleStatusChange({ target: { value: opt.id } })}>
+                            <span className="cu-status-dot" style={{ background: opt.color }} /> {opt.label}
+                          </Dropdown.Item>
+                        ))}
                       </Dropdown.Menu>
                     </Dropdown>
                   </div>
@@ -1090,23 +1105,36 @@ const UpdatesDrawer = ({
                       <Dropdown>
                         <Dropdown.Toggle as="div" className="cu-add-assignee-btn" title="Add assignee">+</Dropdown.Toggle>
                         <Dropdown.Menu className="board-dropdown-menu" style={{ maxHeight: "250px", overflowY: "auto" }}>
-                          {assigneeOptions.map((p) => {
-                            const isSelected = taskAssignees.some((item) => getAssigneeKey(item) === getAssigneeKey(p));
-                            return (
-                              <Dropdown.Item
-                                key={`assign_${p.role}_${p.id}`}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  handleAssigneeToggle(p);
-                                }}
-                                className="d-flex align-items-center gap-2"
-                              >
-                                <input type="checkbox" checked={isSelected} readOnly />
-                                <span className="assignee-avatar clickup-avatar-sm">{getAvatarInitials(p.name)}</span>
-                                <span>{p.name}</span>
-                              </Dropdown.Item>
-                            );
-                          })}
+                          <div className="px-2 py-1 sticky-top bg-white border-bottom">
+                            <input
+                              type="text"
+                              className="form-control form-control-sm"
+                              placeholder="Search assignee..."
+                              value={assigneeSearchQuery}
+                              onChange={(e) => setAssigneeSearchQuery(e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{ fontSize: "11px" }}
+                            />
+                          </div>
+                          {assigneeOptions
+                            .filter((p) => p.name.toLowerCase().includes(assigneeSearchQuery.toLowerCase()))
+                            .map((p) => {
+                              const isSelected = taskAssignees.some((item) => getAssigneeKey(item) === getAssigneeKey(p));
+                              return (
+                                <Dropdown.Item
+                                  key={`assign_${p.role}_${p.id}`}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleAssigneeToggle(p);
+                                  }}
+                                  className="d-flex align-items-center gap-2"
+                                >
+                                  <input type="checkbox" checked={isSelected} readOnly />
+                                  <span className="assignee-avatar clickup-avatar-sm">{getAvatarInitials(p.name)}</span>
+                                  <span>{p.name}</span>
+                                </Dropdown.Item>
+                              );
+                            })}
                         </Dropdown.Menu>
                       </Dropdown>
                       {taskAssignees.length === 0 && <span className="text-muted small">Empty</span>}
@@ -1340,8 +1368,11 @@ const UpdatesDrawer = ({
                       autoFocus
                     />
                     <div className="cu-desc-actions">
-                      <Button variant="link" size="sm" className="text-muted" onClick={(e) => { e.stopPropagation(); setEditingDesc(false); }}>Cancel</Button>
-                      <Button variant="primary" size="sm" onClick={(e) => { e.stopPropagation(); saveDescription(); }}>Save</Button>
+                      <Button variant="link" size="sm" className="text-muted" onClick={(e) => { e.stopPropagation(); setEditingDesc(false); }} disabled={savingDesc}>Cancel</Button>
+                      <Button variant="primary" size="sm" onClick={(e) => { e.stopPropagation(); saveDescription(); }} disabled={savingDesc}>
+                        {savingDesc ? <Spinner size="sm" animation="border" className="me-1" /> : null}
+                        Save
+                      </Button>
                     </div>
                   </div>
                 ) : (
@@ -1436,29 +1467,42 @@ const UpdatesDrawer = ({
                               )}
                             </Dropdown.Toggle>
                             <Dropdown.Menu className="board-dropdown-menu">
+                              <div className="px-2 py-1 sticky-top bg-white border-bottom">
+                                <input
+                                  type="text"
+                                  className="form-control form-control-sm"
+                                  placeholder="Search assignee..."
+                                  value={assigneeSearchQuery}
+                                  onChange={(e) => setAssigneeSearchQuery(e.target.value)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{ fontSize: "11px" }}
+                                />
+                              </div>
                               <Dropdown.Item onClick={() => handleSubtaskCellChange(sub.id, "assignees", [])}>
                                 <span className="text-muted">Unassigned</span>
                               </Dropdown.Item>
                               <Dropdown.Divider />
-                              {assigneeOptions.map((p) => {
-                                const isSelected = sub.assignees && sub.assignees.some((a) => getAssigneeKey(a) === getAssigneeKey(p));
-                                return (
-                                  <Dropdown.Item
-                                    key={`st_${p.role}_${p.id}`}
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      const nextList = isSelected
-                                        ? sub.assignees.filter((a) => getAssigneeKey(a) !== getAssigneeKey(p))
-                                        : [...(sub.assignees || []), p];
-                                      handleSubtaskCellChange(sub.id, "assignees", nextList);
-                                    }}
-                                    className="d-flex align-items-center gap-2"
-                                  >
-                                    <input type="checkbox" checked={isSelected} readOnly />
-                                    <span>{p.name}</span>
-                                  </Dropdown.Item>
-                                );
-                              })}
+                              {assigneeOptions
+                                .filter((p) => p.name.toLowerCase().includes(assigneeSearchQuery.toLowerCase()))
+                                .map((p) => {
+                                  const isSelected = sub.assignees && sub.assignees.some((a) => getAssigneeKey(a) === getAssigneeKey(p));
+                                  return (
+                                    <Dropdown.Item
+                                      key={`st_${p.role}_${p.id}`}
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        const nextList = isSelected
+                                          ? sub.assignees.filter((a) => getAssigneeKey(a) !== getAssigneeKey(p))
+                                          : [...(sub.assignees || []), p];
+                                        handleSubtaskCellChange(sub.id, "assignees", nextList);
+                                      }}
+                                      className="d-flex align-items-center gap-2"
+                                    >
+                                      <input type="checkbox" checked={isSelected} readOnly />
+                                      <span>{p.name}</span>
+                                    </Dropdown.Item>
+                                  );
+                                })}
                             </Dropdown.Menu>
                           </Dropdown>
 
@@ -1468,6 +1512,11 @@ const UpdatesDrawer = ({
                               value={sub.due_date ? sub.due_date.split("T")[0] : ""}
                               onChange={(e) => handleSubtaskCellChange(sub.id, "due_date", e.target.value)}
                               className="cu-hidden-date-picker"
+                              onClick={(e) => {
+                                try {
+                                  e.target.showPicker();
+                                } catch (err) {}
+                              }}
                             />
                             <span className="cu-date-display">
                               {sub.due_date ? new Date(sub.due_date).toLocaleDateString([], { month: 'short', day: 'numeric' }) : "-"}
@@ -1509,25 +1558,38 @@ const UpdatesDrawer = ({
                           {newSubtaskMeta.assignees.length > 0 ? <>{newSubtaskMeta.assignees.length}<Users size={12} /></> : <Users size={12} />}
                         </Dropdown.Toggle>
                         <Dropdown.Menu className="board-dropdown-menu">
-                          {assigneeOptions.map((p) => {
-                            const isSelected = newSubtaskMeta.assignees.some((a) => getAssigneeKey(a) === getAssigneeKey(p));
-                            return (
-                              <Dropdown.Item
-                                key={`nst_${p.role}_${p.id}`}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  const nextList = isSelected
-                                    ? newSubtaskMeta.assignees.filter((a) => getAssigneeKey(a) !== getAssigneeKey(p))
-                                    : [...newSubtaskMeta.assignees, p];
-                                  setNewSubtaskMeta(prev => ({ ...prev, assignees: nextList }));
-                                }}
-                                className="d-flex align-items-center gap-2"
-                              >
-                                <input type="checkbox" checked={isSelected} readOnly />
-                                <span>{p.name}</span>
-                              </Dropdown.Item>
-                            );
-                          })}
+                          <div className="px-2 py-1 sticky-top bg-white border-bottom">
+                            <input
+                              type="text"
+                              className="form-control form-control-sm"
+                              placeholder="Search assignee..."
+                              value={assigneeSearchQuery}
+                              onChange={(e) => setAssigneeSearchQuery(e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{ fontSize: "11px" }}
+                            />
+                          </div>
+                          {assigneeOptions
+                            .filter((p) => p.name.toLowerCase().includes(assigneeSearchQuery.toLowerCase()))
+                            .map((p) => {
+                              const isSelected = newSubtaskMeta.assignees.some((a) => getAssigneeKey(a) === getAssigneeKey(p));
+                              return (
+                                <Dropdown.Item
+                                  key={`nst_${p.role}_${p.id}`}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    const nextList = isSelected
+                                      ? newSubtaskMeta.assignees.filter((a) => getAssigneeKey(a) !== getAssigneeKey(p))
+                                      : [...newSubtaskMeta.assignees, p];
+                                    setNewSubtaskMeta(prev => ({ ...prev, assignees: nextList }));
+                                  }}
+                                  className="d-flex align-items-center gap-2"
+                                >
+                                  <input type="checkbox" checked={isSelected} readOnly />
+                                  <span>{p.name}</span>
+                                </Dropdown.Item>
+                              );
+                            })}
                         </Dropdown.Menu>
                       </Dropdown>
                       <div className="position-relative">
@@ -1536,6 +1598,11 @@ const UpdatesDrawer = ({
                           value={newSubtaskMeta.due_date || ""}
                           onChange={(e) => setNewSubtaskMeta(prev => ({ ...prev, due_date: e.target.value }))}
                           className="cu-hidden-date-picker"
+                          onClick={(e) => {
+                            try {
+                              e.target.showPicker();
+                            } catch (err) {}
+                          }}
                         />
                         <span className="cu-mini-meta-btn"><CalendarDays size={12} /></span>
                       </div>
@@ -1670,123 +1737,190 @@ const UpdatesDrawer = ({
 
             </section>
 
-            {/* Right Panel: Unified Chronological Activity Log & Update Messaging (ClickUp style) */}
+            {/* Right Panel: Separate Chronological Activity Log & Update Messaging (ClickUp style) */}
             <aside className="task-detail-activity-unified">
-              <div className="activity-feed-header">
-                <span>Activity</span>
+              {/* Activities (History) Feed - Rendered at the top */}
+              <div className="activity-feed-section mb-2">
+                <div className="activity-feed-header py-2 border-bottom d-flex align-items-center justify-content-between mb-2">
+                  <span className="fw-bold text-uppercase text-secondary" style={{ fontSize: "11px", letterSpacing: "0.05em" }}>Activities</span>
+                  <span className="badge bg-light text-dark rounded-pill">{historyLogs.length}</span>
+                </div>
+                <div className="activity-feed-scroll" style={{ maxHeight: "100px", overflowY: "auto", paddingRight: "5px" }}>
+                  {loading ? (
+                    <div className="d-flex flex-column gap-2" style={{ opacity: 0.6 }}>
+                      <div className="bg-slate-200 rounded animate-pulse" style={{ height: "15px", width: "90%" }} />
+                      <div className="bg-slate-200 rounded animate-pulse" style={{ height: "15px", width: "80%" }} />
+                      <div className="bg-slate-200 rounded animate-pulse" style={{ height: "15px", width: "70%" }} />
+                    </div>
+                  ) : (
+                    <>
+                      {historyLogs.map((item) => (
+                        <div key={`history_${item.id}`} className="activity-feed-history-item py-1 mb-1 d-flex align-items-start justify-content-between" style={{ fontSize: "11px" }}>
+                          <div className="d-flex align-items-start gap-2">
+                            <div className="activity-history-dot mt-1" style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#6d45f7", flexShrink: 0 }} />
+                            <span className="text-secondary">
+                              <strong>{item.actor_name}</strong> {item.action}
+                            </span>
+                          </div>
+                          <span className="text-muted text-nowrap ms-2" style={{ fontSize: "9px" }}>
+                            {new Date(item.created_at).toLocaleDateString()} at {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      ))}
+                      {historyLogs.length === 0 && (
+                        <div className="text-center py-3 text-muted" style={{ fontSize: "11px" }}>
+                          No activities recorded yet.
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
 
-              <div className="activity-feed-scroll">
-                {combinedFeed.map((item) => {
-                  if (item.feedType === "history") {
-                    return (
-                      <div key={`history_${item.id}`} className="activity-feed-history-item">
-                        <div className="activity-history-dot" />
-                        <div className="flex-grow-1">
-                          <strong>{item.actor_name}</strong> {item.action}
-                        </div>
-                        <span className="text-muted" style={{ fontSize: "10px" }}>
-                          {new Date(item.created_at).toLocaleDateString()} at {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                    );
-                  } else {
-                    const liked = checkUserLiked(item.liked_by_ids);
-                    return (
-                      <div key={`update_${item.id}`} className="update-feed-item m-0 bg-white border p-3 rounded-3 shadow-sm">
-                        <div className="update-item-header">
-                          <div className="update-author-info">
-                            <div className="assignee-avatar">
-                              {getAvatarInitials(item.sender_name)}
-                            </div>
-                            <div>
-                              <div className="update-author-name">{item.sender_name}</div>
-                              <div className="update-author-role">
-                                {item.sender_role === "superadmin" ? "Superadmin" : "Staff"}
-                              </div>
-                            </div>
+              {/* Comments (Discussion) Feed - Rendered at the bottom */}
+              <div className="comments-feed-section d-flex flex-column flex-grow-1" style={{ minHeight: 0 }}>
+                <div className="activity-feed-header py-2 border-bottom d-flex align-items-center justify-content-between mb-2">
+                  <span className="fw-bold text-uppercase text-secondary" style={{ fontSize: "11px", letterSpacing: "0.05em" }}>Comments</span>
+                  <span className="badge bg-light text-dark rounded-pill">{updates.length}</span>
+                </div>
+
+                <div className="activity-feed-scroll flex-grow-1" style={{ overflowY: "auto", paddingRight: "5px", minHeight: 0 }}>
+                  {loading ? (
+                    <div className="d-flex flex-column gap-3" style={{ opacity: 0.6 }}>
+                      {[1, 2].map((i) => (
+                        <div key={i} className="bg-white border p-3 rounded-3 shadow-sm animate-pulse">
+                          <div className="d-flex align-items-center gap-2 mb-2">
+                            <div className="rounded-circle bg-slate-200" style={{ width: "24px", height: "24px" }} />
+                            <div className="bg-slate-200 rounded" style={{ height: "12px", width: "100px" }} />
                           </div>
-                          <div className="update-timestamp">
-                            {new Date(item.created_at).toLocaleDateString()} at {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </div>
+                          <div className="bg-slate-200 rounded mb-2" style={{ height: "15px", width: "80%" }} />
+                          <div className="bg-slate-200 rounded" style={{ height: "15px", width: "60%" }} />
                         </div>
-
-                        <div
-                          className="update-content"
-                          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(item.message) }}
-                        />
-
-                        {item.mentioned_names && item.mentioned_names.length > 0 && (
-                          <div className="mentioned-tags mb-2 mt-1">
-                            {item.mentioned_names.map((mn, idx) => (
-                              <span key={idx} className="mentioned-tag">
-                                @{mn}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-
-                        <div className="update-actions">
-                          <button
-                            className={`update-like-btn ${liked ? "liked" : ""}`}
-                            onClick={() => handleToggleLike(item.id)}
-                          >
-                            {liked ? <HandThumbsUpFill size={14} /> : <HandThumbsUp size={14} />}
-                            {item.likes_count > 0 && <span>{item.likes_count}</span>}
-                          </button>
-                          <button className="update-reply-toggle" onClick={() => setReplyInputs(prev => ({ ...prev, [item.id]: prev[item.id] !== undefined ? undefined : "" }))}>
-                            <Reply size={14} /> Reply
-                          </button>
-                        </div>
-
-                        {item.replies && item.replies.length > 0 && (
-                          <div className="update-replies-list mt-2">
-                            {item.replies.map((reply) => (
-                              <div key={reply.id} className="update-reply-item">
-                                <div className="reply-author">
-                                  <span className="assignee-avatar clickup-avatar-sm">{getAvatarInitials(reply.sender_name)}</span>
-                                  <strong>{reply.sender_name}</strong>
+                      ))}
+                    </div>
+                  ) : (
+                    <>
+                      {updates.map((item) => {
+                        const liked = checkUserLiked(item.liked_by_ids);
+                        const isThreadExpanded = !!expandedReplyThreads[item.id];
+                        return (
+                          <div key={`update_${item.id}`} className="update-feed-item m-0 bg-white border p-3 rounded-3 shadow-sm mb-3">
+                            <div className="update-item-header">
+                              <div className="update-author-info">
+                                <div className="assignee-avatar">
+                                  {getAvatarInitials(item.sender_name)}
                                 </div>
-                                <div className="reply-content" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(reply.message) }} />
-                                <span className="reply-timestamp">
-                                  {new Date(reply.created_at).toLocaleDateString()} at {new Date(reply.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </span>
+                                <div>
+                                  <div className="update-author-name">{item.sender_name}</div>
+                                  <div className="update-author-role">
+                                    {item.sender_role === "superadmin" ? "Superadmin" : "Staff"}
+                                  </div>
+                                </div>
                               </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {replyInputs[item.id] !== undefined && (
-                          <div className="mt-2">
-                            <div className="input-group input-group-sm">
-                              <input
-                                type="text"
-                                className="form-control"
-                                placeholder="Write a reply..."
-                                value={replyInputs[item.id] || ""}
-                                onChange={(e) => setReplyInputs(prev => ({ ...prev, [item.id]: e.target.value }))}
-                                onKeyDown={(e) => { if (e.key === "Enter") handleAddReply(item.id); }}
-                              />
-                              <Button
-                                variant="primary"
-                                onClick={() => handleAddReply(item.id)}
-                                disabled={postingReplies[item.id] || !(replyInputs[item.id] || "").trim()}
-                              >
-                                {postingReplies[item.id] ? <Spinner size="sm" animation="border" /> : <Send size={12} />}
-                              </Button>
+                              <div className="update-timestamp">
+                                {new Date(item.created_at).toLocaleDateString()} at {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </div>
                             </div>
+
+                            <div
+                              className="update-content"
+                              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(item.content || item.message) }}
+                            />
+
+                            {item.mentioned_names && item.mentioned_names.length > 0 && (
+                              <div className="mentioned-tags mb-2 mt-1">
+                                {item.mentioned_names.map((mn, idx) => (
+                                  <span key={idx} className="mentioned-tag">
+                                    @{mn}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            <div className="update-actions d-flex align-items-center gap-2">
+                              <button
+                                className={`update-like-btn ${liked ? "liked" : ""}`}
+                                onClick={() => handleToggleLike(item.id)}
+                              >
+                                {liked ? <HandThumbsUpFill size={14} /> : <HandThumbsUp size={14} />}
+                                {item.likes_count > 0 && <span>{item.likes_count}</span>}
+                              </button>
+                              
+                              {/* Thread Toggle Button */}
+                              <button 
+                                className="update-reply-toggle border-0 bg-transparent text-primary fw-semibold d-inline-flex align-items-center gap-1"
+                                style={{ fontSize: "12px" }}
+                                onClick={() => setExpandedReplyThreads(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                              >
+                                <Reply size={14} /> 
+                                {item.replies && item.replies.length > 0 ? (
+                                  <span>{item.replies.length} {item.replies.length === 1 ? "reply" : "replies"}</span>
+                                ) : (
+                                  <span>Reply</span>
+                                )}
+                              </button>
+                            </div>
+
+                            {/* Threaded Replies Section - Expanding on click */}
+                            {isThreadExpanded && (
+                              <div className="update-thread-container mt-2 pt-2 border-top">
+                                {item.replies && item.replies.length > 0 && (
+                                  <div className="update-replies-list ps-3 border-start ms-2 mb-2">
+                                    {item.replies.map((reply) => (
+                                      <div key={reply.id} className="update-reply-item bg-light p-2 rounded-3 mb-2 border">
+                                        <div className="reply-author d-flex align-items-center gap-2 mb-1">
+                                          <span className="assignee-avatar clickup-avatar-sm" style={{ width: "18px", height: "18px", fontSize: "8px" }}>
+                                            {getAvatarInitials(reply.sender_name)}
+                                          </span>
+                                          <strong style={{ fontSize: "11px" }}>{reply.sender_name}</strong>
+                                          <span className="reply-timestamp ms-auto text-muted" style={{ fontSize: "9px" }}>
+                                            {new Date(reply.created_at).toLocaleDateString()} at {new Date(reply.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                          </span>
+                                        </div>
+                                        <div 
+                                          className="reply-content text-secondary" 
+                                          style={{ fontSize: "11px" }} 
+                                          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(reply.content || reply.message) }} 
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* Nested Reply Editor Box */}
+                                <div className="reply-input-wrapper mt-2">
+                                  <div className="input-group input-group-sm">
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      placeholder="Reply to comment..."
+                                      value={replyInputs[item.id] || ""}
+                                      onChange={(e) => setReplyInputs(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                      onKeyDown={(e) => { if (e.key === "Enter") handleAddReply(item.id); }}
+                                    />
+                                    <Button
+                                      variant="primary"
+                                      onClick={() => handleAddReply(item.id)}
+                                      disabled={postingReplies[item.id] || !(replyInputs[item.id] || "").trim()}
+                                    >
+                                      {postingReplies[item.id] ? <Spinner size="sm" animation="border" /> : <Send size={12} />}
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    );
-                  }
-                })}
-                {combinedFeed.length === 0 && (
-                  <div className="text-center py-5 text-muted">
-                    <p className="mb-0">No updates or activity logs yet.</p>
-                    <small>Start the discussion by posting what needs to be worked on!</small>
-                  </div>
-                )}
+                        );
+                      })}
+                      {updates.length === 0 && (
+                        <div className="text-center py-5 text-muted">
+                          <p className="mb-0">No comments yet.</p>
+                          <small>Start the discussion by posting what needs to be worked on!</small>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Sticky bottom editor */}

@@ -5,10 +5,13 @@ import { getBoards } from "../../../services/boardService";
 import { getConversations, getAuditConversations, getUsersForMessaging, createChannel } from "../../../services/messagingService";
 import { getAllDepartments } from "../../../services/departmentService";
 import WorkspaceSecondarySidebar from "./WorkspaceSecondarySidebar";
-import CreateChannelModal from "./CreateChannelModal";
 import SpaceSettingsModal from "./SpaceSettingsModal";
+import CreateChannelModal from "./CreateChannelModal";
+import CreateTaskModal from "./CreateTaskModal";
 import NewConversationModal from "../../admin/messaging/NewConversationModal";
-import { createBoard } from "../../../services/boardService";
+import DeleteConfirmModal from "../DeleteConfirmModal";
+import { createBoard, updateBoard, deleteBoard, createTask } from "../../../services/boardService";
+import { Modal, Form, Button, Spinner } from "react-bootstrap";
 import { io } from "socket.io-client";
 import "../../../styles/WorkspaceShell.css";
 
@@ -30,12 +33,150 @@ const WorkspaceLayout = () => {
   const [assignees, setAssignees] = useState([]);
   const [workspaceLoading, setWorkspaceLoading] = useState(true);
 
-  // Modals
-  const [showCreateSpaceModal, setShowCreateSpaceModal] = useState(false);
-  const [creatingSpace, setCreatingSpace] = useState(false);
+  // Settings & Creation Modals
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsBoard, setSettingsBoard] = useState(null);
+  const [savingSettings, setSavingSettings] = useState(false);
   const [showCreateChannelModal, setShowCreateChannelModal] = useState(false);
   const [creatingChannel, setCreatingChannel] = useState(false);
   const [showNewMessageModal, setShowNewMessageModal] = useState(false);
+
+  // Folder / List Creation States
+  const [showCreateFolderListModal, setShowCreateFolderListModal] = useState(false);
+  const [createParentId, setCreateParentId] = useState(null);
+  const [createType, setCreateType] = useState("folder"); // "folder" or "list"
+  const [createName, setCreateName] = useState("");
+  const [creatingFolderList, setCreatingFolderList] = useState(false);
+
+  // Rename States
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [renameBoardId, setRenameBoardId] = useState(null);
+  const [renameName, setRenameName] = useState("");
+  const [renaming, setRenaming] = useState(false);
+
+  // Move States
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [moveBoardId, setMoveBoardId] = useState(null);
+  const [moveParentId, setMoveParentId] = useState(null);
+  const [moveIsFolder, setMoveIsFolder] = useState(false);
+  const [moveTargetParentId, setMoveTargetParentId] = useState("");
+  const [moving, setMoving] = useState(false);
+
+  // Delete States
+  const [showDeleteBoardModal, setShowDeleteBoardModal] = useState(false);
+  const [deleteBoardId, setDeleteBoardId] = useState(null);
+  const [deleteBoardName, setDeleteBoardName] = useState("");
+  const [deletingBoard, setDeletingBoard] = useState(false);
+
+  // Global Create Task States
+  const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
+
+  const handleGlobalTaskCreated = async (groupId, payload) => {
+    try {
+      await createTask(groupId, payload);
+      await fetchWorkspaceData(false);
+    } catch (err) {
+      console.error("Failed to create task globally:", err);
+    }
+  };
+
+  const handleOpenCreateFolderList = (parentId, type) => {
+    setCreateParentId(parentId);
+    setCreateType(type);
+    setCreateName("");
+    setShowCreateFolderListModal(true);
+  };
+
+  const handleCreateFolderListSubmit = async (e) => {
+    e.preventDefault();
+    if (!createName.trim() || creatingFolderList) return;
+    setCreatingFolderList(true);
+    try {
+      const created = await createBoard({
+        name: createName.trim(),
+        parent_id: createParentId,
+        is_folder: createType === "folder",
+        is_private: false
+      });
+      setShowCreateFolderListModal(false);
+      await fetchWorkspaceData(false);
+      if (createType === "list" && created?.id) {
+        navigate(`/admin/boards/${created.id}`);
+      }
+    } catch (err) {
+      console.error("Failed to create folder/list:", err);
+    } finally {
+      setCreatingFolderList(false);
+    }
+  };
+
+  const handleOpenRename = (boardId, currentName) => {
+    setRenameBoardId(boardId);
+    setRenameName(currentName);
+    setShowRenameModal(true);
+  };
+
+  const handleRenameSubmit = async (e) => {
+    e.preventDefault();
+    if (!renameName.trim() || renaming) return;
+    setRenaming(true);
+    try {
+      await updateBoard(renameBoardId, { name: renameName.trim() });
+      setShowRenameModal(false);
+      await fetchWorkspaceData(false);
+    } catch (err) {
+      console.error("Failed to rename:", err);
+    } finally {
+      setRenaming(false);
+    }
+  };
+
+  const handleOpenMove = (boardId, parentId, isFolder) => {
+    setMoveBoardId(boardId);
+    setMoveParentId(parentId);
+    setMoveIsFolder(isFolder);
+    setMoveTargetParentId(parentId === null ? "" : String(parentId));
+    setShowMoveModal(true);
+  };
+
+  const handleMoveSubmit = async (e) => {
+    e.preventDefault();
+    if (moving) return;
+    setMoving(true);
+    try {
+      const targetParentId = moveTargetParentId === "" ? null : Number(moveTargetParentId);
+      await updateBoard(moveBoardId, { parent_id: targetParentId });
+      setShowMoveModal(false);
+      await fetchWorkspaceData(false);
+    } catch (err) {
+      console.error("Failed to move:", err);
+    } finally {
+      setMoving(false);
+    }
+  };
+
+  const handleOpenDeleteBoard = (boardId, name) => {
+    setDeleteBoardId(boardId);
+    setDeleteBoardName(name);
+    setShowDeleteBoardModal(true);
+  };
+
+  const handleDeleteBoardSubmit = async () => {
+    if (deletingBoard) return;
+    setDeletingBoard(true);
+    try {
+      await deleteBoard(deleteBoardId);
+      setShowDeleteBoardModal(false);
+      await fetchWorkspaceData(false);
+      if (activeBoardId === deleteBoardId) {
+        navigate("/admin/boards");
+      }
+    } catch (err) {
+      console.error("Failed to delete space/folder/list:", err);
+    } finally {
+      setDeletingBoard(false);
+    }
+  };
 
   // Derive active board ID from URL
   const boardIdMatch = location.pathname.match(/\/admin\/boards\/(\d+)/);
@@ -117,18 +258,33 @@ const WorkspaceLayout = () => {
   }, [fetchWorkspaceData]);
 
   // Handlers for sidebar modals
-  const handleCreateSpace = async (payload) => {
-    if (!payload.name?.trim() || creatingSpace) return;
+  const handleOpenSettings = (board) => {
+    setSettingsBoard(board);
+    setShowSettingsModal(true);
+  };
+
+  const handleSettingsSubmit = async (payload) => {
+    if (!payload.name?.trim() || savingSettings) return;
+    setSavingSettings(true);
     try {
-      setCreatingSpace(true);
-      const created = await createBoard(payload);
-      setShowCreateSpaceModal(false);
-      fetchWorkspaceData(false);
-      navigate(`/admin/boards/${created.id}`);
+      if (settingsBoard) {
+        // Edit existing Space, Folder or List
+        await updateBoard(settingsBoard.id, payload);
+      } else {
+        // Create new Space
+        const created = await createBoard({
+          ...payload,
+          parent_id: null,
+          is_folder: false
+        });
+        navigate(`/admin/boards/${created.id}`);
+      }
+      setShowSettingsModal(false);
+      await fetchWorkspaceData(false);
     } catch (err) {
-      console.error("Failed to create space:", err);
+      console.error("Failed to save board settings:", err);
     } finally {
-      setCreatingSpace(false);
+      setSavingSettings(false);
     }
   };
 
@@ -152,6 +308,58 @@ const WorkspaceLayout = () => {
     navigate(`/admin/messaging?conversation=${newConversationId}`);
   };
 
+  const moveDestinationOptions = useMemo(() => {
+    if (!showMoveModal || !moveBoardId) return [];
+    
+    // Spaces (boards where parent_id is null and not a folder)
+    const spaces = boards.filter(b => b.parent_id === null && !b.is_folder && b.id !== moveBoardId);
+    
+    // Folders (boards where is_folder is true and not the item itself)
+    const folders = boards.filter(b => b.is_folder && b.id !== moveBoardId);
+    
+    const options = [];
+    
+    // We can always move lists to top-level Spaces
+    // Or we can move Folders to top-level Spaces (as their parent space)
+    spaces.forEach(space => {
+      options.push({ id: space.id, name: `Space: ${space.name}` });
+    });
+    
+    // Only lists can be moved to folders
+    if (!moveIsFolder) {
+      folders.forEach(folder => {
+        // Find parent space name for context
+        const parentSpace = boards.find(b => b.id === folder.parent_id);
+        const prefix = parentSpace ? `${parentSpace.name} > ` : "";
+        options.push({ id: folder.id, name: `Folder: ${prefix}${folder.name}` });
+      });
+    }
+    
+    return options;
+  }, [boards, showMoveModal, moveBoardId, moveIsFolder]);
+
+  const settingsTitle = useMemo(() => {
+    if (!settingsBoard) return "Create Space";
+    if (settingsBoard.is_folder) return "Folder Settings";
+    if (settingsBoard.parent_id !== null) return "List Settings";
+    return "Space Settings";
+  }, [settingsBoard]);
+
+  const settingsSubmitLabel = useMemo(() => {
+    if (!settingsBoard) return "Create Space";
+    return "Save Settings";
+  }, [settingsBoard]);
+
+  const settingsInitialValues = useMemo(() => {
+    if (!settingsBoard) return { name: "", description: "", is_private: false, access_members: [] };
+    return {
+      name: settingsBoard.name || "",
+      description: settingsBoard.description || "",
+      is_private: !!settingsBoard.is_private,
+      access_members: settingsBoard.access_members || []
+    };
+  }, [settingsBoard]);
+
   // Context passed to child pages
   const outletContext = {
     boards,
@@ -163,9 +371,15 @@ const WorkspaceLayout = () => {
     assignees,
     workspaceLoading,
     refreshWorkspace: () => fetchWorkspaceData(false),
-    openCreateSpaceModal: () => setShowCreateSpaceModal(true),
+    openCreateSpaceModal: () => handleOpenSettings(null),
+    openSettingsModal: (board) => handleOpenSettings(board),
     openCreateChannelModal: () => setShowCreateChannelModal(true),
     openNewMessageModal: () => setShowNewMessageModal(true),
+    openCreateTaskModal: () => setShowCreateTaskModal(true),
+    openCreateFolderListModal: (parentId, type) => handleOpenCreateFolderList(parentId, type),
+    openRenameModal: (boardId, currentName) => handleOpenRename(boardId, currentName),
+    openMoveModal: (boardId, parentId, isFolder) => handleOpenMove(boardId, parentId, isFolder),
+    openDeleteBoardModal: (boardId, name) => handleOpenDeleteBoard(boardId, name),
   };
 
   return (
@@ -178,9 +392,15 @@ const WorkspaceLayout = () => {
           selectedBoardId={activeBoardId}
           selectedBoardGroups={activeBoard?.groups || []}
           activeConversationId={activeConversationId}
-          onCreateSpace={() => setShowCreateSpaceModal(true)}
+          onCreateSpace={() => handleOpenSettings(null)}
           onCreateChannel={() => setShowCreateChannelModal(true)}
           onNewMessage={() => setShowNewMessageModal(true)}
+          onCreateFolderList={handleOpenCreateFolderList}
+          onRename={handleOpenRename}
+          onMove={handleOpenMove}
+          onSettings={handleOpenSettings}
+          onDeleteBoard={handleOpenDeleteBoard}
+          onGlobalCreateTask={() => setShowCreateTaskModal(true)}
           loading={workspaceLoading}
         />
 
@@ -189,16 +409,23 @@ const WorkspaceLayout = () => {
         </div>
       </div>
 
+      <CreateTaskModal
+        show={showCreateTaskModal}
+        onHide={() => setShowCreateTaskModal(false)}
+        boards={boards.filter(b => !b.is_folder)}
+        members={assignees}
+        onTaskCreated={handleGlobalTaskCreated}
+        initialBoardId={activeBoardId}
+      />
+
       <SpaceSettingsModal
-        show={showCreateSpaceModal}
-        onHide={() => setShowCreateSpaceModal(false)}
-        onSubmit={async (payload) => {
-          await handleCreateSpace(payload);
-        }}
-        title="Create Space"
-        submitLabel="Create Space"
-        submitting={creatingSpace}
-        initialValues={{ name: "", description: "", is_private: false, access_members: [] }}
+        show={showSettingsModal}
+        onHide={() => setShowSettingsModal(false)}
+        onSubmit={handleSettingsSubmit}
+        title={settingsTitle}
+        submitLabel={settingsSubmitLabel}
+        submitting={savingSettings}
+        initialValues={settingsInitialValues}
         members={assignees}
       />
 
@@ -214,6 +441,110 @@ const WorkspaceLayout = () => {
         show={showNewMessageModal}
         handleClose={() => setShowNewMessageModal(false)}
         onConversationStarted={handleConversationStarted}
+      />
+
+      {/* Create Folder/List Modal */}
+      <Modal show={showCreateFolderListModal} onHide={() => setShowCreateFolderListModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Create {createType === "folder" ? "Folder" : "List"}</Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleCreateFolderListSubmit}>
+          <Modal.Body>
+            <Form.Group>
+              <Form.Label>{createType === "folder" ? "Folder Name" : "List Name"}</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder={`Enter ${createType} name`}
+                value={createName}
+                onChange={(e) => setCreateName(e.target.value)}
+                required
+                autoFocus
+              />
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowCreateFolderListModal(false)} disabled={creatingFolderList}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" disabled={creatingFolderList}>
+              {creatingFolderList ? <Spinner animation="border" size="sm" /> : "Create"}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
+
+      {/* Rename Modal */}
+      <Modal show={showRenameModal} onHide={() => setShowRenameModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Rename Item</Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleRenameSubmit}>
+          <Modal.Body>
+            <Form.Group>
+              <Form.Label>New Name</Form.Label>
+              <Form.Control
+                type="text"
+                value={renameName}
+                onChange={(e) => setRenameName(e.target.value)}
+                required
+                autoFocus
+              />
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowRenameModal(false)} disabled={renaming}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" disabled={renaming}>
+              {renaming ? <Spinner animation="border" size="sm" /> : "Save"}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
+
+      {/* Move Modal */}
+      <Modal show={showMoveModal} onHide={() => setShowMoveModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Move {moveIsFolder ? "Folder" : "List"}</Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleMoveSubmit}>
+          <Modal.Body>
+            <Form.Group>
+              <Form.Label>Select Destination Space {!moveIsFolder && "or Folder"}</Form.Label>
+              <Form.Select
+                value={moveTargetParentId}
+                onChange={(e) => setMoveTargetParentId(e.target.value)}
+                required
+              >
+                <option value="">-- Choose Destination --</option>
+                {moveDestinationOptions.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.name}
+                  </option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowMoveModal(false)} disabled={moving}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" disabled={moving || !moveTargetParentId}>
+              {moving ? <Spinner animation="border" size="sm" /> : "Move"}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        show={showDeleteBoardModal}
+        onHide={() => setShowDeleteBoardModal(false)}
+        onConfirm={handleDeleteBoardSubmit}
+        title="Delete Confirmation"
+        message={`Are you sure you want to permanently delete "${deleteBoardName}"? This will delete all lists, groups, and tasks contained inside it. This action cannot be undone.`}
+        confirmText="Delete"
+        loading={deletingBoard}
       />
     </>
   );

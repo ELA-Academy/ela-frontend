@@ -48,6 +48,7 @@ import ManageSuperAdmins from "./pages/admin/ManageSuperAdmins";
 // Workspace boards
 import BoardsPage from "./pages/admin/BoardsPage";
 import BoardDetailPage from "./pages/admin/BoardDetailPage";
+import InboxPage from "./pages/admin/InboxPage";
 import WorkspaceLayout from "./components/admin/workspace/WorkspaceLayout";
 
 function App() {
@@ -99,6 +100,7 @@ function App() {
                 <Route path="boards" element={<BoardsPage />} />
                 <Route path="boards/:boardId" element={<BoardDetailPage />} />
                 <Route path="messaging" element={<MessagingPage />} />
+                <Route path="inbox" element={<InboxPage />} />
               </Route>
               <Route path="admissions" element={<AdmissionsDashboard />} />
               <Route path="admissions/leads" element={<LeadsListPage />} />

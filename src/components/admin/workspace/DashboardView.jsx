@@ -16,7 +16,7 @@ const DashboardView = ({ board, assignees, onTaskClick }) => {
   const allTasks = useMemo(() => {
     if (!board?.groups) return [];
     return board.groups.flatMap((group) =>
-      group.tasks.map((task) => ({
+      (group.tasks || []).map((task) => ({
         ...task,
         group_id: group.id,
         group_name: group.name,

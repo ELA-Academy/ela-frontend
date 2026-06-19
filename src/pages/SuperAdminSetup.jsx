@@ -246,12 +246,17 @@ const SuperAdminSignupForm = () => {
 
 // --- MODIFIED LOGIN FORM ---
 const SuperAdminLoginForm = () => {
-  const { superAdminLogin } = useAuth(); // Get login function from context
+  const { superAdminLogin, verifyOtpLogin } = useAuth(); // Get login functions from context
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // OTP States
+  const [otpRequired, setOtpRequired] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [otpRole, setOtpRole] = useState("superadmin");
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -262,15 +267,78 @@ const SuperAdminLoginForm = () => {
     setError("");
     setIsSubmitting(true);
     try {
-      await superAdminLogin(formData.email, formData.password);
-      // Let AdminLayout handle the final redirect after login
-      navigate("/admin");
+      const res = await superAdminLogin(formData.email, formData.password);
+      if (res && res.otp_required) {
+        setOtpRequired(true);
+        setOtpRole(res.role || "superadmin");
+      } else {
+        // Let AdminLayout handle the final redirect after login
+        navigate("/admin");
+      }
     } catch (err) {
       setError(err.response?.data?.msg || "Login failed.");
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const handleOtpSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setIsSubmitting(true);
+    try {
+      await verifyOtpLogin(formData.email, otp, otpRole);
+      navigate("/admin");
+    } catch (err) {
+      setError(err.response?.data?.msg || "Invalid or expired verification code.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (otpRequired) {
+    return (
+      <div>
+        <h1 className="form-title">Two-Factor Authentication</h1>
+        <p className="form-subtitle">Enter the 6-digit verification code sent to your email.</p>
+        <Form onSubmit={handleOtpSubmit}>
+          {error && <Alert variant="danger">{error}</Alert>}
+          <Form.Group className="mb-3" controlId="otpCode">
+            <Form.Label>Verification Code</Form.Label>
+            <Form.Control
+              type="text"
+              placeholder="Enter 6-digit code"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              required
+              maxLength="6"
+            />
+          </Form.Group>
+          <div className="d-grid mt-4">
+            <Button className="form-button" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <Spinner as="span" animation="border" size="sm" />
+              ) : (
+                "Verify & Login"
+              )}
+            </Button>
+            <Button
+              variant="link"
+              className="mt-2 text-muted text-decoration-none"
+              onClick={() => {
+                setOtpRequired(false);
+                setOtp("");
+                setError("");
+              }}
+              style={{ boxShadow: "none" }}
+            >
+              Back to Login
+            </Button>
+          </div>
+        </Form>
+      </div>
+    );
+  }
 
   return (
     <div>

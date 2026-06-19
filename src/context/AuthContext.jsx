@@ -102,9 +102,13 @@ export const AuthProvider = ({ children }) => {
 
   const loginUser = async (loginFunction, credentials) => {
     const response = await loginFunction(credentials);
+    if (response.data && response.data.otp_required) {
+      return response.data; // Return {"otp_required": true, "email": email, "role": role}
+    }
     const { access_token } = response.data;
     localStorage.setItem("authToken", access_token);
     await loadUserFromToken();
+    return { success: true };
   };
 
   const staffLogin = async (email, password) => {
@@ -119,6 +123,15 @@ export const AuthProvider = ({ children }) => {
       email,
       password,
     });
+  };
+
+  const verifyOtpLogin = async (email, otp, role) => {
+    const endpoint = role === "superadmin" ? "/superadmin/verify-login-otp" : "/auth/verify-login-otp";
+    const response = await api.post(endpoint, { email, otp });
+    const { access_token } = response.data;
+    localStorage.setItem("authToken", access_token);
+    await loadUserFromToken();
+    return { success: true };
   };
 
   const logout = () => {
@@ -136,6 +149,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     staffLogin,
     superAdminLogin,
+    verifyOtpLogin,
     logout,
     notifications,
     unreadCount: notifications.filter((n) => !n.is_read).length,

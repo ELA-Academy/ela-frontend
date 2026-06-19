@@ -6,26 +6,53 @@ import "../styles/AuthForms.css"; // Import the new styles
 
 const Login = () => {
   const navigate = useNavigate();
-  const { staffLogin, isAuthenticated, loading } = useAuth();
+  const { staffLogin, verifyOtpLogin, isAuthenticated, loading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  // OTP Verification states
+  const [otpRequired, setOtpRequired] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [role, setRole] = useState("staff");
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSubmitting(true);
     try {
-      await staffLogin(email, password);
-      // The redirect logic is now handled in AdminLayout,
-      // so we just navigate to the base admin path.
-      navigate("/admin");
+      const res = await staffLogin(email, password);
+      if (res && res.otp_required) {
+        setOtpRequired(true);
+        setRole(res.role || "staff");
+      } else {
+        // The redirect logic is now handled in AdminLayout,
+        // so we just navigate to the base admin path.
+        navigate("/admin");
+      }
     } catch (err) {
       setError(
         err.response?.data?.msg ||
           "Login failed. Please check your credentials."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleOtpSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSubmitting(true);
+    try {
+      await verifyOtpLogin(email, otp, role);
+      navigate("/admin");
+    } catch (err) {
+      setError(
+        err.response?.data?.msg ||
+          "Invalid or expired verification code."
       );
     } finally {
       setSubmitting(false);
@@ -37,6 +64,7 @@ const Login = () => {
     return <Navigate to="/admin" replace />;
   }
 
+
   return (
     <div className="login-page-container">
       {/* Left side: Form */}
@@ -47,67 +75,120 @@ const Login = () => {
           <div className="login-logo-container">
             <img src="/images/ELA-logo.png" alt="ELA Academy Logo" className="login-logo-img" />
           </div>
-          <h2>Welcome back to ELA School Management App</h2>
-          <p className="subtitle">Please enter your credentials to access your dashboard.</p>
-          
-          <form onSubmit={handleSubmit}>
-            {error && <p className="error-message">{error}</p>}
-            <div className="form-group">
-              <label htmlFor="email">Email</label>
-              <input
-                type="email"
-                id="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-                required
-                placeholder="you@elaaschool.org"
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="password">
-                <span>Password</span>
-              </label>
-              <div style={{ position: "relative" }}>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  id="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  required
-                  placeholder="Enter your password"
-                  style={{ paddingRight: "45px" }}
-                />
+          {otpRequired ? (
+            <>
+              <h2>Two-Factor Authentication</h2>
+              <p className="subtitle">Please enter the 6-digit code sent to your email to verify your identity.</p>
+              
+              <form onSubmit={handleOtpSubmit}>
+                {error && <p className="error-message">{error}</p>}
+                <div className="form-group">
+                  <label htmlFor="otp">Verification Code</label>
+                  <input
+                    type="text"
+                    id="otp"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    required
+                    placeholder="Enter 6-digit code"
+                    maxLength="6"
+                  />
+                </div>
+                
+                <button type="submit" className="btn-primary-full" disabled={submitting}>
+                  {submitting ? <span className="login-spinner"></span> : "Verify & Login"}
+                </button>
+
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
+                  className="btn-link"
+                  onClick={() => {
+                    setOtpRequired(false);
+                    setOtp("");
+                    setError("");
+                  }}
                   style={{
-                    position: "absolute",
-                    right: "12px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
                     background: "none",
                     border: "none",
+                    color: "#673de6",
+                    textDecoration: "underline",
                     cursor: "pointer",
-                    color: "#666",
-                    padding: "0",
-                    display: "flex",
-                    alignItems: "center",
-                    zIndex: 10,
-                    boxShadow: "none",
-                    outline: "none"
+                    marginTop: "15px",
+                    display: "block",
+                    width: "100%",
+                    textAlign: "center",
+                    boxShadow: "none"
                   }}
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  Back to Login
                 </button>
-              </div>
-            </div>
-            
-            <button type="submit" className="btn-primary-full" disabled={submitting}>
-              {submitting ? <span className="login-spinner"></span> : "Login"}
-            </button>
-          </form>
+              </form>
+            </>
+          ) : (
+            <>
+              <h2>Welcome back to ELA School Management App</h2>
+              <p className="subtitle">Please enter your credentials to access your dashboard.</p>
+              
+              <form onSubmit={handleSubmit}>
+                {error && <p className="error-message">{error}</p>}
+                <div className="form-group">
+                  <label htmlFor="email">Email</label>
+                  <input
+                    type="email"
+                    id="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                    required
+                    placeholder="you@elaaschool.org"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="password">
+                    <span>Password</span>
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      id="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete="current-password"
+                      required
+                      placeholder="Enter your password"
+                      style={{ paddingRight: "45px" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{
+                        position: "absolute",
+                        right: "12px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        color: "#666",
+                        padding: "0",
+                        display: "flex",
+                        alignItems: "center",
+                        zIndex: 10,
+                        boxShadow: "none",
+                        outline: "none"
+                      }}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+                
+                <button type="submit" className="btn-primary-full" disabled={submitting}>
+                  {submitting ? <span className="login-spinner"></span> : "Login"}
+                </button>
+              </form>
+            </>
+          )}
           
           <div className="login-footer">
             Don't have an account? Contact school administration.

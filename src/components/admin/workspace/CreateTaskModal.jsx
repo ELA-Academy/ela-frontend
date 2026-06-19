@@ -42,6 +42,7 @@ const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initial
   const [priority, setPriority] = useState("Normal");
   const [dueDate, setDueDate] = useState(null);
   const [selectedAssignees, setSelectedAssignees] = useState([]);
+  const [assigneeSearchQuery, setAssigneeSearchQuery] = useState("");
   const [tags, setTags] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [aiWriting, setAiWriting] = useState(false);
@@ -437,33 +438,46 @@ const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initial
                   <>+ Assignee</>
                 )}
               </Dropdown.Toggle>
-              <Dropdown.Menu className="clickup-drop-menu">
+              <Dropdown.Menu className="clickup-drop-menu" style={{ maxHeight: "280px", overflowY: "auto" }}>
+                <div className="px-2 py-1 sticky-top bg-white border-bottom">
+                  <input
+                    type="text"
+                    className="form-control form-control-sm"
+                    placeholder="Search assignee..."
+                    value={assigneeSearchQuery}
+                    onChange={(e) => setAssigneeSearchQuery(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ fontSize: "11px" }}
+                  />
+                </div>
                 <Dropdown.Item onClick={() => setSelectedAssignees([])}>
                   <span className="text-muted">Unassigned</span>
                 </Dropdown.Item>
                 <Dropdown.Divider />
-                {members?.map((m) => (
-                  <Dropdown.Item
-                    key={`${m.role}_${m.id}`}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      toggleAssignee(m);
-                    }}
-                    active={selectedAssignees.some((assignee) => getAssigneeKey(assignee) === getAssigneeKey(m))}
-                    className="d-flex align-items-start gap-2"
-                  >
-                    <input
-                      type="checkbox"
-                      readOnly
-                      checked={selectedAssignees.some((assignee) => getAssigneeKey(assignee) === getAssigneeKey(m))}
-                      className="mt-1"
-                    />
-                    <div>
-                      <strong>{m.name}</strong>
-                      <div className="small text-muted">{m.email}</div>
-                    </div>
-                  </Dropdown.Item>
-                ))}
+                {members
+                  ?.filter((m) => m.name.toLowerCase().includes(assigneeSearchQuery.toLowerCase()))
+                  .map((m) => (
+                    <Dropdown.Item
+                      key={`${m.role}_${m.id}`}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        toggleAssignee(m);
+                      }}
+                      active={selectedAssignees.some((assignee) => getAssigneeKey(assignee) === getAssigneeKey(m))}
+                      className="d-flex align-items-start gap-2"
+                    >
+                      <input
+                        type="checkbox"
+                        readOnly
+                        checked={selectedAssignees.some((assignee) => getAssigneeKey(assignee) === getAssigneeKey(m))}
+                        className="mt-1"
+                      />
+                      <div>
+                        <strong>{m.name}</strong>
+                        <div className="small text-muted">{m.email}</div>
+                      </div>
+                    </Dropdown.Item>
+                  ))}
               </Dropdown.Menu>
             </Dropdown>
 

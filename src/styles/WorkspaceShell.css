@@ -2,7 +2,7 @@
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr);
   min-height: calc(100vh - 80px);
-  align-items: start;
+  align-items: stretch;
   background: #f4f5f8;
 }
 
@@ -14,8 +14,8 @@
   min-width: 0;
   position: sticky;
   top: 0;
-  align-self: start;
-  max-height: calc(100vh - 80px);
+  align-self: stretch;
+  height: calc(100vh - 80px);
 }
 
 .workspace-secondary-header {

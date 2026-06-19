@@ -17,10 +17,10 @@ import { useWorkspace } from "../../components/admin/workspace/WorkspaceLayout";
 import "../../styles/Boards.css";
 import "../../styles/WorkspaceShell.css";
 
-const STATUS_OPTIONS = ["Not Started", "In Progress", "Done"];
+const DEFAULT_STATUS_OPTIONS = ["Not Started", "In Progress", "Done"];
 const PRIORITY_OPTIONS = ["Urgent", "High", "Normal", "Low"];
 
-const STATUS_META = {
+const DEFAULT_STATUS_META = {
   "Not Started": { label: "To do", className: "badge-status-todo", color: "#7c8798" },
   "In Progress": { label: "In progress", className: "badge-status-progress", color: "#6d45f7" },
   Done: { label: "Complete", className: "badge-status-ready", color: "#00b67a" },
@@ -372,11 +372,29 @@ const BoardsPage = () => {
                   </div>
 
                   {/* Tasks grouped by Status under this folder */}
-                  {!collapsed && (
-                    <div className="group-content ms-2 mt-3">
-                      {STATUS_OPTIONS.map((statusVal) => {
-                        const statusTasks = groupTasks.filter((t) => t.status === statusVal);
-                        const statusMeta = STATUS_META[statusVal];
+                  {!collapsed && (() => {
+                    const STATUS_OPTIONS = board?.custom_statuses && board.custom_statuses.length > 0
+                      ? board.custom_statuses.map((s) => s.id)
+                      : DEFAULT_STATUS_OPTIONS;
+
+                    const STATUS_META = {};
+                    if (board?.custom_statuses && board.custom_statuses.length > 0) {
+                      board.custom_statuses.forEach((s) => {
+                        STATUS_META[s.id] = {
+                          label: s.label || s.id,
+                          className: `badge-status-${s.id.toLowerCase().replace(/\s+/g, "-")}`,
+                          color: s.color || "#7c8798",
+                        };
+                      });
+                    } else {
+                      Object.assign(STATUS_META, DEFAULT_STATUS_META);
+                    }
+
+                    return (
+                      <div className="group-content ms-2 mt-3">
+                        {STATUS_OPTIONS.map((statusVal) => {
+                          const statusTasks = groupTasks.filter((t) => t.status === statusVal);
+                          const statusMeta = STATUS_META[statusVal] || { label: statusVal, className: "badge-status-todo", color: "#7c8798" };
                         const statusKey = `${group.id}_${statusVal}`;
                         const isStatusCollapsed = collapsedStatuses[statusKey];
                         
@@ -639,7 +657,8 @@ const BoardsPage = () => {
                         );
                       })}
                     </div>
-                  )}
+                  );
+                })()}
                 </div>
               );
             });
