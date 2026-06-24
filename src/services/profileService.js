@@ -27,3 +27,18 @@ export const changePassword = async (passwordData) => {
     throw error;
   }
 };
+
+// Update profile details
+export const updateProfile = async (profileData) => {
+  try {
+    const response = await api.put("/profile/update", profileData);
+    return response.data;
+  } catch (error) {
+    console.error(
+      "Error updating profile:",
+      error.response?.data || error.message
+    );
+    throw error;
+  }
+};
+

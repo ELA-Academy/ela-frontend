@@ -28,7 +28,7 @@ const SuperAdminSetup = () => {
         setSuperAdminExists(response.data.super_admin_exists);
       } catch (err) {
         setError(
-          "Could not connect to the server. Please ensure the backend is running and refresh the page."
+          "Could not connect to the server. Please ensure the backend is running and refresh the page.",
         );
         console.error(err);
       } finally {
@@ -226,7 +226,7 @@ const SuperAdminSignupForm = () => {
             placeholder="Enter 6-digit code"
             value={otp}
             onChange={(e) => setOtp(e.target.value)}
-            required
+            requiredwh
             maxLength="6"
           />
         </Form.Group>
@@ -290,7 +290,9 @@ const SuperAdminLoginForm = () => {
       await verifyOtpLogin(formData.email, otp, otpRole);
       navigate("/admin");
     } catch (err) {
-      setError(err.response?.data?.msg || "Invalid or expired verification code.");
+      setError(
+        err.response?.data?.msg || "Invalid or expired verification code.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -300,7 +302,9 @@ const SuperAdminLoginForm = () => {
     return (
       <div>
         <h1 className="form-title">Two-Factor Authentication</h1>
-        <p className="form-subtitle">Enter the 6-digit verification code sent to your email.</p>
+        <p className="form-subtitle">
+          Enter the 6-digit verification code sent to your email.
+        </p>
         <Form onSubmit={handleOtpSubmit}>
           {error && <Alert variant="danger">{error}</Alert>}
           <Form.Group className="mb-3" controlId="otpCode">
@@ -315,7 +319,11 @@ const SuperAdminLoginForm = () => {
             />
           </Form.Group>
           <div className="d-grid mt-4">
-            <Button className="form-button" type="submit" disabled={isSubmitting}>
+            <Button
+              className="form-button"
+              type="submit"
+              disabled={isSubmitting}
+            >
               {isSubmitting ? (
                 <Spinner as="span" animation="border" size="sm" />
               ) : (

@@ -401,6 +401,7 @@ const WorkspaceLayout = () => {
           onSettings={handleOpenSettings}
           onDeleteBoard={handleOpenDeleteBoard}
           onGlobalCreateTask={() => setShowCreateTaskModal(true)}
+          onRefreshWorkspace={() => fetchWorkspaceData(false)}
           loading={workspaceLoading}
         />
 

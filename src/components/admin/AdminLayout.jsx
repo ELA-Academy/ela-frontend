@@ -3,6 +3,8 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { useAuth } from "../../context/AuthContext";
+import { useTimer } from "../../context/TimerContext";
+import { Play, Pause, Square } from "lucide-react";
 import { subscribeUser } from "../../utils/push-notifications";
 import "../../styles/AdminModern.css";
 
@@ -11,6 +13,14 @@ const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+
+  const {
+    activeTimer,
+    elapsedSeconds,
+    pauseTimer,
+    resumeTimer,
+    stopTimer
+  } = useTimer();
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -29,7 +39,16 @@ const AdminLayout = () => {
 
   const isWorkspacePage =
     location.pathname.startsWith("/admin/messaging") ||
-    location.pathname.startsWith("/admin/boards");
+    location.pathname.startsWith("/admin/boards") ||
+    location.pathname.startsWith("/admin/inbox");
+
+  const formatTime = (totalSecs) => {
+    const hrs = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+    const pad = (num) => String(num).padStart(2, "0");
+    return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
+  };
 
   return (
     <div className={`admin-layout ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
@@ -42,6 +61,79 @@ const AdminLayout = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Floating Dashboard Top Right Timer Widget */}
+      {activeTimer && (
+        <div
+          style={{
+            position: "fixed",
+            top: "80px",
+            right: "24px",
+            backgroundColor: "rgba(255, 255, 255, 0.95)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            border: "1px solid #e2e8f0",
+            borderRadius: "9999px",
+            padding: "6px 14px",
+            boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            zIndex: 1000,
+            fontFamily: "Inter, system-ui, sans-serif",
+            fontSize: "11px",
+            fontWeight: "600",
+            color: "#1e293b",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span
+              style={{
+                display: "inline-block",
+                width: "6px",
+                height: "6px",
+                borderRadius: "50%",
+                backgroundColor: activeTimer.isRunning ? "#6366f1" : "#f59e0b",
+                animation: activeTimer.isRunning ? "pulse 1.5s infinite" : "none",
+              }}
+            />
+            <span style={{ maxWidth: "100px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#64748b" }}>
+              {activeTimer.task.title}
+            </span>
+          </div>
+          
+          <span style={{ fontFamily: "monospace", fontSize: "12px", color: "#0f172a", borderLeft: "1px solid #cbd5e1", paddingLeft: "8px" }}>
+            {formatTime(elapsedSeconds)}
+          </span>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "4px", borderLeft: "1px solid #cbd5e1", paddingLeft: "8px" }}>
+            {activeTimer.isRunning ? (
+              <button
+                onClick={pauseTimer}
+                style={{ background: "none", border: "none", padding: "3px", cursor: "pointer", color: "#475569" }}
+                title="Pause"
+              >
+                <Pause size={11} />
+              </button>
+            ) : (
+              <button
+                onClick={resumeTimer}
+                style={{ background: "none", border: "none", padding: "3px", cursor: "pointer", color: "#475569" }}
+                title="Resume"
+              >
+                <Play size={11} fill="currentColor" />
+              </button>
+            )}
+            <button
+              onClick={stopTimer}
+              style={{ background: "none", border: "none", padding: "3px", cursor: "pointer", color: "#ef4444" }}
+              title="Stop & Log"
+            >
+              <Square size={10} fill="currentColor" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

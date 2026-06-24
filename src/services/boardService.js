@@ -208,3 +208,8 @@ export const deleteWorkspaceDoc = async (docId) => {
   return response.data;
 };
 
+export const getAllWorkspaceDocs = async () => {
+  const response = await api.get("/boards/docs");
+  return response.data;
+};
+

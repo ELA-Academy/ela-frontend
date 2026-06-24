@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Eye, EyeOff, LayoutDashboard, FolderKanban, ClipboardCheck } from "lucide-react";
+import api from "../utils/api";
 import "../styles/AuthForms.css"; // Import the new styles
 
 const Login = () => {
@@ -17,6 +18,25 @@ const Login = () => {
   const [otpRequired, setOtpRequired] = useState(false);
   const [otp, setOtp] = useState("");
   const [role, setRole] = useState("staff");
+  
+  // Forgot Password states
+  const [forgotPassword, setForgotPassword] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+
+  const handleForgotPasswordSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccessMessage("");
+    setSubmitting(true);
+    try {
+      const res = await api.post("/auth/forgot-password", { email });
+      setSuccessMessage(res.data.message || "Password reset link sent successfully!");
+    } catch (err) {
+      setError(err.response?.data?.error || "Failed to request password reset.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -124,6 +144,56 @@ const Login = () => {
                 </button>
               </form>
             </>
+          ) : forgotPassword ? (
+            <>
+              <h2>Forgot Password?</h2>
+              <p className="subtitle">Enter your email address and we'll send you a password reset link.</p>
+
+              <form onSubmit={handleForgotPasswordSubmit}>
+                {error && <p className="error-message">{error}</p>}
+                {successMessage && <p className="success-message" style={{color: "green", fontSize: "0.875rem", marginBottom: "1rem", textAlign: "center"}}>{successMessage}</p>}
+                
+                <div className="form-group">
+                  <label htmlFor="forgot-email">Email Address</label>
+                  <input
+                    type="email"
+                    id="forgot-email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    placeholder="you@elaaschool.org"
+                  />
+                </div>
+                
+                <button type="submit" className="btn-primary-full" disabled={submitting}>
+                  {submitting ? <span className="login-spinner"></span> : "Send Reset Link"}
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-link"
+                  onClick={() => {
+                    setForgotPassword(false);
+                    setError("");
+                    setSuccessMessage("");
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#673de6",
+                    textDecoration: "underline",
+                    cursor: "pointer",
+                    marginTop: "15px",
+                    display: "block",
+                    width: "100%",
+                    textAlign: "center",
+                    boxShadow: "none"
+                  }}
+                >
+                  Back to Login
+                </button>
+              </form>
+            </>
           ) : (
             <>
               <h2>Welcome back to ELA School Management App</h2>
@@ -143,7 +213,7 @@ const Login = () => {
                     placeholder="you@elaaschool.org"
                   />
                 </div>
-                <div className="form-group">
+                <div className="form-group" style={{ marginBottom: "5px" }}>
                   <label htmlFor="password">
                     <span>Password</span>
                   </label>
@@ -181,6 +251,28 @@ const Login = () => {
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
+                </div>
+                
+                <div style={{ textAlign: "right", marginBottom: "20px" }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotPassword(true);
+                      setError("");
+                      setSuccessMessage("");
+                    }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#673de6",
+                      fontSize: "0.85rem",
+                      cursor: "pointer",
+                      padding: 0,
+                      boxShadow: "none"
+                    }}
+                  >
+                    Forgot Password?
+                  </button>
                 </div>
                 
                 <button type="submit" className="btn-primary-full" disabled={submitting}>

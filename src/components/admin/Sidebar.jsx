@@ -119,14 +119,14 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
 
   return (
     <aside className="sidebar h-screen flex flex-col flex-shrink-0 w-[60px] select-none" style={{ position: "relative" }}>
-      <div className="sidebar-header-clickup">
+      <div className="sidebar-header-zbot">
         <div className="sidebar-avatar-logo">
           {userInitial}
         </div>
       </div>
 
-      <div className="sidebar-scroll-clickup">
-        <nav className="sidebar-nav-shell-clickup">
+      <div className="sidebar-scroll-zbot">
+        <nav className="sidebar-nav-shell-zbot">
           {activeLinks.map((link) => (
             <NavItem
               key={link.path}
@@ -140,10 +140,10 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
         </nav>
       </div>
 
-      <div className="sidebar-footer-clickup">
+      <div className="sidebar-footer-zbot">
         <NavLink
           to="/logout"
-          className="sidebar-nav-item sidebar-nav-logout-clickup group relative flex flex-col items-center justify-center gap-1 w-full py-2.5 no-underline"
+          className="sidebar-nav-item sidebar-nav-logout-zbot group relative flex flex-col items-center justify-center gap-1 w-full py-2.5 no-underline"
           onMouseEnter={(e) => handleMouseEnter(e, "Logout")}
           onMouseLeave={handleMouseLeave}
         >
@@ -154,7 +154,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
 
       {hoveredLink && (
         <div
-          className="sidebar-tooltip-clickup-portal"
+          className="sidebar-tooltip-zbot-portal"
           style={{ top: `${hoveredLink.top}px` }}
         >
           {hoveredLink.label}

@@ -1,14 +1,14 @@
 .workspace-shell {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns: 255px minmax(0, 1fr);
   min-height: calc(100vh - 80px);
   align-items: stretch;
-  background: #f4f5f8;
+  background: var(--content-bg);
 }
 
 .workspace-secondary-sidebar {
-  border-right: 1px solid #dddfe5;
-  background: linear-gradient(180deg, #fbfbfd 0%, #f5f6fa 100%);
+  border-right: 1px solid var(--border-color);
+  background: var(--sidebar-secondary-bg, #f1f5f9);
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -16,6 +16,7 @@
   top: 0;
   align-self: stretch;
   height: calc(100vh - 80px);
+  overflow-x: hidden;
 }
 
 .workspace-secondary-header {
@@ -71,6 +72,7 @@
   min-height: 0;
   max-height: calc(100vh - 155px);
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 10px 8px 16px;
   display: flex;
   flex-direction: column;
@@ -158,6 +160,9 @@
   font-size: 0.78rem;
   font-weight: 700;
   line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .workspace-secondary-link-meta {
@@ -234,10 +239,11 @@
 }
 
 .workspace-panel {
-  border: 1px solid #dddfe5;
-  border-radius: 20px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
   background: #ffffff;
-  padding: 24px;
+  padding: 16px 20px;
+  box-shadow: var(--shadow);
 }
 
 .workspace-panel + .workspace-panel {
@@ -431,7 +437,7 @@
 
 @media (max-width: 1260px) {
   .workspace-shell {
-    grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-columns: 235px minmax(0, 1fr);
   }
 
   .workspace-overview-layout {
@@ -496,3 +502,286 @@
   flex-direction: column !important;
   padding: 20px !important;
 }
+
+/* === Direct Messages Zbot Custom Sidebar Layout & Avatars === */
+.workspace-secondary-link-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border-radius: 6px;
+}
+
+.workspace-secondary-link-wrapper.dropdown-open {
+  z-index: 100 !important;
+}
+
+.workspace-secondary-link-wrapper:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.workspace-secondary-link-wrapper:hover .sidebar-dm-actions {
+  opacity: 1;
+  visibility: visible;
+}
+
+.workspace-secondary-link-wrapper .workspace-secondary-link {
+  flex: 1;
+  width: 100%;
+}
+
+.sidebar-dm-actions {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease-in-out, visibility 0.12s ease-in-out;
+}
+
+.sidebar-dm-dots-btn {
+  border: none;
+  background: transparent;
+  padding: 2px;
+  border-radius: 4px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-dm-dots-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #0f172a;
+}
+
+.zbot-sidebar-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 8px;
+  font-weight: 700;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.avatar-status-dot {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1px solid #f1f5f9;
+}
+
+.avatar-status-dot.online {
+  background-color: #00ca72;
+}
+
+.avatar-status-dot.offline {
+  background-color: #94a3b8;
+}
+
+.workspace-new-dm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 5px 8px;
+  border-radius: 6px;
+  text-align: left;
+  width: 100%;
+  transition: all 0.12s ease-in-out;
+  margin-top: 2px;
+}
+
+.workspace-new-dm-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: #0f172a;
+}
+
+/* === Zbot Truncation & Initials Preview CSS === */
+.truncate-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.zbot-space-avatar-preview {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background-color: #fafafa;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  font-size: 16px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* ClickUp-style floating context menu */
+.clickup-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: transparent;
+}
+
+.clickup-menu-portal {
+  position: fixed;
+  z-index: 9999;
+}
+
+.clickup-menu {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+  min-width: 220px;
+  max-width: 260px;
+  padding: 6px 0;
+  font-size: 12.5px;
+  color: #374151;
+  user-select: none;
+  animation: clickupMenuFadeIn 0.12s ease-out;
+}
+
+@keyframes clickupMenuFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.clickup-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: background 0.1s;
+  white-space: nowrap;
+}
+
+.clickup-menu-item:hover {
+  background: #f3f4f6;
+}
+
+.clickup-menu-item.text-danger {
+  color: #ef4444;
+}
+
+.clickup-menu-item.text-danger:hover {
+  background: #fef2f2;
+}
+
+.clickup-menu-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.clickup-menu-item.text-danger .clickup-menu-icon {
+  color: #ef4444;
+}
+
+.clickup-menu-arrow {
+  color: #d1d5db;
+  flex-shrink: 0;
+}
+
+.clickup-menu-divider {
+  height: 1px;
+  background: #f3f4f6;
+  margin: 4px 0;
+}
+
+.clickup-menu-footer {
+  padding: 6px 10px 4px;
+}
+
+.clickup-menu-footer-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #1e1e2e;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.clickup-menu-footer-btn:hover {
+  background: #2d2d44;
+}
+
+/* Action buttons in tree rows */
+.workspace-tree-action-btn {
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+
+.workspace-tree-action-btn:hover {
+  background: rgba(103, 61, 230, 0.08);
+}
+
+/* Sidebar DM/channel action button */
+.sidebar-dm-actions-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 3px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.12s, background 0.1s;
+  color: #6b7280;
+}
+
+.sidebar-dm-actions-btn:hover {
+  background: rgba(103, 61, 230, 0.1);
+  color: #673de6;
+}
+
+.workspace-secondary-link-wrapper:hover .sidebar-dm-actions-btn,
+.workspace-secondary-link-wrapper.dropdown-open .sidebar-dm-actions-btn {
+  opacity: 1;
+}
+

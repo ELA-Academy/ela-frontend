@@ -201,76 +201,121 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  border: 1px solid #dddfe5;
+  gap: 12px;
+  border: 1px solid var(--border-color);
   background: #ffffff;
-  border-radius: 16px;
-  padding: 0 14px;
-  margin-bottom: 20px;
+  border-radius: 6px;
+  padding: 4px 10px;
+  margin-bottom: 16px;
+  min-height: 38px;
+  box-shadow: var(--shadow);
 }
 
 .workspace-tabs {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
-  overflow-x: auto;
+  overflow: visible;
 }
 
 .workspace-tab {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  border: 0;
+  gap: 5px;
+  border: 1px solid transparent;
   background: transparent;
-  color: #667085;
-  font-size: 0.84rem;
-  font-weight: 600;
-  padding: 12px 13px;
-  border-bottom: 2px solid transparent;
+  color: #475569;
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 4px 8px;
   white-space: nowrap;
+  border-radius: 4px;
+  transition: all 0.12s ease-in-out;
+}
+
+.workspace-tab > svg:first-child {
+  width: 13px !important;
+  height: 13px !important;
+}
+
+/* Tab settings dropdown trigger: only show on hover, active state, or when open */
+.workspace-tab .hover-dots {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease-in-out, visibility 0.12s ease-in-out;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 2px;
+}
+
+.workspace-tab:hover .hover-dots,
+.workspace-tab.active .hover-dots,
+.workspace-tab .show .hover-dots {
+  opacity: 1;
+  visibility: visible;
 }
 
 .workspace-tab:hover {
-  color: #111827;
-  background: transparent;
+  color: #0f172a;
+  background: #f1f5f9;
+  text-decoration: none;
 }
 
 .workspace-tab.active {
-  color: #111827;
-  font-weight: 700;
-  border-bottom-color: transparent;
-  background: rgba(0, 0, 0, 0.04);
-  border-radius: 6px;
+  color: #0f172a;
+  font-weight: 600;
+  background: #eceff1; /* Zbot grey background active tab */
+  border-color: transparent;
+}
+
+.workspace-tab.active:hover {
+  background: #eceff1;
+}
+
+.workspace-tab-divider {
+  width: 1px;
+  height: 14px;
+  background-color: #e2e8f0;
+  margin: 0 4px;
+  align-self: center;
+  flex-shrink: 0;
 }
 
 .workspace-toolbar-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding-bottom: 8px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
 .workspace-tool-btn {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  border: 1px solid #e6e9ee;
+  gap: 4px;
+  border: 1px solid #cbd5e1;
   background: #fff;
-  color: #667085;
+  color: #475569;
   border-radius: 999px;
-  padding: 7px 10px;
-  font-size: 0.78rem;
+  padding: 4px 10px;
+  font-size: 11px;
   font-weight: 600;
+  transition: all 0.12s ease-in-out;
+}
+
+.workspace-tool-btn:hover {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #94a3b8;
 }
 
 .group-container {
   background: var(--card-bg);
-  border: 1px solid #dddfe5;
-  border-radius: 16px;
-  box-shadow: none;
-  margin-bottom: 32px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+  margin-bottom: 24px;
   overflow: visible !important;
 }
 
@@ -1377,7 +1422,7 @@
 }
 
 /* ==========================================================================
-   CLICKUP LIST VIEW TABLE & CARD OVERRIDES
+   ZBOT LIST VIEW TABLE & CARD OVERRIDES
 ========================================================================== */
 .workspace-table th {
   font-size: 11px !important;
@@ -1415,8 +1460,8 @@
   border: none !important;
 }
 
-/* Assignee ClickUp Layout */
-.clickup-cell-assignee {
+/* Assignee Zbot Layout */
+.zbot-cell-assignee {
   display: flex !important;
   align-items: center !important;
   justify-content: flex-start !important;
@@ -1424,7 +1469,7 @@
   cursor: pointer !important;
 }
 
-.clickup-avatar-sm {
+.zbot-avatar-sm {
   width: 22px !important;
   height: 22px !important;
   font-size: 9px !important;
@@ -1439,7 +1484,7 @@
   flex-shrink: 0 !important;
 }
 
-.clickup-unassigned-icon {
+.zbot-unassigned-icon {
   width: 22px;
   height: 22px;
   border-radius: 50%;
@@ -1452,21 +1497,21 @@
   transition: all 0.15s ease;
 }
 
-.clickup-unassigned-icon:hover {
+.zbot-unassigned-icon:hover {
   background-color: #f1f5f9;
   color: #475569;
   border-color: #94a3b8;
 }
 
-/* Priority Flag ClickUp Layout */
-.clickup-cell-priority {
+/* Priority Flag Zbot Layout */
+.zbot-cell-priority {
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 /* Hidden Date Input & Display */
-.clickup-date-input-hidden {
+.zbot-date-input-hidden {
   position: absolute;
   top: 0;
   left: 0;
@@ -1477,7 +1522,7 @@
   z-index: 2;
 }
 
-.clickup-date-display {
+.zbot-date-display {
   position: relative;
   z-index: 1;
   font-size: 11px !important;
@@ -1486,12 +1531,12 @@
   pointer-events: none;
 }
 
-.clickup-date-text {
+.zbot-date-text {
   color: #334155 !important;
   margin-left: 2px !important;
 }
 
-/* ClickUp List View Collapsible Pill Groups */
+/* Zbot List View Collapsible Pill Groups */
 .group-header {
   padding: 8px 12px !important;
   border-bottom: 1px solid #e7e8ee !important;
@@ -1505,7 +1550,7 @@
   color: #1f2937 !important;
 }
 
-/* ClickUp Board View Cards UI */
+/* Zbot Board View Cards UI */
 .kanban-column {
   background-color: #f7f8fa !important;
   border-radius: 8px !important;
@@ -1774,20 +1819,70 @@
 .doc-formatting-toolbar {
   display: flex;
   align-items: center;
-  gap: 2px;
-  border-color: #e2e8f0;
+  gap: 3px;
+  background-color: #f0f4f9;
+  border: 1px solid #e0e4ec;
+  border-radius: 100px;
+  padding: 4px 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 
-.doc-formatting-toolbar .btn-link {
-  color: #64748b;
-  text-decoration: none;
-  font-size: 0.82rem;
+.doc-formatting-toolbar .btn,
+.doc-formatting-toolbar .dropdown-toggle {
+  color: #3c4043;
+  font-weight: 500;
   border-radius: 4px;
+  transition: background-color 0.15s, color 0.15s;
+  padding: 3px 6px;
 }
 
-.doc-formatting-toolbar .btn-link:hover {
-  background-color: #f1f5f9;
-  color: #0f172a;
+.doc-formatting-toolbar .btn:hover,
+.doc-formatting-toolbar .dropdown-toggle:hover {
+  background-color: #e2e8f0;
+  color: #1f2937;
+}
+
+.doc-formatting-toolbar .toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background-color: #dadce0;
+  margin: 0 6px;
+  align-self: center;
+}
+
+.doc-fontsize-input {
+  width: 36px;
+  height: 24px;
+  border: 1px solid #dadce0;
+  background-color: #ffffff;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #3c4043;
+  text-align: center;
+  outline: none;
+  margin: 0 2px;
+}
+
+.doc-fontsize-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: #5f6368;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.doc-fontsize-btn:hover {
+  background-color: #e2e8f0;
 }
 
 .doc-editable-content-area {
@@ -1802,7 +1897,7 @@
   border-color: #cbd5e1 !important;
 }
 
-.add-task-input-clickup {
+.add-task-input-zbot {
   border: none !important;
   background: transparent !important;
   outline: none !important;
@@ -1813,12 +1908,12 @@
   font-weight: 500 !important;
 }
 
-.add-task-input-clickup::placeholder {
+.add-task-input-zbot::placeholder {
   color: #94a3b8 !important;
   font-style: italic !important;
 }
 
-.add-task-input-clickup:focus {
+.add-task-input-zbot:focus {
   border-bottom: 1px solid #cbd5e1 !important;
 }
 
@@ -1832,8 +1927,8 @@
   position: relative;
 }
 
-/* === ClickUp Inline Task Builder === */
-.clickup-inline-builder-row {
+/* === Zbot Inline Task Builder === */
+.zbot-inline-builder-row {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1846,7 +1941,7 @@
   width: 100%;
 }
 
-.clickup-inline-builder-input {
+.zbot-inline-builder-input {
   flex-grow: 1;
   border: none !important;
   outline: none !important;
@@ -1856,19 +1951,19 @@
   background: transparent !important;
 }
 
-.clickup-inline-builder-input::placeholder {
+.zbot-inline-builder-input::placeholder {
   color: #94a3b8 !important;
   font-style: italic !important;
 }
 
-.clickup-inline-toolbar {
+.zbot-inline-toolbar {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
 }
 
-.clickup-inline-pill {
+.zbot-inline-pill {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1882,7 +1977,7 @@
   height: 22px;
 }
 
-.clickup-inline-icon-btn {
+.zbot-inline-icon-btn {
   background: transparent;
   border: none;
   color: #94a3b8;
@@ -1897,16 +1992,16 @@
   width: 24px;
 }
 
-.clickup-inline-icon-btn:hover {
+.zbot-inline-icon-btn:hover {
   color: #64748b;
   background-color: #f1f5f9;
 }
 
-.clickup-inline-icon-btn.has-value {
+.zbot-inline-icon-btn.has-value {
   color: #673de6;
 }
 
-.clickup-inline-btn-cancel {
+.zbot-inline-btn-cancel {
   background: transparent;
   border: none;
   color: #64748b;
@@ -1916,11 +2011,11 @@
   cursor: pointer;
 }
 
-.clickup-inline-btn-cancel:hover {
+.zbot-inline-btn-cancel:hover {
   color: #1e293b;
 }
 
-.clickup-inline-btn-save {
+.zbot-inline-btn-save {
   background-color: #1e1f22;
   border: none;
   color: #ffffff;
@@ -1935,31 +2030,35 @@
   transition: background-color 0.15s ease;
 }
 
-.clickup-inline-btn-save:hover {
+.zbot-inline-btn-save:hover {
   background-color: #0f172a;
 }
 
-/* === ClickUp Header "+ Task" Button === */
-.clickup-top-task-btn {
+/* === Zbot Header "+ Task" Button === */
+.zbot-top-task-btn {
   background-color: #1e1f22 !important;
   color: #ffffff !important;
   border: none !important;
-  border-radius: 6px !important;
-  padding: 6px 12px !important;
-  font-size: 13px !important;
+  border-radius: 4px !important;
+  padding: 4px 10px !important;
+  font-size: 11.5px !important;
   font-weight: 700 !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 6px !important;
+  gap: 4px !important;
   cursor: pointer !important;
-  transition: background-color 0.15s ease !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+  transition: background-color 0.12s ease !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
+}
+
+.zbot-top-task-btn:hover {
+  background-color: #0f172a !important;
 }
 
 
 
 /* ==========================================================================
-   CLICKUP SLEEK LIST VIEW OVERHAUL
+   ZBOT SLEEK LIST VIEW OVERHAUL
 ========================================================================== */
 
 /* Remove box shadows from status group sections */
@@ -1972,7 +2071,7 @@
   border-radius: 0 !important;
 }
 
-/* Status group header - flat ClickUp style */
+/* Status group header - flat Zbot style */
 .status-group-header {
   border-radius: 0 !important;
   background: transparent !important;
@@ -2007,7 +2106,7 @@
   transform: rotate(-90deg);
 }
 
-/* Workspace table - ClickUp flat style */
+/* Workspace table - Zbot flat style */
 .workspace-list-view .workspace-table {
   border-collapse: collapse !important;
   width: 100% !important;
@@ -2035,7 +2134,7 @@
   margin-left: 0 !important;
 }
 
-/* Task row hover - ClickUp style */
+/* Task row hover - Zbot style */
 .workspace-list-view .workspace-row {
   transition: background-color 0.1s ease;
 }
@@ -2044,7 +2143,7 @@
   background-color: #f8f9fb !important;
 }
 
-/* Task complete dot - ClickUp circle status icon */
+/* Task complete dot - Zbot circle status icon */
 .workspace-list-view .task-complete-dot {
   width: 18px !important;
   height: 18px !important;
@@ -2148,8 +2247,8 @@
   color: #ef4444;
 }
 
-/* ClickUp + Add Task link at bottom of each status section */
-.clickup-add-task-link {
+/* Zbot + Add Task link at bottom of each status section */
+.zbot-add-task-link {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -2163,7 +2262,7 @@
   background: transparent;
 }
 
-.clickup-add-task-link:hover {
+.zbot-add-task-link:hover {
   color: #475569;
 }
 
@@ -2188,11 +2287,11 @@
 }
 
 /* Priority column - centered flag */
-.workspace-list-view .clickup-cell-priority .dropdown-toggle {
+.workspace-list-view .zbot-cell-priority .dropdown-toggle {
   padding: 4px !important;
 }
 
-/* ClickUp Layout Redesign for UpdatesDrawer */
+/* Zbot Layout Redesign for UpdatesDrawer */
 .task-detail-activity-unified {
   display: flex;
   flex-direction: column;
@@ -2280,7 +2379,7 @@
   background: #f8fafc;
 }
 
-/* ClickUp Task Details Layout Styles */
+/* Zbot Task Details Layout Styles */
 .cu-breadcrumbs {
   display: flex;
   align-items: center;
@@ -3294,7 +3393,7 @@
   padding: 3px 10px;
 }
 
-.clickup-avatar-sm {
+.zbot-avatar-sm {
   width: 18px !important;
   height: 18px !important;
   font-size: 8px !important;
@@ -3325,15 +3424,118 @@
 }
 
 /* Proper Table View Dividers */
-.clickup-proper-table .workspace-table {
+.zbot-proper-table .workspace-table {
   border: 1px solid #e2e8f0;
   border-collapse: collapse;
 }
-.clickup-proper-table .workspace-table th,
-.clickup-proper-table .workspace-table td {
+.zbot-proper-table .workspace-table th,
+.zbot-proper-table .workspace-table td {
   border: 1px solid #e2e8f0 !important;
 }
-.clickup-proper-table .workspace-table th {
+.zbot-proper-table .workspace-table th {
   border-bottom: 2px solid #cbd5e1 !important;
   background-color: #fafbfd !important;
+}
+
+/* === Zbot-Style Compact Toolbar & Filters === */
+.workspace-inline-toolbar {
+  min-height: 34px;
+  background: transparent;
+}
+
+.zbot-status-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f1f0fc;
+  color: #673de6;
+  border: 1px solid #e1dffb;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.12s ease-in-out;
+}
+
+.zbot-status-pill-btn:hover {
+  background: #e8e6fa;
+}
+
+.zbot-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.workspace-inline-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.12s ease-in-out;
+}
+
+.workspace-inline-tool-btn:hover,
+.workspace-inline-tool-btn.active {
+  background-color: rgba(0, 0, 0, 0.04);
+  color: #0f172a;
+}
+
+.zbot-borderless-select {
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  padding: 3px 6px;
+  border-radius: 4px;
+  transition: all 0.12s ease-in-out;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+.zbot-borderless-select:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+  color: #0f172a;
+}
+
+.zbot-me-filter-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid #cbd5e1;
+  background-color: #f1f5f9;
+  color: #64748b;
+  font-size: 8.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.12s ease-in-out;
+  padding: 0;
+}
+
+.zbot-me-filter-btn:hover {
+  border-color: #673de6;
+  color: #673de6;
+  background-color: #f5f3ff;
+}
+
+.zbot-me-filter-btn.active {
+  border-color: #673de6;
+  background-color: #673de6;
+  color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(103, 61, 230, 0.15);
 }

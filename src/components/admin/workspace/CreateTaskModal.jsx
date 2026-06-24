@@ -284,30 +284,30 @@ const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initial
   const selectedGroup = selectedBoard?.groups?.find((g) => g.id === Number(selectedGroupId));
 
   return (
-    <Modal show={show} onHide={onHide} size="lg" centered className="clickup-task-modal">
-      <div className="clickup-modal-container">
+    <Modal show={show} onHide={onHide} size="lg" centered className="zbot-task-modal">
+      <div className="zbot-modal-container">
         {/* Top Navigation Tabs */}
-        <div className="clickup-tabs-bar">
+        <div className="zbot-tabs-bar">
           {["Task", "Doc", "Reminder", "Whiteboard", "Dashboard"].map((tab) => (
             <button
               key={tab}
-              className={`clickup-tab-btn ${activeTab === tab ? "active" : ""}`}
+              className={`zbot-tab-btn ${activeTab === tab ? "active" : ""}`}
               onClick={() => setActiveTab(tab)}
             >
               {tab}
             </button>
           ))}
-          <button className="clickup-modal-close" onClick={onHide}>&times;</button>
+          <button className="zbot-modal-close" onClick={onHide}>&times;</button>
         </div>
 
-        <div className="clickup-modal-content">
+        <div className="zbot-modal-content">
           {/* List selection & task type */}
           <div className="d-flex align-items-center gap-2 mb-3 px-1">
-            <Dropdown className="clickup-dropdown">
-              <Dropdown.Toggle variant="light" size="sm" className="clickup-drop-toggle">
+            <Dropdown className="zbot-dropdown">
+              <Dropdown.Toggle variant="light" size="sm" className="zbot-drop-toggle">
                 {selectedBoard ? `${selectedBoard.name} › ${selectedGroup?.name || "Select List"}` : "Select List..."}
               </Dropdown.Toggle>
-              <Dropdown.Menu className="clickup-drop-menu">
+              <Dropdown.Menu className="zbot-drop-menu">
                 {boards?.map((b) => (
                   <div key={b.id}>
                     <Dropdown.Header className="fw-bold">{b.name}</Dropdown.Header>
@@ -331,11 +331,11 @@ const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initial
               </Dropdown.Menu>
             </Dropdown>
 
-            <Dropdown className="clickup-dropdown">
-              <Dropdown.Toggle variant="light" size="sm" className="clickup-drop-toggle">
+            <Dropdown className="zbot-dropdown">
+              <Dropdown.Toggle variant="light" size="sm" className="zbot-drop-toggle">
                 <CheckCircle size={13} className="me-1 text-primary" /> Task
               </Dropdown.Toggle>
-              <Dropdown.Menu className="clickup-drop-menu">
+              <Dropdown.Menu className="zbot-drop-menu">
                 <Dropdown.Item active>Task</Dropdown.Item>
                 <Dropdown.Item disabled>Milestone</Dropdown.Item>
               </Dropdown.Menu>
@@ -343,10 +343,10 @@ const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initial
           </div>
 
           {/* Task Title Input */}
-          <div className="clickup-input-container">
+          <div className="zbot-input-container">
             <input
               type="text"
-              className="clickup-title-input"
+              className="zbot-title-input"
               placeholder="Task Name or type '/' for commands"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -355,10 +355,10 @@ const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initial
           </div>
 
           {/* Description Textarea */}
-          <div className="clickup-desc-container mb-3">
+          <div className="zbot-desc-container mb-3">
             <textarea
               ref={textareaRef}
-              className="clickup-desc-textarea"
+              className="zbot-desc-textarea"
               placeholder="Add description... (use @ to mention staff or department)"
               rows={4}
               value={notes}
@@ -385,7 +385,7 @@ const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initial
               </div>
             )}
             {aiWriting && (
-              <div className="clickup-desc-ai-loader">
+              <div className="zbot-desc-ai-loader">
                 <Spinner size="sm" animation="border" className="text-primary me-2" />
                 AI is generating notes...
               </div>
@@ -397,7 +397,7 @@ const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initial
             <Button
               variant="outline-secondary"
               size="sm"
-              className="clickup-ai-btn d-flex align-items-center gap-1"
+              className="zbot-ai-btn d-flex align-items-center gap-1"
               onClick={handleAiWrite}
               disabled={!title.trim() || aiWriting}
             >
@@ -407,13 +407,13 @@ const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initial
           </div>
 
           {/* Attribute buttons row */}
-          <div className="clickup-attributes-bar mb-3">
+          <div className="zbot-attributes-bar mb-3">
             {/* Status Dropdown */}
             <Dropdown className="attribute-dropdown">
               <Dropdown.Toggle as="div" className={`attribute-pill status-pill status-${status.toLowerCase().replace(" ", "-")}`}>
                 {status.toUpperCase()}
               </Dropdown.Toggle>
-              <Dropdown.Menu className="clickup-drop-menu text-center">
+              <Dropdown.Menu className="zbot-drop-menu text-center">
                 {["Not Started", "In Progress", "Done"].map((s) => (
                   <Dropdown.Item key={s} onClick={() => setStatus(s)} active={status === s}>
                     {s}
@@ -438,7 +438,7 @@ const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initial
                   <>+ Assignee</>
                 )}
               </Dropdown.Toggle>
-              <Dropdown.Menu className="clickup-drop-menu" style={{ maxHeight: "280px", overflowY: "auto" }}>
+              <Dropdown.Menu className="zbot-drop-menu" style={{ maxHeight: "280px", overflowY: "auto" }}>
                 <div className="px-2 py-1 sticky-top bg-white border-bottom">
                   <input
                     type="text"
@@ -497,7 +497,7 @@ const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initial
                 <Flag size={13} className={`priority-flag-${priority.toLowerCase()}`} />
                 <span>{priority}</span>
               </Dropdown.Toggle>
-              <Dropdown.Menu className="clickup-drop-menu text-center">
+              <Dropdown.Menu className="zbot-drop-menu text-center">
                 {["Urgent", "High", "Normal", "Low"].map((p) => (
                   <Dropdown.Item key={p} onClick={() => setPriority(p)} active={priority === p}>
                     {p}
@@ -512,7 +512,7 @@ const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initial
                 <Tag size={13} />
                 <span>{tags.length > 0 ? `${tags.length} Tags` : "+ Tags"}</span>
               </Dropdown.Toggle>
-              <Dropdown.Menu className="clickup-drop-menu p-2" style={{ width: "200px" }}>
+              <Dropdown.Menu className="zbot-drop-menu p-2" style={{ width: "200px" }}>
                 {["Operations", "Admissions", "Finance", "Urgent Check"].map((t) => (
                   <Form.Check
                     key={t}
@@ -540,15 +540,15 @@ const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initial
         </div>
 
         {/* Footer controls bar */}
-        <div className="clickup-footer-bar">
+        <div className="zbot-footer-bar">
           <div className="d-flex align-items-center gap-3">
-            <Button variant="light" size="sm" className="clickup-footer-btn font-semibold d-flex align-items-center gap-1">
+            <Button variant="light" size="sm" className="zbot-footer-btn font-semibold d-flex align-items-center gap-1">
               <BookOpen size={13} /> Templates
             </Button>
-            <button className="clickup-icon-btn"><Paperclip size={16} /></button>
-            <button className="clickup-icon-btn position-relative">
+            <button className="zbot-icon-btn"><Paperclip size={16} /></button>
+            <button className="zbot-icon-btn position-relative">
               <Bell size={16} />
-              <span className="clickup-notif-dot">1</span>
+              <span className="zbot-notif-dot">1</span>
             </button>
           </div>
 
@@ -560,13 +560,13 @@ const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initial
               <Button
                 variant="primary"
                 size="sm"
-                className="clickup-create-btn font-bold rounded-start-2 px-3"
+                className="zbot-create-btn font-bold rounded-start-2 px-3"
                 onClick={handleCreate}
                 disabled={!title.trim() || submitting}
               >
                 {submitting ? <Spinner size="sm" animation="border" /> : "Create Task"}
               </Button>
-              <Button variant="primary" size="sm" className="clickup-create-split-btn rounded-end-2 px-1">
+              <Button variant="primary" size="sm" className="zbot-create-split-btn rounded-end-2 px-1">
                 <ChevronDown size={13} />
               </Button>
             </div>

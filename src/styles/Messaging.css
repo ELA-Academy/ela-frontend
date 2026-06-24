@@ -57,8 +57,8 @@
   height: 100%;
 }
 
-/* === ClickUp Chat Layout === */
-.clickup-chat-layout {
+/* === Zbot Chat Layout === */
+.zbot-chat-layout {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -66,7 +66,7 @@
   background-color: #ffffff;
 }
 
-.clickup-chat-header {
+.zbot-chat-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -77,13 +77,13 @@
   flex-shrink: 0;
 }
 
-.clickup-header-left {
+.zbot-header-left {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.clickup-header-avatar {
+.zbot-header-avatar {
   width: 32px;
   height: 32px;
   border-radius: 6px;
@@ -97,33 +97,33 @@
   box-shadow: 0 2px 6px rgba(124, 58, 237, 0.2);
 }
 
-.clickup-header-info {
+.zbot-header-info {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.clickup-header-info h5 {
+.zbot-header-info h5 {
   margin: 0;
   font-size: 14px;
   font-weight: 700;
   color: #1f2937;
 }
 
-.clickup-header-status-dot {
+.zbot-header-status-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background-color: #10b981;
 }
 
-.clickup-header-tabs {
+.zbot-header-tabs {
   display: flex;
   gap: 20px;
   height: 100%;
 }
 
-.clickup-header-tab {
+.zbot-header-tab {
   border: none;
   background: transparent;
   font-size: 13px;
@@ -136,15 +136,15 @@
   transition: all 0.15s ease;
 }
 
-.clickup-header-tab:hover {
+.zbot-header-tab:hover {
   color: #1f2937;
 }
 
-.clickup-header-tab.active {
+.zbot-header-tab.active {
   color: #7c3aed;
 }
 
-.clickup-header-tab.active::after {
+.zbot-header-tab.active::after {
   content: "";
   position: absolute;
   bottom: 0;
@@ -156,7 +156,7 @@
   border-top-right-radius: 3px;
 }
 
-.clickup-chat-messages {
+.zbot-chat-messages {
   flex-grow: 1;
   overflow-y: auto;
   padding: 24px;
@@ -166,14 +166,14 @@
 }
 
 /* === Intro Section === */
-.clickup-intro-section {
+.zbot-intro-section {
   margin-bottom: 24px;
   padding-bottom: 24px;
   border-bottom: 1px solid #f3f4f6;
   flex-shrink: 0;
 }
 
-.clickup-intro-avatar {
+.zbot-intro-avatar {
   width: 60px;
   height: 60px;
   border-radius: 12px;
@@ -188,20 +188,20 @@
   box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25);
 }
 
-.clickup-intro-section h3 {
+.zbot-intro-section h3 {
   margin: 0 0 4px;
   font-size: 19px;
   font-weight: 800;
   color: #1f2937;
 }
 
-.clickup-intro-subtitle {
+.zbot-intro-subtitle {
   color: #6b7280;
   font-size: 13px;
   margin-bottom: 14px;
 }
 
-.clickup-intro-btn {
+.zbot-intro-btn {
   border: 1px solid #dddfe5;
   background-color: #ffffff;
   border-radius: 6px;
@@ -216,19 +216,19 @@
   transition: all 0.15s ease;
 }
 
-.clickup-intro-btn:hover {
+.zbot-intro-btn:hover {
   background-color: #f9fafb;
   color: #111827;
   border-color: #c3c6d1;
 }
 
-.clickup-intro-cards {
+.zbot-intro-cards {
   display: flex;
   gap: 16px;
   margin-top: 20px;
 }
 
-.clickup-intro-card {
+.zbot-intro-card {
   flex: 1;
   border-radius: 12px;
   padding: 14px 18px;
@@ -238,12 +238,12 @@
   border: 1px solid transparent;
 }
 
-.clickup-intro-card.pink-card {
+.zbot-intro-card.pink-card {
   background-color: #fff5f5;
   border-color: #ffcdd2;
 }
 
-.clickup-intro-card.green-card {
+.zbot-intro-card.green-card {
   background-color: #f0fdf4;
   border-color: #bbf7d0;
 }
@@ -285,14 +285,14 @@
   margin-top: 2px;
 }
 
-/* === ClickUp Messages List === */
-.clickup-messages-list {
+/* === Zbot Messages List === */
+.zbot-messages-list {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.clickup-message-row {
+.zbot-message-row {
   display: flex;
   gap: 12px;
   padding: 6px 8px;
@@ -300,11 +300,11 @@
   transition: background-color 0.15s ease;
 }
 
-.clickup-message-row:hover {
+.zbot-message-row:hover {
   background-color: #f9fafb;
 }
 
-.clickup-message-avatar {
+.zbot-message-avatar {
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -319,59 +319,59 @@
   border: 1px solid #e5e7eb;
 }
 
-.clickup-message-row.is-me .clickup-message-avatar {
+.zbot-message-row.is-me .zbot-message-avatar {
   background-color: #f3e8ff;
   color: #6b21a8;
   border-color: #e9d5ff;
 }
 
-.clickup-message-body {
+.zbot-message-body {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.clickup-message-header {
+.zbot-message-header {
   display: flex;
   align-items: flex-end;
   gap: 8px;
 }
 
-.clickup-message-sender {
+.zbot-message-sender {
   font-size: 13px;
   font-weight: 700;
   color: #1f2937;
 }
 
-.clickup-message-time {
+.zbot-message-time {
   font-size: 11px;
   color: #9ca3af;
 }
 
-.clickup-message-content {
+.zbot-message-content {
   font-size: 13px;
   color: #374151;
   line-height: 1.5;
 }
 
-.clickup-message-content p {
+.zbot-message-content p {
   margin: 0;
 }
 
-.clickup-message-row.sending {
+.zbot-message-row.sending {
   opacity: 0.6;
 }
 
-/* === ClickUp Input Footer === */
-.clickup-chat-footer {
+/* === Zbot Input Footer === */
+.zbot-chat-footer {
   padding: 16px 20px;
   background-color: #f3f4f6;
   border-top: 1px solid #e7e8ee;
   flex-shrink: 0;
 }
 
-.clickup-footer-banner {
+.zbot-footer-banner {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -385,7 +385,7 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.clickup-banner-dismiss-btn {
+.zbot-banner-dismiss-btn {
   border: none;
   background: transparent;
   color: #9ca3af;
@@ -396,11 +396,11 @@
   transition: color 0.15s ease;
 }
 
-.clickup-banner-dismiss-btn:hover {
+.zbot-banner-dismiss-btn:hover {
   color: #ffffff;
 }
 
-.clickup-input-card {
+.zbot-input-card {
   background-color: #ffffff;
   border: 1px solid #dddfe5;
   border-radius: 8px;
@@ -410,7 +410,7 @@
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.02);
 }
 
-.clickup-textarea {
+.zbot-textarea {
   border: none !important;
   outline: none !important;
   resize: none;
@@ -422,11 +422,11 @@
   color: #1f2937 !important;
 }
 
-.clickup-textarea:focus {
+.zbot-textarea:focus {
   box-shadow: none !important;
 }
 
-.clickup-toolbar-container {
+.zbot-toolbar-container {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -435,7 +435,7 @@
   margin-top: 4px;
 }
 
-.clickup-toolbar-left {
+.zbot-toolbar-left {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -469,7 +469,7 @@
   color: #7c3aed;
 }
 
-.clickup-send-btn {
+.zbot-send-btn {
   width: 26px;
   height: 26px;
   border-radius: 4px;
@@ -483,11 +483,11 @@
   transition: all 0.15s ease;
 }
 
-.clickup-send-btn:hover {
+.zbot-send-btn:hover {
   background-color: #6d28d9;
 }
 
-.clickup-send-btn:disabled {
+.zbot-send-btn:disabled {
   background-color: #e5e7eb;
   color: #9ca3af;
   cursor: not-allowed;
@@ -570,7 +570,7 @@
   margin-right: 5px;
 }
 
-/* === Dock Messaging Panel at Viewport Bottom (Upwork/ClickUp style) === */
+/* === Dock Messaging Panel at Viewport Bottom (Upwork/Zbot style) === */
 .content-area-workspace:has(.workspace-message-panel) {
   overflow-y: hidden !important;
   height: calc(100vh - 80px);
