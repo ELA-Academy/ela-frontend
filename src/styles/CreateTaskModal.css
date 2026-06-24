@@ -1,11 +1,11 @@
-/* ClickUp Task Modal Styling */
-.clickup-task-modal .modal-content {
+/* Zbot Task Modal Styling */
+.zbot-task-modal .modal-content {
   background: transparent;
   border: 0;
   box-shadow: none;
 }
 
-.clickup-modal-container {
+.zbot-modal-container {
   background: #ffffff;
   border-radius: 16px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12), 0 0 1px rgba(0, 0, 0, 0.2);
@@ -16,7 +16,7 @@
 }
 
 /* Tabs Bar */
-.clickup-tabs-bar {
+.zbot-tabs-bar {
   background: #f7f8fa;
   border-bottom: 1px solid #e9ebeb;
   display: flex;
@@ -25,7 +25,7 @@
   height: 44px;
 }
 
-.clickup-tab-btn {
+.zbot-tab-btn {
   background: transparent;
   border: 0;
   font-size: 13px;
@@ -39,15 +39,15 @@
   outline: none;
 }
 
-.clickup-tab-btn:hover {
+.zbot-tab-btn:hover {
   color: #2c3e50;
 }
 
-.clickup-tab-btn.active {
+.zbot-tab-btn.active {
   color: #111827;
 }
 
-.clickup-tab-btn.active::after {
+.zbot-tab-btn.active::after {
   content: "";
   position: absolute;
   bottom: 0;
@@ -57,7 +57,7 @@
   background: #111827;
 }
 
-.clickup-modal-close {
+.zbot-modal-close {
   margin-left: auto;
   background: transparent;
   border: 0;
@@ -67,14 +67,14 @@
 }
 
 /* Content */
-.clickup-modal-content {
+.zbot-modal-content {
   padding: 20px 24px;
   display: flex;
   flex-direction: column;
 }
 
 /* Dropdowns */
-.clickup-drop-toggle {
+.zbot-drop-toggle {
   background: #f1f2f4 !important;
   border: 0 !important;
   color: #4a5568 !important;
@@ -85,7 +85,7 @@
   box-shadow: none !important;
 }
 
-.clickup-drop-menu {
+.zbot-drop-menu {
   border: 0 !important;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1) !important;
   border-radius: 10px !important;
@@ -100,7 +100,7 @@
 }
 
 /* Inputs */
-.clickup-title-input {
+.zbot-title-input {
   width: 100%;
   font-size: 20px;
   font-weight: 500;
@@ -110,15 +110,15 @@
   outline: none;
 }
 
-.clickup-title-input::placeholder {
+.zbot-title-input::placeholder {
   color: #9ca3af;
 }
 
-.clickup-desc-container {
+.zbot-desc-container {
   position: relative;
 }
 
-.clickup-desc-textarea {
+.zbot-desc-textarea {
   width: 100%;
   border: 0;
   resize: none;
@@ -128,11 +128,11 @@
   padding: 4px 0;
 }
 
-.clickup-desc-textarea::placeholder {
+.zbot-desc-textarea::placeholder {
   color: #9ca3af;
 }
 
-.clickup-desc-ai-loader {
+.zbot-desc-ai-loader {
   font-size: 12px;
   color: #7c3aed;
   display: flex;
@@ -141,7 +141,7 @@
 }
 
 /* AI Button */
-.clickup-ai-btn {
+.zbot-ai-btn {
   border: 1px solid #d1d5db !important;
   background: transparent !important;
   color: #4b5563 !important;
@@ -152,13 +152,13 @@
   transition: all 0.2s !important;
 }
 
-.clickup-ai-btn:hover {
+.zbot-ai-btn:hover {
   background: #f3f4f6 !important;
   border-color: #9ca3af !important;
 }
 
 /* Attributes Bar */
-.clickup-attributes-bar {
+.zbot-attributes-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -231,7 +231,7 @@
 .priority-flag-low { color: #9ca3af; fill: #9ca3af; }
 
 /* Footer */
-.clickup-footer-bar {
+.zbot-footer-bar {
   background: #f7f8fa;
   border-top: 1px solid #e9ebeb;
   height: 52px;
@@ -241,7 +241,7 @@
   padding: 0 16px;
 }
 
-.clickup-footer-btn {
+.zbot-footer-btn {
   background: transparent !important;
   border: 0 !important;
   color: #4b5563 !important;
@@ -251,11 +251,11 @@
   box-shadow: none !important;
 }
 
-.clickup-footer-btn:hover {
+.zbot-footer-btn:hover {
   background: #e5e7eb !important;
 }
 
-.clickup-icon-btn {
+.zbot-icon-btn {
   background: transparent;
   border: 0;
   color: #6b7280;
@@ -267,11 +267,11 @@
   justify-content: center;
 }
 
-.clickup-icon-btn:hover {
+.zbot-icon-btn:hover {
   background: #e5e7eb;
 }
 
-.clickup-notif-dot {
+.zbot-notif-dot {
   position: absolute;
   top: 1px;
   right: 1px;
@@ -287,13 +287,13 @@
   justify-content: center;
 }
 
-.clickup-create-btn {
+.zbot-create-btn {
   border-top-right-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
   font-size: 12px !important;
 }
 
-.clickup-create-split-btn {
+.zbot-create-split-btn {
   border-top-left-radius: 0 !important;
   border-bottom-left-radius: 0 !important;
   padding-left: 2px !important;

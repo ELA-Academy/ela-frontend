@@ -212,14 +212,14 @@ const BoardsPage = () => {
 
   const renderAssigneeCell = (task) => (
     <Dropdown className="w-100">
-      <Dropdown.Toggle as="div" className="assignee-cell clickup-cell-assignee">
+      <Dropdown.Toggle as="div" className="assignee-cell zbot-cell-assignee">
         {task.assignee_id ? (
           <>
-            <div className="assignee-avatar clickup-avatar-sm">{getInitials(task.assignee_name)}</div>
+            <div className="assignee-avatar zbot-avatar-sm">{getInitials(task.assignee_name)}</div>
             <span className="assignee-name-txt">{task.assignee_name}</span>
           </>
         ) : (
-          <div className="clickup-unassigned-icon mx-auto" title="Unassigned">
+          <div className="zbot-unassigned-icon mx-auto" title="Unassigned">
             <User size={13} strokeWidth={2.5} />
           </div>
         )}
@@ -248,25 +248,25 @@ const BoardsPage = () => {
     const dateVal = task[fieldName];
     const displayVal = dateVal ? format(parseISO(dateVal), "MMM d") : "";
     return (
-      <div className="clickup-date-cell-wrapper position-relative text-center w-100">
+      <div className="zbot-date-cell-wrapper position-relative text-center w-100">
         <input
           type="date"
-          className="clickup-date-input-hidden"
+          className="zbot-date-input-hidden"
           value={dateVal || ""}
           onChange={(event) =>
             handleTaskCellChange(task.id, fieldName, event.target.value)
           }
         />
-        <div className="clickup-date-display d-inline-flex align-items-center justify-content-center gap-1 text-muted cursor-pointer w-100">
+        <div className="zbot-date-display d-inline-flex align-items-center justify-content-center gap-1 text-muted cursor-pointer w-100">
           <Calendar size={12} className={dateVal ? "text-slate-500" : "text-slate-300"} />
-          {displayVal && <span className="clickup-date-text">{displayVal}</span>}
+          {displayVal && <span className="zbot-date-text">{displayVal}</span>}
         </div>
       </div>
     );
   };
 
   const renderPriorityDropdown = (task) => (
-    <Dropdown className="w-100 text-center clickup-cell-priority">
+    <Dropdown className="w-100 text-center zbot-cell-priority">
       <Dropdown.Toggle as="div" className="d-inline-flex align-items-center justify-content-center cursor-pointer w-100">
         {getPriorityFlag(task.priority, 13)}
       </Dropdown.Toggle>
@@ -500,12 +500,12 @@ const BoardsPage = () => {
                                     <tr>
                                       <td colSpan="5" className="py-2">
                                         {inlineTaskBuilders[statusKey]?.active ? (
-                                          <div className="clickup-inline-builder-row">
+                                          <div className="zbot-inline-builder-row">
                                             <span className="task-complete-dot me-1" style={{ borderColor: "#8c9baf", cursor: "default" }} />
                                             <input
                                               type="text"
                                               placeholder="Task Name or type '/' for commands"
-                                              className="clickup-inline-builder-input"
+                                              className="zbot-inline-builder-input"
                                               value={inlineTaskBuilders[statusKey]?.title || ""}
                                               onChange={(e) => {
                                                 const val = e.target.value;
@@ -526,17 +526,17 @@ const BoardsPage = () => {
                                               autoFocus
                                             />
 
-                                            <div className="clickup-inline-toolbar">
-                                              <span className="clickup-inline-pill">
+                                            <div className="zbot-inline-toolbar">
+                                              <span className="zbot-inline-pill">
                                                 <span className="group-bullet-dot" style={{ backgroundColor: "#3b82f6", width: 8, height: 8 }} />
                                                 Task
                                               </span>
 
                                               {/* Assignee Selection */}
                                               <Dropdown align="end">
-                                                <Dropdown.Toggle as="div" className={`clickup-inline-icon-btn ${inlineTaskBuilders[statusKey]?.assignee ? "has-value" : ""}`} title="Assignee">
+                                                <Dropdown.Toggle as="div" className={`zbot-inline-icon-btn ${inlineTaskBuilders[statusKey]?.assignee ? "has-value" : ""}`} title="Assignee">
                                                   {inlineTaskBuilders[statusKey]?.assignee ? (
-                                                    <div className="assignee-avatar clickup-avatar-sm" style={{ width: 18, height: 18, fontSize: 8 }}>
+                                                    <div className="assignee-avatar zbot-avatar-sm" style={{ width: 18, height: 18, fontSize: 8 }}>
                                                       {getInitials(inlineTaskBuilders[statusKey]?.assignee.name)}
                                                     </div>
                                                   ) : (
@@ -570,7 +570,7 @@ const BoardsPage = () => {
                                               <div className="position-relative d-inline-block">
                                                 <input
                                                   type="date"
-                                                  className="clickup-date-input-hidden"
+                                                  className="zbot-date-input-hidden"
                                                   value={inlineTaskBuilders[statusKey]?.dueDate || ""}
                                                   onChange={(e) => {
                                                     const val = e.target.value;
@@ -580,14 +580,14 @@ const BoardsPage = () => {
                                                     }));
                                                   }}
                                                 />
-                                                <button type="button" className={`clickup-inline-icon-btn ${inlineTaskBuilders[statusKey]?.dueDate ? "has-value" : ""}`} title="Due Date">
+                                                <button type="button" className={`zbot-inline-icon-btn ${inlineTaskBuilders[statusKey]?.dueDate ? "has-value" : ""}`} title="Due Date">
                                                   <Calendar size={13} />
                                                 </button>
                                               </div>
 
                                               {/* Priority Selection */}
                                               <Dropdown align="end">
-                                                <Dropdown.Toggle as="div" className={`clickup-inline-icon-btn ${inlineTaskBuilders[statusKey]?.priority ? "has-value" : ""}`} title="Priority">
+                                                <Dropdown.Toggle as="div" className={`zbot-inline-icon-btn ${inlineTaskBuilders[statusKey]?.priority ? "has-value" : ""}`} title="Priority">
                                                   {getPriorityFlag(inlineTaskBuilders[statusKey]?.priority || "Normal", 13)}
                                                 </Dropdown.Toggle>
                                                 <Dropdown.Menu className="board-dropdown-menu">
@@ -608,7 +608,7 @@ const BoardsPage = () => {
 
                                               <button
                                                 type="button"
-                                                className="clickup-inline-btn-cancel"
+                                                className="zbot-inline-btn-cancel"
                                                 onClick={() => {
                                                   setInlineTaskBuilders(prev => ({
                                                     ...prev,
@@ -620,7 +620,7 @@ const BoardsPage = () => {
                                               </button>
                                               <button
                                                 type="button"
-                                                className="clickup-inline-btn-save"
+                                                className="zbot-inline-btn-save"
                                                 onClick={() => handleAddTask(group.id, statusVal)}
                                                 disabled={!(inlineTaskBuilders[statusKey]?.title || "").trim()}
                                               >

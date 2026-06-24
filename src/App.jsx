@@ -8,6 +8,7 @@ import {
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { AuthProvider } from "./context/AuthContext";
+import { TimerProvider } from "./context/TimerContext";
 
 import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
@@ -49,104 +50,108 @@ import ManageSuperAdmins from "./pages/admin/ManageSuperAdmins";
 import BoardsPage from "./pages/admin/BoardsPage";
 import BoardDetailPage from "./pages/admin/BoardDetailPage";
 import InboxPage from "./pages/admin/InboxPage";
+import DocsHubPage from "./pages/admin/DocsHubPage";
 import WorkspaceLayout from "./components/admin/workspace/WorkspaceLayout";
 
 function App() {
   return (
     <AuthProvider>
-      <ToastContainer
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-      />
-      <Router>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/superadmin" element={<SuperAdminSetup />} />
-          <Route path="/logout" element={<Logout />} />
-          <Route path="/admissions/apply" element={<AdmissionForm />} />
-          <Route path="/enrollment/:token" element={<PublicEnrollmentForm />} />
-          <Route path="/setup-password" element={<SetupPassword />} />
+      <TimerProvider>
+        <ToastContainer
+          position="top-right"
+          autoClose={5000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="light"
+        />
+        <Router>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/superadmin" element={<SuperAdminSetup />} />
+            <Route path="/logout" element={<Logout />} />
+            <Route path="/admissions/apply" element={<AdmissionForm />} />
+            <Route path="/enrollment/:token" element={<PublicEnrollmentForm />} />
+            <Route path="/setup-password" element={<SetupPassword />} />
 
-          <Route element={<ProtectedRoute />}>
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<Navigate to="dashboard" replace />} />
-              <Route path="dashboard" element={<DashboardOverview />} />
-              <Route element={<SuperAdminRoute />}>
-                <Route path="super-admins" element={<ManageSuperAdmins />} />
-                <Route path="departments" element={<ManageDepartments />} />
-                <Route path="staff" element={<ManageStaff />} />
-                <Route path="activity-feed" element={<ActivityFeedPage />} />
+            <Route element={<ProtectedRoute />}>
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<Navigate to="dashboard" replace />} />
+                <Route path="dashboard" element={<DashboardOverview />} />
+                <Route element={<SuperAdminRoute />}>
+                  <Route path="super-admins" element={<ManageSuperAdmins />} />
+                  <Route path="departments" element={<ManageDepartments />} />
+                  <Route path="staff" element={<ManageStaff />} />
+                  <Route path="activity-feed" element={<ActivityFeedPage />} />
+                </Route>
+                <Route path="students" element={<AllStudentsPage />} />
+                <Route
+                  path="students/:studentId"
+                  element={<StudentProfilePage />}
+                />
+                <Route path="profile" element={<ProfilePage />} />
+                <Route path="settings" element={<ProfilePage />} />
+                <Route path="tasks" element={<AllTasksPage />} />
+                
+                {/* Workspace — shared sidebar layout */}
+                <Route element={<WorkspaceLayout />}>
+                  <Route path="boards" element={<BoardsPage />} />
+                  <Route path="boards/:boardId" element={<BoardDetailPage />} />
+                  <Route path="messaging" element={<MessagingPage />} />
+                  <Route path="inbox" element={<InboxPage />} />
+                  <Route path="docs" element={<DocsHubPage />} />
+                </Route>
+                <Route path="admissions" element={<AdmissionsDashboard />} />
+                <Route path="admissions/leads" element={<LeadsListPage />} />
+                <Route
+                  path="admissions/leads/:token"
+                  element={<LeadDetailPage />}
+                />
+                <Route path="accounting" element={<AccountingDashboard />} />
+                <Route path="billing" element={<BillingDashboard />} />
+                <Route
+                  path="billing/accounts/:studentId"
+                  element={<StudentLedgerPage />}
+                />
+                <Route
+                  path="billing/recurring-plans"
+                  element={<RecurringPlansPage />}
+                />
+                <Route
+                  path="billing/subsidies"
+                  element={<SubsidyAccountsPage />}
+                />
+                <Route
+                  path="billing/subsidies/:subsidyId"
+                  element={<SubsidyDetailPage />}
+                />
+                <Route path="enrollment" element={<EnrollmentDashboard />} />
+                <Route
+                  path="enrollment/forms/:formId"
+                  element={<EnrollmentFormBuilder />}
+                />
+                <Route
+                  path="administration"
+                  element={<AdministrationDashboard />}
+                />
+                <Route
+                  path="administration/message-log"
+                  element={<MessageLogPage />}
+                />
+                <Route path="my-dashboard" element={<GenericDashboard />} />
+                <Route path="*" element={<NotFound />} />
               </Route>
-              <Route path="students" element={<AllStudentsPage />} />
-              <Route
-                path="students/:studentId"
-                element={<StudentProfilePage />}
-              />
-              <Route path="profile" element={<ProfilePage />} />
-              <Route path="settings" element={<ProfilePage />} />
-              <Route path="tasks" element={<AllTasksPage />} />
-              
-              {/* Workspace — shared sidebar layout */}
-              <Route element={<WorkspaceLayout />}>
-                <Route path="boards" element={<BoardsPage />} />
-                <Route path="boards/:boardId" element={<BoardDetailPage />} />
-                <Route path="messaging" element={<MessagingPage />} />
-                <Route path="inbox" element={<InboxPage />} />
-              </Route>
-              <Route path="admissions" element={<AdmissionsDashboard />} />
-              <Route path="admissions/leads" element={<LeadsListPage />} />
-              <Route
-                path="admissions/leads/:token"
-                element={<LeadDetailPage />}
-              />
-              <Route path="accounting" element={<AccountingDashboard />} />
-              <Route path="billing" element={<BillingDashboard />} />
-              <Route
-                path="billing/accounts/:studentId"
-                element={<StudentLedgerPage />}
-              />
-              <Route
-                path="billing/recurring-plans"
-                element={<RecurringPlansPage />}
-              />
-              <Route
-                path="billing/subsidies"
-                element={<SubsidyAccountsPage />}
-              />
-              <Route
-                path="billing/subsidies/:subsidyId"
-                element={<SubsidyDetailPage />}
-              />
-              <Route path="enrollment" element={<EnrollmentDashboard />} />
-              <Route
-                path="enrollment/forms/:formId"
-                element={<EnrollmentFormBuilder />}
-              />
-              <Route
-                path="administration"
-                element={<AdministrationDashboard />}
-              />
-              <Route
-                path="administration/message-log"
-                element={<MessageLogPage />}
-              />
-              <Route path="my-dashboard" element={<GenericDashboard />} />
-              <Route path="*" element={<NotFound />} />
             </Route>
-          </Route>
 
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Router>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Router>
+      </TimerProvider>
     </AuthProvider>
   );
 }

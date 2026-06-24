@@ -70,8 +70,8 @@ const CreateChannelModal = ({
                 }))
               }
             >
-              <option value="channel">School-wide channel</option>
-              <option value="department">Department-only message thread</option>
+              <option value="channel">Public Channel (visible to everyone)</option>
+              <option value="department">Department Channel (restricted to a department)</option>
             </Form.Select>
           </Form.Group>
 

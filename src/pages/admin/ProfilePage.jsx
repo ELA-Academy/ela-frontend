@@ -11,7 +11,7 @@ import {
   Tabs,
   Tab,
 } from "react-bootstrap";
-import { getMyProfile, changePassword } from "../../services/profileService";
+import { getMyProfile, changePassword, updateProfile } from "../../services/profileService";
 import { showSuccess, showError } from "../../utils/notificationService";
 
 const ProfilePage = () => {
@@ -49,7 +49,7 @@ const ProfilePage = () => {
         <Card.Body>
           <Tabs defaultActiveKey="details" id="profile-tabs" className="mb-4">
             <Tab eventKey="details" title="Profile Details">
-              {profile && <ProfileDetails profile={profile} />}
+              {profile && <ProfileDetails profile={profile} onProfileUpdated={(updated) => setProfile(prev => ({ ...prev, ...updated }))} />}
             </Tab>
             <Tab eventKey="security" title="Security">
               <ChangePasswordForm />
@@ -61,38 +61,88 @@ const ProfilePage = () => {
   );
 };
 
-// Sub-component for displaying profile details
-const ProfileDetails = ({ profile }) => (
-  <Row>
-    <Col md={6}>
-      <Form.Group className="mb-3">
-        <Form.Label>Full Name</Form.Label>
-        <Form.Control type="text" value={profile.name} readOnly />
-      </Form.Group>
-      <Form.Group className="mb-3">
-        <Form.Label>Email Address</Form.Label>
-        <Form.Control type="email" value={profile.email} readOnly />
-      </Form.Group>
-    </Col>
-    <Col md={6}>
-      <Form.Group className="mb-3">
-        <Form.Label>Role</Form.Label>
-        <Form.Control type="text" value={profile.role} readOnly />
-      </Form.Group>
-      {profile.departments && profile.departments.length > 0 && (
-        <Form.Group className="mb-3">
-          <Form.Label>Assigned Departments</Form.Label>
-          <Form.Control
-            as="textarea"
-            rows={3}
-            value={profile.departments.join("\n")}
-            readOnly
-          />
-        </Form.Group>
-      )}
-    </Col>
-  </Row>
-);
+// Sub-component for editing profile details
+const ProfileDetails = ({ profile, onProfileUpdated }) => {
+  const [formData, setFormData] = useState({
+    name: profile.name || "",
+    email: profile.email || "",
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.name.trim() || !formData.email.trim()) {
+      showError("Name and email are required.");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const response = await updateProfile(formData);
+      showSuccess(response.message);
+      if (onProfileUpdated) {
+        onProfileUpdated(response.user);
+      }
+    } catch (err) {
+      showError(err.response?.data?.error || "Failed to update profile.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Form onSubmit={handleSubmit}>
+      <Row>
+        <Col md={6}>
+          <Form.Group className="mb-3">
+            <Form.Label>Full Name</Form.Label>
+            <Form.Control
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              required
+            />
+          </Form.Group>
+          <Form.Group className="mb-3">
+            <Form.Label>Email Address</Form.Label>
+            <Form.Control
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+            />
+          </Form.Group>
+          <Button variant="primary" type="submit" disabled={isSubmitting} className="mt-2">
+            {isSubmitting ? <Spinner as="span" size="sm" /> : "Save Changes"}
+          </Button>
+        </Col>
+        <Col md={6}>
+          <Form.Group className="mb-3">
+            <Form.Label>Role</Form.Label>
+            <Form.Control type="text" value={profile.role} readOnly disabled />
+          </Form.Group>
+          {profile.departments && profile.departments.length > 0 && (
+            <Form.Group className="mb-3">
+              <Form.Label>Assigned Departments</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                value={profile.departments.join("\n")}
+                readOnly
+                disabled
+              />
+            </Form.Group>
+          )}
+        </Col>
+      </Row>
+    </Form>
+  );
+};
 
 // Sub-component for the password change form
 const ChangePasswordForm = () => {

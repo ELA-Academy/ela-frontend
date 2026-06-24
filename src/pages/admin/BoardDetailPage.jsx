@@ -10,7 +10,8 @@ import {
   Plus,
   Trash,
 } from "react-bootstrap-icons";
-import { FileText, LayoutList, Kanban, Flag, User, Calendar, BookOpen, Folder, Repeat, GitFork, Link, MoreHorizontal, Copy, Star, Edit3, Bell, ArrowRight, PlusSquare, Layers, ClipboardCopy, Zap, Clock, Mail, Archive, Trash2, MessageSquare, Search, AlignLeft, Table } from "lucide-react";
+import { FileText, LayoutList, Kanban, Flag, User, Calendar, BookOpen, Folder, Repeat, GitFork, Link, MoreHorizontal, Copy, Star, Edit3, Bell, ArrowRight, PlusSquare, Layers, ClipboardCopy, Zap, Clock, Mail, Archive, Trash2, MessageSquare, Search, AlignLeft, Table, PieChart, Image, Activity, Share2, Users, MapPin, Pin, Settings, Lock, Filter, RefreshCw, Columns, ChevronDown, Send } from "lucide-react";
+import { toast } from "react-toastify";
 import { format, parseISO } from "date-fns";
 
 import UpdatesDrawer from "../../components/admin/UpdatesDrawer";
@@ -21,6 +22,10 @@ import CalendarView from "../../components/admin/workspace/CalendarView";
 import GanttView from "../../components/admin/workspace/GanttView";
 import DocsView from "../../components/admin/workspace/DocsView";
 import DashboardView from "../../components/admin/workspace/DashboardView";
+import CustomFieldsView from "../../components/admin/workspace/CustomFieldsView";
+import FilesView from "../../components/admin/workspace/FilesView";
+import FormView from "../../components/admin/workspace/FormView";
+import TimesheetsView from "../../components/admin/workspace/TimesheetsView";
 import { useWorkspace } from "../../components/admin/workspace/WorkspaceLayout";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -55,14 +60,50 @@ const PRIORITY_META = {
   Low: { className: "badge-priority-low", label: "Low" },
 };
 
-const VIEW_OPTIONS = [
-  { key: "overview", label: "Overview", icon: FileText },
-  { key: "list", label: "List", icon: LayoutList },
-  { key: "board", label: "Board", icon: Kanban },
-  { key: "table", label: "Table", icon: Table },
-  { key: "calendar", label: "Calendar", icon: Calendar },
-  { key: "gantt", label: "Gantt", icon: Calendar3 },
+const ALL_AVAILABLE_VIEWS = [
+  { type: "overview", label: "Overview", icon: FileText, desc: "Project landing page" },
+  { type: "list", label: "List", icon: LayoutList, desc: "To-do list layout" },
+  { type: "board", label: "Board", icon: Kanban, desc: "Kanban board" },
+  { type: "table", label: "Table", icon: Table, desc: "Spreadsheet style" },
+  { type: "calendar", label: "Calendar", icon: Calendar, desc: "Calendar view" },
+  { type: "gantt", label: "Gantt", icon: Calendar3, desc: "Gantt Chart" },
+  { type: "files", label: "Files", icon: Folder, desc: "File folder storage" },
+  { type: "docs", label: "Doc", icon: FileText, desc: "Wiki pages" },
+  { type: "form", label: "Form", icon: ClipboardCopy, desc: "Survey sheets" },
+  { type: "timesheets", label: "Timesheets", icon: Clock, desc: "Time tracking log" },
+  { type: "custom_fields", label: "Custom Fields", icon: Layers, desc: "Field manager" },
+  { type: "timeline", label: "Timeline", icon: Calendar, desc: "Roadmap view" },
+  { type: "dashboard", label: "Dashboard", icon: PieChart, desc: "Reports" },
+  { type: "whiteboard", label: "Whiteboard", icon: Image, desc: "Canvas drawing" },
+  { type: "activity", label: "Activity", icon: Activity, desc: "Audit feed" },
+  { type: "mind_map", label: "Mind Map", icon: Share2, desc: "Visual ideas" },
+  { type: "team", label: "Team", icon: Users, desc: "Capacity view" },
+  { type: "map", label: "Map", icon: MapPin, desc: "Geographic layout" },
 ];
+
+const getViewIcon = (type) => {
+  switch (type) {
+    case "overview": return FileText;
+    case "list": return LayoutList;
+    case "board": return Kanban;
+    case "table": return Table;
+    case "calendar": return Calendar;
+    case "gantt": return Calendar3;
+    case "files": return Folder;
+    case "docs": return BookOpen;
+    case "form": return ClipboardCopy;
+    case "timesheets": return Clock;
+    case "custom_fields": return Layers;
+    case "timeline": return Calendar;
+    case "dashboard": return PieChart;
+    case "whiteboard": return Image;
+    case "activity": return Activity;
+    case "mind_map": return Share2;
+    case "team": return Users;
+    case "map": return MapPin;
+    default: return FileText;
+  }
+};
 
 const BOARD_COLORS = ["#673de6", "#00ca72", "#ff9f1a", "#ff59a3", "#1a73e8", "#ff3860"];
 
@@ -134,9 +175,19 @@ const BoardDetailPage = () => {
 
   // Filters
   const [filterQuery, setFilterQuery] = useState("");
+  const [showSearchInput, setShowSearchInput] = useState(false);
   const [filterAssignee, setFilterAssignee] = useState("");
   const [filterPriority, setFilterPriority] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
+
+  const isMeFiltered = String(filterAssignee) === String(user?.id);
+  const handleToggleMeFilter = () => {
+    if (isMeFiltered) {
+      setFilterAssignee("");
+    } else {
+      setFilterAssignee(String(user?.id));
+    }
+  };
 
   // Bulk Actions
   const [selectedTaskIds, setSelectedTaskIds] = useState([]);
@@ -145,6 +196,157 @@ const BoardDetailPage = () => {
   const [savedViews, setSavedViews] = useState([]);
   const [currentViewName, setCurrentViewName] = useState("");
   const [newViewName, setNewViewName] = useState("");
+  const [newViewPrivate, setNewViewPrivate] = useState(false);
+  const [newViewPinned, setNewViewPinned] = useState(false);
+
+  // Dynamic Space Views states
+  const [boardViews, setBoardViews] = useState([]);
+  const [renamingViewKey, setRenamingViewKey] = useState(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [showSharingModal, setShowSharingModal] = useState(false);
+  const [sharingViewKey, setSharingViewKey] = useState(null);
+  const [viewSearchQuery, setViewSearchQuery] = useState("");
+
+  const sortedBoardViews = useMemo(() => {
+    if (!boardViews) return [];
+    return [...boardViews].sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return 0;
+    });
+  }, [boardViews]);
+
+  const currentViewType = useMemo(() => {
+    if (activeView === "overview" || activeView === "custom_fields") return activeView;
+    const match = boardViews.find(v => v.key === activeView);
+    return match ? match.type : activeView;
+  }, [activeView, boardViews]);
+
+  const filteredAvailableViews = useMemo(() => {
+    const q = viewSearchQuery.trim().toLowerCase();
+    if (!q) return ALL_AVAILABLE_VIEWS;
+    return ALL_AVAILABLE_VIEWS.filter(v =>
+      v.label.toLowerCase().includes(q) ||
+      v.desc.toLowerCase().includes(q)
+    );
+  }, [viewSearchQuery]);
+
+  const showMainToolbar = useMemo(() => {
+    return ["list", "board", "table"].includes(currentViewType);
+  }, [currentViewType]);
+  
+  // Interactive Whiteboard mock notes state
+  const [whiteboardNotes, setWhiteboardNotes] = useState([
+    { id: 1, text: "Brainstorming new features", color: "#fef08a", x: 40, y: 30 },
+    { id: 2, text: "Zbot-style views checklist", color: "#fbcfe8", x: 260, y: 50 },
+    { id: 3, text: "Staging deployment config notes", color: "#bbf7d0", x: 120, y: 200 }
+  ]);
+
+  useEffect(() => {
+    if (boardId) {
+      try {
+        const stored = localStorage.getItem(`board_views_${boardId}`);
+        if (stored) {
+          setBoardViews(JSON.parse(stored));
+        } else {
+          const initialViews = [
+            { key: "list", type: "list", label: "List", isPinned: false, isPrivate: false, isDefault: true, isFavorite: false },
+            { key: "board", type: "board", label: "Board", isPinned: false, isPrivate: false, isDefault: false, isFavorite: false },
+            { key: "table", type: "table", label: "Table", isPinned: false, isPrivate: false, isDefault: false, isFavorite: false },
+            { key: "calendar", type: "calendar", label: "Calendar", isPinned: false, isPrivate: false, isDefault: false, isFavorite: false },
+            { key: "gantt", type: "gantt", label: "Gantt", isPinned: false, isPrivate: false, isDefault: false, isFavorite: false },
+            { key: "files", type: "files", label: "Files", isPinned: false, isPrivate: false, isDefault: false, isFavorite: false },
+          ];
+          setBoardViews(initialViews);
+          localStorage.setItem(`board_views_${boardId}`, JSON.stringify(initialViews));
+        }
+      } catch (err) {
+        console.error("Failed to load board views", err);
+      }
+    }
+  }, [boardId]);
+
+  const saveBoardViews = (newViews) => {
+    setBoardViews(newViews);
+    localStorage.setItem(`board_views_${boardId}`, JSON.stringify(newViews));
+  };
+
+  const handleRenameView = (key, newLabel) => {
+    if (!newLabel.trim()) return;
+    const updated = boardViews.map(v => v.key === key ? { ...v, label: newLabel.trim() } : v);
+    saveBoardViews(updated);
+    setRenamingViewKey(null);
+  };
+
+  const handleToggleFavoriteView = (key) => {
+    const updated = boardViews.map(v => v.key === key ? { ...v, isFavorite: !v.isFavorite } : v);
+    saveBoardViews(updated);
+  };
+
+  const handleTogglePinView = (key) => {
+    const updated = boardViews.map(v => v.key === key ? { ...v, isPinned: !v.isPinned } : v);
+    saveBoardViews(updated);
+  };
+
+  const handleTogglePrivateView = (key) => {
+    const updated = boardViews.map(v => v.key === key ? { ...v, isPrivate: !v.isPrivate } : v);
+    saveBoardViews(updated);
+  };
+
+  const handleSetDefaultView = (key) => {
+    const updated = boardViews.map(v => v.key === key ? { ...v, isDefault: true } : { ...v, isDefault: false });
+    saveBoardViews(updated);
+  };
+
+  const handleDuplicateViewTab = (key) => {
+    const target = boardViews.find(v => v.key === key);
+    if (!target) return;
+    const newKey = `${target.type}_${Date.now()}`;
+    const newView = {
+      ...target,
+      key: newKey,
+      label: `${target.label} (Copy)`,
+      isDefault: false
+    };
+    const updated = [...boardViews, newView];
+    saveBoardViews(updated);
+    setActiveView(newKey);
+    toast.success("View duplicated successfully!");
+  };
+
+  const handleDeleteViewTab = (key) => {
+    if (boardViews.length <= 1) {
+      toast.warn("Cannot delete the only remaining view.");
+      return;
+    }
+    const updated = boardViews.filter(v => v.key !== key);
+    saveBoardViews(updated);
+    if (activeView === key) {
+      setActiveView(updated[0].key);
+    }
+    toast.success("View deleted.");
+  };
+
+  const handleAddNewView = (viewType) => {
+    const template = ALL_AVAILABLE_VIEWS.find(v => v.type === viewType);
+    if (!template) return;
+    const newKey = `${viewType}_${Date.now()}`;
+    const newView = {
+      key: newKey,
+      type: viewType,
+      label: template.label,
+      isPinned: newViewPinned,
+      isPrivate: newViewPrivate,
+      isDefault: false,
+      isFavorite: false
+    };
+    const updated = [...boardViews, newView];
+    saveBoardViews(updated);
+    setActiveView(newKey);
+    setNewViewPrivate(false);
+    setNewViewPinned(false);
+    toast.success(`Added ${template.label} View!`);
+  };
 
   // Templates
   const [templates, setTemplates] = useState([]);
@@ -631,11 +833,15 @@ const BoardDetailPage = () => {
     const taskIdParam = Number(params.get("task"));
     if (!taskIdParam) {
       setActiveTaskId(null);
-      return;
+    } else {
+      const task = allTasks.find((item) => item.id === taskIdParam);
+      setActiveTaskId(task ? taskIdParam : null);
     }
 
-    const task = allTasks.find((item) => item.id === taskIdParam);
-    setActiveTaskId(task ? taskIdParam : null);
+    const viewParam = params.get("view");
+    if (viewParam) {
+      setActiveView(viewParam);
+    }
   }, [location.search, board, allTasks]);
 
   const getTaskAssignees = (task) => {
@@ -1129,10 +1335,10 @@ const BoardDetailPage = () => {
     const dateVal = task[fieldName];
     const displayVal = dateVal ? format(parseISO(dateVal), "MMM d") : "";
     return (
-      <div className="clickup-date-cell-wrapper position-relative text-center w-100" style={{ minHeight: "32px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div className="zbot-date-cell-wrapper position-relative text-center w-100" style={{ minHeight: "32px", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <input
           type="date"
-          className="clickup-date-input-hidden"
+          className="zbot-date-input-hidden"
           value={dateVal ? dateVal.substring(0, 10) : ""}
           onChange={(event) =>
             handleTaskCellChange(task.id, fieldName, event.target.value)
@@ -1143,12 +1349,12 @@ const BoardDetailPage = () => {
             } catch (err) {}
           }}
         />
-        <div className="clickup-date-display d-inline-flex align-items-center justify-content-center gap-1 text-muted cursor-pointer w-100">
+        <div className="zbot-date-display d-inline-flex align-items-center justify-content-center gap-1 text-muted cursor-pointer w-100">
           <Calendar size={12} className={dateVal ? "text-slate-500" : "text-slate-300"} />
           {displayVal ? (
-            <span className="clickup-date-text">{displayVal}</span>
+            <span className="zbot-date-text">{displayVal}</span>
           ) : (
-            <span className="clickup-date-text text-slate-300" style={{ fontSize: "10px" }}>Set Date</span>
+            <span className="zbot-date-text text-slate-300" style={{ fontSize: "10px" }}>Set Date</span>
           )}
         </div>
       </div>
@@ -1168,13 +1374,13 @@ const BoardDetailPage = () => {
 
     return (
     <Dropdown className="w-100">
-      <Dropdown.Toggle as="div" className="assignee-cell clickup-cell-assignee">
+      <Dropdown.Toggle as="div" className="assignee-cell zbot-cell-assignee">
         {selectedAssignees.length > 0 ? (
           <div className="assignee-stack">
             {selectedAssignees.slice(0, 3).map((assignee) => (
               <div
                 key={getAssigneeKey(assignee)}
-                className="assignee-avatar clickup-avatar-sm"
+                className="assignee-avatar zbot-avatar-sm"
                 title={assignee.name}
               >
                 {getInitials(assignee.name)}
@@ -1187,7 +1393,7 @@ const BoardDetailPage = () => {
             </span>
           </div>
         ) : (
-          <div className="clickup-unassigned-icon mx-auto" title="Unassigned">
+          <div className="zbot-unassigned-icon mx-auto" title="Unassigned">
             <User size={13} strokeWidth={2.5} />
           </div>
         )}
@@ -1264,7 +1470,7 @@ const BoardDetailPage = () => {
 
   const renderPriorityDropdown = (task) => {
     return (
-      <Dropdown className="w-100 text-center clickup-cell-priority">
+      <Dropdown className="w-100 text-center zbot-cell-priority">
         <Dropdown.Toggle as="div" className="d-inline-flex align-items-center justify-content-center cursor-pointer w-100">
           {getPriorityFlag(task.priority, 13)}
         </Dropdown.Toggle>
@@ -1430,6 +1636,464 @@ const BoardDetailPage = () => {
     </div>
   );
 
+  // --- MOCK VIEW RENDERERS ---
+  const renderTimelineView = () => {
+    const dates = [];
+    const today = new Date();
+    for (let i = -1; i < 6; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      dates.push(d);
+    }
+    
+    return (
+      <div className="workspace-timeline-view p-4 bg-white rounded-3 shadow-sm border mb-4">
+        <h5 className="fw-bold text-slate-800 mb-3 flex items-center gap-2">
+          <Calendar size={18} className="text-primary" />
+          <span>Workspace Timeline / Roadmap</span>
+        </h5>
+        <div className="table-responsive">
+          <table className="table table-bordered border-slate-100 align-middle">
+            <thead className="bg-slate-50">
+              <tr>
+                <th style={{ minWidth: "200px" }} className="text-xs font-bold text-slate-500 uppercase">Task Name</th>
+                {dates.map((d, idx) => (
+                  <th key={idx} className="text-center text-xs font-bold text-slate-400 uppercase" style={{ minWidth: "100px" }}>
+                    {format(d, "MMM d")}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filteredTasks.slice(0, 8).map((t) => {
+                const start = t.start_date ? new Date(t.start_date) : today;
+                const due = t.due_date ? new Date(t.due_date) : today;
+                const startIdx = Math.max(0, Math.min(6, Math.floor((start - today) / (86400 * 1000)) + 1));
+                const span = Math.max(1, Math.min(7 - startIdx, Math.ceil((due - start) / (86400 * 1000)) + 1));
+                
+                return (
+                  <tr key={t.id}>
+                    <td className="text-xs font-semibold text-slate-700 cursor-pointer hover:text-primary" onClick={() => handleTaskClickFromView(t.id)}>
+                      {t.title}
+                    </td>
+                    {Array.from({ length: 7 }).map((_, colIdx) => {
+                      if (colIdx === startIdx) {
+                        return (
+                          <td key={colIdx} colSpan={span} className="p-1">
+                            <div 
+                              onClick={() => handleTaskClickFromView(t.id)}
+                              className="text-white text-[10px] fw-bold rounded-pill p-2 text-center shadow-sm cursor-pointer hover:opacity-90"
+                              style={{ 
+                                backgroundColor: t.status === "Done" ? "#00b67a" : (t.priority === "Urgent" || t.priority === "High" ? "#ff59a3" : "#673de6"),
+                                textOverflow: "ellipsis",
+                                overflow: "hidden",
+                                whiteSpace: "nowrap"
+                              }}
+                            >
+                              {t.title} ({t.priority})
+                            </div>
+                          </td>
+                        );
+                      }
+                      if (colIdx > startIdx && colIdx < startIdx + span) {
+                        return null;
+                      }
+                      return <td key={colIdx} style={{ backgroundColor: "#fafbfc" }}></td>;
+                    })}
+                  </tr>
+                );
+              })}
+              {filteredTasks.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="text-center py-4 text-muted text-xs">No tasks on this timeline.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  const renderDashboardReportView = () => {
+    const total = filteredTasks.length;
+    const completed = filteredTasks.filter(t => t.status === "Done").length;
+    const pending = total - completed;
+    const overdue = filteredTasks.filter(t => t.due_date && new Date(t.due_date) < new Date() && t.status !== "Done").length;
+    const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
+    
+    const urgent = filteredTasks.filter(t => t.priority === "Urgent").length;
+    const high = filteredTasks.filter(t => t.priority === "High").length;
+    const normal = filteredTasks.filter(t => t.priority === "Normal").length;
+    const low = filteredTasks.filter(t => t.priority === "Low").length;
+
+    return (
+      <div className="workspace-dashboard-report p-4 bg-white rounded-3 shadow-sm border mb-4">
+        <h5 className="fw-bold text-slate-800 mb-4 flex items-center gap-2">
+          <PieChart size={18} className="text-indigo-500" />
+          <span>Workspace Reporting Dashboard</span>
+        </h5>
+        
+        <div className="row g-3 mb-4">
+          <div className="col-6 col-md-3">
+            <div className="p-3 rounded-3 border bg-slate-50/50 d-flex flex-column gap-1">
+              <span className="text-[10px] text-slate-400 font-bold uppercase">Total Tasks</span>
+              <span className="fs-3 fw-bold text-slate-900">{total}</span>
+            </div>
+          </div>
+          <div className="col-6 col-md-3">
+            <div className="p-3 rounded-3 border bg-emerald-50/20 border-emerald-100 d-flex flex-column gap-1">
+              <span className="text-[10px] text-emerald-600 font-bold uppercase">Completed</span>
+              <span className="fs-3 fw-bold text-emerald-600">{completed}</span>
+            </div>
+          </div>
+          <div className="col-6 col-md-3">
+            <div className="p-3 rounded-3 border bg-indigo-50/20 border-indigo-100 d-flex flex-column gap-1">
+              <span className="text-[10px] text-indigo-600 font-bold uppercase">In Progress</span>
+              <span className="fs-3 fw-bold text-indigo-600">{pending}</span>
+            </div>
+          </div>
+          <div className="col-6 col-md-3">
+            <div className="p-3 rounded-3 border bg-rose-50/20 border-rose-100 d-flex flex-column gap-1">
+              <span className="text-[10px] text-rose-600 font-bold uppercase">Overdue</span>
+              <span className="fs-3 fw-bold text-rose-600">{overdue}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="row g-4">
+          <div className="col-12 col-md-6">
+            <div className="p-3 rounded-3 border h-100">
+              <h6 className="fw-bold text-slate-700 mb-3">Task Completion Rate</h6>
+              <div className="d-flex align-items-center gap-3">
+                <div className="flex-grow-1">
+                  <div className="progress" style={{ height: "10px" }}>
+                    <div className="progress-bar bg-emerald-500" style={{ width: `${rate}%` }}></div>
+                  </div>
+                </div>
+                <span className="fw-bold text-slate-800 text-sm">{rate}%</span>
+              </div>
+              <p className="text-muted text-[10px] mt-2 mb-0">Calculated from total tasks assigned to status groups on this board.</p>
+            </div>
+          </div>
+
+          <div className="col-12 col-md-6">
+            <div className="p-3 rounded-3 border h-100">
+              <h6 className="fw-bold text-slate-700 mb-3">Priority Distribution</h6>
+              <div className="d-flex flex-column gap-2.5">
+                {[
+                  { name: "Urgent", count: urgent, color: "bg-rose-500" },
+                  { name: "High", count: high, color: "bg-orange-500" },
+                  { name: "Normal", count: normal, color: "bg-indigo-500" },
+                  { name: "Low", count: low, color: "bg-slate-400" }
+                ].map((item, idx) => {
+                  const pct = total > 0 ? Math.round((item.count / total) * 100) : 0;
+                  return (
+                    <div key={idx} className="d-flex align-items-center justify-content-between text-xs">
+                      <span className="fw-semibold text-slate-600" style={{ width: "80px" }}>{item.name}</span>
+                      <div className="flex-grow-1 mx-3">
+                        <div className="progress" style={{ height: "6px" }}>
+                          <div className={`progress-bar ${item.color}`} style={{ width: `${pct}%` }}></div>
+                        </div>
+                      </div>
+                      <span className="fw-bold text-slate-800" style={{ width: "30px", textAlign: "right" }}>{item.count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderWhiteboardView = () => {
+    const handleAddNote = (color) => {
+      const newNote = {
+        id: Date.now(),
+        text: "New sticky note - Double click to edit",
+        color,
+        x: 50 + Math.random() * 150,
+        y: 60 + Math.random() * 150
+      };
+      setWhiteboardNotes(prev => [...prev, newNote]);
+    };
+
+    const handleDeleteNote = (id) => {
+      setWhiteboardNotes(prev => prev.filter(n => n.id !== id));
+    };
+
+    const handleUpdateNoteText = (id, newText) => {
+      setWhiteboardNotes(prev => prev.map(n => n.id === id ? { ...n, text: newText } : n));
+    };
+
+    return (
+      <div className="workspace-whiteboard-view p-4 bg-white rounded-3 shadow-sm border mb-4">
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h5 className="fw-bold text-slate-800 mb-0 flex items-center gap-2">
+            <Image size={18} className="text-warning" />
+            <span>Workspace Whiteboard / Canvas</span>
+          </h5>
+          <div className="d-flex gap-2">
+            <Button size="sm" variant="outline-warning" onClick={() => handleAddNote("#fef08a")} style={{ fontSize: "11px" }}>+ Yellow Note</Button>
+            <Button size="sm" variant="outline-danger" onClick={() => handleAddNote("#fbcfe8")} style={{ fontSize: "11px" }}>+ Pink Note</Button>
+            <Button size="sm" variant="outline-success" onClick={() => handleAddNote("#bbf7d0")} style={{ fontSize: "11px" }}>+ Green Note</Button>
+          </div>
+        </div>
+
+        <div className="d-flex gap-3 border rounded-3 bg-slate-50/50 p-2" style={{ minHeight: "450px" }}>
+          <div className="d-flex flex-column gap-2 p-2 bg-white rounded-3 shadow-sm border align-items-center" style={{ width: "40px" }}>
+            {["Pointer", "Text", "Draw", "Sticky", "Erase", "Shapes"].map((tool, idx) => (
+              <button 
+                key={idx} 
+                className="p-2 border-0 bg-white rounded hover:bg-slate-100 text-slate-500" 
+                title={tool}
+                onClick={() => toast.info(`Switched to ${tool} tool.`)}
+              >
+                <MoreHorizontal size={14} />
+              </button>
+            ))}
+          </div>
+
+          <div className="flex-grow-1 position-relative bg-white rounded-3 border shadow-inner p-3 overflow-hidden" style={{ backgroundImage: "radial-gradient(#e2e8f0 1.2px, transparent 1.2px)", backgroundSize: "16px 16px" }}>
+            {whiteboardNotes.map((note) => (
+              <div 
+                key={note.id}
+                style={{
+                  position: "absolute",
+                  left: `${note.x}px`,
+                  top: `${note.y}px`,
+                  width: "160px",
+                  height: "160px",
+                  backgroundColor: note.color,
+                  padding: "12px",
+                  boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)",
+                  border: "1px solid rgba(0,0,0,0.05)",
+                  fontFamily: "Inter, sans-serif",
+                  fontSize: "11px",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  borderRadius: "2px"
+                }}
+              >
+                <textarea 
+                  className="bg-transparent border-0 w-100 h-75 resize-none text-slate-800 font-semibold focus:outline-none"
+                  value={note.text}
+                  onChange={(e) => handleUpdateNoteText(note.id, e.target.value)}
+                />
+                <div className="d-flex justify-content-between align-items-center border-top border-dark/5 pt-1.5 mt-1.5">
+                  <span className="text-[9px] text-slate-400">Sticky Note</span>
+                  <button onClick={() => handleDeleteNote(note.id)} className="btn btn-link p-0 text-danger hover:text-red-700" style={{ fontSize: "9px", textDecoration: "none" }}>Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderActivityView = () => {
+    const defaultActivities = [
+      { user: "Omobolaji Durojaiye", action: "changed task status of 'Create staging environment' to 'Complete'", time: "2 hours ago", icon: CheckCircleFill, color: "#00b67a" },
+      { user: "Justice Dibofu", action: "uploaded attachment 'schema_v2.pdf' to messaging", time: "4 hours ago", icon: FileText, color: "#673de6" },
+      { user: "Omobolaji Durojaiye", action: "logged 1.5 hours of billable timesheet entry", time: "1 day ago", icon: Clock, color: "#f59e0b" },
+      { user: "System Admin", action: "created new status group 'Q&A Board Testing'", time: "2 days ago", icon: Plus, color: "#3b82f6" }
+    ];
+
+    return (
+      <div className="workspace-activity-view p-4 bg-white rounded-3 shadow-sm border mb-4">
+        <h5 className="fw-bold text-slate-800 mb-4 flex items-center gap-2">
+          <Activity size={18} className="text-rose-500" />
+          <span>Space Activity Logs & Audit Feed</span>
+        </h5>
+        <div className="d-flex flex-column gap-3.5" style={{ borderLeft: "2px solid #f1f5f9", paddingLeft: "16px", marginLeft: "8px" }}>
+          {defaultActivities.map((act, idx) => {
+            const Icon = act.icon;
+            return (
+              <div key={idx} className="position-relative d-flex gap-3 align-items-start text-xs">
+                <div 
+                  className="position-absolute rounded-circle bg-white border d-flex align-items-center justify-content-center"
+                  style={{ left: "-27px", top: "2px", width: "20px", height: "20px" }}
+                >
+                  <Icon size={10} style={{ color: act.color }} />
+                </div>
+                <div>
+                  <span className="fw-bold text-slate-800">{act.user}</span>{" "}
+                  <span className="text-slate-500">{act.action}</span>
+                  <span className="d-block text-[10px] text-slate-400 font-medium mt-1">{act.time}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderMindMapView = () => {
+    return (
+      <div className="workspace-mindmap-view p-4 bg-white rounded-3 shadow-sm border mb-4">
+        <h5 className="fw-bold text-slate-800 mb-4 flex items-center gap-2">
+          <Share2 size={18} className="text-indigo-500" />
+          <span>Workspace Task Mind Map</span>
+        </h5>
+        
+        <div className="border rounded-3 p-3 bg-slate-50 d-flex align-items-center justify-content-center overflow-auto" style={{ minHeight: "450px" }}>
+          <div className="position-relative" style={{ width: "700px", height: "400px" }}>
+            <svg className="position-absolute w-100 h-100" style={{ left: 0, top: 0, pointerEvents: "none" }}>
+              <path d="M 350 200 Q 250 150 150 100" stroke="#cbd5e1" strokeWidth="2" fill="none" />
+              <path d="M 350 200 Q 350 100 350 60" stroke="#cbd5e1" strokeWidth="2" fill="none" />
+              <path d="M 350 200 Q 450 150 550 100" stroke="#cbd5e1" strokeWidth="2" fill="none" />
+              <path d="M 350 200 Q 350 300 350 340" stroke="#cbd5e1" strokeWidth="2" fill="none" />
+            </svg>
+
+            <div 
+              className="position-absolute bg-slate-900 text-white rounded-circle shadow-lg d-flex align-items-center justify-content-center text-center p-3 fw-bold"
+              style={{ left: "300px", top: "165px", width: "100px", height: "70px", fontSize: "12px", zIndex: 10 }}
+            >
+              {board?.name || "Project"}
+            </div>
+
+            <div 
+              className="position-absolute bg-white border border-slate-200 text-slate-700 rounded-3 shadow-sm p-2 text-center text-xs fw-semibold"
+              style={{ left: "100px", top: "80px", width: "100px" }}
+            >
+              To Do
+            </div>
+            <div 
+              className="position-absolute bg-white border border-indigo-200 text-indigo-700 rounded-3 shadow-sm p-2 text-center text-xs fw-semibold"
+              style={{ left: "300px", top: "30px", width: "100px" }}
+            >
+              In Progress
+            </div>
+            <div 
+              className="position-absolute bg-white border border-emerald-200 text-emerald-700 rounded-3 shadow-sm p-2 text-center text-xs fw-semibold"
+              style={{ left: "500px", top: "80px", width: "100px" }}
+            >
+              Complete
+            </div>
+            <div 
+              className="position-absolute bg-white border border-slate-200 text-slate-500 rounded-3 shadow-sm p-2 text-center text-xs fw-semibold"
+              style={{ left: "300px", top: "340px", width: "100px" }}
+            >
+              Unscheduled
+            </div>
+
+            <div className="position-absolute bottom-0 end-0 text-[10px] text-slate-400 font-bold bg-white/80 p-2 rounded shadow-sm">
+              Interactive node branches for status groupings
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderTeamView = () => {
+    const teamMembers = assignees.length > 0 ? assignees : [
+      { name: "Omobolaji Durojaiye", role: "superadmin" },
+      { name: "Justice Dibofu", role: "staff" }
+    ];
+
+    return (
+      <div className="workspace-team-view p-4 bg-white rounded-3 shadow-sm border mb-4">
+        <h5 className="fw-bold text-slate-800 mb-4 flex items-center gap-2">
+          <Users size={18} className="text-primary" />
+          <span>Team Capacity Planning & Workload</span>
+        </h5>
+        <div className="table-responsive">
+          <table className="table align-middle">
+            <thead>
+              <tr className="text-xs text-slate-400 uppercase font-bold">
+                <th>Team Member</th>
+                <th>Role</th>
+                <th>Assigned Tasks</th>
+                <th>Workload Capacity</th>
+              </tr>
+            </thead>
+            <tbody>
+              {teamMembers.map((member, idx) => {
+                const count = filteredTasks.filter(t => t.responsible_staff_id === member.id || t.responsible_super_admin_id === member.id).length;
+                const capacity = count * 20;
+                const barColor = capacity > 80 ? "bg-rose-500" : (capacity > 40 ? "bg-indigo-500" : "bg-emerald-500");
+                return (
+                  <tr key={idx} className="text-xs">
+                    <td className="fw-semibold text-slate-800 flex items-center gap-2">
+                      <div className="bg-slate-100 rounded-circle text-slate-600 d-flex align-items-center justify-content-center fw-bold" style={{ width: "26px", height: "26px", fontSize: "10px" }}>
+                        {member.name.substring(0,2).toUpperCase()}
+                      </div>
+                      <span>{member.name}</span>
+                    </td>
+                    <td className="text-muted capitalize">{member.role}</td>
+                    <td className="fw-bold text-slate-700">{count} tasks</td>
+                    <td>
+                      <div className="d-flex align-items-center gap-2.5">
+                        <div className="flex-grow-1" style={{ maxWidth: "200px" }}>
+                          <div className="progress" style={{ height: "6px" }}>
+                            <div className={`progress-bar ${barColor}`} style={{ width: `${capacity}%` }}></div>
+                          </div>
+                        </div>
+                        <span className="font-semibold text-slate-500">{capacity}% ({count * 8}h / 40h)</span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  const renderMapView = () => {
+    return (
+      <div className="workspace-map-view p-4 bg-white rounded-3 shadow-sm border mb-4">
+        <h5 className="fw-bold text-slate-800 mb-4 flex items-center gap-2">
+          <MapPin size={18} className="text-danger" />
+          <span>Workspace Geographic / Site Locations</span>
+        </h5>
+        <div className="row g-3">
+          <div className="col-12 col-md-8">
+            <div className="border rounded-3 p-3 bg-slate-50 d-flex align-items-center justify-content-center text-muted" style={{ minHeight: "360px", backgroundImage: "linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px)", backgroundSize: "20px 20px" }}>
+              <div className="text-center">
+                <MapPin size={48} className="text-danger mb-2 animate-bounce" />
+                <h6 className="fw-bold text-slate-700">Campus Layout Blueprint</h6>
+                <p className="small mb-0 text-[10px]">Mock Map Visualizer showing active task site coordinates.</p>
+              </div>
+            </div>
+          </div>
+          <div className="col-12 col-md-4">
+            <div className="border rounded-3 p-3 bg-slate-50/50">
+              <h6 className="fw-bold text-xs text-slate-700 mb-3 uppercase tracking-wide">Tasks by Location</h6>
+              <div className="d-flex flex-column gap-2">
+                {[
+                  { site: "Main Office Campus", tasks: ["Setup Password flow UI", "Create staging environment"], color: "#673de6" },
+                  { site: "Administration Block", tasks: ["Password Reset endpoints"], color: "#00b67a" },
+                  { site: "Remote Sites", tasks: ["Announcements endpoint"], color: "#f59e0b" }
+                ].map((loc, idx) => (
+                  <div key={idx} className="bg-white border rounded-2xl p-2.5 shadow-sm">
+                    <span className="fw-bold text-xs text-slate-850 d-block mb-1.5 flex items-center gap-1">
+                      <span className="d-inline-block rounded-circle" style={{ width: "6px", height: "6px", backgroundColor: loc.color }} />
+                      {loc.site}
+                    </span>
+                    <ul className="list-unstyled mb-0 d-flex flex-column gap-1 text-[10px] text-slate-500 font-medium">
+                      {loc.tasks.map((taskName, tIdx) => (
+                        <li key={tIdx} className="truncate">• {taskName}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderOverviewView = () => (
     <DashboardView
       board={board}
@@ -1544,7 +2208,7 @@ const BoardDetailPage = () => {
                               {renderTaskNotesIcon(task)}
                               <button
                                 type="button"
-                                className="clickup-inline-icon-btn"
+                                className="zbot-inline-icon-btn"
                                 onClick={() =>
                                   setInlineSubtaskBuilders((prev) => ({
                                     ...prev,
@@ -1698,13 +2362,13 @@ const BoardDetailPage = () => {
                             <tr className="workspace-subtask-builder-row">
                               <td />
                               <td colSpan="7">
-                                <div className="clickup-inline-builder-row subtask-builder d-flex align-items-center justify-content-between">
+                                <div className="zbot-inline-builder-row subtask-builder d-flex align-items-center justify-content-between">
                                   <div className="d-flex align-items-center flex-grow-1 gap-2">
                                     <GitFork size={13} className="text-slate-400" style={{ transform: "rotate(180deg)" }} />
                                     <input
                                       type="text"
                                       placeholder="Subtask name or type '/' for commands"
-                                      className="clickup-inline-builder-input flex-grow-1"
+                                      className="zbot-inline-builder-input flex-grow-1"
                                       value={inlineSubtaskBuilders[task.id] || ""}
                                       onChange={(e) =>
                                         setInlineSubtaskBuilders((prev) => ({ ...prev, [task.id]: e.target.value }))
@@ -1729,12 +2393,12 @@ const BoardDetailPage = () => {
                                         {subtaskMeta.assignees.length > 0 ? (
                                           <div className="d-flex -space-x-1" style={{ marginRight: "4px" }}>
                                             {subtaskMeta.assignees.slice(0, 2).map((a) => (
-                                              <div key={getAssigneeKey(a)} className="assignee-avatar clickup-avatar-sm" title={a.name}>
+                                              <div key={getAssigneeKey(a)} className="assignee-avatar zbot-avatar-sm" title={a.name}>
                                                 {getInitials(a.name)}
                                               </div>
                                             ))}
                                             {subtaskMeta.assignees.length > 2 && (
-                                              <div className="assignee-avatar clickup-avatar-sm bg-slate-200 text-slate-600 font-bold d-flex align-items-center justify-content-center" style={{ fontSize: "10px" }}>
+                                              <div className="assignee-avatar zbot-avatar-sm bg-slate-200 text-slate-600 font-bold d-flex align-items-center justify-content-center" style={{ fontSize: "10px" }}>
                                                 +{subtaskMeta.assignees.length - 2}
                                               </div>
                                             )}
@@ -1774,7 +2438,7 @@ const BoardDetailPage = () => {
                                     <div className="position-relative d-flex align-items-center">
                                       <input
                                         type="date"
-                                        className="clickup-date-input-hidden"
+                                        className="zbot-date-input-hidden"
                                         value={subtaskMeta.due_date || ""}
                                         onChange={(e) => updateMeta(task.id, "due_date", e.target.value)}
                                         onClick={(e) => {
@@ -1811,7 +2475,7 @@ const BoardDetailPage = () => {
                                   </div>
                                   <button
                                     type="button"
-                                    className="clickup-inline-save-btn"
+                                    className="zbot-inline-save-btn"
                                     onClick={() => handleAddSubtaskFromList(task, inlineSubtaskBuilders[task.id])}
                                   >
                                     Save
@@ -1829,12 +2493,12 @@ const BoardDetailPage = () => {
                         <tr>
                           <td colSpan="8" className="py-1">
                             {inlineTaskBuilders[statusKey]?.active ? (
-                              <div className="clickup-inline-builder-row">
+                              <div className="zbot-inline-builder-row">
                                 <span className="task-complete-dot me-1" style={{ borderColor: "#8c9baf", cursor: "default" }} />
                                 <input
                                   type="text"
                                   placeholder="Task name or type '/' for commands"
-                                  className="clickup-inline-builder-input"
+                                  className="zbot-inline-builder-input"
                                   value={inlineTaskBuilders[statusKey]?.title || ""}
                                   onChange={(e) => {
                                     const val = e.target.value;
@@ -1855,17 +2519,17 @@ const BoardDetailPage = () => {
                                   autoFocus
                                 />
 
-                                <div className="clickup-inline-toolbar">
-                                  <span className="clickup-inline-pill">
+                                <div className="zbot-inline-toolbar">
+                                  <span className="zbot-inline-pill">
                                     <span className="group-bullet-dot" style={{ backgroundColor: "#3b82f6", width: 8, height: 8 }} />
                                     Task
                                   </span>
 
                                   {/* Assignee Selection */}
                                   <Dropdown align="end">
-                                    <Dropdown.Toggle as="div" className={`clickup-inline-icon-btn ${inlineTaskBuilders[statusKey]?.assignee ? "has-value" : ""}`} title="Assignee">
+                                    <Dropdown.Toggle as="div" className={`zbot-inline-icon-btn ${inlineTaskBuilders[statusKey]?.assignee ? "has-value" : ""}`} title="Assignee">
                                       {inlineTaskBuilders[statusKey]?.assignee ? (
-                                        <div className="assignee-avatar clickup-avatar-sm" style={{ width: 18, height: 18, fontSize: 8 }}>
+                                        <div className="assignee-avatar zbot-avatar-sm" style={{ width: 18, height: 18, fontSize: 8 }}>
                                           {getInitials(inlineTaskBuilders[statusKey]?.assignee.name)}
                                         </div>
                                       ) : (
@@ -1912,7 +2576,7 @@ const BoardDetailPage = () => {
                                   <div className="position-relative d-inline-block">
                                     <input
                                       type="date"
-                                      className="clickup-date-input-hidden"
+                                      className="zbot-date-input-hidden"
                                       value={inlineTaskBuilders[statusKey]?.dueDate || ""}
                                       onChange={(e) => {
                                         const val = e.target.value;
@@ -1927,14 +2591,14 @@ const BoardDetailPage = () => {
                                         } catch (err) {}
                                       }}
                                     />
-                                    <button type="button" className={`clickup-inline-icon-btn ${inlineTaskBuilders[statusKey]?.dueDate ? "has-value" : ""}`} title="Due Date">
+                                    <button type="button" className={`zbot-inline-icon-btn ${inlineTaskBuilders[statusKey]?.dueDate ? "has-value" : ""}`} title="Due Date">
                                       <Calendar size={13} />
                                     </button>
                                   </div>
 
                                   {/* Priority Selection */}
                                   <Dropdown align="end">
-                                    <Dropdown.Toggle as="div" className={`clickup-inline-icon-btn ${inlineTaskBuilders[statusKey]?.priority ? "has-value" : ""}`} title="Priority">
+                                    <Dropdown.Toggle as="div" className={`zbot-inline-icon-btn ${inlineTaskBuilders[statusKey]?.priority ? "has-value" : ""}`} title="Priority">
                                       {getPriorityFlag(inlineTaskBuilders[statusKey]?.priority || "Normal", 13)}
                                     </Dropdown.Toggle>
                                     <Dropdown.Menu className="board-dropdown-menu">
@@ -1955,7 +2619,7 @@ const BoardDetailPage = () => {
 
                                   <button
                                     type="button"
-                                    className="clickup-inline-btn-cancel"
+                                    className="zbot-inline-btn-cancel"
                                     onClick={() => {
                                       setInlineTaskBuilders(prev => ({
                                         ...prev,
@@ -1967,7 +2631,7 @@ const BoardDetailPage = () => {
                                   </button>
                                   <button
                                     type="button"
-                                    className="clickup-inline-btn-save"
+                                    className="zbot-inline-btn-save"
                                     onClick={() => handleAddTask(defaultGroupId, statusVal)}
                                     disabled={!(inlineTaskBuilders[statusKey]?.title || "").trim()}
                                   >
@@ -1977,7 +2641,7 @@ const BoardDetailPage = () => {
                               </div>
                             ) : (
                               <div
-                                className="clickup-add-task-link"
+                                className="zbot-add-task-link"
                                 onClick={() => {
                                   setInlineTaskBuilders(prev => ({
                                     ...prev,
@@ -2010,7 +2674,7 @@ const BoardDetailPage = () => {
 
   const renderTableView = () => {
     return (
-      <div className="workspace-table-container clickup-proper-table bg-white rounded-3 shadow-sm border p-2">
+      <div className="workspace-table-container zbot-proper-table bg-white rounded-3 shadow-sm border p-2">
         <table className="workspace-table">
           <thead>
             <tr>
@@ -2233,10 +2897,10 @@ const BoardDetailPage = () => {
                 <td>
                   {/* Assignee selection */}
                   <Dropdown className="w-100">
-                    <Dropdown.Toggle as="div" className="assignee-cell clickup-cell-assignee cursor-pointer text-center">
+                    <Dropdown.Toggle as="div" className="assignee-cell zbot-cell-assignee cursor-pointer text-center">
                       {inlineTaskBuilders["table_builder"]?.assignee ? (
                         <div className="assignee-stack justify-content-center">
-                          <div className="assignee-avatar clickup-avatar-sm" title={inlineTaskBuilders["table_builder"]?.assignee.name}>
+                          <div className="assignee-avatar zbot-avatar-sm" title={inlineTaskBuilders["table_builder"]?.assignee.name}>
                             {getInitials(inlineTaskBuilders["table_builder"]?.assignee.name)}
                           </div>
                           <span className="assignee-name-txt ms-1 text-truncate" style={{ maxWidth: "80px" }}>
@@ -2244,7 +2908,7 @@ const BoardDetailPage = () => {
                           </span>
                         </div>
                       ) : (
-                        <div className="clickup-unassigned-icon mx-auto" title="Unassigned">
+                        <div className="zbot-unassigned-icon mx-auto" title="Unassigned">
                           <User size={13} strokeWidth={2.5} />
                         </div>
                       )}
@@ -2318,7 +2982,7 @@ const BoardDetailPage = () => {
                   <div className="position-relative text-center w-100" style={{ minHeight: "32px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <input
                       type="date"
-                      className="clickup-date-input-hidden"
+                      className="zbot-date-input-hidden"
                       value={inlineTaskBuilders["table_builder"]?.dueDate ? inlineTaskBuilders["table_builder"].dueDate.substring(0, 10) : ""}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -2333,12 +2997,12 @@ const BoardDetailPage = () => {
                         } catch (err) {}
                       }}
                     />
-                    <div className="clickup-date-display d-inline-flex align-items-center justify-content-center gap-1 text-muted cursor-pointer w-100">
+                    <div className="zbot-date-display d-inline-flex align-items-center justify-content-center gap-1 text-muted cursor-pointer w-100">
                       <Calendar size={12} className={inlineTaskBuilders["table_builder"]?.dueDate ? "text-slate-500" : "text-slate-300"} />
                       {inlineTaskBuilders["table_builder"]?.dueDate ? (
-                        <span className="clickup-date-text">{format(parseISO(inlineTaskBuilders["table_builder"]?.dueDate), "MMM d")}</span>
+                        <span className="zbot-date-text">{format(parseISO(inlineTaskBuilders["table_builder"]?.dueDate), "MMM d")}</span>
                       ) : (
-                        <span className="clickup-date-text text-slate-300" style={{ fontSize: "10px" }}>Set Date</span>
+                        <span className="zbot-date-text text-slate-300" style={{ fontSize: "10px" }}>Set Date</span>
                       )}
                     </div>
                   </div>
@@ -2399,7 +3063,7 @@ const BoardDetailPage = () => {
               <tr>
                 <td colSpan="7" className="py-1">
                   <div
-                    className="clickup-add-task-link"
+                    className="zbot-add-task-link"
                     onClick={() => {
                       setInlineTaskBuilders(prev => ({
                         ...prev,
@@ -2616,21 +3280,215 @@ const BoardDetailPage = () => {
 
       {/* View Tab Selector Bar */}
       <div className="workspace-viewbar mb-3">
-        <div className="workspace-tabs">
-          {VIEW_OPTIONS.map(({ key, label, icon: Icon }) => (
-            <button
-              key={key}
-              type="button"
-              className={`workspace-tab ${activeView === key ? "active" : ""}`}
-              onClick={() => {
-                setActiveView(key);
-                setSelectedTaskIds([]);
-              }}
-            >
-              <Icon size={15} />
-              {label}
-            </button>
-          ))}
+        <div className="workspace-tabs d-flex align-items-center flex-wrap" style={{ gap: "4px" }}>
+          {sortedBoardViews.map((view, index) => {
+            const Icon = getViewIcon(view.type);
+            const isActive = activeView === view.key;
+            return (
+              <React.Fragment key={view.key}>
+                <div
+                  className={`workspace-tab ${isActive ? "active" : ""} d-inline-flex align-items-center`}
+                  style={{ cursor: "pointer", position: "relative" }}
+                  onClick={() => {
+                    setActiveView(view.key);
+                    setSelectedTaskIds([]);
+                  }}
+                >
+                  {renamingViewKey === view.key ? (
+                    <input
+                      type="text"
+                      className="view-rename-input px-1 text-slate-800"
+                      style={{ fontSize: "11px", border: "1px solid #cbd5e1", borderRadius: "4px", width: "90px" }}
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleRenameView(view.key, renameValue);
+                        if (e.key === "Escape") setRenamingViewKey(null);
+                      }}
+                      onBlur={() => handleRenameView(view.key, renameValue)}
+                      autoFocus
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  ) : (
+                    <>
+                      <Icon size={14} className="me-1" />
+                      <span>{view.label}</span>
+                      {view.isFavorite && <Star size={10} className="ms-1 text-warning fill-current" />}
+                      {view.isPrivate && <Lock size={10} className="ms-1 text-slate-450" />}
+                      {view.isPinned && <Pin size={10} className="ms-1 text-slate-450 rotate-45" />}
+                    </>
+                  )}
+
+                  {/* Dropdown Menu on hover/click */}
+                  <Dropdown align="end" onClick={(e) => e.stopPropagation()} className="d-inline-block ms-1">
+                    <Dropdown.Toggle as="span" className="p-0 border-0 hover-dots cursor-pointer">
+                      <MoreHorizontal size={13} className="text-slate-400 hover:text-slate-700" />
+                    </Dropdown.Toggle>
+                    <Dropdown.Menu className="view-settings-menu border-0 shadow-lg py-2" style={{ minWidth: "180px", borderRadius: "10px", fontSize: "12px", zIndex: 1060 }}>
+                      <Dropdown.Item onClick={() => handleToggleFavoriteView(view.key)} className="py-2 flex items-center">
+                        <Star size={13} className={`me-2 ${view.isFavorite ? "text-warning fill-current" : ""}`} /> 
+                        {view.isFavorite ? "Unfavorite" : "Favorite"}
+                      </Dropdown.Item>
+                      <Dropdown.Item onClick={() => { setRenamingViewKey(view.key); setRenameValue(view.label); }} className="py-2 flex items-center">
+                        <Edit3 size={13} className="me-2" /> Rename
+                      </Dropdown.Item>
+                      <Dropdown.Item onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?view=${view.key}`);
+                        toast.success("Link copied to clipboard!");
+                      }} className="py-2 flex items-center">
+                        <Link size={13} className="me-2" /> Copy link to view
+                      </Dropdown.Item>
+                      <Dropdown.Divider />
+                      <Dropdown.Item onClick={() => handleTogglePinView(view.key)} className="py-2 flex items-center justify-between">
+                        <span className="flex items-center"><Pin size={13} className="me-2 rotate-45" /> Pin view</span>
+                        <Form.Check type="switch" checked={view.isPinned} onChange={() => {}} readOnly className="ms-3 cursor-pointer" />
+                      </Dropdown.Item>
+                      <Dropdown.Item onClick={() => handleTogglePrivateView(view.key)} className="py-2 flex items-center justify-between">
+                        <span className="flex items-center"><Lock size={13} className="me-2" /> Private view</span>
+                        <Form.Check type="switch" checked={view.isPrivate} onChange={() => {}} readOnly className="ms-3 cursor-pointer" />
+                      </Dropdown.Item>
+                      <Dropdown.Item onClick={() => handleSetDefaultView(view.key)} className="py-2 flex items-center justify-between">
+                        <span className="flex items-center"><ClipboardCopy size={13} className="me-2" /> Set as default view</span>
+                        <Form.Check type="switch" checked={view.isDefault} onChange={() => {}} readOnly className="ms-3 cursor-pointer" />
+                      </Dropdown.Item>
+                      <Dropdown.Divider />
+                      <Dropdown.Item onClick={() => handleDuplicateViewTab(view.key)} className="py-2 flex items-center">
+                        <Copy size={13} className="me-2" /> Duplicate view
+                      </Dropdown.Item>
+                      <Dropdown.Item onClick={() => handleDeleteViewTab(view.key)} className="py-2 flex items-center text-danger">
+                        <Trash2 size={13} className="me-2 text-danger" /> Delete view
+                      </Dropdown.Item>
+                      <Dropdown.Divider />
+                      <div className="px-3 py-1">
+                        <Button 
+                          size="sm" 
+                          variant="dark" 
+                          className="w-100 py-1.5" 
+                          style={{ fontSize: "11px", fontWeight: "bold" }}
+                          onClick={() => { setSharingViewKey(view.key); setShowSharingModal(true); }}
+                        >
+                          Sharing & Permissions
+                        </Button>
+                      </div>
+                    </Dropdown.Menu>
+                  </Dropdown>
+                </div>
+                {index === 0 && sortedBoardViews.length > 1 && (
+                  <div className="workspace-tab-divider" />
+                )}
+              </React.Fragment>
+            );
+          })}
+
+          {/* Divider before + View button */}
+          <div className="workspace-tab-divider" />
+
+          {/* + View Button */}
+          <Dropdown align="start" onClick={(e) => e.stopPropagation()} className="d-inline-block ms-1">
+            <Dropdown.Toggle as="button" className="workspace-tab add-view-tab" style={{ border: "none", background: "none", display: "flex", alignItems: "center", gap: "4px" }}>
+              <Plus size={14} />
+              <span>View</span>
+            </Dropdown.Toggle>
+            <Dropdown.Menu className="add-view-dropdown border-0 shadow-lg p-0" style={{ width: "360px", maxHeight: "450px", overflowY: "auto", borderRadius: "10px", zIndex: 1060 }}>
+              <div className="px-3 py-2.5 border-b border-slate-100 mb-2 position-relative">
+                <input
+                  type="text"
+                  placeholder="Search or describe a view to create"
+                  className="w-100 px-3 py-2 text-sm bg-slate-50 border rounded-xl focus:outline-none"
+                  style={{ fontSize: "11.5px", paddingRight: "32px", borderColor: "#cbd5e1" }}
+                  value={viewSearchQuery}
+                  onChange={(e) => setViewSearchQuery(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <button 
+                  type="button"
+                  className="position-absolute end-0 top-50 translate-middle-y me-4 border-0 bg-transparent text-slate-400 hover:text-primary d-flex align-items-center justify-content-center" 
+                  style={{ width: "24px", height: "24px" }}
+                >
+                  <Send size={12} />
+                </button>
+              </div>
+
+              <div className="dropdown-header text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 pb-2">Popular</div>
+              
+              <div className="add-view-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", padding: "0 12px 12px" }}>
+                {filteredAvailableViews.map((v) => {
+                  const Icon = v.icon;
+                  const VIEW_STYLE_META = {
+                    list: { bg: "#64748b", text: "#ffffff", label: "List", desc: "" },
+                    gantt: { bg: "#e11d48", text: "#ffffff", label: "Gantt", desc: "Chart" },
+                    calendar: { bg: "#ea580c", text: "#ffffff", label: "Calendar", desc: "" },
+                    docs: { bg: "#2563eb", text: "#ffffff", label: "Doc", desc: "Wiki" },
+                    board: { bg: "#4f46e5", text: "#ffffff", label: "Board", desc: "Kanban" },
+                    form: { bg: "#7c3aed", text: "#ffffff", label: "Form", desc: "Survey" },
+                    dashboard: { bg: "#db2777", text: "#ffffff", label: "Dashboard", desc: "Report" },
+                    table: { bg: "#16a34a", text: "#ffffff", label: "Table", desc: "" },
+                    timeline: { bg: "#ea580c", text: "#ffffff", label: "Timeline", desc: "" },
+                    whiteboard: { bg: "#ca8a04", text: "#ffffff", label: "Whiteboard", desc: "" },
+                    activity: { bg: "#06b6d4", text: "#ffffff", label: "Activity", desc: "Feed" },
+                    mind_map: { bg: "#ec4899", text: "#ffffff", label: "Mind Map", desc: "" },
+                    team: { bg: "#8b5cf6", text: "#ffffff", label: "Team", desc: "" },
+                    map: { bg: "#ea580c", text: "#ffffff", label: "Map", desc: "" },
+                    custom_fields: { bg: "#0d9488", text: "#ffffff", label: "Fields", desc: "Manager" },
+                    overview: { bg: "#4b5563", text: "#ffffff", label: "Overview", desc: "" }
+                  };
+                  const meta = VIEW_STYLE_META[v.type] || { bg: "#64748b", text: "#ffffff", label: v.label, desc: v.desc };
+                  return (
+                    <Dropdown.Item 
+                      key={v.type} 
+                      onClick={() => handleAddNewView(v.type)}
+                      className="add-view-grid-item d-flex align-items-center p-2 rounded-3 border bg-white"
+                      style={{ gap: "8px", transition: "background 0.1s", fontSize: "11.5px", borderColor: "#f1f5f9" }}
+                    >
+                      <div 
+                        className="add-view-icon-badge" 
+                        style={{ 
+                          width: "24px", 
+                          height: "24px", 
+                          borderRadius: "6px", 
+                          backgroundColor: meta.bg, 
+                          color: meta.text, 
+                          display: "flex", 
+                          alignItems: "center", 
+                          justifyContent: "center",
+                          flexShrink: 0
+                        }}
+                      >
+                        <Icon size={12} />
+                      </div>
+                      <div className="d-flex align-items-center flex-wrap gap-1 min-w-0" style={{ lineHeight: "1.2" }}>
+                        <span className="fw-bold text-slate-800 text-truncate">{meta.label}</span>
+                        {meta.desc && (
+                          <span className="text-slate-400 font-medium text-[10px]">{meta.desc}</span>
+                        )}
+                      </div>
+                    </Dropdown.Item>
+                  );
+                })}
+              </div>
+
+              <div className="px-3 py-2 border-top border-slate-100 d-flex align-items-center gap-3 bg-slate-50" style={{ fontSize: "11px", borderBottomLeftRadius: "10px", borderBottomRightRadius: "10px" }}>
+                <Form.Check 
+                  type="checkbox"
+                  id="add-view-private"
+                  label="Private view"
+                  className="text-slate-500 m-0 font-medium"
+                  style={{ fontSize: "11px" }}
+                  checked={newViewPrivate}
+                  onChange={(e) => setNewViewPrivate(e.target.checked)}
+                />
+                <Form.Check 
+                  type="checkbox"
+                  id="add-view-pin"
+                  label="Pin view"
+                  className="text-slate-500 m-0 font-medium"
+                  style={{ fontSize: "11px" }}
+                  checked={newViewPinned}
+                  onChange={(e) => setNewViewPinned(e.target.checked)}
+                />
+              </div>
+            </Dropdown.Menu>
+          </Dropdown>
         </div>
         <div className="workspace-toolbar-actions">
           <button type="button" className="workspace-tool-btn">
@@ -2638,7 +3496,7 @@ const BoardDetailPage = () => {
           </button>
           <button
             type="button"
-            className="clickup-top-task-btn"
+            className="zbot-top-task-btn"
             onClick={() => {
               setTargetGroupId(board.groups?.[0]?.id || null);
               setShowCreateTaskModal(true);
@@ -2649,195 +3507,255 @@ const BoardDetailPage = () => {
         </div>
       </div>
 
-      {activeView !== "calendar" && activeView !== "gantt" && (
-        <div className="workspace-panel bg-white p-3 rounded-3 shadow-sm border mb-4">
-          <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
-            {/* Left: View Filters & Search */}
-            <div className="d-flex flex-wrap align-items-center gap-2 flex-grow-1">
-              <div className="position-relative" style={{ minWidth: "200px" }}>
-                <input
-                  type="text"
-                  placeholder="Search tasks..."
-                  className="form-control form-control-sm ps-4"
-                  value={filterQuery}
-                  onChange={(e) => setFilterQuery(e.target.value)}
-                />
-                <Search size={14} className="position-absolute top-50 translate-middle-y text-muted" style={{ left: "10px" }} />
-              </div>
+      {showMainToolbar && (
+        <div className="workspace-inline-toolbar d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+          {/* Left Side: Grouping & Layout controls */}
+          <div className="d-flex align-items-center gap-1.5">
+            <Dropdown className="d-inline-block">
+              <Dropdown.Toggle as="button" className="zbot-status-pill-btn">
+                <span className="zbot-status-dot" style={{ backgroundColor: "#673de6" }} />
+                <span className="font-bold">{groupBy === "status" ? "Status" : groupBy === "priority" ? "Priority" : groupBy === "assignee" ? "Teammate" : "Group"}</span>
+                <ChevronDown size={11} className="ms-1.5 text-slate-400" />
+              </Dropdown.Toggle>
+              <Dropdown.Menu className="border-0 shadow-lg py-1" style={{ fontSize: "11.5px", zIndex: 1060 }} popperConfig={{ strategy: "fixed" }}>
+                <Dropdown.Item onClick={() => setGroupBy("status")}>Group: Status</Dropdown.Item>
+                <Dropdown.Item onClick={() => setGroupBy("priority")}>Group: Priority</Dropdown.Item>
+                <Dropdown.Item onClick={() => setGroupBy("assignee")}>Group: Teammate</Dropdown.Item>
+                <Dropdown.Item onClick={() => setGroupBy("category")}>Group: Category</Dropdown.Item>
+              </Dropdown.Menu>
+            </Dropdown>
 
-              {/* Assignee Filter */}
-              <select
-                className="form-select form-select-sm"
-                style={{ width: "130px" }}
-                value={filterAssignee}
+            <button 
+              type="button" 
+              onClick={() => refreshWorkspace()} 
+              className="workspace-inline-tool-btn" 
+              title="Refresh Feed"
+            >
+              <RefreshCw size={12} />
+            </button>
+
+            <button 
+              type="button" 
+              className="workspace-inline-tool-btn" 
+              onClick={() => toast.info("Column visibility is managed per view.")} 
+              title="Customize Columns"
+            >
+              <Columns size={12} />
+            </button>
+
+            {/* Quick Filters */}
+            <div className="d-flex align-items-center gap-1 border-start ps-2 ms-1">
+              <Filter size={11} className="text-slate-400 me-1" />
+              <select 
+                className="zbot-borderless-select"
+                value={filterAssignee} 
                 onChange={(e) => setFilterAssignee(e.target.value)}
+                title="Filter Assignee"
               >
-                <option value="">Filter Owner</option>
+                <option value="">Assignee</option>
                 {assignees.map((a) => (
-                  <option key={`${a.role}_${a.id}`} value={`${a.role}_${a.id}`}>
-                    {a.name}
-                  </option>
+                  <option key={a.id} value={a.id}>{a.name}</option>
                 ))}
               </select>
-
-              {/* Priority Filter */}
-              <select
-                className="form-select form-select-sm"
-                style={{ width: "130px" }}
-                value={filterPriority}
+              <select 
+                className="zbot-borderless-select"
+                value={filterPriority} 
                 onChange={(e) => setFilterPriority(e.target.value)}
+                title="Filter Priority"
               >
-                <option value="">Filter Priority</option>
+                <option value="">Priority</option>
                 {PRIORITY_OPTIONS.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
+                  <option key={p} value={p}>{p}</option>
                 ))}
               </select>
-
-              {/* Category Filter */}
-              <select
-                className="form-select form-select-sm"
-                style={{ width: "130px" }}
-                value={filterCategory}
+              <select 
+                className="zbot-borderless-select"
+                value={filterCategory} 
                 onChange={(e) => setFilterCategory(e.target.value)}
+                title="Filter Category"
               >
-                <option value="">Filter Category</option>
-                {[...new Set(allTasks.map((t) => t.category).filter(Boolean))].map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
+                <option value="">Category</option>
+                {board?.categories?.map((c) => (
+                  <option key={c} value={c}>{c}</option>
                 ))}
               </select>
-              
-              {/* Clear Filters Button */}
               {(filterQuery || filterAssignee || filterPriority || filterCategory) && (
-                <button
-                  className="btn btn-link btn-sm text-decoration-none text-danger p-0 ms-2"
+                <button 
+                  type="button" 
                   onClick={() => {
                     setFilterQuery("");
                     setFilterAssignee("");
                     setFilterPriority("");
                     setFilterCategory("");
-                  }}
+                  }} 
+                  className="btn btn-link text-slate-400 p-0 text-decoration-none font-bold"
+                  style={{ fontSize: "10.5px", marginLeft: "4px" }}
                 >
-                  Clear Filters
+                  Clear
                 </button>
               )}
             </div>
+          </div>
 
-            {/* Right: Group, Sort, Swimlanes, Saved Views */}
-            <div className="d-flex flex-wrap align-items-center gap-2">
-              {/* Group By Selector removed to keep flat status grouping */}
-
-              {/* Swimlane Selector (Only shown in kanban view) */}
-              {activeView === "board" && (
-                <div className="d-flex align-items-center gap-1">
-                  <span className="text-muted small">Swimlane:</span>
-                  <select
-                    className="form-select form-select-sm"
-                    style={{ width: "120px" }}
-                    value={kanbanGrouping}
-                    onChange={(e) => setKanbanGrouping(e.target.value)}
-                  >
-                    <option value="none">None</option>
-                    <option value="priority">Priority</option>
-                    <option value="assignee">Assignee</option>
-                  </select>
-                </div>
-              )}
-
-              {/* Add Custom Status Group Button */}
-              <button
-                type="button"
-                className="btn btn-outline-primary btn-sm d-flex align-items-center gap-1"
-                onClick={() => setShowCreateStatusModal(true)}
-              >
-                <Plus size={14} /> Add Group
-              </button>
-
-              {/* Sort Controls */}
-              <div className="d-flex align-items-center gap-1">
-                <span className="text-muted small">Sort:</span>
-                <select
-                  className="form-select form-select-sm"
-                  style={{ width: "110px" }}
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                >
-                  <option value="position">Position</option>
-                  <option value="title">Title</option>
-                  <option value="status">Status</option>
-                  <option value="priority">Priority</option>
-                  <option value="due_date">Due Date</option>
-                  <option value="start_date">Start Date</option>
-                  <option value="category">Category</option>
-                </select>
-                <button
-                  className="btn btn-outline-secondary btn-sm p-1 d-flex align-items-center justify-content-center"
-                  style={{ width: "28px", height: "28px" }}
-                  onClick={() => setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
-                  title={sortOrder === "asc" ? "Ascending" : "Descending"}
-                >
-                  {sortOrder === "asc" ? "↑" : "↓"}
-                </button>
+          {/* Right Side: Toggleable Search, Me quick filter, swimlanes, sort & saved views */}
+          <div className="d-flex align-items-center gap-1.5">
+            {/* Toggleable Search */}
+            {showSearchInput || filterQuery ? (
+              <div className="d-flex align-items-center position-relative me-1">
+                <input
+                  type="text"
+                  placeholder="Search tasks..."
+                  className="form-control form-control-sm"
+                  style={{ width: "130px", fontSize: "11px", height: "24px", paddingLeft: "22px", borderRadius: "4px", borderColor: "#cbd5e1" }}
+                  value={filterQuery}
+                  onChange={(e) => setFilterQuery(e.target.value)}
+                  autoFocus
+                  onBlur={() => { if (!filterQuery) setShowSearchInput(false); }}
+                />
+                <Search className="position-absolute start-0 ms-1.5 text-slate-400" size={11} style={{ top: "50%", transform: "translateY(-50%)" }} />
               </div>
+            ) : (
+              <button 
+                type="button" 
+                className="workspace-inline-tool-btn" 
+                onClick={() => setShowSearchInput(true)} 
+                title="Search Tasks"
+              >
+                <Search size={12} />
+              </button>
+            )}
 
-              {/* Saved Views Dropdown */}
-              <Dropdown align="end">
-                <Dropdown.Toggle variant="outline-primary" size="sm" id="saved-views-dropdown">
-                  {currentViewName || "Views"}
-                </Dropdown.Toggle>
-                <Dropdown.Menu className="p-3" style={{ minWidth: "260px" }}>
-                  <h6 className="dropdown-header px-0 text-slate-800 fw-bold">Apply Saved View</h6>
+            {/* Quick Teammates toggle */}
+            <button 
+              type="button" 
+              className={`workspace-inline-tool-btn ${groupBy === "assignee" ? "active" : ""}`}
+              onClick={() => setGroupBy(groupBy === "assignee" ? "status" : "assignee")}
+              title="Group by Teammates"
+            >
+              <Users size={12} />
+            </button>
+
+            {/* Subtask toggle indicator */}
+            <button 
+              type="button" 
+              className="workspace-inline-tool-btn" 
+              onClick={() => toast.info("Subtasks are automatically grouped within parent tasks.")}
+              title="Subtask Settings"
+            >
+              <GitFork size={12} />
+            </button>
+
+            {/* Me quick-filter profile icon */}
+            <button 
+              type="button" 
+              onClick={handleToggleMeFilter} 
+              className={`zbot-me-filter-btn ${isMeFiltered ? "active" : ""}`}
+              title={isMeFiltered ? "Clear Me Filter" : "Filter: Assigned to Me"}
+            >
+              {user?.name ? user.name.substring(0, 2).toUpperCase() : "ME"}
+            </button>
+
+            {/* Space settings gear */}
+            <button 
+              type="button" 
+              className="workspace-inline-tool-btn" 
+              onClick={() => setShowSpaceSettingsModal(true)}
+              title="Space Settings"
+            >
+              <Settings size={12} />
+            </button>
+
+            {/* Swimlanes */}
+            {currentViewType === "board" && (
+              <select
+                className="zbot-borderless-select border-start ps-1.5 ms-1"
+                value={kanbanGrouping}
+                onChange={(e) => setKanbanGrouping(e.target.value)}
+                title="Kanban Swimlane"
+              >
+                <option value="none">Swimlane: None</option>
+                <option value="priority">Swimlane: Priority</option>
+                <option value="assignee">Swimlane: Assignee</option>
+              </select>
+            )}
+
+            {/* Sort controls */}
+            <div className="d-flex align-items-center gap-1 border-start ps-2 ms-1">
+              <select
+                className="zbot-borderless-select"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                title="Sort Tasks"
+              >
+                <option value="position">Sort: Default</option>
+                <option value="title">Sort: Alphabetical</option>
+                <option value="priority">Sort: Priority</option>
+                <option value="due_date">Sort: Due Date</option>
+              </select>
+              <button
+                className="workspace-inline-tool-btn"
+                onClick={() => setSortOrder(prev => prev === "asc" ? "desc" : "asc")}
+                title="Toggle Sort Order"
+              >
+                {sortOrder === "asc" ? "↑" : "↓"}
+              </button>
+            </div>
+
+            {/* Saved Views Config Dropdown */}
+            <Dropdown align="end">
+              <Dropdown.Toggle as="button" className="workspace-inline-tool-btn border-0 py-1" style={{ fontSize: "11.5px", fontWeight: "600", color: "#64748b" }}>
+                <Layers size={12} className="me-1" />
+                <span>{currentViewName || "Views"}</span>
+              </Dropdown.Toggle>
+              <Dropdown.Menu className="shadow border-0" style={{ minWidth: "220px", borderRadius: "10px", zIndex: 1060 }} popperConfig={{ strategy: "fixed" }}>
+                <div className="px-3 py-2 border-b">
+                  <span className="text-muted small fw-bold d-block mb-1">Save Current Config</span>
+                  <div className="d-flex gap-1">
+                    <input
+                      type="text"
+                      placeholder="View Name"
+                      className="form-control form-control-sm text-xs"
+                      value={newViewName}
+                      onChange={(e) => setNewViewName(e.target.value)}
+                    />
+                    <Button variant="primary" size="sm" onClick={handleSaveView} style={{ fontSize: "10px" }}>
+                      Save
+                    </Button>
+                  </div>
+                </div>
+                <div className="py-1">
                   {savedViews.length === 0 ? (
-                    <span className="text-muted small d-block my-2">No saved views yet.</span>
+                    <span className="dropdown-item-text text-muted small py-2">No saved custom configs.</span>
                   ) : (
                     savedViews.map((v) => (
-                      <div key={v.name} className="d-flex justify-content-between align-items-center my-1 gap-2">
+                      <div key={v.name} className="d-flex align-items-center justify-content-between px-2 hover:bg-slate-50">
                         <button
-                          type="button"
-                          className="btn btn-link btn-sm p-0 text-decoration-none text-start text-dark text-truncate fw-semibold flex-grow-1"
+                          className="btn btn-link text-start text-xs text-decoration-none py-1.5 px-2 text-slate-700 flex-grow-1"
                           onClick={() => handleApplyView(v.name)}
                         >
                           {v.name}
                         </button>
                         <button
-                          type="button"
-                          className="btn btn-link btn-sm text-danger p-0"
+                          className="btn btn-link text-danger p-1 text-decoration-none"
                           onClick={() => handleDeleteView(v.name)}
                         >
-                          ×
+                          <Trash size={12} />
                         </button>
                       </div>
                     ))
                   )}
-                  <Dropdown.Divider />
-                  <h6 className="dropdown-header px-0 text-slate-800 fw-bold">Save Current View</h6>
-                  <div className="input-group input-group-sm mt-1">
-                    <input
-                      type="text"
-                      placeholder="View Name"
-                      className="form-control"
-                      value={newViewName}
-                      onChange={(e) => setNewViewName(e.target.value)}
-                    />
-                    <button className="btn btn-primary" onClick={handleSaveView} disabled={!newViewName.trim()}>
-                      Save
-                    </button>
-                  </div>
-                </Dropdown.Menu>
-              </Dropdown>
-            </div>
+                </div>
+              </Dropdown.Menu>
+            </Dropdown>
           </div>
         </div>
       )}
 
-      {activeView === "overview" && renderOverviewView()}
-      {activeView === "list" && renderListView()}
-      {activeView === "board" && renderBoardView()}
-      {activeView === "table" && renderTableView()}
-      {activeView === "calendar" && (
+      {currentViewType === "overview" && renderOverviewView()}
+      {currentViewType === "list" && renderListView()}
+      {currentViewType === "board" && renderBoardView()}
+      {currentViewType === "table" && renderTableView()}
+      {currentViewType === "calendar" && (
         <CalendarView
           boardId={Number(boardId)}
           onTaskClick={handleTaskClickFromView}
@@ -2845,17 +3763,48 @@ const BoardDetailPage = () => {
           refreshWorkspace={refreshWorkspace}
         />
       )}
-      {activeView === "gantt" && (
+      {currentViewType === "gantt" && (
         <GanttView
           board={board}
           onTaskClick={handleTaskClickFromView}
         />
       )}
-      {activeView === "docs" && (
+      {currentViewType === "docs" && (
         <DocsView
+          boardId={Number(boardId)}
+          assignees={assignees}
+          departments={departments}
+        />
+      )}
+      {currentViewType === "custom_fields" && (
+        <CustomFieldsView
           boardId={Number(boardId)}
         />
       )}
+      {currentViewType === "files" && (
+        <FilesView
+          boardId={Number(boardId)}
+        />
+      )}
+      {currentViewType === "form" && (
+        <FormView
+          boardId={Number(boardId)}
+        />
+      )}
+      {currentViewType === "timesheets" && (
+        <TimesheetsView
+          boardId={Number(boardId)}
+          groups={board?.groups}
+        />
+      )}
+      {/* Dynamic Extra Views */}
+      {currentViewType === "timeline" && renderTimelineView()}
+      {currentViewType === "dashboard" && renderDashboardReportView()}
+      {currentViewType === "whiteboard" && renderWhiteboardView()}
+      {currentViewType === "activity" && renderActivityView()}
+      {currentViewType === "mind_map" && renderMindMapView()}
+      {currentViewType === "team" && renderTeamView()}
+      {currentViewType === "map" && renderMapView()}
 
       {/* Floating Bulk Actions Bar */}
       {selectedTaskIds.length > 0 && (
@@ -2907,6 +3856,7 @@ const BoardDetailPage = () => {
         <UpdatesDrawer
           taskId={activeTaskId}
           task={activeTask}
+          boardId={Number(boardId)}
           onClose={handleCloseUpdatesDrawer}
           allTasks={allTasks}
           onTaskUpdated={(tId, updates) => patchTaskInState(tId, (t) => ({ ...t, ...updates }))}
@@ -3010,6 +3960,64 @@ const BoardDetailPage = () => {
         initialGroupId={targetGroupId}
         onTaskCreated={handleCreateTaskModalSubmit}
       />
+
+      {/* View Sharing & Permissions Modal */}
+      <Modal show={showSharingModal} onHide={() => setShowSharingModal(false)} centered className="border-0">
+        <Modal.Header closeButton className="border-b border-slate-100 p-6 bg-slate-50/50">
+          <Modal.Title className="font-bold text-base text-slate-950 flex items-center gap-2">
+            <Lock className="w-5 h-5 text-slate-700" />
+            <span>Sharing & Permissions: {boardViews.find(v => v.key === sharingViewKey)?.label}</span>
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-6">
+          <div className="flex flex-col gap-4">
+            <div className="p-3 bg-slate-50 border rounded-2xl">
+              <span className="text-xs font-semibold text-slate-800 d-block mb-1">Share View Link</span>
+              <div className="d-flex gap-2">
+                <input 
+                  type="text" 
+                  readOnly 
+                  className="form-control text-xs bg-white border"
+                  value={`${window.location.origin}${window.location.pathname}?view=${sharingViewKey}`} 
+                />
+                <Button 
+                  size="sm" 
+                  variant="dark"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?view=${sharingViewKey}`);
+                    toast.success("Link copied!");
+                  }}
+                >
+                  Copy
+                </Button>
+              </div>
+            </div>
+            
+            <div>
+              <span className="text-xs font-semibold text-slate-800 d-block mb-1.5">Who has access?</span>
+              <div className="d-flex flex-column gap-2">
+                <div className="d-flex justify-content-between align-items-center text-xs py-1">
+                  <span>Workspace Admins</span>
+                  <span className="text-slate-400 font-medium">Full Access</span>
+                </div>
+                <div className="d-flex justify-content-between align-items-center text-xs py-1 border-top">
+                  <span>Workspace Members</span>
+                  <span className="text-slate-400 font-medium">Can Edit / View</span>
+                </div>
+                <div className="d-flex justify-content-between align-items-center text-xs py-1 border-top">
+                  <span>External / Guest Share</span>
+                  <Form.Check type="switch" label="" id="guest-access-switch" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </Modal.Body>
+        <Modal.Footer className="border-t border-slate-100 p-4 bg-slate-50/50">
+          <Button variant="light" onClick={() => setShowSharingModal(false)} className="text-xs font-bold px-4 py-2 border-0 rounded-xl">
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </>
   );
 };

@@ -94,3 +94,36 @@ export const createChannel = async (channelData) => {
     throw error;
   }
 };
+
+// Unfollow a channel (removes it from user's sidebar)
+export const unfollowChannel = async (conversationId) => {
+  try {
+    const response = await api.post(`/messaging/conversations/${conversationId}/unfollow`);
+    return response.data;
+  } catch (error) {
+    console.error("Error unfollowing channel:", error);
+    throw error;
+  }
+};
+
+// Mark a conversation as unread
+export const markConversationUnread = async (conversationId) => {
+  try {
+    const response = await api.post(`/messaging/conversations/${conversationId}/mark-unread`);
+    return response.data;
+  } catch (error) {
+    console.error("Error marking conversation as unread:", error);
+    throw error;
+  }
+};
+
+// Toggle favorite on a conversation
+export const toggleFavoriteConversation = async (conversationId) => {
+  try {
+    const response = await api.post(`/messaging/conversations/${conversationId}/favorite`);
+    return response.data;
+  } catch (error) {
+    console.error("Error toggling favorite:", error);
+    throw error;
+  }
+};

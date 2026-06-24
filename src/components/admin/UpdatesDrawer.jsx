@@ -45,11 +45,13 @@ import {
 import api from "../../utils/api";
 import DOMPurify from "dompurify";
 import { ListSkeleton } from "../Skeleton";
+import { useTimer } from "../../context/TimerContext";
 import "../../styles/Boards.css";
 
 const UpdatesDrawer = ({
   taskId,
   task,
+  boardId,
   onClose,
   allTasks = [],
   onTaskUpdated,
@@ -99,14 +101,24 @@ const UpdatesDrawer = ({
   const [timeEstimate, setTimeEstimate] = useState(task.time_estimate_minutes || "");
   const [timeSpentSeconds, setTimeSpentSeconds] = useState(task.time_spent_seconds || 0);
   const [timeEntries, setTimeEntries] = useState(task.time_entries || []);
-  const [timerActive, setTimerActive] = useState(false);
-  const [timerSeconds, setTimerSeconds] = useState(0);
+  
+  const {
+    activeTimer,
+    startTimer,
+    stopTimer,
+    elapsedSeconds,
+    showLogModal
+  } = useTimer();
+
+  const isCurrentTimerActive = activeTimer && activeTimer.task?.id === taskId;
+  const timerActive = isCurrentTimerActive && activeTimer.isRunning;
+  const timerSeconds = isCurrentTimerActive ? elapsedSeconds : 0;
+
   const [manualHours, setManualHours] = useState("");
   const [manualMinutes, setManualMinutes] = useState("");
   const [manualDesc, setManualDesc] = useState("");
   const [showManualLog, setShowManualLog] = useState(false);
   const [savingTime, setSavingTime] = useState(false);
-  const timerIntervalRef = useRef(null);
 
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [newSubtaskMeta, setNewSubtaskMeta] = useState({ assignees: [], due_date: "", priority: "Normal" });
@@ -136,6 +148,47 @@ const UpdatesDrawer = ({
 
   // Database listings for autocomplete
   const [mentionOptions, setMentionOptions] = useState([]); // [{type: 'staff'|'department'|'superadmin', id, label, searchStr}]
+
+  // Custom Fields state & effect
+  const [customFields, setCustomFields] = useState([]);
+  const [customFieldValues, setCustomFieldValues] = useState({});
+  const [loadingCustomFields, setLoadingCustomFields] = useState(false);
+
+  useEffect(() => {
+    const fetchCustomFields = async () => {
+      if (!boardId || !taskId) return;
+      try {
+        setLoadingCustomFields(true);
+        const fieldsRes = await api.get(`/board-extensions/boards/${boardId}/custom-fields`);
+        setCustomFields(fieldsRes.data);
+
+        const valsRes = await api.get(`/board-extensions/tasks/${taskId}/custom-fields`);
+        const valMap = {};
+        valsRes.data.forEach(v => {
+          valMap[v.field_id] = v.value;
+        });
+        setCustomFieldValues(valMap);
+      } catch (err) {
+        console.error("Failed to load custom fields", err);
+      } finally {
+        setLoadingCustomFields(false);
+      }
+    };
+    fetchCustomFields();
+  }, [boardId, taskId]);
+
+  const handleCustomFieldChange = async (fieldId, nextValue) => {
+    try {
+      setCustomFieldValues(prev => ({ ...prev, [fieldId]: nextValue }));
+      await api.put(`/board-extensions/tasks/${taskId}/custom-fields`, {
+        field_id: fieldId,
+        value: nextValue
+      });
+      refreshHistoryLogs();
+    } catch (err) {
+      console.error("Failed to save custom field value", err);
+    }
+  };
 
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -246,14 +299,29 @@ const UpdatesDrawer = ({
     loadMentionOptions();
   }, [taskId]);
 
-  // Cleanup timer interval on unmount
+  // Fetch/refresh time entries when the log modal closes (which means they just finished saving a log!)
   useEffect(() => {
-    return () => {
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-      }
-    };
-  }, []);
+    if (!showLogModal && taskId) {
+      const refreshTimeEntries = async () => {
+        try {
+          const entries = await getTaskTimeEntries(taskId);
+          setTimeEntries(entries);
+          const totalSpent = entries.reduce((acc, entry) => acc + (entry.duration_seconds || 0), 0);
+          setTimeSpentSeconds(totalSpent);
+          
+          if (onTaskUpdated) {
+            onTaskUpdated(taskId, {
+              time_spent_seconds: totalSpent,
+              time_entries: entries
+            });
+          }
+        } catch (err) {
+          console.error("Failed to refresh time entries", err);
+        }
+      };
+      refreshTimeEntries();
+    }
+  }, [showLogModal, taskId]);
 
   const formatTimer = (totalSecs) => {
     const hrs = Math.floor(totalSecs / 3600);
@@ -264,28 +332,11 @@ const UpdatesDrawer = ({
   };
 
   const handleStartTimer = () => {
-    setTimerActive(true);
-    setTimerSeconds(0);
-    timerIntervalRef.current = setInterval(() => {
-      setTimerSeconds((prev) => prev + 1);
-    }, 1000);
+    startTimer({ id: taskId, title: task.title || taskTitle });
   };
 
   const handleStopTimer = () => {
-    if (timerIntervalRef.current) {
-      clearInterval(timerIntervalRef.current);
-      timerIntervalRef.current = null;
-    }
-    setTimerActive(false);
-
-    const totalMinutes = Math.max(1, Math.round(timerSeconds / 60));
-    const hrs = Math.floor(totalMinutes / 60);
-    const mins = totalMinutes % 60;
-
-    setManualHours(hrs > 0 ? hrs : "");
-    setManualMinutes(mins);
-    setManualDesc(`Timer session (${formatTimer(timerSeconds)})`);
-    setShowManualLog(true);
+    stopTimer();
   };
 
   const handleAddManualTime = async (e) => {
@@ -1045,10 +1096,10 @@ const UpdatesDrawer = ({
           {error && <Alert variant="danger" dismissible onClose={() => setError("")} className="m-3">{error}</Alert>}
 
           <div className="task-detail-split">
-            {/* Left Panel: ClickUp-style task details */}
+            {/* Left Panel: Zbot-style task details */}
             <section className="task-detail-main">
 
-              {/* ClickUp-style compact metadata rows */}
+              {/* Zbot-style compact metadata rows */}
               <div className="cu-meta-grid">
                 {/* Status row */}
                 <div className="cu-meta-row">
@@ -1098,7 +1149,7 @@ const UpdatesDrawer = ({
                           onClick={() => handleAssigneeToggle(assignee)}
                           title={`Remove ${assignee.name}`}
                         >
-                          <span className="assignee-avatar clickup-avatar-sm">{getAvatarInitials(assignee.name)}</span>
+                          <span className="assignee-avatar zbot-avatar-sm">{getAvatarInitials(assignee.name)}</span>
                           <span>{assignee.name}</span>
                         </button>
                       ))}
@@ -1130,7 +1181,7 @@ const UpdatesDrawer = ({
                                   className="d-flex align-items-center gap-2"
                                 >
                                   <input type="checkbox" checked={isSelected} readOnly />
-                                  <span className="assignee-avatar clickup-avatar-sm">{getAvatarInitials(p.name)}</span>
+                                  <span className="assignee-avatar zbot-avatar-sm">{getAvatarInitials(p.name)}</span>
                                   <span>{p.name}</span>
                                 </Dropdown.Item>
                               );
@@ -1341,6 +1392,129 @@ const UpdatesDrawer = ({
                     <option value="Monthly">Monthly</option>
                   </Form.Select>
                 </div>
+                {/* Custom Fields (Dynamically loaded) */}
+                {customFields.map((f) => (
+                  <div key={f.id} className="cu-adv-row">
+                    <span className="cu-adv-label">{f.name}</span>
+                    <div style={{ flex: 1 }}>
+                      {f.type === "text" && (
+                        <input
+                          type="text"
+                          className="cu-adv-input"
+                          value={customFieldValues[f.id] || ""}
+                          onChange={(e) => handleCustomFieldChange(f.id, e.target.value)}
+                          placeholder={`Enter ${f.name}...`}
+                        />
+                      )}
+                      {f.type === "number" && (
+                        <input
+                          type="number"
+                          className="cu-adv-input"
+                          value={customFieldValues[f.id] || ""}
+                          onChange={(e) => handleCustomFieldChange(f.id, e.target.value ? Number(e.target.value) : "")}
+                          placeholder="0"
+                        />
+                      )}
+                      {f.type === "date" && (
+                        <input
+                          type="date"
+                          className="cu-adv-input"
+                          value={customFieldValues[f.id] || ""}
+                          onChange={(e) => handleCustomFieldChange(f.id, e.target.value)}
+                        />
+                      )}
+                      {f.type === "dropdown" && (
+                        <Form.Select
+                          size="sm"
+                          className="cu-adv-select"
+                          value={customFieldValues[f.id] || ""}
+                          onChange={(e) => handleCustomFieldChange(f.id, e.target.value)}
+                        >
+                          <option value="">Select...</option>
+                          {f.config?.options?.map((opt, i) => (
+                            <option key={i} value={opt}>{opt}</option>
+                          ))}
+                        </Form.Select>
+                      )}
+                      {f.type === "multi_select" && (
+                        <Dropdown>
+                          <Dropdown.Toggle variant="light" size="sm" className="w-100 text-start bg-white border d-flex justify-content-between align-items-center" style={{ fontSize: "12px", padding: "4px 8px" }}>
+                            <span className="text-truncate">{Array.isArray(customFieldValues[f.id]) && customFieldValues[f.id].length > 0 ? customFieldValues[f.id].join(", ") : "Select options..."}</span>
+                          </Dropdown.Toggle>
+                          <Dropdown.Menu className="p-2" style={{ maxHeight: "200px", overflowY: "auto" }}>
+                            {f.config?.options?.map((opt, i) => {
+                              const selected = Array.isArray(customFieldValues[f.id]) && customFieldValues[f.id].includes(opt);
+                              return (
+                                <Form.Check
+                                  key={i}
+                                  type="checkbox"
+                                  label={opt}
+                                  checked={selected}
+                                  onChange={() => {
+                                    const currentList = Array.isArray(customFieldValues[f.id]) ? customFieldValues[f.id] : [];
+                                    const nextList = selected ? currentList.filter(o => o !== opt) : [...currentList, opt];
+                                    handleCustomFieldChange(f.id, nextList);
+                                  }}
+                                  className="small my-1"
+                                />
+                              );
+                            })}
+                          </Dropdown.Menu>
+                        </Dropdown>
+                      )}
+                      {f.type === "currency" && (
+                        <div className="d-flex align-items-center gap-1 w-100">
+                          <span className="text-muted small">{f.config?.currencySymbol || "$"}</span>
+                          <input
+                            type="number"
+                            className="cu-adv-input"
+                            value={customFieldValues[f.id] || ""}
+                            onChange={(e) => handleCustomFieldChange(f.id, e.target.value ? Number(e.target.value) : "")}
+                            placeholder="0.00"
+                          />
+                        </div>
+                      )}
+                      {f.type === "rating" && (
+                        <div className="d-flex align-items-center gap-1">
+                          {[1, 2, 3, 4, 5].map((star) => {
+                            const active = (customFieldValues[f.id] || 0) >= star;
+                            return (
+                              <span
+                                key={star}
+                                onClick={() => handleCustomFieldChange(f.id, star)}
+                                style={{ color: active ? "#ffc107" : "#e4e5e9", fontSize: "16px", cursor: "pointer" }}
+                              >
+                                ★
+                              </span>
+                            );
+                          })}
+                          {(customFieldValues[f.id] || 0) > 0 && (
+                            <Button variant="link" size="sm" className="p-0 text-danger ms-2" onClick={() => handleCustomFieldChange(f.id, 0)} style={{ fontSize: "10px", textDecoration: "none" }}>Clear</Button>
+                          )}
+                        </div>
+                      )}
+                      {f.type === "formula" && (
+                        <Badge bg="secondary" className="py-2 px-3 fw-bold" style={{ fontSize: "11px" }}>
+                          {(() => {
+                            try {
+                              let resolved = f.config?.formula || "";
+                              resolved = resolved.replace("{time_estimate}", task.time_estimate_minutes || 0);
+                              customFields.forEach(cf => {
+                                const val = customFieldValues[cf.id] !== undefined ? customFieldValues[cf.id] : 0;
+                                resolved = resolved.replace(`{${cf.name}}`, typeof val === 'number' ? val : 0);
+                              });
+                              const result = new Function(`return ${resolved}`)();
+                              return typeof result === 'number' && !isNaN(result) ? result : 0;
+                            } catch {
+                              return "Error";
+                            }
+                          })()}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
                 <div className="cu-adv-row cu-adv-actions">
                   <span className="text-muted small">Reuse configurations:</span>
                   <Button variant="outline-primary" size="sm" onClick={handleSaveAsTemplate} disabled={savingTemplate} className="cu-template-btn">
@@ -1349,25 +1523,29 @@ const UpdatesDrawer = ({
                 </div>
               </div>
 
-              {/* Description (ClickUp style - inline editable) */}
+              {/* Description (Zbot style - inline editable) */}
               <div className="cu-description-area" onClick={() => { if (!editingDesc) setEditingDesc(true); }}>
                 {editingDesc ? (
-                  <div>
-                    <div className="cu-desc-toolbar">
-                      <Button variant="outline-secondary" size="sm" onClick={() => setDescriptionHtml(prev => prev + "<b>Bold Text</b>")} title="Bold"><strong>B</strong></Button>
-                      <Button variant="outline-secondary" size="sm" onClick={() => setDescriptionHtml(prev => prev + "<i>Italic Text</i>")} title="Italic"><em>I</em></Button>
-                      <Button variant="outline-secondary" size="sm" onClick={() => setDescriptionHtml(prev => prev + "<ul><li>Item</li></ul>")} title="List"><List size={12} /> List</Button>
-                      <Button variant="outline-secondary" size="sm" onClick={() => setDescriptionHtml(prev => prev + "<h3>Header</h3>")} title="Header">H3</Button>
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <div className="cu-desc-toolbar mb-2 p-1 bg-light border rounded d-flex gap-1">
+                      <button type="button" className="btn btn-sm btn-outline-secondary py-0 px-2" onClick={() => document.execCommand('bold')}><b>B</b></button>
+                      <button type="button" className="btn btn-sm btn-outline-secondary py-0 px-2" onClick={() => document.execCommand('italic')}><i>I</i></button>
+                      <button type="button" className="btn btn-sm btn-outline-secondary py-0 px-2" onClick={() => document.execCommand('underline')}><u>U</u></button>
+                      <button type="button" className="btn btn-sm btn-outline-secondary py-0 px-2" onClick={() => document.execCommand('strikeThrough')}><s>S</s></button>
+                      <div className="vr mx-1" />
+                      <button type="button" className="btn btn-sm btn-outline-secondary py-0 px-2" onClick={() => document.execCommand('insertUnorderedList')}>• List</button>
+                      <button type="button" className="btn btn-sm btn-outline-secondary py-0 px-2" onClick={() => document.execCommand('insertOrderedList')}>1. List</button>
+                      <div className="vr mx-1" />
+                      <button type="button" className="btn btn-sm btn-outline-secondary py-0 px-2" onClick={() => document.execCommand('formatBlock', '<h3>')}>H3</button>
                     </div>
-                    <textarea
-                      className="cu-desc-textarea"
-                      rows={4}
-                      placeholder="Add description, or write with AI"
-                      value={descriptionHtml}
-                      onChange={(e) => setDescriptionHtml(e.target.value)}
-                      autoFocus
+                    <div
+                      contentEditable
+                      className="cu-desc-textarea p-3 border rounded bg-white"
+                      style={{ minHeight: "120px", outline: "none", overflowY: "auto" }}
+                      onInput={(e) => setDescriptionHtml(e.currentTarget.innerHTML)}
+                      dangerouslySetInnerHTML={{ __html: descriptionHtml }}
                     />
-                    <div className="cu-desc-actions">
+                    <div className="cu-desc-actions mt-2">
                       <Button variant="link" size="sm" className="text-muted" onClick={(e) => { e.stopPropagation(); setEditingDesc(false); }} disabled={savingDesc}>Cancel</Button>
                       <Button variant="primary" size="sm" onClick={(e) => { e.stopPropagation(); saveDescription(); }} disabled={savingDesc}>
                         {savingDesc ? <Spinner size="sm" animation="border" className="me-1" /> : null}
@@ -1392,7 +1570,7 @@ const UpdatesDrawer = ({
                 )}
               </div>
 
-              {/* Subtasks section (ClickUp style) */}
+              {/* Subtasks section (Zbot style) */}
               <div className="cu-collapsible-section">
                 <div className="cu-section-header">
                   <span className="cu-section-icon"><ChevronDown size={14} /></span>
@@ -1454,7 +1632,7 @@ const UpdatesDrawer = ({
                               {sub.assignees && sub.assignees.length > 0 ? (
                                 <div className="d-flex" style={{ gap: "2px" }}>
                                   {sub.assignees.slice(0, 2).map((a) => (
-                                    <div key={getAssigneeKey(a)} className="assignee-avatar clickup-avatar-sm" title={a.name}>
+                                    <div key={getAssigneeKey(a)} className="assignee-avatar zbot-avatar-sm" title={a.name}>
                                       {getAvatarInitials(a.name)}
                                     </div>
                                   ))}
@@ -1727,7 +1905,7 @@ const UpdatesDrawer = ({
                   <div className="cu-watcher-list">
                     {watchers.map((w) => (
                       <span key={`${w.role}_${w.id}`} className="cu-watcher-chip">
-                        <span className="assignee-avatar clickup-avatar-sm">{getAvatarInitials(w.name)}</span>
+                        <span className="assignee-avatar zbot-avatar-sm">{getAvatarInitials(w.name)}</span>
                         {w.name}
                       </span>
                     ))}
@@ -1737,7 +1915,7 @@ const UpdatesDrawer = ({
 
             </section>
 
-            {/* Right Panel: Separate Chronological Activity Log & Update Messaging (ClickUp style) */}
+            {/* Right Panel: Separate Chronological Activity Log & Update Messaging (Zbot style) */}
             <aside className="task-detail-activity-unified">
               {/* Activities (History) Feed - Rendered at the top */}
               <div className="activity-feed-section mb-2">
@@ -1869,7 +2047,7 @@ const UpdatesDrawer = ({
                                     {item.replies.map((reply) => (
                                       <div key={reply.id} className="update-reply-item bg-light p-2 rounded-3 mb-2 border">
                                         <div className="reply-author d-flex align-items-center gap-2 mb-1">
-                                          <span className="assignee-avatar clickup-avatar-sm" style={{ width: "18px", height: "18px", fontSize: "8px" }}>
+                                          <span className="assignee-avatar zbot-avatar-sm" style={{ width: "18px", height: "18px", fontSize: "8px" }}>
                                             {getAvatarInitials(reply.sender_name)}
                                           </span>
                                           <strong style={{ fontSize: "11px" }}>{reply.sender_name}</strong>

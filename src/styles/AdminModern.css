@@ -29,15 +29,16 @@
 
   --sidebar-header-bg: transparent;
 
-  --content-bg: #f4f5f8;
-  --text-color: #111;
-  --text-muted: #888;
-  --card-bg: #fff;
-  --border-color: #dddfe5;
+  --content-bg: #ffffff; /* pure white background */
+  --sidebar-secondary-bg: #f1f5f9; /* cool slate grey secondary sidebar */
+  --text-color: #0f172a; /* changed to slate-900 */
+  --text-muted: #64748b; /* changed to slate-500 */
+  --card-bg: #ffffff;
+  --border-color: #cbd5e1; /* changed to slate-300 */
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.03);
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.06);
+  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+  --shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.1), 0 1px 2px -1px rgba(15, 23, 42, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.08);
 }
 
 /* === Global === */
@@ -283,7 +284,7 @@ body {
   overflow-x: hidden;
   min-height: calc(100vh - 80px);
   padding: 0;
-  background: #f4f5f8;
+  background: var(--content-bg);
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 0, 0, 0.08) transparent;
 }
@@ -1798,7 +1799,7 @@ body {
   color: rgba(255, 255, 255, 0.85) !important;
 }
 
-/* ── Active (overridden by ClickUp block below) ── */
+/* ── Active (overridden by Zbot block below) ── */
 /* .sidebar-nav-active {
   background: transparent !important;
   color: #ffffff !important;
@@ -1981,18 +1982,18 @@ body {
 /* Form Controls */
 .form-control, .form-select {
   font-family: var(--font-primary) !important;
-  border: 1px solid #e5e5e5 !important;
-  border-radius: 10px !important;
-  padding: 0.5rem 0.85rem !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 6px !important;
+  padding: 0.4rem 0.75rem !important;
   font-size: 0.825rem !important;
   transition: all 0.15s ease-in-out !important;
-  background-color: #fafafa !important;
+  background-color: #ffffff !important;
 }
 
 .form-control:focus, .form-select:focus {
-  border-color: #111 !important;
+  border-color: var(--primary-color) !important;
   background-color: #fff !important;
-  box-shadow: none !important;
+  box-shadow: 0 0 0 2px rgba(103, 61, 230, 0.1) !important;
 }
 
 /* === Centralized Dashboard Portal === */
@@ -2135,16 +2136,16 @@ body {
 
 /* === Hostinger-inspired admin shell refresh === */
 .admin-layout {
-  background: #f4f5f8;
+  background: var(--content-bg);
 }
 
 .main-content {
-  background: #f4f5f8;
+  background: var(--content-bg);
 }
 
 .content-area {
   padding: 32px 44px;
-  background: #f4f5f8;
+  background: var(--content-bg);
 }
 
 .hostinger-topbar {
@@ -2157,6 +2158,7 @@ body {
   align-items: center;
   gap: 14px;
   min-width: 250px;
+  flex-shrink: 0;
 }
 
 .hostinger-logo-image {
@@ -2167,6 +2169,7 @@ body {
   background: #0f172a;
   border-radius: 14px;
   padding: 8px 12px;
+  flex-shrink: 0;
 }
 
 .hostinger-round-action {
@@ -2537,10 +2540,13 @@ body {
 @media (max-width: 1100px) {
   .hostinger-brand-mark {
     min-width: auto;
+    flex-shrink: 0;
   }
 
   .hostinger-logo-image {
-    width: 128px;
+    width: 196px;
+    height: 54px;
+    flex-shrink: 0;
   }
 
   .content-area {
@@ -2569,7 +2575,7 @@ body {
 }
 
 /* ==========================================================================
-   CLICKUP SIDEBAR OVERRIDES
+   ZBOT SIDEBAR OVERRIDES
 ========================================================================== */
 .sidebar,
 .sidebar-collapsed .sidebar {
@@ -2588,7 +2594,7 @@ body {
   position: relative !important;
 }
 
-.sidebar-header-clickup {
+.sidebar-header-zbot {
   height: 60px;
   display: flex;
   align-items: center;
@@ -2612,7 +2618,7 @@ body {
   box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
 }
 
-.sidebar-scroll-clickup {
+.sidebar-scroll-zbot {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
@@ -2620,24 +2626,24 @@ body {
   scrollbar-color: rgba(255, 255, 255, 0.05) transparent;
 }
 
-.sidebar-scroll-clickup::-webkit-scrollbar {
+.sidebar-scroll-zbot::-webkit-scrollbar {
   width: 2px !important;
 }
 
-.sidebar-scroll-clickup::-webkit-scrollbar-track {
+.sidebar-scroll-zbot::-webkit-scrollbar-track {
   background: transparent !important;
 }
 
-.sidebar-scroll-clickup::-webkit-scrollbar-thumb {
+.sidebar-scroll-zbot::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.08) !important;
   border-radius: 99px !important;
 }
 
-.sidebar-scroll-clickup::-webkit-scrollbar-thumb:hover {
+.sidebar-scroll-zbot::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2) !important;
 }
 
-.sidebar-nav-shell-clickup {
+.sidebar-nav-shell-zbot {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -2696,7 +2702,7 @@ body {
   }
 }
 
-.sidebar-tooltip-clickup-portal {
+.sidebar-tooltip-zbot-portal {
   position: absolute !important;
   left: 54px !important;
   transform: translateY(-50%) !important;
@@ -2714,7 +2720,7 @@ body {
   animation: tooltipSlideIn 0.12s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
 }
 
-.sidebar-tooltip-clickup-portal::after {
+.sidebar-tooltip-zbot-portal::after {
   content: "" !important;
   position: absolute !important;
   left: -4px !important;
@@ -2777,7 +2783,7 @@ body {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
 }
 
-.sidebar-footer-clickup {
+.sidebar-footer-zbot {
   border-top: 1px solid #1e2025;
   padding: 12px 0;
   display: flex;
@@ -2786,44 +2792,44 @@ body {
   flex-shrink: 0;
 }
 
-.sidebar-nav-logout-clickup {
+.sidebar-nav-logout-zbot {
   color: #7a8090 !important;
   border: none !important;
 }
 
-.sidebar-nav-logout-clickup svg {
+.sidebar-nav-logout-zbot svg {
   color: #7a8090 !important;
 }
 
-.sidebar-nav-logout-clickup:hover {
+.sidebar-nav-logout-zbot:hover {
   background-color: #1f2026 !important;
   color: #ef4444 !important;
 }
 
-.sidebar-nav-logout-clickup:hover svg {
+.sidebar-nav-logout-zbot:hover svg {
   color: #ef4444 !important;
 }
 
 /* ── Nearly-invisible sidebar scrollbar ── */
-.sidebar-scroll-clickup {
+.sidebar-scroll-zbot {
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.06) transparent;
 }
 
-.sidebar-scroll-clickup::-webkit-scrollbar {
+.sidebar-scroll-zbot::-webkit-scrollbar {
   width: 2px;
 }
 
-.sidebar-scroll-clickup::-webkit-scrollbar-track {
+.sidebar-scroll-zbot::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.sidebar-scroll-clickup::-webkit-scrollbar-thumb {
+.sidebar-scroll-zbot::-webkit-scrollbar-thumb {
   background-color: rgba(255, 255, 255, 0.06);
   border-radius: 2px;
 }
 
-.sidebar-scroll-clickup::-webkit-scrollbar-thumb:hover {
+.sidebar-scroll-zbot::-webkit-scrollbar-thumb:hover {
   background-color: rgba(255, 255, 255, 0.12);
 }
