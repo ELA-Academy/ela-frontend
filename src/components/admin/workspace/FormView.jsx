@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Table, Button, Modal, Form, Spinner, Row, Col, Card } from "react-bootstrap";
+import { Table, Button, Modal, Form, Spinner, Row, Col, Card, Badge } from "react-bootstrap";
 import { Plus, Trash2, Clipboard, Eye, Copy, ArrowLeft } from "lucide-react";
 import api from "../../../utils/api";
 import { showSuccess, showError } from "../../../utils/notificationService";
@@ -10,6 +10,7 @@ const FormView = ({ boardId }) => {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [deletingFormId, setDeletingFormId] = useState(null);
 
   // Active form review
   const [activeForm, setActiveForm] = useState(null);
@@ -95,11 +96,14 @@ const FormView = ({ boardId }) => {
   const handleDeleteForm = async (formId) => {
     if (!window.confirm("Are you sure you want to delete this form config?")) return;
     try {
+      setDeletingFormId(formId);
       await api.delete(`/board-extensions/forms/${formId}`);
       showSuccess("Form deleted.");
       fetchForms();
     } catch (err) {
       showError("Failed to delete form.");
+    } finally {
+      setDeletingFormId(null);
     }
   };
 
@@ -137,10 +141,10 @@ const FormView = ({ boardId }) => {
   };
 
   const handleCopyLink = (formId) => {
-    // Generate public-facing simulation link
-    const link = `${window.location.origin}/admin/boards/${boardId}?activeView=form&formId=${formId}`;
+    // Generate public-facing link
+    const link = `${window.location.origin}/public/forms/${formId}`;
     navigator.clipboard.writeText(link);
-    showSuccess("Form link copied to clipboard!");
+    showSuccess("Public form link copied to clipboard!");
   };
 
   return (
@@ -238,13 +242,52 @@ const FormView = ({ boardId }) => {
                     <Card.Body>
                       <h5 className="fw-bold text-slate-800 mb-2">{f.name}</h5>
                       <p className="text-muted small mb-3 text-truncate-2">{f.description || "No description provided."}</p>
-                      <div className="d-flex justify-content-between align-items-center border-top pt-3">
-                        <Button variant="outline-primary" size="sm" onClick={() => handleViewResponses(f)}>
-                          Responses
-                        </Button>
-                        <Button variant="link" className="text-danger p-0" onClick={() => handleDeleteForm(f.id)}>
-                          <Trash2 size={16} />
-                        </Button>
+                      <div className="d-flex flex-column gap-2 border-top pt-3">
+                        <div className="d-flex justify-content-between align-items-center">
+                          <Button variant="outline-primary" size="sm" onClick={() => handleViewResponses(f)}>
+                            Responses
+                          </Button>
+                          <div className="d-flex align-items-center gap-2">
+                            <Button 
+                              variant="outline-secondary" 
+                              size="sm" 
+                              onClick={() => handleCopyLink(f.id)} 
+                              title="Copy Public Link"
+                              className="p-1 px-2 d-flex align-items-center justify-content-center"
+                            >
+                              <Copy size={13} />
+                            </Button>
+                            <Button 
+                              variant="outline-secondary" 
+                              size="sm" 
+                              onClick={() => window.open(`/public/forms/${f.id}`, "_blank")} 
+                              title="Preview Public Form"
+                              className="p-1 px-2 d-flex align-items-center justify-content-center"
+                            >
+                              <Eye size={13} />
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="d-flex justify-content-end align-items-center mt-1">
+                          <Button 
+                            variant="link" 
+                            className="text-danger p-0 text-decoration-none small d-flex align-items-center gap-1" 
+                            style={{ fontSize: "11px" }} 
+                            onClick={() => handleDeleteForm(f.id)}
+                            disabled={deletingFormId === f.id}
+                          >
+                            {deletingFormId === f.id ? (
+                              <>
+                                <Spinner size="sm" animation="border" style={{ width: "10px", height: "10px" }} className="me-1" />
+                                Deleting...
+                              </>
+                            ) : (
+                              <>
+                                <Trash2 size={13} /> Delete Form
+                              </>
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     </Card.Body>
                   </Card>

@@ -28,6 +28,7 @@ import FormView from "../../components/admin/workspace/FormView";
 import TimesheetsView from "../../components/admin/workspace/TimesheetsView";
 import { useWorkspace } from "../../components/admin/workspace/WorkspaceLayout";
 import { useAuth } from "../../context/AuthContext";
+import { getActivityLogs } from "../../services/activityService";
 import {
   createGroup,
   createTask,
@@ -123,6 +124,10 @@ const BoardDetailPage = () => {
   const [showCreateStatusModal, setShowCreateStatusModal] = useState(false);
   const [newStatusName, setNewStatusName] = useState("");
   const [newStatusColor, setNewStatusColor] = useState("#673de6");
+  
+  const [showInlineStatusCreator, setShowInlineStatusCreator] = useState(false);
+  const [inlineStatusName, setInlineStatusName] = useState("");
+  const [inlineStatusColor, setInlineStatusColor] = useState("#673de6");
 
   const STATUS_OPTIONS = useMemo(() => {
     if (board?.custom_statuses && board.custom_statuses.length > 0) {
@@ -206,6 +211,8 @@ const BoardDetailPage = () => {
   const [showSharingModal, setShowSharingModal] = useState(false);
   const [sharingViewKey, setSharingViewKey] = useState(null);
   const [viewSearchQuery, setViewSearchQuery] = useState("");
+  const [activityLogs, setActivityLogs] = useState([]);
+  const [loadingActivity, setLoadingActivity] = useState(false);
 
   const sortedBoardViews = useMemo(() => {
     if (!boardViews) return [];
@@ -372,6 +379,23 @@ const BoardDetailPage = () => {
   useEffect(() => {
     fetchWorkspace(true);
   }, [fetchWorkspace]);
+
+  useEffect(() => {
+    if (currentViewType === "activity") {
+      const fetchLogs = async () => {
+        try {
+          setLoadingActivity(true);
+          const data = await getActivityLogs();
+          setActivityLogs(data);
+        } catch (err) {
+          console.error("Failed to fetch activity logs:", err);
+        } finally {
+          setLoadingActivity(false);
+        }
+      };
+      fetchLogs();
+    }
+  }, [currentViewType]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -1119,6 +1143,44 @@ const BoardDetailPage = () => {
       setShowCreateStatusModal(false);
     } catch (err) {
       setError("Failed to create status group.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveInlineStatus = async () => {
+    const name = inlineStatusName.trim();
+    if (!name) return;
+
+    if (STATUS_OPTIONS.some(s => s.toLowerCase() === name.toLowerCase())) {
+      toast.error("A status group with this name already exists.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const currentStatuses = board.custom_statuses && board.custom_statuses.length > 0
+        ? board.custom_statuses
+        : [
+            { id: "Not Started", label: "To do", color: "#7c8798" },
+            { id: "In Progress", label: "In progress", color: "#6d45f7" },
+            { id: "Done", label: "Complete", color: "#00b67a" }
+          ];
+
+      const newStatusObj = {
+        id: name,
+        label: name,
+        color: inlineStatusColor
+      };
+
+      const nextStatuses = [...currentStatuses, newStatusObj];
+      const updated = await updateBoard(boardId, { custom_statuses: nextStatuses });
+      setBoard(updated);
+      setInlineStatusName("");
+      setShowInlineStatusCreator(false);
+      toast.success("Status group created!");
+    } catch (err) {
+      toast.error("Failed to create status group.");
     } finally {
       setSaving(false);
     }
@@ -1896,12 +1958,53 @@ const BoardDetailPage = () => {
   };
 
   const renderActivityView = () => {
-    const defaultActivities = [
-      { user: "Omobolaji Durojaiye", action: "changed task status of 'Create staging environment' to 'Complete'", time: "2 hours ago", icon: CheckCircleFill, color: "#00b67a" },
-      { user: "Justice Dibofu", action: "uploaded attachment 'schema_v2.pdf' to messaging", time: "4 hours ago", icon: FileText, color: "#673de6" },
-      { user: "Omobolaji Durojaiye", action: "logged 1.5 hours of billable timesheet entry", time: "1 day ago", icon: Clock, color: "#f59e0b" },
-      { user: "System Admin", action: "created new status group 'Q&A Board Testing'", time: "2 days ago", icon: Plus, color: "#3b82f6" }
-    ];
+    if (loadingActivity) {
+      return (
+        <div className="workspace-activity-view p-4 bg-white rounded-3 shadow-sm border mb-4 text-center">
+          <Spinner animation="border" variant="dark" />
+          <div className="text-xs text-slate-400 mt-2 font-medium">Loading activities...</div>
+        </div>
+      );
+    }
+
+    const taskIds = new Set(allTasks.map(t => t.id));
+    const groupIds = new Set((board?.groups || []).map(g => g.id));
+    const spaceActivities = activityLogs.filter(log => {
+      if (log.target_type === "Board" && log.target_id === Number(boardId)) return true;
+      if (log.target_type === "Group" && groupIds.has(log.target_id)) return true;
+      if (log.target_type === "Task" && taskIds.has(log.target_id)) return true;
+      return false;
+    });
+
+    const timeAgo = (dateString) => {
+      if (!dateString) return "";
+      const date = new Date(dateString);
+      const now = new Date();
+      const seconds = Math.round((now - date) / 1000);
+      if (seconds < 60) return `${seconds}s ago`;
+      const minutes = Math.round(seconds / 60);
+      if (minutes < 60) return `${minutes}m ago`;
+      const hours = Math.round(minutes / 60);
+      if (hours < 24) return `${hours}h ago`;
+      const days = Math.round(hours / 24);
+      return `${days}d ago`;
+    };
+
+    const getIconForAction = (actionStr) => {
+      const lower = actionStr.toLowerCase();
+      if (lower.includes("complete") || lower.includes("status of 'done'")) return CheckCircleFill;
+      if (lower.includes("uploaded") || lower.includes("attachment") || lower.includes("doc")) return FileText;
+      if (lower.includes("log") || lower.includes("timesheet")) return Clock;
+      return Plus;
+    };
+
+    const getColorForAction = (actionStr) => {
+      const lower = actionStr.toLowerCase();
+      if (lower.includes("complete") || lower.includes("status of 'done'")) return "#00b67a";
+      if (lower.includes("uploaded") || lower.includes("attachment") || lower.includes("doc")) return "#673de6";
+      if (lower.includes("log") || lower.includes("timesheet")) return "#f59e0b";
+      return "#3b82f6";
+    };
 
     return (
       <div className="workspace-activity-view p-4 bg-white rounded-3 shadow-sm border mb-4">
@@ -1909,26 +2012,36 @@ const BoardDetailPage = () => {
           <Activity size={18} className="text-rose-500" />
           <span>Space Activity Logs & Audit Feed</span>
         </h5>
-        <div className="d-flex flex-column gap-3.5" style={{ borderLeft: "2px solid #f1f5f9", paddingLeft: "16px", marginLeft: "8px" }}>
-          {defaultActivities.map((act, idx) => {
-            const Icon = act.icon;
-            return (
-              <div key={idx} className="position-relative d-flex gap-3 align-items-start text-xs">
-                <div 
-                  className="position-absolute rounded-circle bg-white border d-flex align-items-center justify-content-center"
-                  style={{ left: "-27px", top: "2px", width: "20px", height: "20px" }}
-                >
-                  <Icon size={10} style={{ color: act.color }} />
+        {spaceActivities.length === 0 ? (
+          <div className="text-center py-5 text-slate-400 text-xs">
+            No recent activity logs for this Space.
+          </div>
+        ) : (
+          <div className="d-flex flex-column gap-3.5" style={{ borderLeft: "2px solid #f1f5f9", paddingLeft: "16px", marginLeft: "8px" }}>
+            {spaceActivities.map((act) => {
+              const Icon = getIconForAction(act.action);
+              const color = getColorForAction(act.action);
+              return (
+                <div key={act.id} className="position-relative d-flex gap-3 align-items-start text-xs">
+                  <div 
+                    className="position-absolute rounded-circle bg-white border d-flex align-items-center justify-content-center"
+                    style={{ left: "-27px", top: "2px", width: "20px", height: "20px" }}
+                  >
+                    <Icon size={10} style={{ color }} />
+                  </div>
+                  <div>
+                    <span className="fw-bold text-slate-800">{act.actor_name}</span>{" "}
+                    <span className="text-slate-500">
+                      {act.action}
+                      {act.target_name && ` (${act.target_type}: ${act.target_name})`}
+                    </span>
+                    <span className="d-block text-[10px] text-slate-400 font-medium mt-1">{timeAgo(act.created_at)}</span>
+                  </div>
                 </div>
-                <div>
-                  <span className="fw-bold text-slate-800">{act.user}</span>{" "}
-                  <span className="text-slate-500">{act.action}</span>
-                  <span className="d-block text-[10px] text-slate-400 font-medium mt-1">{act.time}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
   };
@@ -1992,10 +2105,7 @@ const BoardDetailPage = () => {
   };
 
   const renderTeamView = () => {
-    const teamMembers = assignees.length > 0 ? assignees : [
-      { name: "Omobolaji Durojaiye", role: "superadmin" },
-      { name: "Justice Dibofu", role: "staff" }
-    ];
+    const teamMembers = assignees;
 
     return (
       <div className="workspace-team-view p-4 bg-white rounded-3 shadow-sm border mb-4">
@@ -2122,7 +2232,7 @@ const BoardDetailPage = () => {
           return (
             <div key={statusVal} className="status-group-section mb-1">
               {/* Status Header */}
-              <div className="status-group-header d-flex align-items-center py-1 px-1 mb-0" style={{ borderLeft: `3px solid ${statusMeta.color}` }}>
+              <div className="status-group-header d-flex align-items-center">
                 <div className="d-flex align-items-center gap-2">
                   <button
                     type="button"
@@ -2133,10 +2243,13 @@ const BoardDetailPage = () => {
                       ▼
                     </span>
                   </button>
-                  <span className="badge rounded-pill text-white fw-bold px-2 py-1" style={{ backgroundColor: statusMeta.color, fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                  <span className="clickup-status-badge" style={{ backgroundColor: statusMeta.color }}>
+                    <span className="clickup-status-icon">
+                      {statusVal === "Done" && <CheckCircleFill size={8} style={{ color: "#fff" }} />}
+                    </span>
                     {statusMeta.label}
                   </span>
-                  <span className="text-muted small fw-semibold">
+                  <span style={{ fontSize: "12px", fontWeight: 500, color: "#9ca3af" }}>
                     {statusTasks.length}
                   </span>
                 </div>
@@ -2633,9 +2746,9 @@ const BoardDetailPage = () => {
                                     type="button"
                                     className="zbot-inline-btn-save"
                                     onClick={() => handleAddTask(defaultGroupId, statusVal)}
-                                    disabled={!(inlineTaskBuilders[statusKey]?.title || "").trim()}
+                                    disabled={!(inlineTaskBuilders[statusKey]?.title || "").trim() || addingTask[statusKey]}
                                   >
-                                    Save
+                                    {addingTask[statusKey] ? <Spinner size="sm" animation="border" /> : "Save"}
                                   </button>
                                 </div>
                               </div>
@@ -2668,6 +2781,85 @@ const BoardDetailPage = () => {
             </div>
           );
         })}
+
+        {/* ClickUp-style inline new status creator */}
+        {showInlineStatusCreator ? (
+          <div className="clickup-inline-status-builder">
+            <OverlayTrigger
+              trigger="click"
+              placement="bottom"
+              rootClose
+              overlay={
+                <Popover id="inline-status-color-picker" className="border-0 shadow-sm rounded-3" style={{ minWidth: "auto" }}>
+                  <Popover.Body className="p-2">
+                    <div className="clickup-color-picker-row">
+                      {BOARD_COLORS.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          className={`color-swatch${inlineStatusColor === c ? " active" : ""}`}
+                          style={{ backgroundColor: c }}
+                          onClick={() => setInlineStatusColor(c)}
+                        />
+                      ))}
+                    </div>
+                  </Popover.Body>
+                </Popover>
+              }
+            >
+              <span 
+                className="color-dot" 
+                style={{ backgroundColor: inlineStatusColor }} 
+                title="Click to change color"
+              />
+            </OverlayTrigger>
+            <input
+              type="text"
+              placeholder="Type a status name..."
+              value={inlineStatusName}
+              onChange={(e) => setInlineStatusName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  saveInlineStatus();
+                }
+                if (e.key === "Escape") {
+                  setShowInlineStatusCreator(false);
+                }
+              }}
+              autoFocus
+            />
+            <button 
+              type="button" 
+              className="confirm-btn" 
+              onClick={saveInlineStatus}
+              title="Create status"
+              disabled={saving}
+            >
+              {saving ? <Spinner size="sm" animation="border" /> : "✓"}
+            </button>
+            <button 
+              type="button" 
+              className="cancel-btn" 
+              onClick={() => setShowInlineStatusCreator(false)}
+              title="Cancel"
+            >
+              ✕
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="clickup-new-status-btn"
+            onClick={() => {
+              setShowInlineStatusCreator(true);
+              setInlineStatusName("");
+              setInlineStatusColor(BOARD_COLORS[Math.floor(Math.random() * BOARD_COLORS.length)]);
+            }}
+          >
+            <Plus size={14} /> New status
+          </button>
+        )}
       </div>
     );
   };
@@ -3052,9 +3244,9 @@ const BoardDetailPage = () => {
                       className="btn btn-sm btn-primary py-0 px-2"
                       style={{ fontSize: "11px" }}
                       onClick={handleSaveTableTask}
-                      disabled={!(inlineTaskBuilders["table_builder"]?.title || "").trim()}
+                      disabled={!(inlineTaskBuilders["table_builder"]?.title || "").trim() || saving}
                     >
-                      Save
+                      {saving ? <Spinner size="sm" animation="border" /> : "Save"}
                     </button>
                   </div>
                 </td>
@@ -3842,8 +4034,12 @@ const BoardDetailPage = () => {
             </Dropdown.Menu>
           </Dropdown>
 
-          <button className="btn btn-danger btn-sm d-flex align-items-center gap-1" onClick={handleBulkDelete}>
-            <Trash size={14} /> Delete
+          <button 
+            className="btn btn-danger btn-sm d-flex align-items-center gap-1" 
+            onClick={handleBulkDelete}
+            disabled={saving}
+          >
+            {saving ? <Spinner size="sm" animation="border" /> : <><Trash size={14} /> Delete</>}
           </button>
           
           <button className="btn btn-link btn-sm text-white text-decoration-none" onClick={() => setSelectedTaskIds([])}>

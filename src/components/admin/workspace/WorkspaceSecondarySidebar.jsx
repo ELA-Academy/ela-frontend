@@ -1,4 +1,5 @@
 import React, { useState, useRef, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { unfollowChannel, markConversationUnread, toggleFavoriteConversation } from "../../../services/messagingService";
 import { Dropdown, Overlay } from "react-bootstrap";
@@ -489,12 +490,13 @@ const WorkspaceSecondarySidebar = ({
   // Merge channels and department threads into one unified "Channels" list
   const allChannels = conversations.filter(
     (item) => (item.conversation_type === "channel" || item.conversation_type === "department") && !closedDmIds.includes(item.id)
+  ).filter((conv, index, self) =>
+    index === self.findIndex((c) => c.id === conv.id)
   );
   const directMessages = conversations.filter(
     (item) => item.conversation_type === "direct" && !closedDmIds.includes(item.id)
   ).filter((conv, index, self) =>
-    // Deduplicate by title to prevent showing same person twice
-    index === self.findIndex((c) => c.title === conv.title)
+    index === self.findIndex((c) => c.id === conv.id)
   );
   const auditOnlyConversations = auditConversations.filter(
     (item) => !conversations.some((conversation) => conversation.id === item.id)
@@ -605,7 +607,9 @@ const WorkspaceSecondarySidebar = ({
       (b) => b.parent_id !== null && !boardIds.has(b.parent_id) && !b.is_folder
     );
     
-    const allSpaces = [...spaces, ...orphans];
+    const allSpaces = [...spaces, ...orphans].filter((item, index, self) =>
+      index === self.findIndex((b) => b.id === item.id)
+    );
     
     return allSpaces.map((space) => {
       const folders = flatBoards.filter((b) => b.parent_id === space.id && b.is_folder);
@@ -1140,7 +1144,7 @@ const WorkspaceSecondarySidebar = ({
       </div>
 
       {/* ClickUp-style floating context menu portal */}
-      {menuConfig && (
+      {menuConfig && createPortal(
         <>
           <div
             className="clickup-menu-backdrop"
@@ -1158,7 +1162,8 @@ const WorkspaceSecondarySidebar = ({
           >
             {renderMenuContent()}
           </div>
-        </>
+        </>,
+        document.body
       )}
     </aside>
   );

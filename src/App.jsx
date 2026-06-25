@@ -35,6 +35,7 @@ import MessagingPage from "./pages/admin/MessagingPage";
 import EnrollmentDashboard from "./pages/admin/enrollment/EnrollmentDashboard";
 import EnrollmentFormBuilder from "./pages/admin/enrollment/EnrollmentFormBuilder";
 import PublicEnrollmentForm from "./pages/public/PublicEnrollmentForm";
+import PublicFormFiller from "./pages/public/PublicFormFiller";
 import AllTasksPage from "./pages/admin/AllTasksPage";
 import BillingDashboard from "./pages/admin/billing/BillingDashboard";
 import StudentLedgerPage from "./pages/admin/billing/StudentLedgerPage";
@@ -77,6 +78,7 @@ function App() {
             <Route path="/logout" element={<Logout />} />
             <Route path="/admissions/apply" element={<AdmissionForm />} />
             <Route path="/enrollment/:token" element={<PublicEnrollmentForm />} />
+            <Route path="/public/forms/:formId" element={<PublicFormFiller />} />
             <Route path="/setup-password" element={<SetupPassword />} />
 
             <Route element={<ProtectedRoute />}>
