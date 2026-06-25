@@ -29,6 +29,7 @@ const DocsHubPage = () => {
   const [newDocPublic, setNewDocPublic] = useState(true);
   const [newDocTemplate, setNewDocTemplate] = useState(null);
   const [creating, setCreating] = useState(false);
+  const [deletingDocId, setDeletingDocId] = useState(null);
 
   useEffect(() => {
     fetchDocs();
@@ -51,12 +52,15 @@ const DocsHubPage = () => {
     if (e) e.stopPropagation();
     if (!window.confirm("Are you sure you want to permanently delete this document?")) return;
     try {
+      setDeletingDocId(docId);
       await deleteWorkspaceDoc(docId);
       setDocs(prev => prev.filter(d => d.id !== docId));
       toast.success("Document deleted");
     } catch (err) {
       console.error("Failed to delete doc", err);
       toast.error("Failed to delete document");
+    } finally {
+      setDeletingDocId(null);
     }
   };
 
@@ -392,8 +396,18 @@ const DocsHubPage = () => {
                             <Dropdown.Item 
                               className="d-flex align-items-center gap-2 py-1.5 px-3 text-danger"
                               onClick={(e) => handleDelete(doc.id, e)}
+                              disabled={deletingDocId === doc.id}
                             >
-                              <Trash2 size={12} /> Delete Doc
+                              {deletingDocId === doc.id ? (
+                                <>
+                                  <Spinner size="sm" animation="border" style={{ width: "10px", height: "10px" }} />
+                                  Deleting...
+                                </>
+                              ) : (
+                                <>
+                                  <Trash2 size={12} /> Delete Doc
+                                </>
+                              )}
                             </Dropdown.Item>
                           </Dropdown.Menu>
                         </Dropdown>
@@ -479,10 +493,17 @@ const DocsHubPage = () => {
               variant="primary" 
               type="submit" 
               size="sm" 
-              className="text-xs font-bold px-3 bg-purple-600 hover:bg-purple-700 border-none"
+              className="text-xs font-bold px-3 bg-purple-600 hover:bg-purple-700 border-none d-flex align-items-center gap-1.5"
               disabled={creating}
             >
-              {creating ? "Creating..." : "Create Doc"}
+              {creating ? (
+                <>
+                  <Spinner size="sm" animation="border" style={{ width: "12px", height: "12px" }} />
+                  Creating...
+                </>
+              ) : (
+                "Create Doc"
+              )}
             </Button>
           </Modal.Footer>
         </Form>

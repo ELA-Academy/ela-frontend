@@ -716,8 +716,15 @@ const DocsView = ({ boardId, assignees = [], departments = [] }) => {
         <div className="docs-list-sidebar bg-white border-end" style={{ width: "240px", display: "flex", flexDirection: "column", flexShrink: 0 }}>
         <div className="docs-sidebar-header d-flex justify-content-between align-items-center p-3 border-bottom">
           <span className="fw-bold text-slate-800" style={{ fontSize: "12px" }}>Space Wiki & Docs</span>
-          <Button variant="primary" size="sm" onClick={handleCreateDoc} className="p-1 px-2 d-flex align-items-center gap-1 font-bold" style={{ fontSize: "11px" }}>
-            <Plus size={14} /> New
+          <Button 
+            variant="primary" 
+            size="sm" 
+            onClick={handleCreateDoc} 
+            className="p-1 px-2 d-flex align-items-center gap-1 font-bold" 
+            style={{ fontSize: "11px" }}
+            disabled={saving}
+          >
+            {saving ? <Spinner size="sm" animation="border" /> : <><Plus size={14} /> New</>}
           </Button>
         </div>
 
@@ -1373,8 +1380,14 @@ const DocsView = ({ boardId, assignees = [], departments = [] }) => {
             <p className="text-muted max-w-sm mb-4" style={{ fontSize: "12px" }}>
               Write standard operating procedures, documentation, class resources, or meeting notes for your workspace here.
             </p>
-            <Button variant="primary" onClick={handleCreateDoc} className="px-4 font-bold" style={{ borderRadius: "8px" }}>
-              Create Document
+            <Button 
+              variant="primary" 
+              onClick={handleCreateDoc} 
+              className="px-4 font-bold d-flex align-items-center gap-1.5" 
+              style={{ borderRadius: "8px" }}
+              disabled={saving}
+            >
+              {saving ? <Spinner size="sm" animation="border" /> : "Create Document"}
             </Button>
           </div>
         )}
