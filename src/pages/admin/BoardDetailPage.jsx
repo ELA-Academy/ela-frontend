@@ -4384,6 +4384,7 @@ const BoardDetailPage = () => {
           onClose={handleCloseUpdatesDrawer}
           allTasks={allTasks}
           onTaskUpdated={(tId, updates) => patchTaskInState(tId, (t) => ({ ...t, ...updates }))}
+          onSelectTask={handleOpenUpdatesDrawer}
           groupName={board?.groups?.find((g) => g.id === activeTask.group_id)?.name}
           boardName={board?.name}
           customStatuses={board?.custom_statuses}
