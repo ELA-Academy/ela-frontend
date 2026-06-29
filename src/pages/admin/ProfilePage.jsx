@@ -13,6 +13,7 @@ import {
 } from "react-bootstrap";
 import { getMyProfile, changePassword, updateProfile } from "../../services/profileService";
 import { showSuccess, showError } from "../../utils/notificationService";
+import api from "../../utils/api";
 
 const ProfilePage = () => {
   const [profile, setProfile] = useState(null);
@@ -53,6 +54,9 @@ const ProfilePage = () => {
             </Tab>
             <Tab eventKey="security" title="Security">
               <ChangePasswordForm />
+            </Tab>
+            <Tab eventKey="notifications" title="Notification Preferences">
+              <NotificationPreferencesForm />
             </Tab>
           </Tabs>
         </Card.Body>
@@ -226,6 +230,143 @@ const ChangePasswordForm = () => {
         </Form>
       </Col>
     </Row>
+  );
+};
+
+// Sub-component for notification preferences form
+const NotificationPreferencesForm = () => {
+  const [preferences, setPreferences] = useState({
+    email_alerts: true,
+    in_app_alerts: true,
+    task_assignment: true,
+    mentions: true,
+    doc_comments: true,
+    reminders: true,
+  });
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchPrefs = async () => {
+      try {
+        setLoading(true);
+        const res = await api.get("/notifications/preferences");
+        if (res.data && Object.keys(res.data).length > 0) {
+          setPreferences({
+            email_alerts: res.data.email_alerts ?? true,
+            in_app_alerts: res.data.in_app_alerts ?? true,
+            task_assignment: res.data.task_assignment ?? true,
+            mentions: res.data.mentions ?? true,
+            doc_comments: res.data.doc_comments ?? true,
+            reminders: res.data.reminders ?? true,
+          });
+        }
+      } catch (err) {
+        console.error("Failed to load notification preferences", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPrefs();
+  }, []);
+
+  const handleChange = (e) => {
+    const { name, checked } = e.target;
+    setPreferences((prev) => ({
+      ...prev,
+      [name]: checked,
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await api.put("/notifications/preferences", preferences);
+      showSuccess("Notification preferences updated successfully!");
+    } catch (err) {
+      showError("Failed to update notification preferences.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <Spinner animation="border" size="sm" />;
+
+  return (
+    <Form onSubmit={handleSubmit}>
+      <Row>
+        <Col md={8} lg={6}>
+          <div className="mb-4">
+            <h5 className="fw-bold text-slate-800 mb-1">Alert Channels</h5>
+            <p className="text-muted small">Choose how you would like to receive system alerts.</p>
+            <Form.Check
+              type="checkbox"
+              id="pref-email"
+              label="Email Notifications"
+              name="email_alerts"
+              checked={preferences.email_alerts}
+              onChange={handleChange}
+              className="mb-2"
+            />
+            <Form.Check
+              type="checkbox"
+              id="pref-in-app"
+              label="In-app Notifications"
+              name="in_app_alerts"
+              checked={preferences.in_app_alerts}
+              onChange={handleChange}
+              className="mb-2"
+            />
+          </div>
+
+          <div className="mb-4">
+            <h5 className="fw-bold text-slate-800 mb-1">Activity Triggers</h5>
+            <p className="text-muted small">Select the workspace events you wish to be alerted about.</p>
+            <Form.Check
+              type="checkbox"
+              id="pref-task"
+              label="When a task is assigned or reassigned to me"
+              name="task_assignment"
+              checked={preferences.task_assignment}
+              onChange={handleChange}
+              className="mb-2"
+            />
+            <Form.Check
+              type="checkbox"
+              id="pref-mention"
+              label="When I am mentioned (@name) in updates or comments"
+              name="mentions"
+              checked={preferences.mentions}
+              onChange={handleChange}
+              className="mb-2"
+            />
+            <Form.Check
+              type="checkbox"
+              id="pref-comment"
+              label="When comments are added to my watched documents"
+              name="doc_comments"
+              checked={preferences.doc_comments}
+              onChange={handleChange}
+              className="mb-2"
+            />
+            <Form.Check
+              type="checkbox"
+              id="pref-reminders"
+              label="Calendar event reminders and warnings"
+              name="reminders"
+              checked={preferences.reminders}
+              onChange={handleChange}
+              className="mb-2"
+            />
+          </div>
+
+          <Button variant="primary" type="submit" disabled={saving}>
+            {saving ? <Spinner as="span" size="sm" /> : "Save Preferences"}
+          </Button>
+        </Col>
+      </Row>
+    </Form>
   );
 };
 

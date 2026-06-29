@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { ChevronDown, CheckSquare, Clock, User, AlertCircle, BarChart3, Settings } from "lucide-react";
+import { ChevronDown, CheckSquare, Clock, User, AlertCircle, BarChart3, Settings, DollarSign } from "lucide-react";
 import { Dropdown, Form } from "react-bootstrap";
 import "../../../styles/Boards.css";
 
@@ -43,6 +43,15 @@ const DashboardView = ({ board, assignees, onTaskClick }) => {
 
     return { total, completed, inProgress, todo, progress, urgentCount, highCount, overdue };
   }, [allTasks]);
+
+  // Project Budget vs Billable spent cost
+  const budgetStats = useMemo(() => {
+    const billableEntries = allTasks.flatMap(t => t.time_entries || []).filter(e => e.is_billable);
+    const spent = billableEntries.reduce((sum, entry) => sum + (entry.duration_seconds / 3600) * 50, 0); // $50/hr rate
+    const budget = board?.budget_amount || 0;
+    const percent = budget ? Math.round((spent / budget) * 100) : 0;
+    return { spent, budget, percent };
+  }, [allTasks, board?.budget_amount]);
 
   // Tasks by assignee
   const assigneeData = useMemo(() => {
@@ -109,7 +118,7 @@ const DashboardView = ({ board, assignees, onTaskClick }) => {
       {/* Metrics Row */}
       {visibleWidgets.stats && (
         <div className="row g-3 mb-4">
-          <div className="col-md-3">
+          <div className="col-md">
             <div className="dashboard-metric-card bg-white p-3 border rounded-4 shadow-sm">
               <span className="metric-eyebrow text-muted small d-block mb-1">TOTAL TASKS</span>
               <div className="d-flex align-items-center justify-content-between">
@@ -118,7 +127,7 @@ const DashboardView = ({ board, assignees, onTaskClick }) => {
               </div>
             </div>
           </div>
-          <div className="col-md-3">
+          <div className="col-md">
             <div className="dashboard-metric-card bg-white p-3 border rounded-4 shadow-sm">
               <span className="metric-eyebrow text-muted small d-block mb-1">COMPLETED PROGRESS</span>
               <div className="d-flex align-items-center justify-content-between">
@@ -130,7 +139,7 @@ const DashboardView = ({ board, assignees, onTaskClick }) => {
               </div>
             </div>
           </div>
-          <div className="col-md-3">
+          <div className="col-md">
             <div className="dashboard-metric-card bg-white p-3 border rounded-4 shadow-sm">
               <span className="metric-eyebrow text-muted small d-block mb-1">OVERDUE TASKS</span>
               <div className="d-flex align-items-center justify-content-between">
@@ -139,13 +148,31 @@ const DashboardView = ({ board, assignees, onTaskClick }) => {
               </div>
             </div>
           </div>
-          <div className="col-md-3">
+          <div className="col-md">
             <div className="dashboard-metric-card bg-white p-3 border rounded-4 shadow-sm">
               <span className="metric-eyebrow text-muted small d-block mb-1">URGENT / HIGH</span>
               <div className="d-flex align-items-center justify-content-between">
                 <strong className="metric-value fs-2 text-warning">{stats.urgentCount + stats.highCount}</strong>
                 <BarChart3 size={24} className="text-warning" />
               </div>
+            </div>
+          </div>
+          <div className="col-md">
+            <div className="dashboard-metric-card bg-white p-3 border rounded-4 shadow-sm">
+              <span className="metric-eyebrow text-muted small d-block mb-1">PROJECT BUDGET</span>
+              <div className="d-flex align-items-center justify-content-between">
+                <strong className="metric-value fs-2 text-slate-800">
+                  {budgetStats.budget > 0 ? `$${Math.round(budgetStats.spent)} / $${budgetStats.budget}` : `$${Math.round(budgetStats.spent)}`}
+                </strong>
+                <DollarSign size={24} className={budgetStats.budget > 0 && budgetStats.spent > budgetStats.budget ? "text-danger" : "text-slate-400"} />
+              </div>
+              {budgetStats.budget > 0 ? (
+                <div className="progress mt-2" style={{ height: "4px" }}>
+                  <div className={`progress-bar ${budgetStats.spent > budgetStats.budget ? "bg-danger" : "bg-success"}`} style={{ width: `${Math.min(budgetStats.percent, 100)}%` }} />
+                </div>
+              ) : (
+                <div className="text-muted small mt-2" style={{ fontSize: "10px" }}>No limit set in settings</div>
+              )}
             </div>
           </div>
         </div>

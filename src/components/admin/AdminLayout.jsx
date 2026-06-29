@@ -37,10 +37,74 @@ const AdminLayout = () => {
     }
   }, [user, navigate, location.pathname]);
 
+  // Global premium tooltip interceptor and positioning handler
+  useEffect(() => {
+    let tooltipEl = document.getElementById("zbot-global-tooltip");
+    if (!tooltipEl) {
+      tooltipEl = document.createElement("div");
+      tooltipEl.id = "zbot-global-tooltip";
+      tooltipEl.className = "zbot-global-tooltip";
+      document.body.appendChild(tooltipEl);
+    }
+
+    const handleMouseOver = (e) => {
+      const target = e.target.closest("[title]");
+      if (!target) return;
+
+      const titleText = target.getAttribute("title");
+      if (!titleText || target.tagName === "IFRAME") return;
+
+      target.setAttribute("data-tooltip-text", titleText);
+      target.removeAttribute("title");
+
+      tooltipEl.innerText = titleText;
+      tooltipEl.classList.add("show");
+
+      const rect = target.getBoundingClientRect();
+      const x = rect.left + rect.width / 2 - tooltipEl.offsetWidth / 2;
+      let y = rect.top - tooltipEl.offsetHeight - 8;
+
+      if (y < 10) {
+        y = rect.bottom + 8;
+      }
+
+      tooltipEl.style.left = `${Math.max(10, x + window.scrollX)}px`;
+      tooltipEl.style.top = `${y + window.scrollY}px`;
+    };
+
+    const handleMouseOut = (e) => {
+      const target = e.target.closest("[data-tooltip-text]");
+      if (!target) return;
+
+      const titleText = target.getAttribute("data-tooltip-text");
+      target.setAttribute("title", titleText);
+      target.removeAttribute("data-tooltip-text");
+
+      tooltipEl.classList.remove("show");
+    };
+
+    const handleScroll = () => {
+      tooltipEl.classList.remove("show");
+    };
+
+    document.addEventListener("mouseover", handleMouseOver);
+    document.addEventListener("mouseout", handleMouseOut);
+    window.addEventListener("scroll", handleScroll, true);
+
+    return () => {
+      document.removeEventListener("mouseover", handleMouseOver);
+      document.removeEventListener("mouseout", handleMouseOut);
+      window.removeEventListener("scroll", handleScroll, true);
+      const el = document.getElementById("zbot-global-tooltip");
+      if (el) el.remove();
+    };
+  }, []);
+
   const isWorkspacePage =
     location.pathname.startsWith("/admin/messaging") ||
     location.pathname.startsWith("/admin/boards") ||
-    location.pathname.startsWith("/admin/inbox");
+    location.pathname.startsWith("/admin/inbox") ||
+    location.pathname.startsWith("/admin/docs");
 
   const formatTime = (totalSecs) => {
     const hrs = Math.floor(totalSecs / 3600);

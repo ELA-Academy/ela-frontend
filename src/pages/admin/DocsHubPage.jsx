@@ -10,11 +10,16 @@ import { useAuth } from "../../context/AuthContext";
 import { getAllWorkspaceDocs, createWorkspaceDoc, deleteWorkspaceDoc } from "../../services/boardService";
 import { toast } from "react-toastify";
 import { format, parseISO } from "date-fns";
+import DocsView from "../../components/admin/workspace/DocsView";
+import DeleteConfirmModal from "../../components/admin/DeleteConfirmModal";
 
 const DocsHubPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { boards, assignees, departments } = useWorkspace();
+  
+  const searchParams = new URLSearchParams(window.location.search);
+  const urlDocId = searchParams.get("docId");
 
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,10 +35,15 @@ const DocsHubPage = () => {
   const [newDocTemplate, setNewDocTemplate] = useState(null);
   const [creating, setCreating] = useState(false);
   const [deletingDocId, setDeletingDocId] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [docToDelete, setDocToDelete] = useState(null);
+  const [deletingDoc, setDeletingDoc] = useState(false);
 
   useEffect(() => {
-    fetchDocs();
-  }, []);
+    if (!urlDocId) {
+      fetchDocs();
+    }
+  }, [urlDocId]);
 
   const fetchDocs = async () => {
     try {
@@ -48,18 +58,27 @@ const DocsHubPage = () => {
     }
   };
 
-  const handleDelete = async (docId, e) => {
+  const handleDelete = (doc, e) => {
     if (e) e.stopPropagation();
-    if (!window.confirm("Are you sure you want to permanently delete this document?")) return;
+    setDocToDelete(doc);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!docToDelete) return;
     try {
-      setDeletingDocId(docId);
-      await deleteWorkspaceDoc(docId);
-      setDocs(prev => prev.filter(d => d.id !== docId));
+      setDeletingDoc(true);
+      setDeletingDocId(docToDelete.id);
+      await deleteWorkspaceDoc(docToDelete.id);
+      setDocs(prev => prev.filter(d => d.id !== docToDelete.id));
       toast.success("Document deleted");
+      setShowDeleteModal(false);
+      setDocToDelete(null);
     } catch (err) {
       console.error("Failed to delete doc", err);
       toast.error("Failed to delete document");
     } finally {
+      setDeletingDoc(false);
       setDeletingDocId(null);
     }
   };
@@ -101,8 +120,8 @@ const DocsHubPage = () => {
       toast.success("Document created successfully!");
       setShowCreateModal(false);
       
-      // Navigate to the board's docs view tab
-      navigate(`/admin/boards/${selectedBoardId}?view=docs&docId=${newDoc.id}`);
+      // Navigate to the standalone doc editor
+      navigate(`/admin/docs?docId=${newDoc.id}`);
     } catch (err) {
       console.error("Failed to create document", err);
       toast.error("Failed to create document");
@@ -189,6 +208,16 @@ const DocsHubPage = () => {
       `
     }
   ];
+
+  if (urlDocId) {
+    return (
+      <DocsView
+        boardId={null}
+        assignees={assignees}
+        departments={departments}
+      />
+    );
+  }
 
   return (
     <Container fluid className="px-4 py-4 bg-slate-50/20" style={{ minHeight: "100vh" }}>
@@ -336,7 +365,7 @@ const DocsHubPage = () => {
                     <tr 
                       key={doc.id} 
                       className="cursor-pointer"
-                      onClick={() => navigate(`/admin/boards/${doc.board_id}?view=docs&docId=${doc.id}`)}
+                      onClick={() => navigate(`/admin/docs?docId=${doc.id}`)}
                     >
                       <td className="py-2.5 px-3">
                         <div className="d-flex align-items-center gap-2">
@@ -347,7 +376,7 @@ const DocsHubPage = () => {
                         </div>
                       </td>
                       <td className="py-2.5 px-3">
-                        <span className="badge bg-slate-100 text-slate-600 border border-slate-200/60 font-semibold px-2 py-1 rounded-2" style={{ fontSize: "10px" }}>
+                        <span className="badge bg-slate-100 border border-slate-200/60 font-semibold px-2 py-1 rounded-2" style={{ fontSize: "10px", color: "#475569" }}>
                           {doc.location_name || "Workspace Space"}
                         </span>
                       </td>
@@ -376,7 +405,7 @@ const DocsHubPage = () => {
                       </td>
                       <td className="py-2.5 px-3 text-end" onClick={(e) => e.stopPropagation()}>
                         <Dropdown align="end">
-                          <Dropdown.Toggle as={React.forwardRef(({ children, onClick }, ref) => (
+                           <Dropdown.Toggle as={React.forwardRef(({ children, onClick }, ref) => (
                             <button
                               ref={ref}
                               onClick={onClick}
@@ -388,14 +417,14 @@ const DocsHubPage = () => {
                           <Dropdown.Menu className="shadow border-slate-200 rounded-3 py-1" style={{ fontSize: "12px" }}>
                             <Dropdown.Item 
                               className="d-flex align-items-center gap-2 py-1.5 px-3"
-                              onClick={() => navigate(`/admin/boards/${doc.board_id}?view=docs&docId=${doc.id}`)}
+                              onClick={() => navigate(`/admin/docs?docId=${doc.id}`)}
                             >
                               <Eye size={12} /> Open Document
                             </Dropdown.Item>
                             <Dropdown.Divider className="my-1 border-slate-100" />
                             <Dropdown.Item 
                               className="d-flex align-items-center gap-2 py-1.5 px-3 text-danger"
-                              onClick={(e) => handleDelete(doc.id, e)}
+                              onClick={(e) => handleDelete(doc, e)}
                               disabled={deletingDocId === doc.id}
                             >
                               {deletingDocId === doc.id ? (
@@ -508,6 +537,19 @@ const DocsHubPage = () => {
           </Modal.Footer>
         </Form>
       </Modal>
+      {/* Delete confirmation modal */}
+      <DeleteConfirmModal
+        show={showDeleteModal}
+        onHide={() => {
+          setShowDeleteModal(false);
+          setDocToDelete(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Document"
+        message="Are you sure you want to permanently delete this document?"
+        confirmText="Delete"
+        loading={deletingDoc}
+      />
     </Container>
   );
 };

@@ -2833,3 +2833,68 @@ body {
 .sidebar-scroll-zbot::-webkit-scrollbar-thumb:hover {
   background-color: rgba(255, 255, 255, 0.12);
 }
+
+/* Premium styled React Bootstrap & Global Tooltips */
+.zbot-global-tooltip {
+  position: absolute;
+  background-color: #0f172a; /* Slate 900 */
+  color: #f8fafc; /* Slate 50 */
+  font-family: "Outfit", sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15), 0 2px 4px rgba(15, 23, 42, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  pointer-events: none;
+  z-index: 100000;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.12s ease-out, transform 0.12s ease-out;
+  white-space: nowrap;
+}
+
+.zbot-global-tooltip.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* React Bootstrap tooltips custom overrides */
+.tooltip {
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+}
+
+.tooltip.show {
+  opacity: 1 !important;
+}
+
+.tooltip-inner {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+  font-family: "Outfit", sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  padding: 6px 10px !important;
+  border-radius: 6px !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15), 0 2px 4px rgba(15, 23, 42, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  line-height: 1.4 !important;
+  white-space: nowrap !important;
+}
+
+.bs-tooltip-top .tooltip-arrow::before {
+  border-top-color: #0f172a !important;
+}
+
+.bs-tooltip-bottom .tooltip-arrow::before {
+  border-bottom-color: #0f172a !important;
+}
+
+.bs-tooltip-start .tooltip-arrow::before {
+  border-left-color: #0f172a !important;
+}
+
+.bs-tooltip-end .tooltip-arrow::before {
+  border-right-color: #0f172a !important;
+}

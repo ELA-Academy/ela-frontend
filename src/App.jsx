@@ -46,6 +46,7 @@ import SubsidyAccountsPage from "./pages/admin/billing/SubsidyAccountsPage";
 import MessageLogPage from "./pages/admin/administration/MessageLogPage";
 import SubsidyDetailPage from "./pages/admin/billing/SubsidyDetailPage";
 import ManageSuperAdmins from "./pages/admin/ManageSuperAdmins";
+import ReportsPage from "./pages/admin/ReportsPage";
 
 // Workspace boards
 import BoardsPage from "./pages/admin/BoardsPage";
@@ -98,6 +99,7 @@ function App() {
                 />
                 <Route path="profile" element={<ProfilePage />} />
                 <Route path="settings" element={<ProfilePage />} />
+                <Route path="reports" element={<ReportsPage />} />
                 <Route path="tasks" element={<AllTasksPage />} />
                 
                 {/* Workspace — shared sidebar layout */}

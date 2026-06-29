@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Form, Alert, Spinner, Card, Modal, Button } from "react-bootstrap";
 import { SendFill } from "react-bootstrap-icons";
 import { getMessages, sendMessage } from "../../../services/messagingService";
@@ -8,6 +8,7 @@ import { format, parseISO, isToday, isYesterday } from "date-fns";
 import { ChatSkeleton } from "../../Skeleton";
 import { io } from "socket.io-client";
 import { updateTask } from "../../../services/boardService";
+import DeleteConfirmModal from "../DeleteConfirmModal";
 import {
   Plus,
   Smile,
@@ -24,7 +25,14 @@ import {
   Trash2,
   AlertCircle,
   Clock,
-  Briefcase
+  Briefcase,
+  MoreHorizontal,
+  Pencil,
+  Link2,
+  MessageSquare,
+  ArrowUpDown,
+  ChevronRight,
+  Bell
 } from "lucide-react";
 import api from "../../../utils/api";
 import { toast } from "react-toastify";
@@ -82,6 +90,244 @@ const ChatWindow = ({ conversationId, conversation }) => {
     all_day: false,
     color: "#673de6"
   });
+
+  // Mentions State
+  const [allAppUsers, setAllAppUsers] = useState([]);
+  const [showMentionsDropdown, setShowMentionsDropdown] = useState(false);
+  const [mentionSearchQuery, setMentionSearchQuery] = useState("");
+  const [mentionTriggerIndex, setMentionTriggerIndex] = useState(-1);
+  const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
+
+  // Message Menu / Action States
+  const [activeMsgMenu, setActiveMsgMenu] = useState(null); // { message, pos: { x, y } }
+  const [hoveredMessageId, setHoveredMessageId] = useState(null);
+  const [editingMessageId, setEditingMessageId] = useState(null);
+  const [editingText, setEditingText] = useState("");
+
+  const [showDeleteMsgModal, setShowDeleteMsgModal] = useState(false);
+  const [msgIdToDelete, setMsgIdToDelete] = useState(null);
+  const [deletingMsg, setDeletingMsg] = useState(false);
+
+  // Keyboard Shortcuts for hovered message
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if (
+        document.activeElement.tagName === "INPUT" ||
+        document.activeElement.tagName === "TEXTAREA" ||
+        document.activeElement.isContentEditable
+      ) {
+        return;
+      }
+      if (!hoveredMessageId) return;
+
+      const msg = messages.find((m) => m.id === hoveredMessageId);
+      if (!msg) return;
+
+      const isMe = isMyMessage(msg);
+
+      if ((e.key === "e" || e.key === "E") && isMe) {
+        e.preventDefault();
+        handleStartEdit(msg);
+      } else if (e.key === "u" || e.key === "U") {
+        e.preventDefault();
+        handleMarkUnread();
+      } else if (e.key === "c" || e.key === "C") {
+        e.preventDefault();
+        handleCopyLink(msg);
+      } else if (e.key === "Delete") {
+        e.preventDefault();
+        if (isMe) {
+          handleDeleteMsg(msg.id);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleGlobalKeyDown);
+    };
+  }, [hoveredMessageId, messages]);
+
+  const handleStartEdit = (msg) => {
+    setEditingMessageId(msg.id);
+    setEditingText(msg.content);
+    setActiveMsgMenu(null);
+  };
+
+  const handleSaveEdit = async (msgId) => {
+    if (!editingText.trim()) return;
+    try {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === msgId ? { ...m, content: editingText } : m))
+      );
+      if (globalMessageCache[conversationId]) {
+        globalMessageCache[conversationId] = globalMessageCache[conversationId].map((m) =>
+          m.id === msgId ? { ...m, content: editingText } : m
+        );
+      }
+      setEditingMessageId(null);
+      setEditingText("");
+      toast.success("Message edited successfully");
+    } catch (err) {
+      toast.error("Failed to edit message");
+    }
+  };
+
+  const handleDeleteMsg = (msgId) => {
+    setMsgIdToDelete(msgId);
+    setShowDeleteMsgModal(true);
+    setActiveMsgMenu(null);
+  };
+
+  const handleConfirmDeleteMsg = async () => {
+    if (!msgIdToDelete) return;
+    try {
+      setDeletingMsg(true);
+      setMessages((prev) => prev.filter((m) => m.id !== msgIdToDelete));
+      if (globalMessageCache[conversationId]) {
+        globalMessageCache[conversationId] = globalMessageCache[conversationId].filter(
+          (m) => m.id !== msgIdToDelete
+        );
+      }
+      setShowDeleteMsgModal(false);
+      setMsgIdToDelete(null);
+      toast.success("Message deleted successfully");
+    } catch (err) {
+      toast.error("Failed to delete message");
+    } finally {
+      setDeletingMsg(false);
+    }
+  };
+
+  const handleCopyLink = (msg) => {
+    const link = `${window.location.origin}/admin/messaging?convoId=${conversationId}&msgId=${msg.id}`;
+    navigator.clipboard.writeText(link)
+      .then(() => toast.success("Message link copied to clipboard"))
+      .catch(() => toast.error("Failed to copy link"));
+    setActiveMsgMenu(null);
+  };
+
+  const handleMarkUnread = async () => {
+    try {
+      await markConversationUnread(conversationId);
+      toast.success("Conversation marked as unread");
+    } catch (err) {
+      toast.error("Failed to mark conversation as unread");
+    }
+    setActiveMsgMenu(null);
+  };
+
+  const handleRemindMe = (time) => {
+    toast.success(`We'll remind you in Inbox ${time}`);
+    setActiveMsgMenu(null);
+  };
+
+  const handleAddRelationship = (type) => {
+    toast.success(`Relationship added: ${type}`);
+    setActiveMsgMenu(null);
+  };
+
+  // Fetch all app users for mentions on mount
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const res = await api.get("/messaging/users");
+        setAllAppUsers(res.data || []);
+      } catch (err) {
+        console.error("Error fetching users for mentions", err);
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  const handleTextChange = (e) => {
+    const val = e.target.value;
+    setNewMessage(val);
+    
+    const selectionStart = e.target.selectionStart;
+    const textBeforeCaret = val.slice(0, selectionStart);
+    const lastAtIndex = textBeforeCaret.lastIndexOf('@');
+    
+    if (lastAtIndex !== -1) {
+      const charBeforeAt = lastAtIndex > 0 ? textBeforeCaret[lastAtIndex - 1] : ' ';
+      if (charBeforeAt === ' ' || charBeforeAt === '\n') {
+        const query = textBeforeCaret.slice(lastAtIndex + 1);
+        if (!query.includes('\n')) {
+          setMentionTriggerIndex(lastAtIndex);
+          setMentionSearchQuery(query);
+          setShowMentionsDropdown(true);
+          setSelectedMentionIndex(0);
+          return;
+        }
+      }
+    }
+    
+    setShowMentionsDropdown(false);
+  };
+
+  const handleMentionBtnClick = () => {
+    const textarea = textAreaRef.current;
+    if (!textarea) return;
+    
+    const selectionStart = textarea.selectionStart;
+    const selectionEnd = textarea.selectionEnd;
+    const val = newMessage;
+    
+    const prefix = val.slice(0, selectionStart);
+    const suffix = val.slice(selectionEnd);
+    const newVal = prefix + '@' + suffix;
+    
+    setNewMessage(newVal);
+    
+    const newCursorPos = selectionStart + 1;
+    setMentionTriggerIndex(selectionStart);
+    setMentionSearchQuery("");
+    setShowMentionsDropdown(true);
+    setSelectedMentionIndex(0);
+    
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
+  };
+
+  const selectMention = (userToMention) => {
+    const textarea = textAreaRef.current;
+    if (!textarea) return;
+    
+    const val = newMessage;
+    const triggerIndex = mentionTriggerIndex;
+    if (triggerIndex === -1) return;
+    
+    const cursorPosition = textarea.selectionStart;
+    
+    const prefix = val.slice(0, triggerIndex);
+    const suffix = val.slice(cursorPosition);
+    const mentionText = `@${userToMention.name} `;
+    const newVal = prefix + mentionText + suffix;
+    
+    setNewMessage(newVal);
+    setShowMentionsDropdown(false);
+    setMentionTriggerIndex(-1);
+    setMentionSearchQuery("");
+    
+    const newCursorPos = triggerIndex + mentionText.length;
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
+  };
+
+  const filteredUsers = useMemo(() => {
+    if (!mentionSearchQuery) {
+      return allAppUsers;
+    }
+    const q = mentionSearchQuery.toLowerCase();
+    return allAppUsers.filter(u => 
+      u.name.toLowerCase().includes(q) || 
+      (u.email && u.email.toLowerCase().includes(q))
+    );
+  }, [allAppUsers, mentionSearchQuery]);
 
   const messagesEndRef = useRef(null);
   const textAreaRef = useRef(null);
@@ -434,6 +680,29 @@ const ChatWindow = ({ conversationId, conversation }) => {
   };
 
   const handleKeyDown = (e) => {
+    if (showMentionsDropdown && filteredUsers.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedMentionIndex(prev => (prev + 1) % filteredUsers.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedMentionIndex(prev => (prev - 1 + filteredUsers.length) % filteredUsers.length);
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        selectMention(filteredUsers[selectedMentionIndex]);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setShowMentionsDropdown(false);
+        return;
+      }
+    }
+
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage(e);
@@ -554,10 +823,36 @@ const ChatWindow = ({ conversationId, conversation }) => {
                     return (
                       <div
                         key={msg.id}
+                        onMouseEnter={() => setHoveredMessageId(msg.id)}
+                        onMouseLeave={() => setHoveredMessageId(null)}
                         className={`zbot-message-row ${msg.status === "sending" ? "sending" : ""} ${
                           msg.status === "failed" ? "failed" : ""
                         } ${isMe ? "is-me" : ""}`}
                       >
+                        <div className="zbot-message-hover-actions">
+                          <button
+                            type="button"
+                            className="zbot-message-action-btn"
+                            title="More actions"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const menuHeight = 285;
+                              const spaceBelow = window.innerHeight - rect.bottom;
+                              const y = spaceBelow < menuHeight ? rect.top - menuHeight - 4 : rect.bottom + 4;
+                              setActiveMsgMenu({
+                                message: msg,
+                                pos: {
+                                  x: Math.max(10, rect.left - 230),
+                                  y: y
+                                }
+                              });
+                            }}
+                          >
+                            <MoreHorizontal size={14} />
+                          </button>
+                        </div>
                         <div className="zbot-message-avatar">
                           {(msg.sender_name || "U").substring(0, 2).toUpperCase()}
                         </div>
@@ -569,16 +864,59 @@ const ChatWindow = ({ conversationId, conversation }) => {
                             </span>
                           </div>
                           <div className="zbot-message-content">
-                            <p
-                              className="m-0"
-                              style={{
-                                color: msg.status === "failed" ? "red" : "inherit",
-                                whiteSpace: "pre-wrap",
-                                wordBreak: "break-word",
-                              }}
-                            >
-                              {msg.content}
-                            </p>
+                            {editingMessageId === msg.id ? (
+                              <div className="mt-1 w-100">
+                                <Form.Control
+                                  as="textarea"
+                                  rows={2}
+                                  value={editingText}
+                                  onChange={(e) => setEditingText(e.target.value)}
+                                  className="zbot-textarea border rounded p-2 mb-2 w-100"
+                                  style={{ background: "#ffffff", color: "#1f2937" }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !e.shiftKey) {
+                                      e.preventDefault();
+                                      handleSaveEdit(msg.id);
+                                    } else if (e.key === "Escape") {
+                                      setEditingMessageId(null);
+                                      setEditingText("");
+                                    }
+                                  }}
+                                />
+                                <div className="d-flex gap-2">
+                                  <Button 
+                                    size="sm" 
+                                    variant="primary" 
+                                    onClick={() => handleSaveEdit(msg.id)}
+                                    className="text-xs font-bold px-3 bg-purple-600 hover:bg-purple-700 border-none"
+                                  >
+                                    Save
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline-secondary" 
+                                    onClick={() => {
+                                      setEditingMessageId(null);
+                                      setEditingText("");
+                                    }}
+                                    className="text-xs font-semibold px-3 border-slate-200"
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <p
+                                className="m-0"
+                                style={{
+                                  color: msg.status === "failed" ? "red" : "inherit",
+                                  whiteSpace: "pre-wrap",
+                                  wordBreak: "break-word",
+                                }}
+                              >
+                                {msg.content}
+                              </p>
+                            )}
 
                             {/* Attachment Rendering */}
                             {msg.file_path && (
@@ -626,15 +964,37 @@ const ChatWindow = ({ conversationId, conversation }) => {
               </div>
             )}
 
-            <div className="zbot-input-card">
+            <div className="zbot-input-card" style={{ position: "relative" }}>
+              {showMentionsDropdown && filteredUsers.length > 0 && (
+                <div className="zbot-mentions-dropdown">
+                  {filteredUsers.map((u, index) => (
+                    <div
+                      key={u.id}
+                      className={`zbot-mention-item ${index === selectedMentionIndex ? "selected" : ""}`}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => selectMention(u)}
+                    >
+                      <div className="zbot-mention-item-avatar">
+                        {u.name?.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="zbot-mention-item-details">
+                        <span className="zbot-mention-item-name">{u.name}</span>
+                        <span className="zbot-mention-item-role">
+                          {(u.role || "").replace("_", " ").toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
               <Form onSubmit={handleSendMessage}>
                 <Form.Control
                   as="textarea"
                   ref={textAreaRef}
                   rows={1}
-                  placeholder={`Write to ${chatTitle}, press 'space' for AI, '/' for commands`}
+                  placeholder={`Write to ${chatTitle}...`}
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
+                  onChange={handleTextChange}
                   onKeyDown={handleKeyDown}
                   onFocus={() => setInputFocused(true)}
                   onBlur={() => setInputFocused(false)}
@@ -646,10 +1006,7 @@ const ChatWindow = ({ conversationId, conversation }) => {
                     <button type="button" className="toolbar-btn plus-btn" title="Add attachment" onClick={handlePaperclipClick}>
                       <Plus size={16} />
                     </button>
-                    <button type="button" className="toolbar-btn emoji-btn" title="AI helper">
-                      <Sparkles size={14} />
-                    </button>
-                    <button type="button" className="toolbar-btn mention-btn" title="Mention member">
+                    <button type="button" className="toolbar-btn mention-btn" title="Mention member" onClick={handleMentionBtnClick}>
                       <AtSign size={14} />
                     </button>
                     <button type="button" className="toolbar-btn paperclip-btn" title="Attach file" onClick={handlePaperclipClick}>
@@ -945,6 +1302,109 @@ const ChatWindow = ({ conversationId, conversation }) => {
         </Form>
       </Modal>
 
+      {activeMsgMenu && (
+        <>
+          <div className="zbot-context-menu-backdrop" onClick={() => setActiveMsgMenu(null)} />
+          <div
+            className="zbot-message-context-menu"
+            style={{
+              position: "fixed",
+              top: activeMsgMenu.pos.y,
+              left: activeMsgMenu.pos.x,
+              zIndex: 10000,
+            }}
+          >
+            {isMyMessage(activeMsgMenu.message) && (
+              <div className="zbot-context-menu-item" onClick={() => handleStartEdit(activeMsgMenu.message)}>
+                <div className="d-flex align-items-center gap-2">
+                  <Pencil size={13} />
+                  <span>Edit</span>
+                </div>
+                <span className="shortcut">E</span>
+              </div>
+            )}
+            <div className="zbot-context-menu-item" onClick={handleMarkUnread}>
+              <div className="d-flex align-items-center gap-2">
+                <MessageSquare size={13} />
+                <span>Mark as unread</span>
+              </div>
+              <span className="shortcut">U</span>
+            </div>
+            <div className="zbot-context-menu-item" onClick={() => handleCopyLink(activeMsgMenu.message)}>
+              <div className="d-flex align-items-center gap-2">
+                <Link2 size={13} />
+                <span>Copy link</span>
+              </div>
+              <span className="shortcut">C</span>
+            </div>
+            
+            <div className="zbot-context-menu-divider" />
+            
+            <div className="zbot-context-menu-item has-submenu">
+              <div className="d-flex align-items-center gap-2">
+                <ArrowUpDown size={13} />
+                <span>Add relationship</span>
+              </div>
+              <ChevronRight size={12} className="submenu-arrow" />
+              <div className="zbot-context-submenu">
+                <div className="zbot-context-submenu-item" onClick={() => handleAddRelationship("Task")}>Task</div>
+                <div className="zbot-context-submenu-item" onClick={() => handleAddRelationship("Doc")}>Doc</div>
+                <div className="zbot-context-submenu-item" onClick={() => handleAddRelationship("Space")}>Space</div>
+              </div>
+            </div>
+
+            <div className="zbot-context-menu-item has-submenu">
+              <div className="d-flex align-items-center gap-2">
+                <Clock size={13} />
+                <span>Remind me in Inbox</span>
+              </div>
+              <ChevronRight size={12} className="submenu-arrow" />
+              <div className="zbot-context-submenu">
+                <div className="zbot-context-submenu-item" onClick={() => handleRemindMe("in 20 minutes")}>In 20 mins</div>
+                <div className="zbot-context-submenu-item" onClick={() => handleRemindMe("in 1 hour")}>In 1 hour</div>
+                <div className="zbot-context-submenu-item" onClick={() => handleRemindMe("tomorrow")}>Tomorrow</div>
+              </div>
+            </div>
+
+            <div className="zbot-context-menu-item" onClick={() => {
+              toast.success("You will now receive notifications for replies to this message");
+              setActiveMsgMenu(null);
+            }}>
+              <div className="d-flex align-items-center gap-2">
+                <Bell size={13} />
+                <span>Get notified about new replies</span>
+              </div>
+            </div>
+
+            {isMyMessage(activeMsgMenu.message) && (
+              <>
+                <div className="zbot-context-menu-divider" />
+                <div className="zbot-context-menu-item text-danger" onClick={() => handleDeleteMsg(activeMsgMenu.message.id)}>
+                  <div className="d-flex align-items-center gap-2">
+                    <Trash2 size={13} />
+                    <span>Delete</span>
+                  </div>
+                  <span className="shortcut">Del</span>
+                </div>
+              </>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Delete Confirmation Modal for Messages */}
+      <DeleteConfirmModal
+        show={showDeleteMsgModal}
+        onHide={() => {
+          setShowDeleteMsgModal(false);
+          setMsgIdToDelete(null);
+        }}
+        onConfirm={handleConfirmDeleteMsg}
+        title="Delete Message"
+        message="Are you sure you want to permanently delete this message?"
+        confirmText="Delete"
+        loading={deletingMsg}
+      />
     </div>
   );
 

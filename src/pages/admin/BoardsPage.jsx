@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Button, Spinner, Dropdown } from "react-bootstrap";
-import { Plus, Shapes, ArrowRight, User, Calendar, Flag, Trash2 } from "lucide-react";
+import { Plus, Shapes, ArrowRight, User, Calendar, Flag, Trash2, Archive } from "lucide-react";
 import { CheckCircleFill, Trash } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
 import { format, parseISO } from "date-fns";
@@ -12,7 +12,9 @@ import {
   createTask,
   updateTask,
   deleteTask,
+  unarchiveBoard,
 } from "../../services/boardService";
+import api from "../../utils/api";
 import { useWorkspace } from "../../components/admin/workspace/WorkspaceLayout";
 import "../../styles/Boards.css";
 import "../../styles/WorkspaceShell.css";
@@ -81,6 +83,39 @@ const BoardsPage = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Archived spaces tracking
+  const [showArchivedModal, setShowArchivedModal] = useState(false);
+  const [archivedBoards, setArchivedBoards] = useState([]);
+  const [loadingArchived, setLoadingArchived] = useState(false);
+
+  const fetchArchivedBoards = async () => {
+    try {
+      setLoadingArchived(true);
+      const res = await api.get("/boards?only_archived=true");
+      setArchivedBoards(res.data);
+    } catch (err) {
+      console.error("Failed to fetch archived boards:", err);
+    } finally {
+      setLoadingArchived(false);
+    }
+  };
+
+  const handleRestoreBoard = async (boardId) => {
+    try {
+      await unarchiveBoard(boardId);
+      refreshWorkspace();
+      fetchArchivedBoards();
+    } catch (err) {
+      console.error("Failed to restore board:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (showArchivedModal) {
+      fetchArchivedBoards();
+    }
+  }, [showArchivedModal]);
 
   const fetchTasks = useCallback(async (showLoading = true) => {
     try {
@@ -300,7 +335,11 @@ const BoardsPage = () => {
           <span className="workspace-secondary-eyebrow d-block mb-1">Spaces Overview</span>
           <h2 className="mb-0 fs-4 fw-bold text-slate-800">All Tasks List</h2>
         </div>
-        <div>
+        <div className="d-flex gap-2">
+          <Button variant="outline-secondary" size="sm" onClick={() => setShowArchivedModal(true)}>
+            <Archive size={14} className="me-1" />
+            Archived Spaces
+          </Button>
           <Button variant="primary" size="sm" onClick={openCreateSpaceModal}>
             <Plus size={14} className="me-1" />
             New Space
@@ -695,6 +734,76 @@ const BoardsPage = () => {
         }
         loading={deleting}
       />
+
+      <Modal show={showArchivedModal} onHide={() => setShowArchivedModal(false)} centered size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title className="fw-bold">Archived Spaces</Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ maxHeight: "400px", overflowY: "auto" }}>
+          {loadingArchived ? (
+            <div className="text-center py-4">
+              <Spinner animation="border" variant="primary" />
+            </div>
+          ) : archivedBoards.length === 0 ? (
+            <div className="text-center py-4 text-muted">
+              <Archive size={40} className="mb-2 text-slate-300" />
+              <p>No archived spaces found.</p>
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <table className="table table-hover align-middle">
+                <thead>
+                  <tr>
+                    <th>Space Name</th>
+                    <th>Status</th>
+                    <th>Priority</th>
+                    <th className="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {archivedBoards.map((b) => (
+                    <tr key={b.id}>
+                      <td>
+                        <div className="d-flex align-items-center gap-2">
+                          <span 
+                            className="d-inline-flex align-items-center justify-content-center text-white rounded-2"
+                            style={{ backgroundColor: b.color || "#673de6", width: "28px", height: "28px", fontSize: "14px" }}
+                          >
+                            {b.icon || "📋"}
+                          </span>
+                          <div>
+                            <span className="fw-bold text-slate-800">{b.name}</span>
+                            <span className="text-muted d-block small" style={{ fontSize: "11px" }}>{b.description || "No description"}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="badge bg-secondary">{b.status}</span>
+                      </td>
+                      <td>
+                        <span className="badge bg-light text-dark border">{b.priority}</span>
+                      </td>
+                      <td className="text-end">
+                        <Button 
+                          variant="outline-success" 
+                          size="sm" 
+                          onClick={() => handleRestoreBoard(b.id)}
+                          className="d-inline-flex align-items-center gap-1"
+                        >
+                          Restore
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="light" onClick={() => setShowArchivedModal(false)}>Close</Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

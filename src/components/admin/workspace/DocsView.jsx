@@ -8,18 +8,24 @@ import {
   Menu, Search, Printer, Paintbrush, Image
 } from "lucide-react";
 import api from "../../../utils/api";
-import { getWorkspaceDocs, createWorkspaceDoc, updateWorkspaceDoc, deleteWorkspaceDoc } from "../../../services/boardService";
+import { getWorkspaceDocs, getWorkspaceDoc, createWorkspaceDoc, updateWorkspaceDoc, deleteWorkspaceDoc } from "../../../services/boardService";
+import { useNavigate } from "react-router-dom";
 import DOMPurify from "dompurify";
-import "../../../styles/Boards.css";
 import { toast } from "react-toastify";
 import { format, parseISO } from "date-fns";
+import DeleteConfirmModal from "../DeleteConfirmModal";
 
 const DocsView = ({ boardId, assignees = [], departments = [] }) => {
+  const navigate = useNavigate();
   const [docs, setDocs] = useState([]);
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [docIdToDelete, setDocIdToDelete] = useState(null);
+  const [deletingDoc, setDeletingDoc] = useState(false);
 
   // Doc editing temporary states
   const [editTitle, setEditTitle] = useState("");
@@ -76,12 +82,32 @@ const DocsView = ({ boardId, assignees = [], departments = [] }) => {
   const fetchDocs = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await getWorkspaceDocs(boardId);
+      const searchParams = new URLSearchParams(window.location.search);
+      const urlDocId = searchParams.get("docId");
+      
+      let data = [];
+      if (boardId) {
+        try {
+          data = await getWorkspaceDocs(boardId);
+        } catch (boardErr) {
+          console.log("Failed to load workspace docs for board, falling back to single doc", boardErr);
+        }
+      }
+      
+      if (data.length === 0 && urlDocId) {
+        try {
+          const singleDoc = await getWorkspaceDoc(Number(urlDocId));
+          if (singleDoc) {
+            data = [singleDoc];
+          }
+        } catch (singleErr) {
+          console.error("Failed to load single doc", singleErr);
+          setError("Failed to load document. You may not have access permission.");
+        }
+      }
+      
       setDocs(data);
       if (data.length > 0) {
-        const searchParams = new URLSearchParams(window.location.search);
-        const urlDocId = searchParams.get("docId");
-        
         let currentSelected = data[0];
         if (urlDocId) {
           const matched = data.find(d => d.id === Number(urlDocId));
@@ -170,26 +196,32 @@ const DocsView = ({ boardId, assignees = [], departments = [] }) => {
     }
   };
 
-  const handleDeleteDoc = async (docId, event) => {
+  const handleDeleteDoc = (docId, event) => {
     if (event) event.stopPropagation();
-    if (!window.confirm("Are you sure you want to permanently delete this document?")) return;
-    
+    setDocIdToDelete(docId);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!docIdToDelete) return;
     try {
-      setSaving(true);
-      await deleteWorkspaceDoc(docId);
-      const nextDocs = docs.filter(d => d.id !== docId);
+      setDeletingDoc(true);
+      await deleteWorkspaceDoc(docIdToDelete);
+      const nextDocs = docs.filter(d => d.id !== docIdToDelete);
       setDocs(nextDocs);
-      if (selectedDoc && selectedDoc.id === docId) {
+      if (selectedDoc && selectedDoc.id === docIdToDelete) {
         if (nextDocs.length > 0) {
           handleSelectDoc(nextDocs[0]);
         } else {
           setSelectedDoc(null);
         }
       }
+      setShowDeleteModal(false);
+      setDocIdToDelete(null);
     } catch (err) {
       setError("Failed to delete document.");
     } finally {
-      setSaving(false);
+      setDeletingDoc(false);
     }
   };
 
@@ -772,22 +804,34 @@ const DocsView = ({ boardId, assignees = [], departments = [] }) => {
           <div className="d-flex flex-grow-1" style={{ overflow: "hidden" }}>
             
             {/* Editor page content */}
-            <div className="editor-workspace flex-grow-1 p-3 d-flex flex-column" style={{ overflow: "hidden" }}>
-              <div className="doc-editor-surface bg-white d-flex flex-column p-4 mx-auto h-100" style={{ maxWidth: "820px", width: "100%", height: "100%", overflow: "hidden" }}>
+            <div className="editor-workspace flex-grow-1 p-3 d-flex flex-column" style={{ overflowY: "auto", flex: 1 }}>
+              <div className="doc-editor-surface bg-white d-flex flex-column p-4 mx-auto shadow-sm" style={{ maxWidth: "850px", width: "100%", minHeight: "100%", display: "flex", flexDirection: "column" }}>
                 
                 {/* Header controls */}
                 <div className="d-flex justify-content-between align-items-center pb-2 border-bottom mb-3">
                   <div className="d-flex align-items-center gap-2">
-                    <Button 
-                      variant="outline-secondary" 
-                      size="sm" 
-                      onClick={() => setShowLeftSidebar(prev => !prev)}
-                      className="d-flex align-items-center justify-content-center p-1.5 border-slate-200 text-slate-500 hover:text-slate-700 rounded-3 me-1"
-                      style={{ width: "28px", height: "28px" }}
-                      title="Toggle Docs List"
-                    >
-                      <Menu size={14} />
-                    </Button>
+                    {!boardId ? (
+                      <Button
+                        variant="outline-secondary"
+                        size="sm"
+                        onClick={() => navigate("/admin/docs")}
+                        className="d-flex align-items-center gap-1 border-slate-200 text-slate-600 hover:text-slate-800 rounded-3 me-1"
+                        style={{ fontSize: "11px", fontWeight: "600" }}
+                      >
+                        <ArrowLeft size={13} /> Back to Hub
+                      </Button>
+                    ) : (
+                      <Button 
+                        variant="outline-secondary" 
+                        size="sm" 
+                        onClick={() => setShowLeftSidebar(prev => !prev)}
+                        className="d-flex align-items-center justify-content-center p-1.5 border-slate-200 text-slate-500 hover:text-slate-700 rounded-3 me-1"
+                        style={{ width: "28px", height: "28px" }}
+                        title="Toggle Docs List"
+                      >
+                        <Menu size={14} />
+                      </Button>
+                    )}
                     <Button 
                       variant="outline-primary" 
                       size="sm" 
@@ -1185,27 +1229,10 @@ const DocsView = ({ boardId, assignees = [], departments = [] }) => {
                   onInput={handleEditorInput}
                   onPaste={handlePaste}
                   className="doc-editable-content-area flex-grow-1 py-2 w-100 zbot-google-doc-editor"
-                  style={{ flex: 1, outline: "none", overflowY: "auto", fontSize: "15px", fontFamily: currentFont, color: "#334155", paddingBottom: "80px", zoom: `${zoomScale}%` }}
+                  style={{ outline: "none", minHeight: "750px", height: "auto", fontSize: "15px", fontFamily: currentFont, color: "#334155", paddingBottom: "100px", zoom: `${zoomScale}%` }}
                   suppressContentEditableWarning={true}
                 />
 
-                {/* Floating AI sparkles button */}
-                <div className="d-flex justify-content-end mt-3">
-                  <Button 
-                    variant="primary" 
-                    className="zbot-ai-magic-btn shadow-lg d-flex align-items-center gap-1.5 font-bold"
-                    style={{
-                      borderRadius: "999px",
-                      padding: "8px 16px",
-                      fontSize: "11.5px",
-                      background: "linear-gradient(135deg, #7c3aed 0%, #db2777 100%)",
-                      border: "none"
-                    }}
-                    onClick={() => toast.info("Workspace AI is processing document summary...")}
-                  >
-                    <Sparkles size={13} /> Write with AI
-                  </Button>
-                </div>
               </div>
             </div>
 
@@ -1557,6 +1584,19 @@ const DocsView = ({ boardId, assignees = [], departments = [] }) => {
           </Modal.Body>
         </Modal>
       )}
+      {/* Delete confirmation modal */}
+      <DeleteConfirmModal
+        show={showDeleteModal}
+        onHide={() => {
+          setShowDeleteModal(false);
+          setDocIdToDelete(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Document"
+        message="Are you sure you want to permanently delete this document?"
+        confirmText="Delete"
+        loading={deletingDoc}
+      />
     </div>
   );
 };

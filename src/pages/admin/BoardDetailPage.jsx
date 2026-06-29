@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Alert, Button, Dropdown, Spinner, OverlayTrigger, Popover, Tooltip, Modal, Form } from "react-bootstrap";
 import DOMPurify from "dompurify";
@@ -10,7 +10,7 @@ import {
   Plus,
   Trash,
 } from "react-bootstrap-icons";
-import { FileText, LayoutList, Kanban, Flag, User, Calendar, BookOpen, Folder, Repeat, GitFork, Link, MoreHorizontal, Copy, Star, Edit3, Bell, ArrowRight, PlusSquare, Layers, ClipboardCopy, Zap, Clock, Mail, Archive, Trash2, MessageSquare, Search, AlignLeft, Table, PieChart, Image, Activity, Share2, Users, MapPin, Pin, Settings, Lock, Filter, RefreshCw, Columns, ChevronDown, Send } from "lucide-react";
+import { FileText, LayoutList, Kanban, Flag, User, Calendar, BookOpen, Folder, Repeat, GitFork, Link, MoreHorizontal, Copy, Star, Edit3, Bell, ArrowRight, PlusSquare, Layers, ClipboardCopy, Zap, Clock, Mail, Archive, Trash2, MessageSquare, Search, AlignLeft, Table, PieChart, Image, Activity, Share2, Users, MapPin, Pin, Settings, Lock, Filter, RefreshCw, Columns, ChevronDown, Send, MousePointer, Type, PenTool, StickyNote, Eraser, Square, Target } from "lucide-react";
 import { toast } from "react-toastify";
 import { format, parseISO } from "date-fns";
 
@@ -26,6 +26,7 @@ import CustomFieldsView from "../../components/admin/workspace/CustomFieldsView"
 import FilesView from "../../components/admin/workspace/FilesView";
 import FormView from "../../components/admin/workspace/FormView";
 import TimesheetsView from "../../components/admin/workspace/TimesheetsView";
+import MilestonesView from "../../components/admin/workspace/MilestonesView";
 import { useWorkspace } from "../../components/admin/workspace/WorkspaceLayout";
 import { useAuth } from "../../context/AuthContext";
 import { getActivityLogs } from "../../services/activityService";
@@ -73,6 +74,7 @@ const ALL_AVAILABLE_VIEWS = [
   { type: "form", label: "Form", icon: ClipboardCopy, desc: "Survey sheets" },
   { type: "timesheets", label: "Timesheets", icon: Clock, desc: "Time tracking log" },
   { type: "custom_fields", label: "Custom Fields", icon: Layers, desc: "Field manager" },
+  { type: "milestones", label: "Milestones", icon: Target, desc: "Project milestones" },
   { type: "timeline", label: "Timeline", icon: Calendar, desc: "Roadmap view" },
   { type: "dashboard", label: "Dashboard", icon: PieChart, desc: "Reports" },
   { type: "whiteboard", label: "Whiteboard", icon: Image, desc: "Canvas drawing" },
@@ -95,6 +97,7 @@ const getViewIcon = (type) => {
     case "form": return ClipboardCopy;
     case "timesheets": return Clock;
     case "custom_fields": return Layers;
+    case "milestones": return Target;
     case "timeline": return Calendar;
     case "dashboard": return PieChart;
     case "whiteboard": return Image;
@@ -242,12 +245,168 @@ const BoardDetailPage = () => {
     return ["list", "board", "table"].includes(currentViewType);
   }, [currentViewType]);
   
-  // Interactive Whiteboard mock notes state
-  const [whiteboardNotes, setWhiteboardNotes] = useState([
-    { id: 1, text: "Brainstorming new features", color: "#fef08a", x: 40, y: 30 },
-    { id: 2, text: "Zbot-style views checklist", color: "#fbcfe8", x: 260, y: 50 },
-    { id: 3, text: "Staging deployment config notes", color: "#bbf7d0", x: 120, y: 200 }
-  ]);
+  // Interactive Whiteboard persisted notes state
+  const [whiteboardNotes, setWhiteboardNotes] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`whiteboard_notes_${boardId}`);
+      if (stored) return JSON.parse(stored);
+    } catch (e) {
+      console.error("Failed to load whiteboard notes", e);
+    }
+    return [
+      { id: 1, text: "Brainstorming new features", color: "#fef08a", x: 40, y: 30, type: "sticky" },
+      { id: 2, text: "Zbot-style views checklist", color: "#fbcfe8", x: 260, y: 50, type: "sticky" },
+      { id: 3, text: "Staging deployment config notes", color: "#bbf7d0", x: 120, y: 200, type: "sticky" }
+    ];
+  });
+
+  const [activeWhiteboardTool, setActiveWhiteboardTool] = useState("Pointer");
+  const canvasRef = useRef(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+
+  // Helper to persist whiteboard notes to localStorage
+  const persistWhiteboardNotes = (notes) => {
+    if (boardId) {
+      localStorage.setItem(`whiteboard_notes_${boardId}`, JSON.stringify(notes));
+    }
+  };
+
+  // Sync whiteboard notes when boardId changes
+  useEffect(() => {
+    if (!boardId) return;
+    try {
+      const stored = localStorage.getItem(`whiteboard_notes_${boardId}`);
+      if (stored) {
+        setWhiteboardNotes(JSON.parse(stored));
+      } else {
+        const defaultNotes = [
+          { id: 1, text: "Brainstorming new features", color: "#fef08a", x: 40, y: 30, type: "sticky" },
+          { id: 2, text: "Zbot-style views checklist", color: "#fbcfe8", x: 260, y: 50, type: "sticky" },
+          { id: 3, text: "Staging deployment config notes", color: "#bbf7d0", x: 120, y: 200, type: "sticky" }
+        ];
+        setWhiteboardNotes(defaultNotes);
+        persistWhiteboardNotes(defaultNotes);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, [boardId]);
+
+  // Canvas freehand drawing logic
+  const startDrawing = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    setIsDrawing(true);
+  };
+
+  const draw = (e) => {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    if (activeWhiteboardTool === "Erase") {
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.lineWidth = 20;
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    } else {
+      ctx.globalCompositeOperation = "source-over";
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "#4f46e5";
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+  };
+
+  const stopDrawing = () => {
+    setIsDrawing(false);
+    const canvas = canvasRef.current;
+    if (canvas && boardId) {
+      localStorage.setItem(`whiteboard_drawing_${boardId}`, canvas.toDataURL());
+    }
+  };
+
+  // Drag-and-drop handler for notes/shapes/text
+  const handleNoteMouseDown = (noteId, e) => {
+    if (e.target.tagName === "TEXTAREA" || e.target.tagName === "BUTTON") {
+      return;
+    }
+    e.preventDefault();
+    const noteElement = e.currentTarget;
+    const canvasElement = noteElement.parentElement;
+    const canvasRect = canvasElement.getBoundingClientRect();
+    
+    const startX = e.clientX - noteElement.offsetLeft;
+    const startY = e.clientY - noteElement.offsetTop;
+    
+    const handleMouseMove = (moveEvent) => {
+      let newX = moveEvent.clientX - startX;
+      let newY = moveEvent.clientY - startY;
+      
+      const maxLeft = canvasRect.width - noteElement.offsetWidth;
+      const maxTop = canvasRect.height - noteElement.offsetHeight;
+      newX = Math.max(0, Math.min(newX, maxLeft));
+      newY = Math.max(0, Math.min(newY, maxTop));
+      
+      setWhiteboardNotes(prev => prev.map(n => n.id === noteId ? { ...n, x: newX, y: newY } : n));
+    };
+    
+    const handleMouseUp = () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      
+      // Persist the updated positions on drag release
+      setWhiteboardNotes(currentNotes => {
+        persistWhiteboardNotes(currentNotes);
+        return currentNotes;
+      });
+    };
+    
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  };
+
+  // Re-initialize and size canvas when whiteboard view is loaded
+  useEffect(() => {
+    if (currentViewType !== "whiteboard") return;
+    
+    const timer = setTimeout(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      const parent = canvas.parentElement;
+      if (!parent) return;
+      const rect = parent.getBoundingClientRect();
+      canvas.width = rect.width || 800;
+      canvas.height = rect.height || 450;
+      ctx.lineCap = "round";
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "#4f46e5";
+
+      // Restore drawing from localStorage
+      const savedDrawing = localStorage.getItem(`whiteboard_drawing_${boardId}`);
+      if (savedDrawing) {
+        const img = new Image();
+        img.src = savedDrawing;
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0);
+        };
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [currentViewType, boardId]);
 
   useEffect(() => {
     if (boardId) {
@@ -1876,18 +2035,60 @@ const BoardDetailPage = () => {
         id: Date.now(),
         text: "New sticky note - Double click to edit",
         color,
+        type: "sticky",
         x: 50 + Math.random() * 150,
         y: 60 + Math.random() * 150
       };
-      setWhiteboardNotes(prev => [...prev, newNote]);
+      setWhiteboardNotes(prev => {
+        const updated = [...prev, newNote];
+        persistWhiteboardNotes(updated);
+        return updated;
+      });
     };
 
     const handleDeleteNote = (id) => {
-      setWhiteboardNotes(prev => prev.filter(n => n.id !== id));
+      setWhiteboardNotes(prev => {
+        const updated = prev.filter(n => n.id !== id);
+        persistWhiteboardNotes(updated);
+        return updated;
+      });
     };
 
     const handleUpdateNoteText = (id, newText) => {
-      setWhiteboardNotes(prev => prev.map(n => n.id === id ? { ...n, text: newText } : n));
+      setWhiteboardNotes(prev => {
+        const updated = prev.map(n => n.id === id ? { ...n, text: newText } : n);
+        persistWhiteboardNotes(updated);
+        return updated;
+      });
+    };
+
+    const handleCanvasClick = (e) => {
+      if (e.target !== e.currentTarget && e.target.id !== "whiteboard-drawing-canvas") {
+        return;
+      }
+      
+      if (!["Sticky", "Text", "Shapes"].includes(activeWhiteboardTool)) {
+        return;
+      }
+      
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.left - 80;
+      const y = e.clientY - rect.top - 80;
+      
+      let newElement = {
+        id: Date.now(),
+        x: Math.max(0, x),
+        y: Math.max(0, y),
+        text: activeWhiteboardTool === "Text" ? "Type something..." : "Double click to edit",
+        type: activeWhiteboardTool.toLowerCase(),
+        color: activeWhiteboardTool === "Sticky" ? "#fef08a" : activeWhiteboardTool === "Text" ? "transparent" : "#dbeafe"
+      };
+      
+      setWhiteboardNotes(prev => {
+        const updated = [...prev, newElement];
+        persistWhiteboardNotes(updated);
+        return updated;
+      });
     };
 
     return (
@@ -1906,51 +2107,173 @@ const BoardDetailPage = () => {
 
         <div className="d-flex gap-3 border rounded-3 bg-slate-50/50 p-2" style={{ minHeight: "450px" }}>
           <div className="d-flex flex-column gap-2 p-2 bg-white rounded-3 shadow-sm border align-items-center" style={{ width: "40px" }}>
-            {["Pointer", "Text", "Draw", "Sticky", "Erase", "Shapes"].map((tool, idx) => (
-              <button 
-                key={idx} 
-                className="p-2 border-0 bg-white rounded hover:bg-slate-100 text-slate-500" 
-                title={tool}
-                onClick={() => toast.info(`Switched to ${tool} tool.`)}
-              >
-                <MoreHorizontal size={14} />
-              </button>
-            ))}
+            {[
+              { name: "Pointer", icon: MousePointer },
+              { name: "Text", icon: Type },
+              { name: "Draw", icon: PenTool },
+              { name: "Sticky", icon: StickyNote },
+              { name: "Erase", icon: Eraser },
+              { name: "Shapes", icon: Square }
+            ].map((tool) => {
+              const Icon = tool.icon;
+              const isActive = activeWhiteboardTool === tool.name;
+              return (
+                <button 
+                  key={tool.name} 
+                  className={`p-2 border-0 rounded hover:bg-slate-100 ${isActive ? "bg-purple-100 text-purple-600 font-bold border border-purple-200" : "bg-white text-slate-500"}`} 
+                  title={tool.name}
+                  onClick={() => {
+                    setActiveWhiteboardTool(tool.name);
+                    toast.info(`Switched to ${tool.name} tool.`);
+
+                    // Instant spawn elements when toolbar icon is clicked
+                    if (tool.name === "Sticky") {
+                      const newNote = {
+                        id: Date.now(),
+                        text: "New sticky note - Double click to edit",
+                        color: "#fef08a",
+                        type: "sticky",
+                        x: 120 + Math.random() * 80,
+                        y: 120 + Math.random() * 80
+                      };
+                      setWhiteboardNotes(prev => {
+                        const updated = [...prev, newNote];
+                        persistWhiteboardNotes(updated);
+                        return updated;
+                      });
+                    } else if (tool.name === "Text") {
+                      const newText = {
+                        id: Date.now(),
+                        text: "Type something...",
+                        color: "transparent",
+                        type: "text",
+                        x: 120 + Math.random() * 80,
+                        y: 120 + Math.random() * 80
+                      };
+                      setWhiteboardNotes(prev => {
+                        const updated = [...prev, newText];
+                        persistWhiteboardNotes(updated);
+                        return updated;
+                      });
+                    } else if (tool.name === "Shapes") {
+                      const newShape = {
+                        id: Date.now(),
+                        text: "Double click to edit",
+                        color: "#dbeafe",
+                        type: "shapes",
+                        x: 120 + Math.random() * 80,
+                        y: 120 + Math.random() * 80
+                      };
+                      setWhiteboardNotes(prev => {
+                        const updated = [...prev, newShape];
+                        persistWhiteboardNotes(updated);
+                        return updated;
+                      });
+                    }
+                  }}
+                >
+                  <Icon size={14} />
+                </button>
+              );
+            })}
           </div>
 
-          <div className="flex-grow-1 position-relative bg-white rounded-3 border shadow-inner p-3 overflow-hidden" style={{ backgroundImage: "radial-gradient(#e2e8f0 1.2px, transparent 1.2px)", backgroundSize: "16px 16px" }}>
-            {whiteboardNotes.map((note) => (
-              <div 
-                key={note.id}
-                style={{
-                  position: "absolute",
-                  left: `${note.x}px`,
-                  top: `${note.y}px`,
-                  width: "160px",
-                  height: "160px",
-                  backgroundColor: note.color,
-                  padding: "12px",
-                  boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)",
-                  border: "1px solid rgba(0,0,0,0.05)",
-                  fontFamily: "Inter, sans-serif",
-                  fontSize: "11px",
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                  borderRadius: "2px"
-                }}
-              >
-                <textarea 
-                  className="bg-transparent border-0 w-100 h-75 resize-none text-slate-800 font-semibold focus:outline-none"
-                  value={note.text}
-                  onChange={(e) => handleUpdateNoteText(note.id, e.target.value)}
-                />
-                <div className="d-flex justify-content-between align-items-center border-top border-dark/5 pt-1.5 mt-1.5">
-                  <span className="text-[9px] text-slate-400">Sticky Note</span>
-                  <button onClick={() => handleDeleteNote(note.id)} className="btn btn-link p-0 text-danger hover:text-red-700" style={{ fontSize: "9px", textDecoration: "none" }}>Delete</button>
+          <div 
+            className="flex-grow-1 position-relative bg-white rounded-3 border shadow-inner p-3 overflow-hidden" 
+            style={{ 
+              backgroundImage: "radial-gradient(#e2e8f0 1.2px, transparent 1.2px)", 
+              backgroundSize: "16px 16px",
+              minHeight: "450px"
+            }}
+            onClick={handleCanvasClick}
+          >
+            {/* Freehand drawing canvas layer */}
+            <canvas
+              ref={canvasRef}
+              id="whiteboard-drawing-canvas"
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                pointerEvents: activeWhiteboardTool === "Draw" || activeWhiteboardTool === "Erase" ? "auto" : "none",
+                zIndex: 1
+              }}
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+            />
+
+            {whiteboardNotes.map((note) => {
+              const isText = note.type === "text";
+              const isShape = note.type === "shapes";
+
+              return (
+                <div 
+                  key={note.id}
+                  onMouseDown={(e) => handleNoteMouseDown(note.id, e)}
+                  style={{
+                    position: "absolute",
+                    left: `${note.x}px`,
+                    top: `${note.y}px`,
+                    width: isText ? "180px" : "160px",
+                    height: isText ? "80px" : "160px",
+                    backgroundColor: note.color,
+                    padding: isText ? "4px" : "12px",
+                    boxShadow: isText ? "none" : "0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)",
+                    border: isText ? "1px dashed #cbd5e1" : "1px solid rgba(0,0,0,0.05)",
+                    fontFamily: "Inter, sans-serif",
+                    fontSize: "11px",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    borderRadius: isShape ? "50%" : isText ? "4px" : "2px",
+                    cursor: activeWhiteboardTool === "Pointer" ? "move" : "default",
+                    zIndex: 2
+                  }}
+                >
+                  <textarea 
+                    className={`bg-transparent border-0 w-100 resize-none focus:outline-none ${isShape ? "text-center my-auto" : "h-75 text-slate-800 font-semibold"}`}
+                    style={{
+                      height: isShape ? "60px" : "100%",
+                      color: "#1f2937",
+                      fontWeight: 600,
+                      textAlign: isShape ? "center" : "left",
+                    }}
+                    value={note.text}
+                    onChange={(e) => handleUpdateNoteText(note.id, e.target.value)}
+                    placeholder={isText ? "Type here..." : ""}
+                  />
+                  {!isText && (
+                    <div className="d-flex justify-content-between align-items-center border-top border-dark/5 pt-1.5 mt-1.5 flex-shrink-0">
+                      <span className="text-[9px] text-slate-400" style={{ fontSize: "9px" }}>
+                        {isShape ? "Shape" : "Sticky Note"}
+                      </span>
+                      <button 
+                        onClick={() => handleDeleteNote(note.id)} 
+                        className="btn btn-link p-0 text-danger hover:text-red-700" 
+                        style={{ fontSize: "9px", textDecoration: "none" }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                  {isText && (
+                    <div className="position-absolute" style={{ right: "4px", bottom: "4px", display: "flex", gap: "4px" }}>
+                      <button 
+                        onClick={() => handleDeleteNote(note.id)} 
+                        className="btn btn-link p-0 text-danger" 
+                        style={{ fontSize: "9px", textDecoration: "none" }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
@@ -3970,6 +4293,11 @@ const BoardDetailPage = () => {
       )}
       {currentViewType === "custom_fields" && (
         <CustomFieldsView
+          boardId={Number(boardId)}
+        />
+      )}
+      {currentViewType === "milestones" && (
+        <MilestonesView
           boardId={Number(boardId)}
         />
       )}
