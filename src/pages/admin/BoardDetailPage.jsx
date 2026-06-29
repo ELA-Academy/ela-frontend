@@ -10,7 +10,7 @@ import {
   Plus,
   Trash,
 } from "react-bootstrap-icons";
-import { FileText, LayoutList, Kanban, Flag, User, Calendar, BookOpen, Folder, Repeat, GitFork, Link, MoreHorizontal, Copy, Star, Edit3, Bell, ArrowRight, PlusSquare, Layers, ClipboardCopy, Zap, Clock, Mail, Archive, Trash2, MessageSquare, Search, AlignLeft, Table, PieChart, Image, Activity, Share2, Users, MapPin, Pin, Settings, Lock, Filter, RefreshCw, Columns, ChevronDown, Send, MousePointer, Type, PenTool, StickyNote, Eraser, Square, Target } from "lucide-react";
+import { FileText, LayoutList, Kanban, Flag, User, Calendar, BookOpen, Folder, Repeat, GitFork, Link, MoreHorizontal, Copy, Star, Edit3, Bell, ArrowRight, PlusSquare, Layers, ClipboardCopy, Zap, Clock, Mail, Archive, Trash2, MessageSquare, Search, AlignLeft, Table, PieChart, Image, Activity, Share2, Users, MapPin, Pin, Settings, Lock, Filter, RefreshCw, Columns, ChevronDown, Send, MousePointer, Type, PenTool, StickyNote, Eraser, Square, Target, Paperclip } from "lucide-react";
 import { toast } from "react-toastify";
 import { format, parseISO } from "date-fns";
 
@@ -42,6 +42,7 @@ import {
   getTaskTemplates,
   createTaskTemplate,
   deleteTaskTemplate,
+  uploadTaskAttachment,
 } from "../../services/boardService";
 import "../../styles/Boards.css";
 import "../../styles/WorkspaceShell.css";
@@ -161,6 +162,7 @@ const BoardDetailPage = () => {
   const [activeView, setActiveView] = useState("list");
   const [collapsedStatuses, setCollapsedStatuses] = useState({});
   const [activeTaskId, setActiveTaskId] = useState(null);
+  const [activeCommentTaskId, setActiveCommentTaskId] = useState(null);
   const [newTaskTitles, setNewTaskTitles] = useState({});
   const [addingTask, setAddingTask] = useState({});
   const [inlineTaskBuilders, setInlineTaskBuilders] = useState({});
@@ -1689,6 +1691,91 @@ const BoardDetailPage = () => {
     );
   };
 
+  const renderTaskCheckCircleDropdown = (task, statusMeta) => {
+    const isDone = task.status === "Done" || task.status === "Complete";
+    return (
+      <Dropdown className="d-inline-block">
+        <Dropdown.Toggle as="span" className="task-complete-dot d-inline-flex align-items-center justify-content-center" style={{
+          borderColor: statusMeta.color || "#8c9baf",
+          cursor: getIncompleteSubtasks(task).length > 0 && task.status !== "Done" ? "not-allowed" : "pointer",
+          opacity: getIncompleteSubtasks(task).length > 0 && task.status !== "Done" ? 0.6 : 1
+        }} title={getIncompleteSubtasks(task).length > 0 ? "Complete subtasks before marking this task complete" : "Change Status"}>
+          {isDone ? (
+            <CheckCircleFill size={14} style={{ color: statusMeta.color || "#00b67a" }} />
+          ) : (
+            <span className="dot-inner" style={{ background: statusMeta.color || "#8c9baf", width: "8px", height: "8px", borderRadius: "50%" }} />
+          )}
+        </Dropdown.Toggle>
+        <Dropdown.Menu className="p-3 shadow-lg border rounded-3 text-center" style={{ minWidth: "180px", zIndex: 1050 }}>
+          <div className="fw-bold text-slate-700 mb-2.5" style={{ fontSize: "13px" }}>Move to Status</div>
+          <div className="d-flex flex-column gap-2">
+            {STATUS_OPTIONS.map((status) => (
+              <button
+                key={status}
+                type="button"
+                onClick={() => {
+                  if (getIncompleteSubtasks(task).length > 0 && status === "Done") {
+                    showError("Please complete all subtasks first.");
+                    return;
+                  }
+                  handleTaskCellChange(task.id, "status", status);
+                }}
+                className="btn btn-sm text-white fw-bold py-1.5 rounded-3 border-0 transition-transform active-scale-95"
+                style={{
+                  backgroundColor: STATUS_META[status].color || "#7c8798",
+                  fontSize: "11px",
+                  letterSpacing: "0.5px",
+                  textTransform: "uppercase"
+                }}
+              >
+                {STATUS_META[status].label}
+              </button>
+            ))}
+          </div>
+        </Dropdown.Menu>
+      </Dropdown>
+    );
+  };
+
+  const renderSubtaskCheckCircleDropdown = (subtask, subtaskFull, statusMeta) => {
+    const isDone = subtask.status === "Done" || subtask.status === "Complete";
+    return (
+      <Dropdown className="d-inline-block">
+        <Dropdown.Toggle as="span" className="task-complete-dot d-inline-flex align-items-center justify-content-center" style={{
+          borderColor: statusMeta.color || "#8c9baf",
+          cursor: "pointer"
+        }} title="Change Status">
+          {isDone ? (
+            <CheckCircleFill size={14} style={{ color: statusMeta.color || "#00b67a" }} />
+          ) : (
+            <span className="dot-inner" style={{ background: statusMeta.color || "#8c9baf", width: "8px", height: "8px", borderRadius: "50%" }} />
+          )}
+        </Dropdown.Toggle>
+        <Dropdown.Menu className="p-3 shadow-lg border rounded-3 text-center" style={{ minWidth: "180px", zIndex: 1050 }}>
+          <div className="fw-bold text-slate-700 mb-2.5" style={{ fontSize: "13px" }}>Move to Status</div>
+          <div className="d-flex flex-column gap-2">
+            {STATUS_OPTIONS.map((status) => (
+              <button
+                key={status}
+                type="button"
+                onClick={() => handleTaskCellChange(subtask.id, "status", status)}
+                className="btn btn-sm text-white fw-bold py-1.5 rounded-3 border-0 transition-transform active-scale-95"
+                style={{
+                  backgroundColor: STATUS_META[status].color || "#7c8798",
+                  fontSize: "11px",
+                  letterSpacing: "0.5px",
+                  textTransform: "uppercase"
+                }}
+              >
+                {STATUS_META[status].label}
+              </button>
+            ))}
+          </div>
+        </Dropdown.Menu>
+      </Dropdown>
+    );
+  };
+
   const renderPriorityDropdown = (task) => {
     return (
       <Dropdown className="w-100 text-center zbot-cell-priority">
@@ -2599,28 +2686,7 @@ const BoardDetailPage = () => {
                         <React.Fragment key={task.id}>
                         <tr className="workspace-row" onDoubleClick={() => handleOpenUpdatesDrawer(task)}>
                           <td style={{ textAlign: "center", verticalAlign: "middle" }}>
-                            <span
-                              className="task-complete-dot"
-                              style={{
-                                borderColor: statusMeta.color || "#8c9baf",
-                                cursor: getIncompleteSubtasks(task).length > 0 ? "not-allowed" : "pointer",
-                                opacity: getIncompleteSubtasks(task).length > 0 && task.status !== "Done" ? 0.6 : 1
-                              }}
-                              title={
-                                getIncompleteSubtasks(task).length > 0
-                                  ? "Complete subtasks before marking this task complete"
-                                  : "Mark complete"
-                              }
-                              onClick={() =>
-                                handleTaskCellChange(
-                                  task.id,
-                                  "status",
-                                  task.status === "Done" ? "Not Started" : "Done"
-                                )
-                              }
-                            >
-                              {task.status === "Done" && <CheckCircleFill size={14} style={{ color: statusMeta.color }} />}
-                            </span>
+                            {renderTaskCheckCircleDropdown(task, statusMeta)}
                           </td>
                           <td>
                             <div className="d-flex align-items-center gap-2">
@@ -2671,15 +2737,20 @@ const BoardDetailPage = () => {
                           <td>{renderDateCell(task, "due_date")}</td>
                           <td>{renderPriorityDropdown(task)}</td>
                           <td>{renderStatusDropdown(task)}</td>
-                          <td className="text-center">
-                            <button
-                              type="button"
-                              className="chat-bubble-btn"
-                              onClick={() => handleOpenUpdatesDrawer(task)}
-                              style={{ opacity: 1 }}
-                            >
-                              <MessageSquare size={13} className="text-slate-300" />
-                            </button>
+                          <td className="text-center position-relative">
+                            <Dropdown show={activeCommentTaskId === task.id} onToggle={(isOpen) => setActiveCommentTaskId(isOpen ? task.id : null)}>
+                              <Dropdown.Toggle as="div" className="chat-bubble-btn position-relative d-inline-flex align-items-center justify-content-center cursor-pointer" style={{ width: "24px", height: "24px" }}>
+                                <MessageSquare size={13} className={task.updates_count > 0 ? "text-primary" : "text-slate-300"} />
+                                {task.updates_count > 0 && (
+                                  <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: "9px", padding: "1px 3px" }}>
+                                    {task.updates_count}
+                                  </span>
+                                )}
+                              </Dropdown.Toggle>
+                              <Dropdown.Menu className="p-3 shadow-lg border rounded-3 dropdown-menu-end" style={{ width: "380px", zIndex: 1050 }}>
+                                <InlineTaskComments task={task} assignees={assignees} onCommentAdded={() => { fetchWorkspace(false); }} />
+                              </Dropdown.Menu>
+                            </Dropdown>
                           </td>
                           <td>
                             {/* Three-dot context menu */}
@@ -2730,30 +2801,10 @@ const BoardDetailPage = () => {
                               className="workspace-row workspace-subtask-row"
                               onDoubleClick={() => handleOpenUpdatesDrawer(subtaskFull)}
                             >
-                              <td style={{ textAlign: "center", verticalAlign: "middle" }}>
-                                <span
-                                  className="task-complete-dot"
-                                  style={{
-                                    borderColor: STATUS_META[subtask.status]?.color || "#8c9baf",
-                                    cursor: "pointer"
-                                  }}
-                                  title={subtask.status === "Done" ? "Mark subtask as to do" : "Mark subtask complete"}
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    handleTaskCellChange(
-                                      subtask.id,
-                                      "status",
-                                      subtask.status === "Done" ? "Not Started" : "Done"
-                                    );
-                                  }}
-                                >
-                                  {subtask.status === "Done" && (
-                                    <CheckCircleFill size={14} style={{ color: STATUS_META.Done.color }} />
-                                  )}
-                                </span>
-                              </td>
+                              <td></td>
                               <td>
-                                <div className="d-flex align-items-center gap-2 ps-4">
+                                <div className="d-flex align-items-center gap-2" style={{ paddingLeft: "24px" }}>
+                                  {renderSubtaskCheckCircleDropdown(subtask, subtaskFull, STATUS_META[subtask.status] || STATUS_META["Not Started"])}
                                   <GitFork size={13} className="text-slate-300" style={{ transform: "rotate(180deg)" }} />
                                   <input
                                     type="text"
@@ -2772,14 +2823,90 @@ const BoardDetailPage = () => {
                                       }
                                     }}
                                   />
+                                  {renderTaskNotesIcon(subtaskFull)}
+                                  <button
+                                    type="button"
+                                    className="zbot-inline-icon-btn"
+                                    onClick={() =>
+                                      setInlineSubtaskBuilders((prev) => ({
+                                        ...prev,
+                                        [subtask.id]: prev[subtask.id] === undefined ? "" : undefined,
+                                      }))
+                                    }
+                                    title="Add subtask"
+                                  >
+                                    <PlusSquare size={13} className="text-slate-400" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="chat-bubble-btn"
+                                    onClick={() => handleOpenUpdatesDrawer(subtaskFull)}
+                                  >
+                                    <MessageSquare size={13} className="text-slate-400" />
+                                    {subtask.updates_count > 0 && (
+                                      <span className="chat-badge">{subtask.updates_count}</span>
+                                    )}
+                                  </button>
                                 </div>
                               </td>
                               <td>{renderAssigneeCell(subtaskFull)}</td>
                               <td>{renderDateCell(subtaskFull, "due_date")}</td>
                               <td>{renderPriorityDropdown(subtaskFull)}</td>
                               <td>{renderStatusDropdown(subtaskFull)}</td>
-                              <td />
-                              <td />
+                              <td className="text-center position-relative">
+                                <Dropdown show={activeCommentTaskId === subtask.id} onToggle={(isOpen) => setActiveCommentTaskId(isOpen ? subtask.id : null)}>
+                                  <Dropdown.Toggle as="div" className="chat-bubble-btn position-relative d-inline-flex align-items-center justify-content-center cursor-pointer" style={{ width: "24px", height: "24px" }}>
+                                    <MessageSquare size={13} className={subtask.updates_count > 0 ? "text-primary" : "text-slate-300"} />
+                                    {subtask.updates_count > 0 && (
+                                      <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: "9px", padding: "1px 3px" }}>
+                                        {subtask.updates_count}
+                                      </span>
+                                    )}
+                                  </Dropdown.Toggle>
+                                  <Dropdown.Menu className="p-3 shadow-lg border rounded-3 dropdown-menu-end" style={{ width: "380px", zIndex: 1050 }}>
+                                    <InlineTaskComments task={subtaskFull} assignees={assignees} onCommentAdded={() => { fetchWorkspace(false); }} />
+                                  </Dropdown.Menu>
+                                </Dropdown>
+                              </td>
+                              <td>
+                                <Dropdown align="end">
+                                  <Dropdown.Toggle as="button" className="task-row-menu-btn">
+                                    <MoreHorizontal size={16} />
+                                  </Dropdown.Toggle>
+                                  <Dropdown.Menu className="task-context-menu">
+                                    <Dropdown.Item onClick={() => handleOpenUpdatesDrawer(subtaskFull)}>
+                                      <Edit3 size={14} /> Rename
+                                    </Dropdown.Item>
+                                    <Dropdown.Item onClick={() => {
+                                      navigator.clipboard.writeText(subtask.title);
+                                    }}>
+                                      <Copy size={14} /> Copy name
+                                    </Dropdown.Item>
+                                    <Dropdown.Item onClick={() => {
+                                      navigator.clipboard.writeText(`${window.location.origin}/admin/boards/${boardId}?task=${subtask.id}`);
+                                    }}>
+                                      <ClipboardCopy size={14} /> Copy link
+                                    </Dropdown.Item>
+                                    <Dropdown.Divider />
+                                    <Dropdown.Item onClick={() => handleTaskCellChange(subtask.id, "status", "Done")}>
+                                      <CheckCircleFill size={14} className="text-success" /> Mark complete
+                                    </Dropdown.Item>
+                                    <Dropdown.Item onClick={() => handleOpenUpdatesDrawer(subtaskFull)}>
+                                      <MessageSquare size={14} /> Open task
+                                    </Dropdown.Item>
+                                    <Dropdown.Divider />
+                                    <Dropdown.Item
+                                      className="text-danger"
+                                      onClick={() => {
+                                        setDeleteTarget({ type: "task", id: subtask.id, name: subtask.title });
+                                        setShowDeleteModal(true);
+                                      }}
+                                    >
+                                      <Trash2 size={14} /> Delete
+                                    </Dropdown.Item>
+                                  </Dropdown.Menu>
+                                </Dropdown>
+                              </td>
                             </tr>
                           );
                         })}
@@ -3318,30 +3445,10 @@ const BoardDetailPage = () => {
                         className="workspace-row workspace-subtask-row"
                         onDoubleClick={() => handleOpenUpdatesDrawer(subtaskFull)}
                       >
-                        <td style={{ textAlign: "center", verticalAlign: "middle" }}>
-                          <span
-                            className="task-complete-dot"
-                            style={{
-                              borderColor: subtaskStatusMeta.color || "#8c9baf",
-                              cursor: "pointer"
-                            }}
-                            title={subtask.status === "Done" ? "Mark subtask as to do" : "Mark subtask complete"}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleTaskCellChange(
-                                subtask.id,
-                                "status",
-                                subtask.status === "Done" ? "Not Started" : "Done"
-                              );
-                            }}
-                          >
-                            {subtask.status === "Done" && (
-                              <CheckCircleFill size={14} style={{ color: subtaskStatusMeta.color }} />
-                            )}
-                          </span>
-                        </td>
+                        <td></td>
                         <td>
-                          <div className="d-flex align-items-center gap-2 ps-4">
+                          <div className="d-flex align-items-center gap-2" style={{ paddingLeft: "24px" }}>
+                            {renderSubtaskCheckCircleDropdown(subtask, subtaskFull, subtaskStatusMeta)}
                             <GitFork size={13} className="text-slate-300" style={{ transform: "rotate(180deg)" }} />
                             <input
                               type="text"
@@ -4544,6 +4651,312 @@ const BoardDetailPage = () => {
         </Modal.Footer>
       </Modal>
     </>
+  );
+};
+
+const InlineTaskComments = ({ task, assignees = [], onCommentAdded }) => {
+  const [comments, setComments] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [newComment, setNewComment] = useState("");
+  const [posting, setPosting] = useState(false);
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [mentionCursorPos, setMentionCursorPos] = useState(0);
+  const [attachedFiles, setAttachedFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const textareaRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  const fetchComments = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get(`/boards/tasks/${task.id}/updates`);
+      setComments(res.data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchComments();
+  }, [task.id]);
+
+  // Filter assignees for mention dropdown
+  const filteredMentions = useMemo(() => {
+    if (!mentionQuery) return assignees.slice(0, 8);
+    const q = mentionQuery.toLowerCase();
+    return assignees.filter(a => a.name?.toLowerCase().includes(q)).slice(0, 8);
+  }, [assignees, mentionQuery]);
+
+  const handleTextChange = (e) => {
+    const value = e.target.value;
+    const cursorPos = e.target.selectionStart;
+    setNewComment(value);
+
+    // Check if user just typed @ or is in a mention context
+    const textBeforeCursor = value.substring(0, cursorPos);
+    const atIndex = textBeforeCursor.lastIndexOf("@");
+    if (atIndex !== -1) {
+      const afterAt = textBeforeCursor.substring(atIndex + 1);
+      // Only show mentions if @ is at start or preceded by space/newline, and no space in query
+      if ((atIndex === 0 || /[\s\n]/.test(textBeforeCursor[atIndex - 1])) && !/\s/.test(afterAt)) {
+        setShowMentions(true);
+        setMentionQuery(afterAt);
+        setMentionCursorPos(cursorPos);
+        return;
+      }
+    }
+    setShowMentions(false);
+    setMentionQuery("");
+  };
+
+  const insertMention = (member) => {
+    const textBeforeCursor = newComment.substring(0, mentionCursorPos);
+    const atIndex = textBeforeCursor.lastIndexOf("@");
+    const before = newComment.substring(0, atIndex);
+    const after = newComment.substring(mentionCursorPos);
+    const mention = `@${member.name} `;
+    setNewComment(before + mention + after);
+    setShowMentions(false);
+    setMentionQuery("");
+    // Refocus textarea
+    setTimeout(() => {
+      if (textareaRef.current) {
+        const pos = (before + mention).length;
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(pos, pos);
+      }
+    }, 0);
+  };
+
+  const handleFileSelect = async (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    setUploading(true);
+    try {
+      for (const file of files) {
+        const result = await uploadTaskAttachment(task.id, file);
+        setAttachedFiles(prev => [...prev, { name: file.name, id: result?.id, url: result?.url }]);
+      }
+    } catch (err) {
+      console.error("Upload failed:", err);
+      toast.error("Failed to upload file");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const removeAttachedFile = (index) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!newComment.trim() && attachedFiles.length === 0) return;
+    setPosting(true);
+    try {
+      let htmlContent = newComment.replace(/\n/g, "<br/>");
+      // Wrap @mentions in bold
+      htmlContent = htmlContent.replace(/@(\S+(?:\s\S+)?)/g, '<strong style="color:#6366f1">@$1</strong>');
+      // Add file links if attached
+      if (attachedFiles.length > 0) {
+        const fileLinks = attachedFiles.map(f =>
+          f.url ? `<a href="${f.url}" target="_blank" style="color:#6366f1">${f.name}</a>` : `📎 ${f.name}`
+        ).join(", ");
+        htmlContent += `<br/><small style="color:#6b7280">Attached: ${fileLinks}</small>`;
+      }
+      await api.post(`/boards/tasks/${task.id}/updates`, {
+        body_html: `<p>${htmlContent}</p>`
+      });
+      setNewComment("");
+      setAttachedFiles([]);
+      fetchComments();
+      if (onCommentAdded) onCommentAdded();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  return (
+    <div onClick={(e) => e.stopPropagation()} style={{ minWidth: "340px" }}>
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: "none" }}
+        multiple
+        onChange={handleFileSelect}
+      />
+
+      {/* Comments list */}
+      {loading ? (
+        <div className="text-center py-4"><Spinner size="sm" animation="border" variant="secondary" /></div>
+      ) : comments.length === 0 ? (
+        <div className="text-center py-4" style={{ color: "#9ca3af", fontSize: "13px" }}>No comments yet</div>
+      ) : (
+        <div className="mb-2">
+          {comments.map(c => (
+            <div key={c.id} className="d-flex gap-2 py-3" style={{ borderBottom: "1px solid #f3f4f6" }}>
+              {/* Avatar */}
+              <div className="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle text-white fw-bold" style={{
+                width: "30px", height: "30px", fontSize: "11px",
+                background: `hsl(${((c.author_name || "U").charCodeAt(0) * 47) % 360}, 50%, 55%)`
+              }}>
+                {(c.author_name || "U").substring(0, 2).toUpperCase()}
+              </div>
+              {/* Content */}
+              <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                <div className="d-flex align-items-center gap-2 mb-1">
+                  <strong style={{ fontSize: "13px", color: "#1f2937" }}>{c.author_name}</strong>
+                  <span style={{ fontSize: "11px", color: "#9ca3af" }}>
+                    {format(parseISO(c.created_at), "MMM d 'at' h:mm a")}
+                  </span>
+                </div>
+                <div style={{ fontSize: "13px", color: "#374151", lineHeight: "1.5" }} dangerouslySetInnerHTML={{ __html: c.body_html }} />
+                {/* Reactions row */}
+                <div className="d-flex align-items-center justify-content-between mt-2" style={{ fontSize: "12px", color: "#9ca3af" }}>
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="cursor-pointer" style={{ fontSize: "14px" }} title="Like">👍</span>
+                    <span className="cursor-pointer" style={{ fontSize: "14px" }} title="React">😊</span>
+                  </div>
+                  {(c.replies_count || 0) > 0 && (
+                    <div className="d-flex align-items-center gap-1">
+                      <span style={{ color: "#6366f1", fontWeight: 600, fontSize: "12px" }}>
+                        {c.replies_count} {c.replies_count === 1 ? "reply" : "replies"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Input area */}
+      <Form onSubmit={handleSubmit}>
+        <div style={{ border: "1px solid #e5e7eb", borderRadius: "8px", padding: "10px 12px", marginTop: "4px", position: "relative" }}>
+          <Form.Control
+            ref={textareaRef}
+            as="textarea"
+            rows={1}
+            placeholder="Write a comment..."
+            value={newComment}
+            onChange={handleTextChange}
+            style={{
+              border: "none", background: "transparent", fontSize: "13px",
+              resize: "none", padding: "0", outline: "none", boxShadow: "none",
+              color: "#374151"
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey && !showMentions) { e.preventDefault(); handleSubmit(e); }
+              if (e.key === "Escape") setShowMentions(false);
+            }}
+          />
+
+          {/* @ Mention dropdown */}
+          {showMentions && filteredMentions.length > 0 && (
+            <div style={{
+              position: "absolute", bottom: "100%", left: 0, right: 0,
+              background: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.1)", zIndex: 1060,
+              maxHeight: "180px", overflowY: "auto", marginBottom: "4px"
+            }}>
+              {filteredMentions.map((member, idx) => (
+                <div
+                  key={`${member.role}_${member.id}_${idx}`}
+                  className="d-flex align-items-center gap-2 px-3 py-2 cursor-pointer"
+                  style={{ fontSize: "13px", transition: "background 0.1s" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "#f3f4f6"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                  onClick={() => insertMention(member)}
+                >
+                  <div className="d-flex align-items-center justify-content-center rounded-circle text-white fw-bold" style={{
+                    width: "24px", height: "24px", fontSize: "9px", flexShrink: 0,
+                    background: `hsl(${((member.name || "U").charCodeAt(0) * 47) % 360}, 50%, 55%)`
+                  }}>
+                    {(member.name || "U").substring(0, 2).toUpperCase()}
+                  </div>
+                  <span style={{ color: "#1f2937", fontWeight: 500 }}>{member.name}</span>
+                  {member.role && (
+                    <span style={{ color: "#9ca3af", fontSize: "11px", marginLeft: "auto" }}>{member.role}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Attached files preview */}
+        {attachedFiles.length > 0 && (
+          <div className="d-flex flex-wrap gap-1 mt-2 px-1">
+            {attachedFiles.map((file, i) => (
+              <span key={i} className="d-inline-flex align-items-center gap-1 px-2 py-1 rounded-pill" style={{
+                background: "#f3f4f6", fontSize: "11px", color: "#374151"
+              }}>
+                <Paperclip size={10} />
+                {file.name}
+                <span className="cursor-pointer" style={{ color: "#ef4444", fontWeight: 700, marginLeft: "2px" }} onClick={() => removeAttachedFile(i)}>&times;</span>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Bottom toolbar */}
+        <div className="d-flex align-items-center justify-content-between mt-2 px-1">
+          <div className="d-flex align-items-center gap-2" style={{ color: "#9ca3af" }}>
+            <Paperclip
+              size={15}
+              className="cursor-pointer"
+              style={{ strokeWidth: 1.5 }}
+              title="Attach file"
+              onClick={() => fileInputRef.current?.click()}
+            />
+            {uploading && <Spinner size="sm" animation="border" style={{ width: "14px", height: "14px", color: "#9ca3af" }} />}
+            <span
+              className="fw-bold cursor-pointer"
+              style={{ fontSize: "15px", lineHeight: 1 }}
+              title="Mention someone"
+              onClick={() => {
+                const pos = textareaRef.current?.selectionStart || newComment.length;
+                const before = newComment.substring(0, pos);
+                const after = newComment.substring(pos);
+                setNewComment(before + "@" + after);
+                setShowMentions(true);
+                setMentionQuery("");
+                setMentionCursorPos(pos + 1);
+                setTimeout(() => {
+                  if (textareaRef.current) {
+                    textareaRef.current.focus();
+                    textareaRef.current.setSelectionRange(pos + 1, pos + 1);
+                  }
+                }, 0);
+              }}
+            >@</span>
+          </div>
+          <button
+            type="submit"
+            disabled={posting || (!newComment.trim() && attachedFiles.length === 0)}
+            className="d-flex align-items-center justify-content-center border-0 rounded-circle"
+            style={{
+              width: "30px", height: "30px",
+              background: (newComment.trim() || attachedFiles.length > 0) ? "#6366f1" : "#e5e7eb",
+              color: (newComment.trim() || attachedFiles.length > 0) ? "#fff" : "#9ca3af",
+              cursor: (newComment.trim() || attachedFiles.length > 0) ? "pointer" : "not-allowed",
+              transition: "all 0.2s ease"
+            }}
+            title="Send"
+          >
+            {posting ? <Spinner size="sm" animation="border" style={{ width: "14px", height: "14px" }} /> : <Send size={14} />}
+          </button>
+        </div>
+      </Form>
+    </div>
   );
 };
 
