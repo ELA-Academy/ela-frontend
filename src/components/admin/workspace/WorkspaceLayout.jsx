@@ -10,7 +10,7 @@ import CreateChannelModal from "./CreateChannelModal";
 import CreateTaskModal from "./CreateTaskModal";
 import NewConversationModal from "../../admin/messaging/NewConversationModal";
 import DeleteConfirmModal from "../DeleteConfirmModal";
-import { createBoard, updateBoard, deleteBoard, createTask } from "../../../services/boardService";
+import { createBoard, updateBoard, deleteBoard, createTask, createBoardFromTemplate } from "../../../services/boardService";
 import { Modal, Form, Button, Spinner } from "react-bootstrap";
 import { io } from "socket.io-client";
 import "../../../styles/WorkspaceShell.css";
@@ -272,11 +272,18 @@ const WorkspaceLayout = () => {
         await updateBoard(settingsBoard.id, payload);
       } else {
         // Create new Space
-        const created = await createBoard({
-          ...payload,
-          parent_id: null,
-          is_folder: false
-        });
+        let created;
+        if (payload.from_template_id) {
+          created = await createBoardFromTemplate(payload.from_template_id, {
+            name: payload.name
+          });
+        } else {
+          created = await createBoard({
+            ...payload,
+            parent_id: null,
+            is_folder: false
+          });
+        }
         navigate(`/admin/boards/${created.id}`);
       }
       setShowSettingsModal(false);

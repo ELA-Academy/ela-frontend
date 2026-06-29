@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { unfollowChannel, markConversationUnread, toggleFavoriteConversation } from "../../../services/messagingService";
 import { Dropdown, Overlay } from "react-bootstrap";
+import { saveBoardAsTemplate, archiveBoard, unarchiveBoard } from "../../../services/boardService";
 import {
   ChevronRight,
   ChevronDown,
@@ -283,10 +284,20 @@ const WorkspaceSecondarySidebar = ({
             <span>Imports</span>
             <ChevronRight size={12} className="clickup-menu-arrow ms-auto" />
           </div>
-          <div className="clickup-menu-item" onClick={() => { setMenuConfig(null); toast.info("Templates coming soon"); }}>
+          <div className="clickup-menu-item" onClick={async () => {
+            setMenuConfig(null);
+            const templateName = window.prompt("Enter template name:", `Template: ${space.name}`);
+            if (!templateName) return;
+            try {
+              await saveBoardAsTemplate(space.id, { template_name: templateName });
+              toast.success("Space saved as template!");
+              onRefreshWorkspace();
+            } catch (err) {
+              toast.error("Failed to save as template");
+            }
+          }}>
             <span className="clickup-menu-icon"><FileText size={13} /></span>
-            <span>Templates</span>
-            <ChevronRight size={12} className="clickup-menu-arrow ms-auto" />
+            <span>Save as Template</span>
           </div>
 
           <div className="clickup-menu-divider" />
@@ -311,7 +322,20 @@ const WorkspaceSecondarySidebar = ({
             <span className="clickup-menu-icon"><Copy size={13} /></span>
             <span>Duplicate</span>
           </div>
-          <div className="clickup-menu-item" onClick={() => { setMenuConfig(null); toast.info("Space archived"); }}>
+          <div className="clickup-menu-item" onClick={async () => {
+            setMenuConfig(null);
+            if (!window.confirm(`Are you sure you want to archive "${space.name}"?`)) return;
+            try {
+              await archiveBoard(space.id);
+              toast.success("Space archived successfully!");
+              if (window.location.pathname.includes(`/admin/boards/${space.id}`)) {
+                navigate("/admin/boards");
+              }
+              onRefreshWorkspace();
+            } catch (err) {
+              toast.error("Failed to archive space");
+            }
+          }}>
             <span className="clickup-menu-icon"><Archive size={13} /></span>
             <span>Archive</span>
           </div>
@@ -798,8 +822,8 @@ const WorkspaceSecondarySidebar = ({
             <span className="text-slate-400 d-flex align-items-center justify-content-center" style={{ width: "16px", height: "16px" }}>
               {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             </span>
-            <span className="text-slate-500">
-              {space.is_private ? <Lock size={14} className="text-rose-500" /> : <Shapes size={14} className="text-indigo-500" />}
+            <span className="text-slate-500" style={{ fontSize: "14px" }}>
+              {space.icon || (space.is_private ? "🔒" : "📋")}
             </span>
             <Link
               to={`/admin/boards/${space.id}`}

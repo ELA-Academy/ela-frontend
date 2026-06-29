@@ -593,3 +593,212 @@
   background: #ffffff;
 }
 
+/* Mentions autocomplete dropdown */
+.zbot-mentions-dropdown {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid #dddfe5;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1);
+  z-index: 1050;
+  padding: 6px 0;
+}
+
+.zbot-mention-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #374151;
+  transition: background 0.1s ease;
+}
+
+.zbot-mention-item:hover,
+.zbot-mention-item.selected {
+  background-color: #f3f4f6;
+  color: #1f2937;
+}
+
+.zbot-mention-item-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #e0dbf9;
+  color: #673de6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.zbot-mention-item-details {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.zbot-mention-item-name {
+  font-weight: 500;
+}
+
+.zbot-mention-item-role {
+  font-size: 9px;
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+/* Message row hover action container and menu */
+.zbot-message-row {
+  position: relative;
+}
+
+.zbot-message-hover-actions {
+  position: absolute;
+  right: 12px;
+  top: -8px;
+  display: none;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  z-index: 10;
+  padding: 2px;
+}
+
+.zbot-message-row:hover .zbot-message-hover-actions {
+  display: flex;
+  align-items: center;
+}
+
+.zbot-message-action-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.1s, color 0.1s;
+}
+
+.zbot-message-action-btn:hover {
+  background-color: #f3f4f6;
+  color: #1f2937;
+}
+
+/* Context Menu Backdrop */
+.zbot-context-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  z-index: 9999;
+}
+
+/* ClickUp-style message context menu */
+.zbot-message-context-menu {
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  width: 240px;
+  padding: 6px 0;
+  font-size: 13px;
+  color: #374151;
+  user-select: none;
+  animation: contextMenuFadeIn 0.12s ease-out;
+}
+
+@keyframes contextMenuFadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.zbot-context-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background 0.1s;
+  color: #374151;
+}
+
+.zbot-context-menu-item:hover {
+  background: #f3f4f6;
+}
+
+.zbot-context-menu-item.text-danger {
+  color: #ef4444;
+}
+
+.zbot-context-menu-item.text-danger:hover {
+  background: #fef2f2;
+}
+
+.zbot-context-menu-item .shortcut {
+  font-size: 10px;
+  color: #9ca3af;
+  background: #f3f4f6;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-weight: 500;
+}
+
+.zbot-context-menu-divider {
+  height: 1px;
+  background: #f3f4f6;
+  margin: 6px 0;
+}
+
+/* Submenu layout */
+.zbot-context-menu-item.has-submenu {
+  position: relative;
+}
+
+.zbot-context-menu-item.has-submenu .submenu-arrow {
+  color: #9ca3af;
+}
+
+.zbot-context-submenu {
+  position: absolute;
+  top: -6px;
+  left: 100%;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  width: 140px;
+  display: none;
+  flex-direction: column;
+  padding: 4px 0;
+  z-index: 10001;
+}
+
+.zbot-context-menu-item.has-submenu:hover .zbot-context-submenu {
+  display: flex;
+}
+
+.zbot-context-submenu-item {
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.1s;
+  text-align: left;
+}
+
+.zbot-context-submenu-item:hover {
+  background: #f3f4f6;
+}
+

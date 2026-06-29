@@ -213,3 +213,33 @@ export const getAllWorkspaceDocs = async () => {
   return response.data;
 };
 
+export const getWorkspaceDoc = async (docId) => {
+  const response = await api.get(`/boards/docs/${docId}`);
+  return response.data;
+};
+
+export const createBoardFromTemplate = async (templateId, boardData) => {
+  const response = await api.post(`/boards/create-from-template/${templateId}`, boardData);
+  return response.data;
+};
+
+export const getBoardTemplates = async () => {
+  const response = await api.get("/boards/templates");
+  return response.data;
+};
+
+export const saveBoardAsTemplate = async (boardId, templateData) => {
+  const response = await api.post(`/boards/${boardId}/save-as-template`, templateData);
+  return response.data;
+};
+
+export const archiveBoard = async (boardId) => {
+  const response = await api.put(`/boards/${boardId}/archive`);
+  return response.data;
+};
+
+export const unarchiveBoard = async (boardId) => {
+  const response = await api.put(`/boards/${boardId}/unarchive`);
+  return response.data;
+};
+

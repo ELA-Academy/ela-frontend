@@ -15,7 +15,8 @@ import {
   Activity,
   UserPlus,
   DollarSign,
-  BriefcaseBusiness
+  BriefcaseBusiness,
+  BarChart3
 } from "lucide-react";
 
 const Sidebar = ({ collapsed, setCollapsed }) => {
@@ -25,7 +26,8 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
   const coreLinks = [
     { path: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard", role: ["superadmin", "staff"], end: true },
     { path: "/admin/boards", icon: FolderKanban, label: "Workspace", role: ["superadmin", "staff"] },
-    { path: "/admin/tasks", icon: ClipboardCheck, label: "My Tasks", role: ["superadmin", "staff"], badgeCount: unreadTasks }
+    { path: "/admin/tasks", icon: ClipboardCheck, label: "My Tasks", role: ["superadmin", "staff"], badgeCount: unreadTasks },
+    { path: "/admin/reports", icon: BarChart3, label: "Reports", role: ["superadmin", "staff"] }
   ];
 
   const departmentDashboardLinks = [

@@ -31,6 +31,13 @@ const FormView = ({ boardId }) => {
     { id: 1, label: "Task Title", type: "text", mapping: "title", required: true }
   ]);
 
+  const evaluateCondition = (q, currentAnswers) => {
+    if (!q.conditional) return true;
+    if (!q.depends_on || q.depends_value === undefined) return true;
+    const parentAnswer = currentAnswers[q.depends_on];
+    return String(parentAnswer || "").toLowerCase() === String(q.depends_value).toLowerCase();
+  };
+
   const fetchForms = async () => {
     try {
       setLoading(true);
@@ -361,6 +368,7 @@ const FormView = ({ boardId }) => {
                         <option value="textarea">Paragraph</option>
                         <option value="number">Number</option>
                         <option value="date">Date</option>
+                        <option value="file">File Upload</option>
                       </Form.Select>
                     </Form.Group>
                   </Col>
@@ -379,6 +387,7 @@ const FormView = ({ boardId }) => {
                           <option value="priority">Priority</option>
                           <option value="notes">Description / Notes</option>
                           <option value="due_date">Due Date</option>
+                          <option value="file">File Attachment</option>
                         </optgroup>
                         {customFields.length > 0 && (
                           <optgroup label="Workspace Custom Fields">
@@ -394,6 +403,45 @@ const FormView = ({ boardId }) => {
                     <Button variant="link" className="text-danger p-0" onClick={() => handleRemoveQuestion(q.id)} disabled={q.mapping === "title"}>
                       <Trash2 size={15} />
                     </Button>
+                  </Col>
+
+                  {/* Conditional logic configuration */}
+                  <Col md={12} className="mt-2 pt-2 border-top border-slate-200">
+                    <div className="d-flex align-items-center gap-3 flex-wrap">
+                      <Form.Check
+                        type="checkbox"
+                        id={`cond-chk-${q.id}`}
+                        label="Conditional Logic (Show only under conditions)"
+                        checked={q.conditional || false}
+                        onChange={(e) => handleQuestionChange(q.id, "conditional", e.target.checked)}
+                        className="small text-slate-700 font-semibold mb-0"
+                      />
+                      {q.conditional && (
+                        <div className="d-flex align-items-center gap-2">
+                          <span className="small text-muted text-xs">Show if</span>
+                          <Form.Select
+                            value={q.depends_on || ""}
+                            onChange={(e) => handleQuestionChange(q.id, "depends_on", Number(e.target.value))}
+                            size="sm"
+                            style={{ width: "160px", fontSize: "11px" }}
+                          >
+                            <option value="">Select question...</option>
+                            {questions.filter(other => other.id !== q.id).map(other => (
+                              <option key={other.id} value={other.id}>{other.label}</option>
+                            ))}
+                          </Form.Select>
+                          <span className="small text-muted text-xs">equals</span>
+                          <Form.Control
+                            type="text"
+                            placeholder="Value..."
+                            value={q.depends_value || ""}
+                            onChange={(e) => handleQuestionChange(q.id, "depends_value", e.target.value)}
+                            size="sm"
+                            style={{ width: "120px", fontSize: "11px" }}
+                          />
+                        </div>
+                      )}
+                    </div>
                   </Col>
                 </Row>
               ))}
@@ -419,41 +467,77 @@ const FormView = ({ boardId }) => {
               {activeForm.description && (
                 <p className="text-muted small mb-4 bg-light p-2 rounded">{activeForm.description}</p>
               )}
-              {activeForm.form_structure?.map((q) => (
-                <Form.Group key={q.id} className="mb-3">
-                  <Form.Label className="small fw-semibold">{q.label} {q.required && <span className="text-danger">*</span>}</Form.Label>
-                  {q.type === "textarea" ? (
-                    <Form.Control
-                      as="textarea"
-                      rows={3}
-                      value={previewAnswers[q.id] || ""}
-                      onChange={(e) => setPreviewAnswers({ ...previewAnswers, [q.id]: e.target.value })}
-                      required={q.required}
-                    />
-                  ) : q.type === "date" ? (
-                    <Form.Control
-                      type="date"
-                      value={previewAnswers[q.id] || ""}
-                      onChange={(e) => setPreviewAnswers({ ...previewAnswers, [q.id]: e.target.value })}
-                      required={q.required}
-                    />
-                  ) : q.type === "number" ? (
-                    <Form.Control
-                      type="number"
-                      value={previewAnswers[q.id] || ""}
-                      onChange={(e) => setPreviewAnswers({ ...previewAnswers, [q.id]: e.target.value })}
-                      required={q.required}
-                    />
-                  ) : (
-                    <Form.Control
-                      type="text"
-                      value={previewAnswers[q.id] || ""}
-                      onChange={(e) => setPreviewAnswers({ ...previewAnswers, [q.id]: e.target.value })}
-                      required={q.required}
-                    />
-                  )}
-                </Form.Group>
-              ))}
+              {activeForm.form_structure?.map((q) => {
+                if (!evaluateCondition(q, previewAnswers)) return null;
+                return (
+                  <Form.Group key={q.id} className="mb-3">
+                    <Form.Label className="small fw-semibold">{q.label} {q.required && <span className="text-danger">*</span>}</Form.Label>
+                    {q.type === "textarea" ? (
+                      <Form.Control
+                        as="textarea"
+                        rows={3}
+                        value={previewAnswers[q.id] || ""}
+                        onChange={(e) => setPreviewAnswers({ ...previewAnswers, [q.id]: e.target.value })}
+                        required={q.required}
+                      />
+                    ) : q.type === "date" ? (
+                      <Form.Control
+                        type="date"
+                        value={previewAnswers[q.id] || ""}
+                        onChange={(e) => setPreviewAnswers({ ...previewAnswers, [q.id]: e.target.value })}
+                        required={q.required}
+                      />
+                    ) : q.type === "number" ? (
+                      <Form.Control
+                        type="number"
+                        value={previewAnswers[q.id] || ""}
+                        onChange={(e) => setPreviewAnswers({ ...previewAnswers, [q.id]: e.target.value })}
+                        required={q.required}
+                      />
+                    ) : q.type === "file" ? (
+                      <div>
+                        <Form.Control
+                          type="file"
+                          onChange={async (e) => {
+                            const file = e.target.files[0];
+                            if (!file) return;
+                            const formData = new FormData();
+                            formData.append("file", file);
+                            try {
+                              const uploadRes = await api.post("/board-extensions/public/forms/upload", formData, {
+                                headers: { "Content-Type": "multipart/form-data" }
+                              });
+                              setPreviewAnswers({
+                                ...previewAnswers,
+                                [q.id]: {
+                                  filename: uploadRes.data.filename,
+                                  file_url: uploadRes.data.file_url
+                                }
+                              });
+                              showSuccess("File uploaded successfully.");
+                            } catch (err) {
+                              showError("Failed to upload file.");
+                            }
+                          }}
+                          required={q.required && !previewAnswers[q.id]}
+                        />
+                        {previewAnswers[q.id] && (
+                          <div className="text-success small mt-1">
+                            ✓ {previewAnswers[q.id].filename} uploaded
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <Form.Control
+                        type="text"
+                        value={previewAnswers[q.id] || ""}
+                        onChange={(e) => setPreviewAnswers({ ...previewAnswers, [q.id]: e.target.value })}
+                        required={q.required}
+                      />
+                    )}
+                  </Form.Group>
+                );
+              })}
             </Modal.Body>
             <Modal.Footer>
               <Button variant="light" onClick={() => setShowPreviewModal(false)}>Cancel</Button>

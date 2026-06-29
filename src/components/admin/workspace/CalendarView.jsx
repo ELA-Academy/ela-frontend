@@ -185,9 +185,68 @@ const CalendarView = ({ boardId, onTaskClick, assignees, refreshWorkspace }) => 
     setCurrentDate(new Date());
   };
 
+  // Precompute expanded recurring events for visible dates
+  const expandedEvents = useMemo(() => {
+    if (!events.length) return [];
+    
+    const expanded = [];
+    
+    events.forEach(e => {
+      // Add original event occurrence
+      expanded.push(e);
+      
+      if (!e.recurring_rule || e.recurring_rule === "None") return;
+      
+      const startDt = new Date(e.start_datetime);
+      const endDt = e.end_datetime ? new Date(e.end_datetime) : null;
+      const durationMs = endDt ? (endDt.getTime() - startDt.getTime()) : 0;
+      
+      const rangeStart = new Date(currentDate);
+      rangeStart.setDate(currentDate.getDate() - 35);
+      
+      const rangeEnd = new Date(currentDate);
+      rangeEnd.setDate(currentDate.getDate() + 45);
+      
+      let nextDt = new Date(startDt);
+      
+      let limit = 0;
+      while (nextDt <= rangeEnd && limit < 150) {
+        limit++;
+        
+        if (e.recurring_rule === "Daily") {
+          nextDt.setDate(nextDt.getDate() + 1);
+        } else if (e.recurring_rule === "Weekly") {
+          nextDt.setDate(nextDt.getDate() + 7);
+        } else if (e.recurring_rule === "Monthly") {
+          nextDt.setMonth(nextDt.getMonth() + 1);
+        } else {
+          break;
+        }
+        
+        if (nextDt > rangeEnd) break;
+        
+        if (nextDt > startDt && nextDt >= rangeStart) {
+          const occStart = new Date(nextDt);
+          const occEnd = endDt ? new Date(nextDt.getTime() + durationMs) : null;
+          
+          expanded.push({
+            ...e,
+            id: `${e.id}-occ-${occStart.getTime()}`,
+            original_id: e.id,
+            start_datetime: occStart.toISOString(),
+            end_datetime: occEnd ? occEnd.toISOString() : null,
+            is_occurrence: true
+          });
+        }
+      }
+    });
+    
+    return expanded;
+  }, [events, currentDate]);
+
   // Match items for a specific day
   const getItemsForDay = (date) => {
-    const dayEvents = events.filter((e) => {
+    const dayEvents = expandedEvents.filter((e) => {
       const eDate = new Date(e.start_datetime);
       return isSameDay(eDate, date);
     });
@@ -271,8 +330,9 @@ const CalendarView = ({ boardId, onTaskClick, assignees, refreshWorkspace }) => 
       };
 
       if (selectedEvent) {
-        // Update
-        await updateCalendarEvent(selectedEvent.id, payload);
+        // Update original event ID if editing from a virtual occurrence
+        const eventId = selectedEvent.original_id || selectedEvent.id;
+        await updateCalendarEvent(eventId, payload);
       } else {
         // Create
         await createCalendarEvent(payload);
@@ -291,7 +351,8 @@ const CalendarView = ({ boardId, onTaskClick, assignees, refreshWorkspace }) => 
     if (!selectedEvent) return;
     if (window.confirm("Are you sure you want to delete this event?")) {
       try {
-        await deleteCalendarEvent(selectedEvent.id);
+        const eventId = selectedEvent.original_id || selectedEvent.id;
+        await deleteCalendarEvent(eventId);
         setShowEventModal(false);
         fetchCalendarData();
         if (refreshWorkspace) refreshWorkspace();

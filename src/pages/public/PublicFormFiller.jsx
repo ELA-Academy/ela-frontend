@@ -35,6 +35,13 @@ const PublicFormFiller = () => {
     }
   }, [formId, apiBaseUrl]);
 
+  const evaluateCondition = (q, currentAnswers) => {
+    if (!q.conditional) return true;
+    if (!q.depends_on || q.depends_value === undefined) return true;
+    const parentAnswer = currentAnswers[q.depends_on];
+    return String(parentAnswer || "").toLowerCase() === String(q.depends_value).toLowerCase();
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formConfig) return;
@@ -136,51 +143,85 @@ const PublicFormFiller = () => {
         <Card className="border-0 shadow-lg rounded-4 p-2 p-md-4">
           <Card.Body>
             <Form onSubmit={handleSubmit}>
-              {formConfig.form_structure?.map((q) => (
-                <Form.Group key={q.id} className="mb-4">
-                  <Form.Label className="fw-semibold text-slate-700 small mb-1.5">
-                    {q.label} {q.required && <span className="text-danger">*</span>}
-                  </Form.Label>
-                  
-                  {q.type === "textarea" ? (
-                    <Form.Control
-                      as="textarea"
-                      rows={4}
-                      placeholder="Write your response here..."
-                      value={answers[q.id] || ""}
-                      onChange={(e) => handleInputChange(q.id, e.target.value)}
-                      required={q.required}
-                      className="border rounded-3"
-                    />
-                  ) : q.type === "date" ? (
-                    <Form.Control
-                      type="date"
-                      value={answers[q.id] || ""}
-                      onChange={(e) => handleInputChange(q.id, e.target.value)}
-                      required={q.required}
-                      className="border rounded-3"
-                    />
-                  ) : q.type === "number" ? (
-                    <Form.Control
-                      type="number"
-                      placeholder="Enter a number..."
-                      value={answers[q.id] || ""}
-                      onChange={(e) => handleInputChange(q.id, e.target.value)}
-                      required={q.required}
-                      className="border rounded-3"
-                    />
-                  ) : (
-                    <Form.Control
-                      type="text"
-                      placeholder="Type your answer..."
-                      value={answers[q.id] || ""}
-                      onChange={(e) => handleInputChange(q.id, e.target.value)}
-                      required={q.required}
-                      className="border rounded-3"
-                    />
-                  )}
-                </Form.Group>
-              ))}
+              {formConfig.form_structure?.map((q) => {
+                if (!evaluateCondition(q, answers)) return null;
+                return (
+                  <Form.Group key={q.id} className="mb-4">
+                    <Form.Label className="fw-semibold text-slate-700 small mb-1.5">
+                      {q.label} {q.required && <span className="text-danger">*</span>}
+                    </Form.Label>
+                    
+                    {q.type === "textarea" ? (
+                      <Form.Control
+                        as="textarea"
+                        rows={4}
+                        placeholder="Write your response here..."
+                        value={answers[q.id] || ""}
+                        onChange={(e) => handleInputChange(q.id, e.target.value)}
+                        required={q.required}
+                        className="border rounded-3"
+                      />
+                    ) : q.type === "date" ? (
+                      <Form.Control
+                        type="date"
+                        value={answers[q.id] || ""}
+                        onChange={(e) => handleInputChange(q.id, e.target.value)}
+                        required={q.required}
+                        className="border rounded-3"
+                      />
+                    ) : q.type === "number" ? (
+                      <Form.Control
+                        type="number"
+                        placeholder="Enter a number..."
+                        value={answers[q.id] || ""}
+                        onChange={(e) => handleInputChange(q.id, e.target.value)}
+                        required={q.required}
+                        className="border rounded-3"
+                      />
+                    ) : q.type === "file" ? (
+                      <div>
+                        <Form.Control
+                          type="file"
+                          onChange={async (e) => {
+                            const file = e.target.files[0];
+                            if (!file) return;
+                            const formData = new FormData();
+                            formData.append("file", file);
+                            try {
+                              const uploadRes = await axios.post(`${apiBaseUrl}/api/board-extensions/public/forms/upload`, formData, {
+                                headers: { "Content-Type": "multipart/form-data" }
+                              });
+                              handleInputChange(q.id, {
+                                filename: uploadRes.data.filename,
+                                file_url: uploadRes.data.file_url
+                              });
+                            } catch (err) {
+                              console.error("File upload failed", err);
+                              alert("Failed to upload file. Please try again.");
+                            }
+                          }}
+                          required={q.required && !answers[q.id]}
+                          className="border rounded-3"
+                        />
+                        {answers[q.id] && (
+                          <div className="text-success small mt-1">
+                            ✓ {answers[q.id].filename} uploaded
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <Form.Control
+                        type="text"
+                        placeholder="Type your answer..."
+                        value={answers[q.id] || ""}
+                        onChange={(e) => handleInputChange(q.id, e.target.value)}
+                        required={q.required}
+                        className="border rounded-3"
+                      />
+                    )}
+                  </Form.Group>
+                );
+              })}
 
               {error && (
                 <div className="alert alert-danger text-xs py-2 px-3 rounded-3 mb-4">

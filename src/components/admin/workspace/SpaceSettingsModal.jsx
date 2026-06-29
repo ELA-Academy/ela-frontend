@@ -1,13 +1,20 @@
 import React, { useMemo, useState } from "react";
-import { Button, Form, Modal, Spinner } from "react-bootstrap";
+import { Button, Form, Modal, Spinner, Row, Col } from "react-bootstrap";
 import Select from "react-select";
 import { toast } from "react-toastify";
+import { getBoardTemplates } from "../../../services/boardService";
 
 const DEFAULT_FORM = {
   name: "",
   description: "",
   is_private: false,
   access_members: [],
+  color: "#673de6",
+  icon: "📋",
+  status: "Not Started",
+  priority: "Normal",
+  category: "",
+  budget_amount: "",
 };
 
 const getInitials = (name) => {
@@ -47,11 +54,25 @@ const SpaceSettingsModal = ({
   initialValues = DEFAULT_FORM,
   members = [],
 }) => {
-  const [formState, setFormState] = useState(initialValues);
+  const [formState, setFormState] = useState({
+    ...DEFAULT_FORM,
+    ...initialValues
+  });
+
+  const [templates, setTemplates] = useState([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
 
   React.useEffect(() => {
     if (show) {
-      setFormState(initialValues);
+      setFormState({
+        ...DEFAULT_FORM,
+        ...initialValues
+      });
+      getBoardTemplates()
+        .then(setTemplates)
+        .catch(console.error);
+    } else {
+      setSelectedTemplateId("");
     }
   }, [initialValues, show]);
 
@@ -173,8 +194,17 @@ const SpaceSettingsModal = ({
               Icon & name
             </Form.Label>
             <div className="d-flex align-items-center gap-3">
-              <div className="zbot-space-avatar-preview">
-                {spaceInitial}
+              <div 
+                className="zbot-space-avatar-preview d-flex align-items-center justify-content-center fw-bold text-white rounded-3 shadow-sm"
+                style={{ 
+                  backgroundColor: formState.color || "#673de6", 
+                  width: "42px", 
+                  height: "42px", 
+                  fontSize: "18px",
+                  flexShrink: 0
+                }}
+              >
+                {formState.icon || spaceInitial}
               </div>
               <Form.Control
                 type="text"
@@ -193,6 +223,109 @@ const SpaceSettingsModal = ({
               />
             </div>
           </Form.Group>
+
+          <Form.Group className="mb-4">
+            <Form.Label className="font-bold text-slate-700" style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Space Theme Color & Icon
+            </Form.Label>
+            <div className="d-flex flex-column gap-3 border rounded-3 p-3 bg-light/30">
+              <div>
+                <div className="text-slate-400 small mb-2" style={{ fontSize: "10.5px" }}>SELECT THEME COLOR:</div>
+                <div className="d-flex flex-wrap gap-2">
+                  {["#7c3aed", "#2563eb", "#db2777", "#ea580c", "#059669", "#0891b2", "#d97706", "#b45309", "#673de6", "#ff3860"].map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setFormState(prev => ({ ...prev, color: c }))}
+                      className="rounded-circle border-0 d-flex align-items-center justify-content-center p-0"
+                      style={{
+                        width: "24px",
+                        height: "24px",
+                        backgroundColor: c,
+                        border: formState.color === c ? "2px solid #0f172a" : "none",
+                        boxShadow: formState.color === c ? "0 0 0 2px #fff" : "none",
+                        cursor: "pointer"
+                      }}
+                    >
+                      {formState.color === c && <span className="text-white" style={{ fontSize: "10px" }}>✓</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <div>
+                <div className="text-slate-400 small mb-2" style={{ fontSize: "10.5px" }}>SELECT ICON:</div>
+                <div className="d-flex flex-wrap gap-2">
+                  {["📋", "💼", "🚀", "🎯", "🎓", "🛠️", "📣", "💻", "🎨", "🔬"].map((icon) => (
+                    <button
+                      key={icon}
+                      type="button"
+                      onClick={() => setFormState(prev => ({ ...prev, icon }))}
+                      className="btn btn-sm border d-flex align-items-center justify-content-center p-0 bg-white"
+                      style={{
+                        width: "32px",
+                        height: "32px",
+                        fontSize: "16px",
+                        borderColor: formState.icon === icon ? "#0f172a" : "#e2e8f0",
+                        borderWidth: formState.icon === icon ? "2px" : "1px",
+                        borderRadius: "8px",
+                        cursor: "pointer"
+                      }}
+                    >
+                      {icon}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </Form.Group>
+
+          {templates.length > 0 && !initialValues.id && (
+            <Form.Group className="mb-4">
+              <Form.Label className="font-bold text-slate-700" style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                Use a Template (optional)
+              </Form.Label>
+              <Form.Select
+                value={selectedTemplateId}
+                onChange={(e) => {
+                  const tId = e.target.value;
+                  setSelectedTemplateId(tId);
+                  if (tId) {
+                    const selectedT = templates.find(t => String(t.id) === String(tId));
+                    if (selectedT) {
+                      setFormState(prev => ({
+                        ...prev,
+                        name: selectedT.name,
+                        description: selectedT.description || "",
+                        color: selectedT.color || prev.color,
+                        icon: selectedT.icon || prev.icon,
+                        status: selectedT.status || prev.status,
+                        priority: selectedT.priority || prev.priority,
+                        category: selectedT.category || prev.category,
+                        budget_amount: selectedT.budget_amount || prev.budget_amount,
+                        from_template_id: selectedT.id
+                      }));
+                    }
+                  } else {
+                    setFormState(prev => {
+                      const copy = { ...prev };
+                      delete copy.from_template_id;
+                      return copy;
+                    });
+                  }
+                }}
+                style={{ fontSize: "13px", borderRadius: "8px", borderColor: "#cbd5e1" }}
+              >
+                <option value="">-- Do not use a template --</option>
+                {templates.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </Form.Select>
+              <Form.Text className="text-muted small" style={{ fontSize: "10px" }}>
+                Selecting a template will copy its lists, statuses, and custom fields to your new Space.
+              </Form.Text>
+            </Form.Group>
+          )}
 
           <Form.Group className="mb-4">
             <Form.Label className="font-bold text-slate-700" style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
@@ -270,6 +403,72 @@ const SpaceSettingsModal = ({
               </small>
             </Form.Group>
           )}
+          {/* Project Metadata Section */}
+          <div className="border rounded-3 p-3 mt-4 mb-2 bg-light/30">
+            <h6 className="font-bold text-slate-800 mb-3" style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Project Settings (Optional)
+            </h6>
+            <Row className="g-3">
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label className="small fw-semibold text-slate-600 mb-1" style={{ fontSize: "11px" }}>Project Status</Form.Label>
+                  <Form.Select
+                    value={formState.status || "Not Started"}
+                    onChange={(e) => setFormState(prev => ({ ...prev, status: e.target.value }))}
+                    style={{ fontSize: "13px", borderRadius: "8px", borderColor: "#cbd5e1" }}
+                  >
+                    <option value="Not Started">Not Started</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="On Hold">On Hold</option>
+                    <option value="Completed">Completed</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label className="small fw-semibold text-slate-600 mb-1" style={{ fontSize: "11px" }}>Project Priority</Form.Label>
+                  <Form.Select
+                    value={formState.priority || "Normal"}
+                    onChange={(e) => setFormState(prev => ({ ...prev, priority: e.target.value }))}
+                    style={{ fontSize: "13px", borderRadius: "8px", borderColor: "#cbd5e1" }}
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Normal">Normal</option>
+                    <option value="High">High</option>
+                    <option value="Urgent">Urgent</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label className="small fw-semibold text-slate-600 mb-1" style={{ fontSize: "11px" }}>Project Category</Form.Label>
+                  <Form.Control
+                    type="text"
+                    placeholder="e.g. Development, Operations"
+                    value={formState.category || ""}
+                    onChange={(e) => setFormState(prev => ({ ...prev, category: e.target.value }))}
+                    style={{ fontSize: "13px", borderRadius: "8px", borderColor: "#cbd5e1" }}
+                  />
+                </Form.Group>
+              </Col>
+              
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label className="small fw-semibold text-slate-600 mb-1" style={{ fontSize: "11px" }}>Project Budget ($)</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 5000"
+                    value={formState.budget_amount || ""}
+                    onChange={(e) => setFormState(prev => ({ ...prev, budget_amount: e.target.value }))}
+                    style={{ fontSize: "13px", borderRadius: "8px", borderColor: "#cbd5e1" }}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+          </div>
         </Modal.Body>
         <Modal.Footer className="d-flex justify-content-between align-items-center border-0 pt-0">
           <Button 

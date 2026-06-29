@@ -272,7 +272,7 @@ const Header = () => {
                           key={doc.id}
                           onClick={() => {
                             setShowSearchOverlay(false);
-                            navigate(`/admin/boards/${doc.board_id}?tab=docs&doc=${doc.id}`);
+                            navigate(`/admin/docs?docId=${doc.id}`);
                           }}
                           className="px-3 py-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors text-xs text-slate-700 font-medium"
                         >
