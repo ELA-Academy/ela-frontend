@@ -55,6 +55,7 @@ const UpdatesDrawer = ({
   onClose,
   allTasks = [],
   onTaskUpdated,
+  onSelectTask,
   groupName,
   boardName,
   customStatuses
@@ -85,6 +86,7 @@ const UpdatesDrawer = ({
   const [category, setCategory] = useState(task.category || "");
   const [tagsInput, setTagsInput] = useState(task.tags || "");
   const [descriptionHtml, setDescriptionHtml] = useState(task.description_html || "");
+  const [initialDescriptionHtml, setInitialDescriptionHtml] = useState("");
   const [editingDesc, setEditingDesc] = useState(false);
   const [savingDesc, setSavingDesc] = useState(false);
   const [assigneeSearchQuery, setAssigneeSearchQuery] = useState("");
@@ -192,6 +194,13 @@ const UpdatesDrawer = ({
 
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
+  const descEditorRef = useRef(null);
+
+  useEffect(() => {
+    if (editingDesc && descEditorRef.current) {
+      descEditorRef.current.innerHTML = descriptionHtml || "";
+    }
+  }, [editingDesc]);
 
   useEffect(() => {
     // Sync states when task changes
@@ -1524,7 +1533,12 @@ const UpdatesDrawer = ({
               </div>
 
               {/* Description (Zbot style - inline editable) */}
-              <div className="cu-description-area" onClick={() => { if (!editingDesc) setEditingDesc(true); }}>
+              <div className="cu-description-area" onClick={() => {
+                if (!editingDesc) {
+                  setInitialDescriptionHtml(descriptionHtml);
+                  setEditingDesc(true);
+                }
+              }}>
                 {editingDesc ? (
                   <div onClick={(e) => e.stopPropagation()}>
                     <div className="cu-desc-toolbar mb-2 p-1 bg-light border rounded d-flex gap-1">
@@ -1539,11 +1553,11 @@ const UpdatesDrawer = ({
                       <button type="button" className="btn btn-sm btn-outline-secondary py-0 px-2" onClick={() => document.execCommand('formatBlock', '<h3>')}>H3</button>
                     </div>
                     <div
+                      ref={descEditorRef}
                       contentEditable
                       className="cu-desc-textarea p-3 border rounded bg-white"
                       style={{ minHeight: "120px", outline: "none", overflowY: "auto" }}
                       onInput={(e) => setDescriptionHtml(e.currentTarget.innerHTML)}
-                      dangerouslySetInnerHTML={{ __html: descriptionHtml }}
                     />
                     <div className="cu-desc-actions mt-2">
                       <Button variant="link" size="sm" className="text-muted" onClick={(e) => { e.stopPropagation(); setEditingDesc(false); }} disabled={savingDesc}>Cancel</Button>
@@ -1554,17 +1568,25 @@ const UpdatesDrawer = ({
                     </div>
                   </div>
                 ) : (
-                  <div className="cu-desc-display">
+                  <div className="cu-desc-display position-relative" style={{ cursor: "pointer" }}>
+                    <div className="d-flex align-items-center justify-content-between mb-1.5 text-muted text-xs">
+                      <span className="fw-semibold">Description</span>
+                      <span className="d-flex align-items-center gap-1 text-primary" style={{ fontSize: "11px" }}>
+                        <Pencil size={11} /> Click to edit
+                      </span>
+                    </div>
                     {descriptionHtml ? (
                       <div
-                        className="small"
+                        className="small p-2.5 rounded bg-light border border-slate-100"
                         style={{ whiteSpace: "pre-wrap" }}
                         dangerouslySetInnerHTML={{
                           __html: DOMPurify.sanitize(descriptionHtml)
                         }}
                       />
                     ) : (
-                      <span className="cu-desc-placeholder"><Sparkles size={13} /> Add description, or write with AI</span>
+                      <span className="cu-desc-placeholder p-2.5 d-block border border-dashed rounded text-center bg-light">
+                        <Sparkles size={13} className="text-primary me-1" /> Add description, or write with AI
+                      </span>
                     )}
                   </div>
                 )}
@@ -1586,7 +1608,16 @@ const UpdatesDrawer = ({
                 {subtasks.length > 0 && (
                   <div className="cu-subtask-list">
                     {subtasks.map((sub) => (
-                      <div key={sub.id} className="cu-subtask-row">
+                      <div
+                        key={sub.id}
+                        className="cu-subtask-row"
+                        onDoubleClick={() => {
+                          const fullSub = allTasks.find(t => t.id === sub.id) || sub;
+                          if (onSelectTask) {
+                            onSelectTask(fullSub);
+                          }
+                        }}
+                      >
                         <Dropdown>
                           <Dropdown.Toggle
                             as="button"

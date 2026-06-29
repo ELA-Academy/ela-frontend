@@ -3100,7 +3100,7 @@
   border-radius: 8px;
   margin-bottom: 16px;
   background: #ffffff;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .cu-section-header {
