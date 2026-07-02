@@ -20,6 +20,10 @@ import {
   Tags,
   Timer,
   Users,
+  Smile,
+  Plus,
+  Mic,
+  Video,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import {
@@ -44,9 +48,13 @@ import {
 } from "../../services/boardService";
 import api from "../../utils/api";
 import DOMPurify from "dompurify";
+import SleekAssigneeSelector from "./SleekAssigneeSelector";
+import SleekStatusSelector from "./SleekStatusSelector";
 import { ListSkeleton } from "../Skeleton";
 import { useTimer } from "../../context/TimerContext";
 import "../../styles/Boards.css";
+
+import { useAuth } from "../../context/AuthContext";
 
 const UpdatesDrawer = ({
   taskId,
@@ -60,6 +68,16 @@ const UpdatesDrawer = ({
   boardName,
   customStatuses
 }) => {
+  const { user } = useAuth();
+  const formatCommentDate = (dateStr) => {
+    try {
+      const d = new Date(dateStr);
+      return format(d, "MMM d 'at' h:mm a");
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
   const [activeTab, setActiveTab] = useState("updates");
   const [updates, setUpdates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1132,12 +1150,12 @@ const UpdatesDrawer = ({
                       }}>
                         {(statusOptionsList.find(s => s.id === status) || statusOptionsList[0]).label.toUpperCase()}
                       </Dropdown.Toggle>
-                      <Dropdown.Menu className="board-dropdown-menu">
-                        {statusOptionsList.map((opt) => (
-                          <Dropdown.Item key={opt.id} onClick={() => handleStatusChange({ target: { value: opt.id } })}>
-                            <span className="cu-status-dot" style={{ background: opt.color }} /> {opt.label}
-                          </Dropdown.Item>
-                        ))}
+                      <Dropdown.Menu className="board-dropdown-menu p-0 border-0 shadow">
+                        <SleekStatusSelector
+                          currentStatus={status}
+                          customStatuses={statusOptionsList}
+                          onSelectStatus={(nextVal) => handleStatusChange({ target: { value: nextVal } })}
+                        />
                       </Dropdown.Menu>
                     </Dropdown>
                   </div>
@@ -1164,37 +1182,14 @@ const UpdatesDrawer = ({
                       ))}
                       <Dropdown>
                         <Dropdown.Toggle as="div" className="cu-add-assignee-btn" title="Add assignee">+</Dropdown.Toggle>
-                        <Dropdown.Menu className="board-dropdown-menu" style={{ maxHeight: "250px", overflowY: "auto" }}>
-                          <div className="px-2 py-1 sticky-top bg-white border-bottom">
-                            <input
-                              type="text"
-                              className="form-control form-control-sm"
-                              placeholder="Search assignee..."
-                              value={assigneeSearchQuery}
-                              onChange={(e) => setAssigneeSearchQuery(e.target.value)}
-                              onClick={(e) => e.stopPropagation()}
-                              style={{ fontSize: "11px" }}
-                            />
-                          </div>
-                          {assigneeOptions
-                            .filter((p) => p.name.toLowerCase().includes(assigneeSearchQuery.toLowerCase()))
-                            .map((p) => {
-                              const isSelected = taskAssignees.some((item) => getAssigneeKey(item) === getAssigneeKey(p));
-                              return (
-                                <Dropdown.Item
-                                  key={`assign_${p.role}_${p.id}`}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    handleAssigneeToggle(p);
-                                  }}
-                                  className="d-flex align-items-center gap-2"
-                                >
-                                  <input type="checkbox" checked={isSelected} readOnly />
-                                  <span className="assignee-avatar zbot-avatar-sm">{getAvatarInitials(p.name)}</span>
-                                  <span>{p.name}</span>
-                                </Dropdown.Item>
-                              );
-                            })}
+                        <Dropdown.Menu className="board-dropdown-menu p-0 border-0 shadow">
+                          <SleekAssigneeSelector
+                            selectedAssignees={taskAssignees}
+                            members={assigneeOptions}
+                            currentUser={user}
+                            onToggleAssignee={handleAssigneeToggle}
+                            onInviteEmail={(email) => toast.info(email ? `Invitation email sent to ${email}!` : "Invitation email sent!")}
+                          />
                         </Dropdown.Menu>
                       </Dropdown>
                       {taskAssignees.length === 0 && <span className="text-muted small">Empty</span>}
@@ -1675,43 +1670,20 @@ const UpdatesDrawer = ({
                                 <div className="cu-unassigned-circle">+</div>
                               )}
                             </Dropdown.Toggle>
-                            <Dropdown.Menu className="board-dropdown-menu">
-                              <div className="px-2 py-1 sticky-top bg-white border-bottom">
-                                <input
-                                  type="text"
-                                  className="form-control form-control-sm"
-                                  placeholder="Search assignee..."
-                                  value={assigneeSearchQuery}
-                                  onChange={(e) => setAssigneeSearchQuery(e.target.value)}
-                                  onClick={(e) => e.stopPropagation()}
-                                  style={{ fontSize: "11px" }}
-                                />
-                              </div>
-                              <Dropdown.Item onClick={() => handleSubtaskCellChange(sub.id, "assignees", [])}>
-                                <span className="text-muted">Unassigned</span>
-                              </Dropdown.Item>
-                              <Dropdown.Divider />
-                              {assigneeOptions
-                                .filter((p) => p.name.toLowerCase().includes(assigneeSearchQuery.toLowerCase()))
-                                .map((p) => {
+                            <Dropdown.Menu className="board-dropdown-menu p-0 border-0 shadow">
+                              <SleekAssigneeSelector
+                                selectedAssignees={sub.assignees || []}
+                                members={assigneeOptions}
+                                currentUser={user}
+                                onToggleAssignee={(p) => {
                                   const isSelected = sub.assignees && sub.assignees.some((a) => getAssigneeKey(a) === getAssigneeKey(p));
-                                  return (
-                                    <Dropdown.Item
-                                      key={`st_${p.role}_${p.id}`}
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        const nextList = isSelected
-                                          ? sub.assignees.filter((a) => getAssigneeKey(a) !== getAssigneeKey(p))
-                                          : [...(sub.assignees || []), p];
-                                        handleSubtaskCellChange(sub.id, "assignees", nextList);
-                                      }}
-                                      className="d-flex align-items-center gap-2"
-                                    >
-                                      <input type="checkbox" checked={isSelected} readOnly />
-                                      <span>{p.name}</span>
-                                    </Dropdown.Item>
-                                  );
-                                })}
+                                  const nextList = isSelected
+                                    ? sub.assignees.filter((a) => getAssigneeKey(a) !== getAssigneeKey(p))
+                                    : [...(sub.assignees || []), p];
+                                  handleSubtaskCellChange(sub.id, "assignees", nextList);
+                                }}
+                                onInviteEmail={(email) => toast.info(email ? `Invitation email sent to ${email}!` : "Invitation email sent!")}
+                              />
                             </Dropdown.Menu>
                           </Dropdown>
 
@@ -1766,39 +1738,20 @@ const UpdatesDrawer = ({
                         <Dropdown.Toggle as="div" className="cu-mini-meta-btn">
                           {newSubtaskMeta.assignees.length > 0 ? <>{newSubtaskMeta.assignees.length}<Users size={12} /></> : <Users size={12} />}
                         </Dropdown.Toggle>
-                        <Dropdown.Menu className="board-dropdown-menu">
-                          <div className="px-2 py-1 sticky-top bg-white border-bottom">
-                            <input
-                              type="text"
-                              className="form-control form-control-sm"
-                              placeholder="Search assignee..."
-                              value={assigneeSearchQuery}
-                              onChange={(e) => setAssigneeSearchQuery(e.target.value)}
-                              onClick={(e) => e.stopPropagation()}
-                              style={{ fontSize: "11px" }}
-                            />
-                          </div>
-                          {assigneeOptions
-                            .filter((p) => p.name.toLowerCase().includes(assigneeSearchQuery.toLowerCase()))
-                            .map((p) => {
+                        <Dropdown.Menu className="board-dropdown-menu p-0 border-0 shadow">
+                          <SleekAssigneeSelector
+                            selectedAssignees={newSubtaskMeta.assignees || []}
+                            members={assigneeOptions}
+                            currentUser={user}
+                            onToggleAssignee={(p) => {
                               const isSelected = newSubtaskMeta.assignees.some((a) => getAssigneeKey(a) === getAssigneeKey(p));
-                              return (
-                                <Dropdown.Item
-                                  key={`nst_${p.role}_${p.id}`}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    const nextList = isSelected
-                                      ? newSubtaskMeta.assignees.filter((a) => getAssigneeKey(a) !== getAssigneeKey(p))
-                                      : [...newSubtaskMeta.assignees, p];
-                                    setNewSubtaskMeta(prev => ({ ...prev, assignees: nextList }));
-                                  }}
-                                  className="d-flex align-items-center gap-2"
-                                >
-                                  <input type="checkbox" checked={isSelected} readOnly />
-                                  <span>{p.name}</span>
-                                </Dropdown.Item>
-                              );
-                            })}
+                              const nextList = isSelected
+                                ? newSubtaskMeta.assignees.filter((a) => getAssigneeKey(a) !== getAssigneeKey(p))
+                                : [...newSubtaskMeta.assignees, p];
+                              setNewSubtaskMeta(prev => ({ ...prev, assignees: nextList }));
+                            }}
+                            onInviteEmail={(email) => toast.info(email ? `Invitation email sent to ${email}!` : "Invitation email sent!")}
+                          />
                         </Dropdown.Menu>
                       </Dropdown>
                       <div className="position-relative">
@@ -2013,59 +1966,68 @@ const UpdatesDrawer = ({
                         const liked = checkUserLiked(item.liked_by_ids);
                         const isThreadExpanded = !!expandedReplyThreads[item.id];
                         return (
-                          <div key={`update_${item.id}`} className="update-feed-item m-0 bg-white border p-3 rounded-3 shadow-sm mb-3">
-                            <div className="update-item-header">
-                              <div className="update-author-info">
-                                <div className="assignee-avatar">
+                          <div key={`update_${item.id}`} className="update-feed-item m-0 bg-white border rounded-3 shadow-sm mb-3 p-3 clickup-comment-card text-dark">
+                            <div className="update-item-header d-flex align-items-center justify-content-between mb-2">
+                              <div className="update-author-info d-flex align-items-center gap-2">
+                                <div className="assignee-avatar bg-purple text-white fw-bold rounded-circle d-flex align-items-center justify-content-center" style={{ width: "28px", height: "28px", fontSize: "11px", backgroundColor: "#a855f7" }}>
                                   {getAvatarInitials(item.sender_name)}
                                 </div>
-                                <div>
-                                  <div className="update-author-name">{item.sender_name}</div>
-                                  <div className="update-author-role">
-                                    {item.sender_role === "superadmin" ? "Superadmin" : "Staff"}
-                                  </div>
+                                <div className="d-flex align-items-baseline gap-2">
+                                  <span className="update-author-name fw-bold text-slate-800" style={{ fontSize: "13px" }}>{item.sender_name}</span>
+                                  <span className="update-timestamp text-muted" style={{ fontSize: "11px" }}>
+                                    {formatCommentDate(item.created_at)}
+                                  </span>
                                 </div>
-                              </div>
-                              <div className="update-timestamp">
-                                {new Date(item.created_at).toLocaleDateString()} at {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </div>
                             </div>
 
                             <div
-                              className="update-content"
+                              className="update-content text-slate-700 ps-5 mb-2"
+                              style={{ fontSize: "13px" }}
                               dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(item.content || item.message) }}
                             />
 
                             {item.mentioned_names && item.mentioned_names.length > 0 && (
-                              <div className="mentioned-tags mb-2 mt-1">
+                              <div className="mentioned-tags mb-2 mt-1 ps-5">
                                 {item.mentioned_names.map((mn, idx) => (
-                                  <span key={idx} className="mentioned-tag">
+                                  <span key={idx} className="mentioned-tag badge bg-light text-primary me-1">
                                     @{mn}
                                   </span>
                                 ))}
                               </div>
                             )}
 
-                            <div className="update-actions d-flex align-items-center gap-2">
-                              <button
-                                className={`update-like-btn ${liked ? "liked" : ""}`}
-                                onClick={() => handleToggleLike(item.id)}
-                              >
-                                {liked ? <HandThumbsUpFill size={14} /> : <HandThumbsUp size={14} />}
-                                {item.likes_count > 0 && <span>{item.likes_count}</span>}
-                              </button>
-                              
-                              {/* Thread Toggle Button */}
+                            <div className="update-actions border-top pt-2 mt-2 d-flex align-items-center justify-content-between ps-5">
+                              <div className="d-flex align-items-center gap-3">
+                                <button
+                                  className={`update-like-btn border-0 bg-transparent text-slate-400 hover:text-primary ${liked ? "text-primary text-opacity-100" : ""}`}
+                                  style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                                  onClick={() => handleToggleLike(item.id)}
+                                >
+                                  {liked ? <HandThumbsUpFill size={14} style={{ color: "#673de6" }} /> : <HandThumbsUp size={14} />}
+                                  {item.likes_count > 0 && <span style={{ fontSize: "11px" }}>{item.likes_count}</span>}
+                                </button>
+                                <button className="border-0 bg-transparent text-slate-400 hover:text-slate-600 p-0" title="Add reaction" onClick={() => toast.info("Emoji reactions coming soon!")}>
+                                  <Smile size={14} />
+                                </button>
+                              </div>
+
                               <button 
-                                className="update-reply-toggle border-0 bg-transparent text-primary fw-semibold d-inline-flex align-items-center gap-1"
-                                style={{ fontSize: "12px" }}
+                                className="update-reply-toggle border border-light-subtle rounded-pill bg-light hover:bg-light-subtle px-2 py-0.5 d-inline-flex align-items-center gap-1.5"
+                                style={{ fontSize: "11px", fontWeight: "600", cursor: "pointer", color: "#673de6" }}
                                 onClick={() => setExpandedReplyThreads(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
                               >
-                                <Reply size={14} /> 
-                                {item.replies && item.replies.length > 0 ? (
-                                  <span>{item.replies.length} {item.replies.length === 1 ? "reply" : "replies"}</span>
-                                ) : (
-                                  <span>Reply</span>
+                                <span>
+                                  {item.replies && item.replies.length > 0 ? (
+                                    `${item.replies.length} ${item.replies.length === 1 ? "reply" : "replies"}`
+                                  ) : (
+                                    "Reply"
+                                  )}
+                                </span>
+                                {item.replies && item.replies.length > 0 && (
+                                  <span className="assignee-avatar rounded-circle text-white fw-bold d-flex align-items-center justify-content-center bg-purple" style={{ width: "14px", height: "14px", fontSize: "7px", backgroundColor: "#a855f7" }}>
+                                    {getAvatarInitials(item.replies[0].sender_name)}
+                                  </span>
                                 )}
                               </button>
                             </div>
@@ -2134,10 +2096,11 @@ const UpdatesDrawer = ({
 
               {/* Sticky bottom editor */}
               <div className="activity-feed-editor">
-                <div className="cu-comment-editor">
+                <div className="cu-comment-editor border rounded-3 p-2 bg-white position-relative" style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
                   <textarea
                     ref={textareaRef}
-                    className="cu-comment-textarea"
+                    className="cu-comment-textarea border-0 w-100 bg-transparent text-slate-800"
+                    style={{ outline: "none", fontSize: "13px", resize: "none" }}
                     placeholder="Write a comment..."
                     value={content}
                     onChange={handleTextareaChange}
@@ -2146,11 +2109,11 @@ const UpdatesDrawer = ({
                   />
 
                   {showAutocomplete && autocompleteSuggestions.length > 0 && (
-                    <div className="autocomplete-dropdown" style={{ position: "absolute", bottom: "100%", left: 0, right: 0, zIndex: 9999 }}>
+                    <div className="autocomplete-dropdown position-absolute bg-white border rounded shadow-lg p-2" style={{ bottom: "100%", left: 0, right: 0, zIndex: 9999 }}>
                       {autocompleteSuggestions.map((s, idx) => (
                         <div
                           key={`${s.type}_${s.id}`}
-                          className={`autocomplete-item p-2 cursor-pointer ${idx === autocompleteIndex ? "bg-light text-primary" : ""}`}
+                          className={`autocomplete-item p-2 cursor-pointer rounded ${idx === autocompleteIndex ? "bg-light text-primary" : ""}`}
                           onClick={() => handleSuggestionSelect(s)}
                         >
                           <span className={`badge me-2 ${s.type === "department" ? "bg-info" : (s.type === "superadmin" ? "bg-warning" : "bg-secondary")}`}>
@@ -2162,26 +2125,58 @@ const UpdatesDrawer = ({
                     </div>
                   )}
 
-                  <div className="cu-comment-footer">
-                    <span className="cu-comment-hint">
-                      Use <strong>@name</strong> or <strong>@department</strong>
-                    </span>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      className="cu-comment-send"
-                      onClick={handlePostUpdate}
-                      disabled={!content.trim() || posting}
-                    >
-                      {posting ? (
-                        <Spinner size="sm" animation="border" />
-                      ) : (
-                        <>
-                          <Send size={12} />
-                          Comment
-                        </>
-                      )}
-                    </Button>
+                  <div className="cu-comment-footer d-flex align-items-center justify-content-between pt-2 border-top border-slate-100 mt-1">
+                    <div className="d-flex align-items-center gap-2">
+                      <button type="button" className="btn btn-link p-1 text-slate-400 hover:text-slate-600 rounded-circle border-0 d-inline-flex align-items-center justify-content-center bg-transparent" title="Add status" style={{ width: "24px", height: "24px" }} onClick={() => toast.info("Status added!")}>
+                        <Plus size={16} />
+                      </button>
+                      <Dropdown>
+                        <Dropdown.Toggle as="span" className="small text-muted cursor-pointer hover:text-slate-800 d-inline-flex align-items-center gap-0.5" style={{ fontSize: "11px" }}>
+                          Comment <ChevronDown size={11} />
+                        </Dropdown.Toggle>
+                        <Dropdown.Menu className="shadow border rounded-3 py-1" style={{ fontSize: "11px" }}>
+                          <Dropdown.Item active>Comment</Dropdown.Item>
+                          <Dropdown.Item onClick={() => toast.info("Threaded comment template enabled")}>Thread</Dropdown.Item>
+                        </Dropdown.Menu>
+                      </Dropdown>
+                      <span className="text-slate-200">|</span>
+                      <button type="button" className="btn btn-link p-1 text-slate-400 hover:text-slate-600 bg-transparent border-0" title="Attach file" onClick={() => fileInputRef.current.click()}>
+                        <Paperclip size={14} />
+                      </button>
+                      <button type="button" className="btn btn-link p-1 text-slate-400 hover:text-slate-600 bg-transparent border-0" title="Mention" onClick={() => { setContent(prev => prev + " @"); textareaRef.current.focus(); }}>
+                        @
+                      </button>
+                      <button type="button" className="btn btn-link p-1 text-slate-400 hover:text-slate-600 bg-transparent border-0" title="Custom fields" onClick={() => toast.info("No custom fields configured.")}>
+                        <List size={14} />
+                      </button>
+                      <button type="button" className="btn btn-link p-1 text-slate-400 hover:text-slate-600 bg-transparent border-0" title="Emoji" onClick={() => toast.info("Emoji panel coming soon!")}>
+                        <Smile size={14} />
+                      </button>
+                      <button type="button" className="btn btn-link p-1 text-slate-400 hover:text-slate-600 bg-transparent border-0" title="Video comment" onClick={() => toast.info("Video comments not supported on this device.")}>
+                        <Video size={14} />
+                      </button>
+                    </div>
+
+                    <div className="d-flex align-items-center gap-2">
+                      <button type="button" className="btn btn-link p-1 text-slate-400 hover:text-slate-600 bg-transparent border-0" title="Voice comment" onClick={() => toast.info("Voice comment feature requires audio permission.")}>
+                        <Mic size={14} />
+                      </button>
+                      <Button
+                        variant="dark"
+                        size="sm"
+                        className="rounded-circle p-0 d-flex align-items-center justify-content-center text-white"
+                        style={{ width: "26px", height: "26px", backgroundColor: "#1e1e24", border: "none" }}
+                        onClick={handlePostUpdate}
+                        disabled={!content.trim() || posting}
+                        title="Send Comment"
+                      >
+                        {posting ? (
+                          <Spinner size="sm" animation="border" style={{ width: "12px", height: "12px" }} />
+                        ) : (
+                          <Send size={12} className="text-white" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>

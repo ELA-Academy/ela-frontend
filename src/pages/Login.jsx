@@ -161,7 +161,7 @@ const Login = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    placeholder="you@elaaschool.org"
+                    placeholder="you@ela-academy.org"
                   />
                 </div>
                 
@@ -210,7 +210,7 @@ const Login = () => {
                     onChange={(e) => setEmail(e.target.value)}
                     autoComplete="email"
                     required
-                    placeholder="you@elaaschool.org"
+                    placeholder="you@ela-academy.org"
                   />
                 </div>
                 <div className="form-group" style={{ marginBottom: "5px" }}>
