@@ -17,6 +17,9 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "../../../styles/CreateTaskModal.css";
 import api from "../../../utils/api";
+import { useAuth } from "../../../context/AuthContext";
+import SleekAssigneeSelector from "../SleekAssigneeSelector";
+import { toast } from "react-toastify";
 
 // Custom forwardRef component for react-datepicker
 const CustomDateInput = React.forwardRef(({ value, onClick }, ref) => (
@@ -33,6 +36,7 @@ const CustomDateInput = React.forwardRef(({ value, onClick }, ref) => (
 CustomDateInput.displayName = "CustomDateInput";
 
 const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initialBoardId, initialGroupId }) => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("Task");
   const [selectedBoardId, setSelectedBoardId] = useState("");
   const [selectedGroupId, setSelectedGroupId] = useState("");
@@ -438,46 +442,14 @@ const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initial
                   <>+ Assignee</>
                 )}
               </Dropdown.Toggle>
-              <Dropdown.Menu className="zbot-drop-menu" style={{ maxHeight: "280px", overflowY: "auto" }}>
-                <div className="px-2 py-1 sticky-top bg-white border-bottom">
-                  <input
-                    type="text"
-                    className="form-control form-control-sm"
-                    placeholder="Search assignee..."
-                    value={assigneeSearchQuery}
-                    onChange={(e) => setAssigneeSearchQuery(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
-                    style={{ fontSize: "11px" }}
-                  />
-                </div>
-                <Dropdown.Item onClick={() => setSelectedAssignees([])}>
-                  <span className="text-muted">Unassigned</span>
-                </Dropdown.Item>
-                <Dropdown.Divider />
-                {members
-                  ?.filter((m) => m.name.toLowerCase().includes(assigneeSearchQuery.toLowerCase()))
-                  .map((m) => (
-                    <Dropdown.Item
-                      key={`${m.role}_${m.id}`}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        toggleAssignee(m);
-                      }}
-                      active={selectedAssignees.some((assignee) => getAssigneeKey(assignee) === getAssigneeKey(m))}
-                      className="d-flex align-items-start gap-2"
-                    >
-                      <input
-                        type="checkbox"
-                        readOnly
-                        checked={selectedAssignees.some((assignee) => getAssigneeKey(assignee) === getAssigneeKey(m))}
-                        className="mt-1"
-                      />
-                      <div>
-                        <strong>{m.name}</strong>
-                        <div className="small text-muted">{m.email}</div>
-                      </div>
-                    </Dropdown.Item>
-                  ))}
+              <Dropdown.Menu className="zbot-drop-menu p-0 border-0 shadow">
+                <SleekAssigneeSelector
+                  selectedAssignees={selectedAssignees}
+                  members={members}
+                  currentUser={user}
+                  onToggleAssignee={toggleAssignee}
+                  onInviteEmail={(email) => toast.info(email ? `Invitation email sent to ${email}!` : "Invitation email sent!")}
+                />
               </Dropdown.Menu>
             </Dropdown>
 

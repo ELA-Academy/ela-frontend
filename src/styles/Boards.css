@@ -3719,3 +3719,233 @@
   color: #ffffff;
   box-shadow: 0 0 0 2px rgba(103, 61, 230, 0.15);
 }
+
+/* ClickUp Style Inline Status Builder */
+.clickup-inline-status-builder {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 6px 12px;
+}
+.clickup-inline-status-builder .color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: inline-block;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+.clickup-inline-status-builder input {
+  border: none !important;
+  outline: none !important;
+  font-size: 13px;
+  color: #334155;
+  padding: 0;
+  box-shadow: none !important;
+}
+
+/* Hover Select Checkbox */
+.workspace-row .task-select-checkbox {
+  opacity: 0;
+  transition: opacity 0.12s ease-in-out;
+}
+.workspace-row:hover .task-select-checkbox,
+.workspace-row .task-select-checkbox:checked {
+  opacity: 1 !important;
+}
+
+/* ClickUp Bulk Actions Toolbar styling */
+.clickup-bulk-toolbar {
+  animation: slideUp 0.25s ease-out;
+  background-color: #1e1e24 !important;
+  border: 1px solid #334155 !important;
+}
+@keyframes slideUp {
+  from {
+    transform: translate(-50%, 100%);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+.clickup-bulk-toolbar .btn-link {
+  font-size: 12px !important;
+  color: #e2e8f0 !important;
+  padding: 6px 8px !important;
+  border-radius: 4px;
+}
+.clickup-bulk-toolbar .btn-link:hover {
+  background-color: #334155 !important;
+  color: #ffffff !important;
+}
+
+/* Status editor modal */
+.edit-statuses-modal .modal-content {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
+.edit-statuses-modal .color-dot {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+.edit-statuses-modal .form-check-input:checked {
+  background-color: #1e1e24;
+  border-color: #1e1e24;
+}
+.edit-statuses-modal .status-edit-group {
+  border: 1px solid #f1f5f9;
+  padding: 8px;
+  border-radius: 8px;
+  background-color: #f8fafc;
+}
+.edit-statuses-modal .color-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  transition: transform 0.1s;
+}
+.edit-statuses-modal .color-swatch:hover {
+  transform: scale(1.15);
+}
+
+.clickup-comment-card {
+  transition: box-shadow 0.2s;
+}
+.clickup-comment-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Sleek Assignee Selector Styles */
+.sleek-assignee-dropdown-container {
+  min-width: 260px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.sleek-search-input:focus {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2) !important;
+  outline: none;
+}
+
+.sleek-assignee-item {
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  user-select: none;
+}
+
+.sleek-assignee-item:hover {
+  background-color: #f1f5f9;
+}
+
+.sleek-assignee-item:active {
+  transform: scale(0.98);
+}
+
+.sleek-avatar {
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.sleek-avatar.me-avatar {
+  background-color: transparent !important;
+}
+
+.sleek-item-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sleek-scrollable-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sleek-scrollable-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sleek-scrollable-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.sleek-scrollable-list::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Sleek Status Selector Styles */
+.sleek-status-dropdown-container {
+  min-width: 250px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.sleek-status-item {
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  user-select: none;
+}
+
+.sleek-status-item:hover {
+  background-color: #f1f5f9;
+}
+
+.sleek-status-item.active-status {
+  background-color: #f1f5f9 !important;
+  font-weight: 600;
+}
+
+.status-dot-dashed {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px dashed #94a3b8;
+  background: transparent;
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.status-dot-double {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.status-dot-double::after {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+.status-dot-check-hollow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.status-dot-check-filled {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  vertical-align: middle;
+}

@@ -15,6 +15,8 @@ import { toast } from "react-toastify";
 import { format, parseISO } from "date-fns";
 
 import UpdatesDrawer from "../../components/admin/UpdatesDrawer";
+import SleekAssigneeSelector from "../../components/admin/SleekAssigneeSelector";
+import SleekStatusSelector from "../../components/admin/SleekStatusSelector";
 import DeleteConfirmModal from "../../components/admin/DeleteConfirmModal";
 import SpaceSettingsModal from "../../components/admin/workspace/SpaceSettingsModal";
 import CreateTaskModal from "../../components/admin/workspace/CreateTaskModal";
@@ -132,6 +134,32 @@ const BoardDetailPage = () => {
   const [showInlineStatusCreator, setShowInlineStatusCreator] = useState(false);
   const [inlineStatusName, setInlineStatusName] = useState("");
   const [inlineStatusColor, setInlineStatusColor] = useState("#673de6");
+
+  const [statusInlineCreatorAbove, setStatusInlineCreatorAbove] = useState(null);
+  const [renamingStatusVal, setRenamingStatusVal] = useState(null);
+  const [renameStatusText, setRenameStatusText] = useState("");
+  const [showEditStatusesModal, setShowEditStatusesModal] = useState(false);
+  const [modalStatuses, setModalStatuses] = useState([]);
+  const [collapsedTasks, setCollapsedTasks] = useState({});
+
+  useEffect(() => {
+    if (showEditStatusesModal) {
+      const current = board?.custom_statuses && board.custom_statuses.length > 0
+        ? board.custom_statuses
+        : [
+            { id: "Not Started", label: "To do", color: "#7c8798", type: "Not Started" },
+            { id: "In Progress", label: "In progress", color: "#6d45f7", type: "Active" },
+            { id: "Done", label: "Complete", color: "#00b67a", type: "Done" }
+          ];
+      const withType = current.map(s => {
+        if (s.type) return s;
+        if (s.id === "Not Started" || s.label === "To do") return { ...s, type: "Not Started" };
+        if (s.id === "Done" || s.label === "Complete" || s.label === "Closed" || s.label === "Done") return { ...s, type: "Done" };
+        return { ...s, type: "Active" };
+      });
+      setModalStatuses(withType);
+    }
+  }, [showEditStatusesModal, board]);
 
   const STATUS_OPTIONS = useMemo(() => {
     if (board?.custom_statuses && board.custom_statuses.length > 0) {
@@ -744,8 +772,142 @@ const BoardDetailPage = () => {
         };
       });
       setSelectedTaskIds([]);
+      toast.success("Priority updated in bulk!");
     } catch (err) {
-      setError("Failed to update priority in bulk.");
+      toast.error("Failed to update priority in bulk.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleBulkAssigneeChange = async (assignee) => {
+    setSaving(true);
+    try {
+      const nextAssignees = assignee ? [{ id: assignee.id, role: assignee.role, name: assignee.name, email: assignee.email }] : [];
+      await Promise.all(selectedTaskIds.map(id => updateTask(id, { assignees: nextAssignees })));
+      
+      selectedTaskIds.forEach(id => {
+        patchTaskInState(id, (task) => {
+          const nextTask = { ...task, assignees: nextAssignees };
+          const primary = nextAssignees[0];
+          nextTask.assignee_id = primary?.id || null;
+          nextTask.assignee_name = primary?.name || "";
+          nextTask.assignee_email = primary?.email || "";
+          nextTask.assignee_role = primary?.role || "";
+          return nextTask;
+        });
+      });
+      setSelectedTaskIds([]);
+      toast.success("Assignees updated in bulk!");
+    } catch (err) {
+      toast.error("Failed to update assignees in bulk.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleBulkDateChange = async (newDateStr) => {
+    if (!newDateStr) return;
+    setSaving(true);
+    try {
+      const dateOnly = newDateStr.split("T")[0];
+      await Promise.all(selectedTaskIds.map(id => updateTask(id, { due_date: dateOnly })));
+      
+      selectedTaskIds.forEach(id => {
+        patchTaskInState(id, (task) => {
+          return { ...task, due_date: dateOnly };
+        });
+      });
+      setSelectedTaskIds([]);
+      toast.success("Due dates updated in bulk!");
+    } catch (err) {
+      toast.error("Failed to update due dates in bulk.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveInlineStatusAbove = async (targetStatusVal) => {
+    const name = inlineStatusName.trim();
+    if (!name) return;
+
+    if (STATUS_OPTIONS.some(s => s.toLowerCase() === name.toLowerCase())) {
+      toast.error("A status group with this name already exists.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const currentStatuses = board.custom_statuses && board.custom_statuses.length > 0
+        ? [...board.custom_statuses]
+        : [
+            { id: "Not Started", label: "To do", color: "#7c8798", type: "Not Started" },
+            { id: "In Progress", label: "In progress", color: "#6d45f7", type: "Active" },
+            { id: "Done", label: "Complete", color: "#00b67a", type: "Done" }
+          ];
+
+      const newStatusObj = {
+        id: name,
+        label: name,
+        color: inlineStatusColor,
+        type: "Active"
+      };
+
+      const targetIdx = currentStatuses.findIndex(s => s.id === targetStatusVal);
+      if (targetIdx !== -1) {
+        currentStatuses.splice(targetIdx, 0, newStatusObj);
+      } else {
+        currentStatuses.unshift(newStatusObj);
+      }
+
+      const updated = await updateBoard(boardId, { custom_statuses: currentStatuses });
+      setBoard(updated);
+      setInlineStatusName("");
+      setStatusInlineCreatorAbove(null);
+      toast.success("Status group created above!");
+    } catch (err) {
+      toast.error("Failed to create status group.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveRenameStatus = async (oldStatusVal) => {
+    const newName = renameStatusText.trim();
+    if (!newName || newName === oldStatusVal) {
+      setRenamingStatusVal(null);
+      return;
+    }
+
+    if (STATUS_OPTIONS.some(s => s.toLowerCase() === newName.toLowerCase() && s !== oldStatusVal)) {
+      toast.error("A status group with this name already exists.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const currentStatuses = board.custom_statuses && board.custom_statuses.length > 0
+        ? [...board.custom_statuses]
+        : [
+            { id: "Not Started", label: "To do", color: "#7c8798", type: "Not Started" },
+            { id: "In Progress", label: "In progress", color: "#6d45f7", type: "Active" },
+            { id: "Done", label: "Complete", color: "#00b67a", type: "Done" }
+          ];
+
+      const index = currentStatuses.findIndex(s => s.id === oldStatusVal);
+      if (index !== -1) {
+        currentStatuses[index] = {
+          ...currentStatuses[index],
+          label: newName,
+        };
+      }
+
+      const updated = await updateBoard(boardId, { custom_statuses: currentStatuses });
+      setBoard(updated);
+      setRenamingStatusVal(null);
+      toast.success("Status renamed successfully!");
+    } catch (err) {
+      toast.error("Failed to rename status.");
     } finally {
       setSaving(false);
     }
@@ -1621,47 +1783,14 @@ const BoardDetailPage = () => {
           </div>
         )}
       </Dropdown.Toggle>
-      <Dropdown.Menu className="board-dropdown-menu">
-        <div className="px-2 py-1 sticky-top bg-white border-bottom">
-          <input
-            type="text"
-            className="form-control form-control-sm"
-            placeholder="Search assignee..."
-            value={assigneeSearchQuery}
-            onChange={(e) => setAssigneeSearchQuery(e.target.value)}
-            onClick={(e) => e.stopPropagation()}
-            style={{ fontSize: "11px" }}
-          />
-        </div>
-        <Dropdown.Item onClick={() => handleTaskCellChange(task.id, "assignees", [])}>
-          <span className="text-muted">Unassigned</span>
-        </Dropdown.Item>
-        <Dropdown.Divider />
-        {assignees
-          .filter((participant) => participant.name.toLowerCase().includes(assigneeSearchQuery.toLowerCase()))
-          .map((participant) => (
-          <Dropdown.Item
-            key={`${participant.role}_${participant.id}`}
-            onClick={(event) => {
-              event.preventDefault();
-              toggleAssignee(participant);
-            }}
-            className="d-flex align-items-start gap-2"
-          >
-            <input
-              type="checkbox"
-              readOnly
-              checked={selectedKeys.has(getAssigneeKey(participant))}
-              className="mt-1"
-            />
-            <div className="min-w-0">
-              <strong className="text-truncate d-block">{participant.name}</strong>
-              <div className="text-muted small text-truncate">
-                {participant.email || participant.role}
-              </div>
-            </div>
-          </Dropdown.Item>
-        ))}
+      <Dropdown.Menu className="board-dropdown-menu p-0 border-0 shadow">
+        <SleekAssigneeSelector
+          selectedAssignees={selectedAssignees}
+          members={assignees}
+          currentUser={user}
+          onToggleAssignee={toggleAssignee}
+          onInviteEmail={(email) => toast.info(email ? `Invitation email sent to ${email}!` : "Invitation email sent!")}
+        />
       </Dropdown.Menu>
     </Dropdown>
     );
@@ -1674,18 +1803,13 @@ const BoardDetailPage = () => {
         <Dropdown.Toggle as="div">
           <span className={`monday-badge ${meta.className}`} style={{ backgroundColor: meta.color }}>{meta.label}</span>
         </Dropdown.Toggle>
-        <Dropdown.Menu className="board-dropdown-menu board-status-menu">
-          {STATUS_OPTIONS.map((status) => (
-            <Dropdown.Item
-              key={status}
-              onClick={() => handleTaskCellChange(task.id, "status", status)}
-              className="text-center fw-semibold"
-            >
-              <span className={`monday-badge ${STATUS_META[status].className}`} style={{ backgroundColor: STATUS_META[status].color }}>
-                {STATUS_META[status].label}
-              </span>
-            </Dropdown.Item>
-          ))}
+        <Dropdown.Menu className="board-dropdown-menu p-0 border-0 shadow">
+          <SleekStatusSelector
+            currentStatus={task.status}
+            customStatuses={board?.custom_statuses}
+            onSelectStatus={(status) => handleTaskCellChange(task.id, "status", status)}
+            onEditStatuses={() => setShowEditStatusesModal(true)}
+          />
         </Dropdown.Menu>
       </Dropdown>
     );
@@ -1706,32 +1830,19 @@ const BoardDetailPage = () => {
             <span className="dot-inner" style={{ background: statusMeta.color || "#8c9baf", width: "8px", height: "8px", borderRadius: "50%" }} />
           )}
         </Dropdown.Toggle>
-        <Dropdown.Menu className="p-3 shadow-lg border rounded-3 text-center" style={{ minWidth: "180px", zIndex: 1050 }}>
-          <div className="fw-bold text-slate-700 mb-2.5" style={{ fontSize: "13px" }}>Move to Status</div>
-          <div className="d-flex flex-column gap-2">
-            {STATUS_OPTIONS.map((status) => (
-              <button
-                key={status}
-                type="button"
-                onClick={() => {
-                  if (getIncompleteSubtasks(task).length > 0 && status === "Done") {
-                    showError("Please complete all subtasks first.");
-                    return;
-                  }
-                  handleTaskCellChange(task.id, "status", status);
-                }}
-                className="btn btn-sm text-white fw-bold py-1.5 rounded-3 border-0 transition-transform active-scale-95"
-                style={{
-                  backgroundColor: STATUS_META[status].color || "#7c8798",
-                  fontSize: "11px",
-                  letterSpacing: "0.5px",
-                  textTransform: "uppercase"
-                }}
-              >
-                {STATUS_META[status].label}
-              </button>
-            ))}
-          </div>
+        <Dropdown.Menu className="board-dropdown-menu p-0 border-0 shadow" style={{ zIndex: 1050 }}>
+          <SleekStatusSelector
+            currentStatus={task.status}
+            customStatuses={board?.custom_statuses}
+            onSelectStatus={(status) => {
+              if (getIncompleteSubtasks(task).length > 0 && status === "Done") {
+                showError("Please complete all subtasks first.");
+                return;
+              }
+              handleTaskCellChange(task.id, "status", status);
+            }}
+            onEditStatuses={() => setShowEditStatusesModal(true)}
+          />
         </Dropdown.Menu>
       </Dropdown>
     );
@@ -1751,26 +1862,13 @@ const BoardDetailPage = () => {
             <span className="dot-inner" style={{ background: statusMeta.color || "#8c9baf", width: "8px", height: "8px", borderRadius: "50%" }} />
           )}
         </Dropdown.Toggle>
-        <Dropdown.Menu className="p-3 shadow-lg border rounded-3 text-center" style={{ minWidth: "180px", zIndex: 1050 }}>
-          <div className="fw-bold text-slate-700 mb-2.5" style={{ fontSize: "13px" }}>Move to Status</div>
-          <div className="d-flex flex-column gap-2">
-            {STATUS_OPTIONS.map((status) => (
-              <button
-                key={status}
-                type="button"
-                onClick={() => handleTaskCellChange(subtask.id, "status", status)}
-                className="btn btn-sm text-white fw-bold py-1.5 rounded-3 border-0 transition-transform active-scale-95"
-                style={{
-                  backgroundColor: STATUS_META[status].color || "#7c8798",
-                  fontSize: "11px",
-                  letterSpacing: "0.5px",
-                  textTransform: "uppercase"
-                }}
-              >
-                {STATUS_META[status].label}
-              </button>
-            ))}
-          </div>
+        <Dropdown.Menu className="board-dropdown-menu p-0 border-0 shadow" style={{ zIndex: 1050 }}>
+          <SleekStatusSelector
+            currentStatus={subtask.status}
+            customStatuses={board?.custom_statuses}
+            onSelectStatus={(status) => handleTaskCellChange(subtask.id, "status", status)}
+            onEditStatuses={() => setShowEditStatusesModal(true)}
+          />
         </Dropdown.Menu>
       </Dropdown>
     );
@@ -2640,182 +2738,274 @@ const BoardDetailPage = () => {
           };
 
           return (
-            <div key={statusVal} className="status-group-section mb-1">
-              {/* Status Header */}
-              <div className="status-group-header d-flex align-items-center">
-                <div className="d-flex align-items-center gap-2">
-                  <button
-                    type="button"
-                    className="status-collapse-btn p-0 border-0 bg-transparent"
-                    onClick={toggleStatusCollapse}
-                  >
-                    <span className={`status-chevron d-inline-block ${isStatusCollapsed ? "collapsed" : ""}`} style={{ fontSize: "9px", color: "#64748b" }}>
-                      ▼
-                    </span>
-                  </button>
-                  <span className="clickup-status-badge" style={{ backgroundColor: statusMeta.color }}>
-                    <span className="clickup-status-icon">
-                      {statusVal === "Done" && <CheckCircleFill size={8} style={{ color: "#fff" }} />}
-                    </span>
-                    {statusMeta.label}
-                  </span>
-                  <span style={{ fontSize: "12px", fontWeight: 500, color: "#9ca3af" }}>
-                    {statusTasks.length}
-                  </span>
-                </div>
-              </div>
-
-              {/* Status Tasks Table */}
-              {!isStatusCollapsed && (
-                <div className="workspace-table-container">
-                  <table className="workspace-table">
-                    <thead>
-                      <tr>
-                        <th style={{ width: "3%" }}></th>
-                        <th style={{ width: "40%" }}>Name</th>
-                        <th style={{ width: "15%" }}>Assignee</th>
-                        <th style={{ width: "12%" }}>Due date</th>
-                        <th style={{ width: "10%" }}>Priority</th>
-                        <th style={{ width: "12%" }}>Status</th>
-                        <th style={{ width: "5%" }}>Comments</th>
-                        <th style={{ width: "3%" }}></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {statusTasks.map((task) => (
-                        <React.Fragment key={task.id}>
-                        <tr className="workspace-row" onDoubleClick={() => handleOpenUpdatesDrawer(task)}>
-                          <td style={{ textAlign: "center", verticalAlign: "middle" }}>
-                            {renderTaskCheckCircleDropdown(task, statusMeta)}
-                          </td>
-                          <td>
-                            <div className="d-flex align-items-center gap-2">
-                              <input
-                                type="text"
-                                className="cell-editable-text flex-grow-1"
-                                value={task.title}
-                                onChange={(event) => {
-                                  const val = event.target.value;
-                                  patchTaskInState(task.id, (t) => ({ ...t, title: val }));
-                                }}
-                                onBlur={(event) =>
-                                  handleTaskCellChange(task.id, "title", event.target.value)
-                                }
-                                onKeyDown={(event) => {
-                                  if (event.key === "Enter") {
-                                    event.target.blur();
-                                  }
-                                }}
+            <React.Fragment key={statusVal}>
+              {/* Inline status builder above if active */}
+              {statusInlineCreatorAbove === statusVal && (
+                <div className="clickup-inline-status-builder my-2 p-2 border rounded-3 bg-white shadow-sm d-flex align-items-center gap-2">
+                  <OverlayTrigger
+                    trigger="click"
+                    placement="bottom"
+                    rootClose
+                    overlay={
+                      <Popover id="inline-status-color-picker-above" className="border-0 shadow-sm rounded-3">
+                        <Popover.Body className="p-2">
+                          <div className="clickup-color-picker-row d-flex gap-1">
+                            {BOARD_COLORS.map((c) => (
+                              <button
+                                key={c}
+                                type="button"
+                                className={`color-swatch btn p-0 rounded-circle ${inlineStatusColor === c ? "active" : ""}`}
+                                style={{ backgroundColor: c, width: "20px", height: "20px", border: inlineStatusColor === c ? "2px solid #000" : "none" }}
+                                onClick={() => setInlineStatusColor(c)}
                               />
-                              {renderTaskNotesIcon(task)}
-                              <button
-                                type="button"
-                                className="zbot-inline-icon-btn"
-                                onClick={() =>
-                                  setInlineSubtaskBuilders((prev) => ({
-                                    ...prev,
-                                    [task.id]: prev[task.id] === undefined ? "" : undefined,
-                                  }))
+                            ))}
+                          </div>
+                        </Popover.Body>
+                      </Popover>
+                    }
+                  >
+                    <span 
+                      className="color-dot cursor-pointer rounded-circle d-inline-block" 
+                      style={{ backgroundColor: inlineStatusColor, width: "12px", height: "12px" }} 
+                      title="Click to change color"
+                    />
+                  </OverlayTrigger>
+                  <input
+                    type="text"
+                    className="form-control form-control-sm flex-grow-1"
+                    placeholder="New status..."
+                    value={inlineStatusName}
+                    onChange={(e) => setInlineStatusName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        saveInlineStatusAbove(statusVal);
+                      }
+                      if (e.key === "Escape") {
+                        setStatusInlineCreatorAbove(null);
+                      }
+                    }}
+                    autoFocus
+                  />
+                  <button 
+                    type="button" 
+                    className="btn btn-sm btn-success py-0 px-2" 
+                    onClick={() => saveInlineStatusAbove(statusVal)}
+                    disabled={saving}
+                  >
+                    ✓
+                  </button>
+                  <button 
+                    type="button" 
+                    className="btn btn-sm btn-light py-0 px-2" 
+                    onClick={() => setStatusInlineCreatorAbove(null)}
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
+              <div className="status-group-section mb-1">
+                {/* Status Header */}
+                <div className="status-group-header d-flex align-items-center">
+                  <div className="d-flex align-items-center gap-2">
+                    <button
+                      type="button"
+                      className="status-collapse-btn p-0 border-0 bg-transparent"
+                      onClick={toggleStatusCollapse}
+                    >
+                      <span className={`status-chevron d-inline-block ${isStatusCollapsed ? "collapsed" : ""}`} style={{ fontSize: "9px", color: "#64748b" }}>
+                        ▼
+                      </span>
+                    </button>
+                    {renamingStatusVal === statusVal ? (
+                      <input
+                        type="text"
+                        className="form-control form-control-sm d-inline-block py-0 px-1"
+                        style={{ width: "150px", fontSize: "12px", fontWeight: "bold" }}
+                        value={renameStatusText}
+                        onChange={(e) => setRenameStatusText(e.target.value)}
+                        onBlur={() => handleSaveRenameStatus(statusVal)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSaveRenameStatus(statusVal);
+                          if (e.key === "Escape") setRenamingStatusVal(null);
+                        }}
+                        autoFocus
+                      />
+                    ) : (
+                      <span className="clickup-status-badge" style={{ backgroundColor: statusMeta.color }}>
+                        <span className="clickup-status-icon">
+                          {statusVal === "Done" && <CheckCircleFill size={8} style={{ color: "#fff" }} />}
+                        </span>
+                        {statusMeta.label}
+                      </span>
+                    )}
+                    <span style={{ fontSize: "12px", fontWeight: 500, color: "#9ca3af" }}>
+                      {statusTasks.length}
+                    </span>
+
+                    {/* Status header actions (dropdown and plus button) */}
+                    <div className="status-header-actions d-inline-flex align-items-center gap-1 ms-2">
+                      <Dropdown className="d-inline-block">
+                        <Dropdown.Toggle as="span" className="p-1 cursor-pointer text-slate-400 hover:text-slate-600 rounded" style={{ fontSize: "12px" }}>
+                          <MoreHorizontal size={14} />
+                        </Dropdown.Toggle>
+                        <Dropdown.Menu className="shadow-lg border rounded-3 py-1" style={{ fontSize: "13px", zIndex: 1060 }}>
+                          <div className="dropdown-header text-xs text-muted text-uppercase fw-bold pb-1">Group options</div>
+                          <Dropdown.Item className="d-flex align-items-center gap-2 py-1.5" onClick={() => {
+                            setRenamingStatusVal(statusVal);
+                            setRenameStatusText(statusMeta.label);
+                          }}>
+                            <Edit3 size={13} /> Rename
+                          </Dropdown.Item>
+                          <Dropdown.Item className="d-flex align-items-center gap-2 py-1.5" onClick={() => {
+                            setStatusInlineCreatorAbove(statusVal);
+                            setInlineStatusName("");
+                            setInlineStatusColor(BOARD_COLORS[Math.floor(Math.random() * BOARD_COLORS.length)]);
+                          }}>
+                            <Plus size={13} /> New status
+                          </Dropdown.Item>
+                          <Dropdown.Item className="d-flex align-items-center gap-2 py-1.5" onClick={() => setShowEditStatusesModal(true)}>
+                            <Settings size={13} /> Edit statuses
+                          </Dropdown.Item>
+                          <Dropdown.Divider className="my-1" />
+                          <Dropdown.Item className="d-flex align-items-center gap-2 py-1.5" onClick={toggleStatusCollapse}>
+                            <ChevronDown size={13} style={{ transform: isStatusCollapsed ? "rotate(-90deg)" : "none" }} /> {isStatusCollapsed ? "Expand group" : "Collapse group"}
+                          </Dropdown.Item>
+                          <Dropdown.Divider className="my-1" />
+                          <Dropdown.Item className="d-flex align-items-center gap-2 py-1.5" onClick={() => {
+                            const ids = statusTasks.map(t => t.id);
+                            setSelectedTaskIds(prev => [...new Set([...prev, ...ids])]);
+                          }}>
+                            <PlusSquare size={13} /> Select all
+                          </Dropdown.Item>
+                          <Dropdown.Item className="d-flex align-items-center gap-2 py-1.5" onClick={() => {
+                            const allStatusKeys = STATUS_OPTIONS.map(val => defaultGroupId ? `${defaultGroupId}_${val}` : `status_${val}`);
+                            const nextCollapsed = {};
+                            allStatusKeys.forEach(k => { nextCollapsed[k] = true; });
+                            setCollapsedStatuses(nextCollapsed);
+                          }}>
+                            <ChevronDown size={13} /> Collapse all groups
+                          </Dropdown.Item>
+                          <Dropdown.Divider className="my-1" />
+                          <Dropdown.Item className="d-flex align-items-center gap-2 py-1.5" onClick={() => toast.info("Automation rules configured!")}>
+                            <Zap size={13} /> Automate status
+                          </Dropdown.Item>
+                        </Dropdown.Menu>
+                      </Dropdown>
+
+                      <button
+                        type="button"
+                        className="border-0 bg-transparent p-1 text-slate-400 hover:text-slate-600 rounded d-inline-flex align-items-center"
+                        onClick={() => {
+                          setInlineTaskBuilders(prev => ({
+                            ...prev,
+                            [statusKey]: {
+                              title: "",
+                              assignee: null,
+                              dueDate: null,
+                              priority: "Normal",
+                              active: true
+                            }
+                          }));
+                        }}
+                        title="Add Task"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Status Tasks Table */}
+                {!isStatusCollapsed && (
+                  <div className="workspace-table-container">
+                    <table className="workspace-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: "3%" }}>
+                            <input
+                              type="checkbox"
+                              className="form-check-input"
+                              style={{ width: "13px", height: "13px", cursor: "pointer" }}
+                              checked={statusTasks.length > 0 && statusTasks.every(t => selectedTaskIds.includes(t.id))}
+                              onChange={(e) => {
+                                const ids = statusTasks.map(t => t.id);
+                                if (e.target.checked) {
+                                  setSelectedTaskIds(prev => [...new Set([...prev, ...ids])]);
+                                } else {
+                                  setSelectedTaskIds(prev => prev.filter(id => !ids.includes(id)));
                                 }
-                                title="Add subtask"
-                              >
-                                <PlusSquare size={13} className="text-slate-400" />
-                              </button>
-                              <button
-                                type="button"
-                                className="chat-bubble-btn"
-                                onClick={() => handleOpenUpdatesDrawer(task)}
-                              >
-                                <MessageSquare size={13} className="text-slate-400" />
-                                {task.updates_count > 0 && (
-                                  <span className="chat-badge">{task.updates_count}</span>
-                                )}
-                              </button>
-                            </div>
-                          </td>
-                          <td>{renderAssigneeCell(task)}</td>
-                          <td>{renderDateCell(task, "due_date")}</td>
-                          <td>{renderPriorityDropdown(task)}</td>
-                          <td>{renderStatusDropdown(task)}</td>
-                          <td className="text-center position-relative">
-                            <Dropdown show={activeCommentTaskId === task.id} onToggle={(isOpen) => setActiveCommentTaskId(isOpen ? task.id : null)}>
-                              <Dropdown.Toggle as="div" className="chat-bubble-btn position-relative d-inline-flex align-items-center justify-content-center cursor-pointer" style={{ width: "24px", height: "24px" }}>
-                                <MessageSquare size={13} className={task.updates_count > 0 ? "text-primary" : "text-slate-300"} />
-                                {task.updates_count > 0 && (
-                                  <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: "9px", padding: "1px 3px" }}>
-                                    {task.updates_count}
-                                  </span>
-                                )}
-                              </Dropdown.Toggle>
-                              <Dropdown.Menu className="p-3 shadow-lg border rounded-3 dropdown-menu-end" style={{ width: "380px", zIndex: 1050 }}>
-                                <InlineTaskComments task={task} assignees={assignees} onCommentAdded={() => { fetchWorkspace(false); }} />
-                              </Dropdown.Menu>
-                            </Dropdown>
-                          </td>
-                          <td>
-                            {/* Three-dot context menu */}
-                            <Dropdown align="end">
-                              <Dropdown.Toggle as="button" className="task-row-menu-btn">
-                                <MoreHorizontal size={16} />
-                              </Dropdown.Toggle>
-                              <Dropdown.Menu className="task-context-menu">
-                                <Dropdown.Item onClick={() => handleOpenUpdatesDrawer(task)}>
-                                  <Edit3 size={14} /> Rename
-                                </Dropdown.Item>
-                                <Dropdown.Item onClick={() => {
-                                  navigator.clipboard.writeText(task.title);
-                                }}>
-                                  <Copy size={14} /> Copy name
-                                </Dropdown.Item>
-                                <Dropdown.Item onClick={() => {
-                                  navigator.clipboard.writeText(`${window.location.origin}/admin/boards/${boardId}?task=${task.id}`);
-                                }}>
-                                  <ClipboardCopy size={14} /> Copy link
-                                </Dropdown.Item>
-                                <Dropdown.Divider />
-                                <Dropdown.Item onClick={() => handleTaskCellChange(task.id, "status", "Done")}>
-                                  <CheckCircleFill size={14} className="text-success" /> Mark complete
-                                </Dropdown.Item>
-                                <Dropdown.Item onClick={() => handleOpenUpdatesDrawer(task)}>
-                                  <MessageSquare size={14} /> Open task
-                                </Dropdown.Item>
-                                <Dropdown.Divider />
-                                <Dropdown.Item
-                                  className="text-danger"
-                                  onClick={() => {
-                                    setDeleteTarget({ type: "task", id: task.id, name: task.title });
-                                    setShowDeleteModal(true);
-                                  }}
-                                >
-                                  <Trash2 size={14} /> Delete
-                                </Dropdown.Item>
-                              </Dropdown.Menu>
-                            </Dropdown>
-                          </td>
+                              }}
+                            />
+                          </th>
+                          <th style={{ width: "3%" }}></th>
+                          <th style={{ width: "37%" }}>Name</th>
+                          <th style={{ width: "15%" }}>Assignee</th>
+                          <th style={{ width: "12%" }}>Due date</th>
+                          <th style={{ width: "10%" }}>Priority</th>
+                          <th style={{ width: "12%" }}>Status</th>
+                          <th style={{ width: "5%" }}>Comments</th>
+                          <th style={{ width: "3%" }}></th>
                         </tr>
-                        {(task.subtasks || []).map((subtask) => {
-                          const subtaskFull = { ...subtask, group_id: task.group_id, parent_task_id: task.id };
+                      </thead>
+                      <tbody>
+                        {statusTasks.map((task) => {
+                          const isCollapsed = !!collapsedTasks[task.id];
+                          const subtaskCount = task.subtasks?.length || 0;
                           return (
-                            <tr
-                              key={`subtask_${subtask.id}`}
-                              className="workspace-row workspace-subtask-row"
-                              onDoubleClick={() => handleOpenUpdatesDrawer(subtaskFull)}
-                            >
-                              <td></td>
+                            <React.Fragment key={task.id}>
+                            <tr className="workspace-row" onDoubleClick={() => handleOpenUpdatesDrawer(task)}>
+                              <td style={{ textAlign: "center", verticalAlign: "middle" }}>
+                                <input
+                                  type="checkbox"
+                                  className={`form-check-input task-select-checkbox ${selectedTaskIds.includes(task.id) ? "opacity-100" : "opacity-0"}`}
+                                  style={{ width: "13px", height: "13px", cursor: "pointer", transition: "opacity 0.15s" }}
+                                  checked={selectedTaskIds.includes(task.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedTaskIds(prev => [...prev, task.id]);
+                                    } else {
+                                      setSelectedTaskIds(prev => prev.filter(id => id !== task.id));
+                                    }
+                                  }}
+                                />
+                              </td>
+                              <td style={{ textAlign: "center", verticalAlign: "middle" }}>
+                                <div className="d-flex align-items-center justify-content-center gap-1">
+                                  {subtaskCount > 0 ? (
+                                    <span
+                                      className="cursor-pointer text-slate-400 hover:text-slate-600 d-inline-flex align-items-center"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setCollapsedTasks((prev) => ({
+                                          ...prev,
+                                          [task.id]: !prev[task.id],
+                                        }));
+                                      }}
+                                      title={isCollapsed ? "Expand subtasks" : "Collapse subtasks"}
+                                      style={{ transition: "transform 0.2s", transform: isCollapsed ? "rotate(-90deg)" : "none" }}
+                                    >
+                                      <ChevronDown size={11} />
+                                    </span>
+                                  ) : (
+                                    <span style={{ width: "11px", display: "inline-block" }} />
+                                  )}
+                                  {renderTaskCheckCircleDropdown(task, statusMeta)}
+                                </div>
+                              </td>
                               <td>
-                                <div className="d-flex align-items-center gap-2" style={{ paddingLeft: "24px" }}>
-                                  {renderSubtaskCheckCircleDropdown(subtask, subtaskFull, STATUS_META[subtask.status] || STATUS_META["Not Started"])}
-                                  <GitFork size={13} className="text-slate-300" style={{ transform: "rotate(180deg)" }} />
+                                <div className="d-flex align-items-center gap-2">
                                   <input
                                     type="text"
                                     className="cell-editable-text flex-grow-1"
-                                    value={subtask.title}
+                                    value={task.title}
                                     onChange={(event) => {
                                       const val = event.target.value;
-                                      patchTaskInState(subtask.id, (s) => ({ ...s, title: val }));
+                                      patchTaskInState(task.id, (t) => ({ ...t, title: val }));
                                     }}
                                     onBlur={(event) =>
-                                      handleTaskCellChange(subtask.id, "title", event.target.value)
+                                      handleTaskCellChange(task.id, "title", event.target.value)
                                     }
                                     onKeyDown={(event) => {
                                       if (event.key === "Enter") {
@@ -2823,14 +3013,31 @@ const BoardDetailPage = () => {
                                       }
                                     }}
                                   />
-                                  {renderTaskNotesIcon(subtaskFull)}
+                                  {subtaskCount > 0 && (
+                                    <span 
+                                      className="d-inline-flex align-items-center gap-1 text-slate-400 border border-slate-200 rounded px-1.5 py-0.5 hover:bg-slate-100" 
+                                      style={{ fontSize: "10px", backgroundColor: "#f8fafc", cursor: "pointer", height: "18px" }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setCollapsedTasks((prev) => ({
+                                          ...prev,
+                                          [task.id]: !prev[task.id],
+                                        }));
+                                      }}
+                                      title={`${subtaskCount} subtask(s)`}
+                                    >
+                                      <GitFork size={10} style={{ transform: "rotate(180deg)" }} />
+                                      {subtaskCount}
+                                    </span>
+                                  )}
+                                  {renderTaskNotesIcon(task)}
                                   <button
                                     type="button"
                                     className="zbot-inline-icon-btn"
                                     onClick={() =>
                                       setInlineSubtaskBuilders((prev) => ({
                                         ...prev,
-                                        [subtask.id]: prev[subtask.id] === undefined ? "" : undefined,
+                                        [task.id]: prev[task.id] === undefined ? "" : undefined,
                                       }))
                                     }
                                     title="Add subtask"
@@ -2840,31 +3047,31 @@ const BoardDetailPage = () => {
                                   <button
                                     type="button"
                                     className="chat-bubble-btn"
-                                    onClick={() => handleOpenUpdatesDrawer(subtaskFull)}
+                                    onClick={() => handleOpenUpdatesDrawer(task)}
                                   >
                                     <MessageSquare size={13} className="text-slate-400" />
-                                    {subtask.updates_count > 0 && (
-                                      <span className="chat-badge">{subtask.updates_count}</span>
+                                    {task.updates_count > 0 && (
+                                      <span className="chat-badge">{task.updates_count}</span>
                                     )}
                                   </button>
                                 </div>
                               </td>
-                              <td>{renderAssigneeCell(subtaskFull)}</td>
-                              <td>{renderDateCell(subtaskFull, "due_date")}</td>
-                              <td>{renderPriorityDropdown(subtaskFull)}</td>
-                              <td>{renderStatusDropdown(subtaskFull)}</td>
+                              <td>{renderAssigneeCell(task)}</td>
+                              <td>{renderDateCell(task, "due_date")}</td>
+                              <td>{renderPriorityDropdown(task)}</td>
+                              <td>{renderStatusDropdown(task)}</td>
                               <td className="text-center position-relative">
-                                <Dropdown show={activeCommentTaskId === subtask.id} onToggle={(isOpen) => setActiveCommentTaskId(isOpen ? subtask.id : null)}>
+                                <Dropdown show={activeCommentTaskId === task.id} onToggle={(isOpen) => setActiveCommentTaskId(isOpen ? task.id : null)}>
                                   <Dropdown.Toggle as="div" className="chat-bubble-btn position-relative d-inline-flex align-items-center justify-content-center cursor-pointer" style={{ width: "24px", height: "24px" }}>
-                                    <MessageSquare size={13} className={subtask.updates_count > 0 ? "text-primary" : "text-slate-300"} />
-                                    {subtask.updates_count > 0 && (
+                                    <MessageSquare size={13} className={task.updates_count > 0 ? "text-primary" : "text-slate-300"} />
+                                    {task.updates_count > 0 && (
                                       <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: "9px", padding: "1px 3px" }}>
-                                        {subtask.updates_count}
+                                        {task.updates_count}
                                       </span>
                                     )}
                                   </Dropdown.Toggle>
                                   <Dropdown.Menu className="p-3 shadow-lg border rounded-3 dropdown-menu-end" style={{ width: "380px", zIndex: 1050 }}>
-                                    <InlineTaskComments task={subtaskFull} assignees={assignees} onCommentAdded={() => { fetchWorkspace(false); }} />
+                                    <InlineTaskComments task={task} assignees={assignees} onCommentAdded={() => { fetchWorkspace(false); }} />
                                   </Dropdown.Menu>
                                 </Dropdown>
                               </td>
@@ -2874,31 +3081,31 @@ const BoardDetailPage = () => {
                                     <MoreHorizontal size={16} />
                                   </Dropdown.Toggle>
                                   <Dropdown.Menu className="task-context-menu">
-                                    <Dropdown.Item onClick={() => handleOpenUpdatesDrawer(subtaskFull)}>
+                                    <Dropdown.Item onClick={() => handleOpenUpdatesDrawer(task)}>
                                       <Edit3 size={14} /> Rename
                                     </Dropdown.Item>
                                     <Dropdown.Item onClick={() => {
-                                      navigator.clipboard.writeText(subtask.title);
+                                      navigator.clipboard.writeText(task.title);
                                     }}>
                                       <Copy size={14} /> Copy name
                                     </Dropdown.Item>
                                     <Dropdown.Item onClick={() => {
-                                      navigator.clipboard.writeText(`${window.location.origin}/admin/boards/${boardId}?task=${subtask.id}`);
+                                      navigator.clipboard.writeText(`${window.location.origin}/admin/boards/${boardId}?task=${task.id}`);
                                     }}>
                                       <ClipboardCopy size={14} /> Copy link
                                     </Dropdown.Item>
                                     <Dropdown.Divider />
-                                    <Dropdown.Item onClick={() => handleTaskCellChange(subtask.id, "status", "Done")}>
+                                    <Dropdown.Item onClick={() => handleTaskCellChange(task.id, "status", "Done")}>
                                       <CheckCircleFill size={14} className="text-success" /> Mark complete
                                     </Dropdown.Item>
-                                    <Dropdown.Item onClick={() => handleOpenUpdatesDrawer(subtaskFull)}>
+                                    <Dropdown.Item onClick={() => handleOpenUpdatesDrawer(task)}>
                                       <MessageSquare size={14} /> Open task
                                     </Dropdown.Item>
                                     <Dropdown.Divider />
                                     <Dropdown.Item
                                       className="text-danger"
                                       onClick={() => {
-                                        setDeleteTarget({ type: "task", id: subtask.id, name: subtask.title });
+                                        setDeleteTarget({ type: "task", id: task.id, name: task.title });
                                         setShowDeleteModal(true);
                                       }}
                                     >
@@ -2908,148 +3115,257 @@ const BoardDetailPage = () => {
                                 </Dropdown>
                               </td>
                             </tr>
-                          );
-                        })}
-                        {inlineSubtaskBuilders[task.id] !== undefined && (() => {
-                          const subtaskMeta = inlineSubtaskMeta[task.id] || { assignees: [], due_date: "", priority: "Normal" };
-                          const updateMeta = (parentTaskId, field, value) => {
-                            setInlineSubtaskMeta((prev) => ({
-                              ...prev,
-                              [parentTaskId]: {
-                                ...(prev[parentTaskId] || { assignees: [], due_date: "", priority: "Normal" }),
-                                [field]: value,
-                              },
-                            }));
-                          };
-                          return (
-                            <tr className="workspace-subtask-builder-row">
-                              <td />
-                              <td colSpan="7">
-                                <div className="zbot-inline-builder-row subtask-builder d-flex align-items-center justify-content-between">
-                                  <div className="d-flex align-items-center flex-grow-1 gap-2">
-                                    <GitFork size={13} className="text-slate-400" style={{ transform: "rotate(180deg)" }} />
-                                    <input
-                                      type="text"
-                                      placeholder="Subtask name or type '/' for commands"
-                                      className="zbot-inline-builder-input flex-grow-1"
-                                      value={inlineSubtaskBuilders[task.id] || ""}
-                                      onChange={(e) =>
-                                        setInlineSubtaskBuilders((prev) => ({ ...prev, [task.id]: e.target.value }))
-                                      }
-                                      onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                          e.preventDefault();
-                                          handleAddSubtaskFromList(task, inlineSubtaskBuilders[task.id]);
+                            {!isCollapsed && (task.subtasks || []).map((subtask) => {
+                              const subtaskFull = { ...subtask, group_id: task.group_id, parent_task_id: task.id };
+                              return (
+                                <tr
+                                  key={`subtask_${subtask.id}`}
+                                  className="workspace-row workspace-subtask-row"
+                                  onDoubleClick={() => handleOpenUpdatesDrawer(subtaskFull)}
+                                >
+                                  <td></td>
+                                  <td></td>
+                                  <td>
+                                    <div className="d-flex align-items-center gap-2" style={{ paddingLeft: "16px" }}>
+                                      <span className="subtask-tree-line" style={{ width: "12px", height: "14px", borderLeft: "1.5px solid #cbd5e1", borderBottom: "1.5px solid #cbd5e1", borderBottomLeftRadius: "4px", display: "inline-block", marginRight: "2px", transform: "translateY(-5px)" }} />
+                                      {renderSubtaskCheckCircleDropdown(subtask, subtaskFull, STATUS_META[subtask.status] || STATUS_META["Not Started"])}
+                                      <input
+                                        type="text"
+                                        className="cell-editable-text flex-grow-1"
+                                        value={subtask.title}
+                                        onChange={(event) => {
+                                          const val = event.target.value;
+                                          patchTaskInState(subtask.id, (s) => ({ ...s, title: val }));
+                                        }}
+                                        onBlur={(event) =>
+                                          handleTaskCellChange(subtask.id, "title", event.target.value)
                                         }
-                                        if (e.key === "Escape") {
-                                          setInlineSubtaskBuilders((prev) => ({ ...prev, [task.id]: undefined }));
-                                          setInlineSubtaskMeta((prev) => ({ ...prev, [task.id]: undefined }));
+                                        onKeyDown={(event) => {
+                                          if (event.key === "Enter") {
+                                            event.target.blur();
+                                          }
+                                        }}
+                                      />
+                                      {renderTaskNotesIcon(subtaskFull)}
+                                      <button
+                                        type="button"
+                                        className="zbot-inline-icon-btn"
+                                        onClick={() =>
+                                          setInlineSubtaskBuilders((prev) => ({
+                                            ...prev,
+                                            [subtask.id]: prev[subtask.id] === undefined ? "" : undefined,
+                                          }))
                                         }
-                                      }}
-                                      autoFocus
-                                    />
-                                  </div>
-                                  <div className="subtask-builder-meta-icons d-flex align-items-center gap-2 mx-2">
-                                    {/* Assignee Selector Dropdown */}
-                                    <Dropdown>
-                                      <Dropdown.Toggle as="div" className="cursor-pointer text-slate-400 hover:text-slate-700">
-                                        {subtaskMeta.assignees.length > 0 ? (
-                                          <div className="d-flex -space-x-1" style={{ marginRight: "4px" }}>
-                                            {subtaskMeta.assignees.slice(0, 2).map((a) => (
-                                              <div key={getAssigneeKey(a)} className="assignee-avatar zbot-avatar-sm" title={a.name}>
-                                                {getInitials(a.name)}
-                                              </div>
-                                            ))}
-                                            {subtaskMeta.assignees.length > 2 && (
-                                              <div className="assignee-avatar zbot-avatar-sm bg-slate-200 text-slate-600 font-bold d-flex align-items-center justify-content-center" style={{ fontSize: "10px" }}>
-                                                +{subtaskMeta.assignees.length - 2}
-                                              </div>
-                                            )}
-                                          </div>
-                                        ) : (
-                                          <User size={14} className="text-slate-400" />
+                                        title="Add subtask"
+                                      >
+                                        <PlusSquare size={13} className="text-slate-400" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="chat-bubble-btn"
+                                        onClick={() => handleOpenUpdatesDrawer(subtaskFull)}
+                                      >
+                                        <MessageSquare size={13} className="text-slate-400" />
+                                        {subtask.updates_count > 0 && (
+                                          <span className="chat-badge">{subtask.updates_count}</span>
+                                        )}
+                                      </button>
+                                    </div>
+                                  </td>
+                                  <td>{renderAssigneeCell(subtaskFull)}</td>
+                                  <td>{renderDateCell(subtaskFull, "due_date")}</td>
+                                  <td>{renderPriorityDropdown(subtaskFull)}</td>
+                                  <td>{renderStatusDropdown(subtaskFull)}</td>
+                                  <td className="text-center position-relative">
+                                    <Dropdown show={activeCommentTaskId === subtask.id} onToggle={(isOpen) => setActiveCommentTaskId(isOpen ? subtask.id : null)}>
+                                      <Dropdown.Toggle as="div" className="chat-bubble-btn position-relative d-inline-flex align-items-center justify-content-center cursor-pointer" style={{ width: "24px", height: "24px" }}>
+                                        <MessageSquare size={13} className={subtask.updates_count > 0 ? "text-primary" : "text-slate-300"} />
+                                        {subtask.updates_count > 0 && (
+                                          <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: "9px", padding: "1px 3px" }}>
+                                            {subtask.updates_count}
+                                          </span>
                                         )}
                                       </Dropdown.Toggle>
-                                      <Dropdown.Menu className="board-dropdown-menu">
-                                        <Dropdown.Item onClick={() => updateMeta(task.id, "assignees", [])}>
-                                          <span className="text-muted">Unassigned</span>
+                                      <Dropdown.Menu className="p-3 shadow-lg border rounded-3 dropdown-menu-end" style={{ width: "380px", zIndex: 1050 }}>
+                                        <InlineTaskComments task={subtaskFull} assignees={assignees} onCommentAdded={() => { fetchWorkspace(false); }} />
+                                      </Dropdown.Menu>
+                                    </Dropdown>
+                                  </td>
+                                  <td>
+                                    <Dropdown align="end">
+                                      <Dropdown.Toggle as="button" className="task-row-menu-btn">
+                                        <MoreHorizontal size={16} />
+                                      </Dropdown.Toggle>
+                                      <Dropdown.Menu className="task-context-menu">
+                                        <Dropdown.Item onClick={() => handleOpenUpdatesDrawer(subtaskFull)}>
+                                          <Edit3 size={14} /> Rename
+                                        </Dropdown.Item>
+                                        <Dropdown.Item onClick={() => {
+                                          navigator.clipboard.writeText(subtask.title);
+                                        }}>
+                                          <Copy size={14} /> Copy name
+                                        </Dropdown.Item>
+                                        <Dropdown.Item onClick={() => {
+                                          navigator.clipboard.writeText(`${window.location.origin}/admin/boards/${boardId}?task=${subtask.id}`);
+                                        }}>
+                                          <ClipboardCopy size={14} /> Copy link
                                         </Dropdown.Item>
                                         <Dropdown.Divider />
-                                        {assignees.map((p) => {
-                                          const isSelected = subtaskMeta.assignees.some((a) => getAssigneeKey(a) === getAssigneeKey(p));
-                                          return (
-                                            <Dropdown.Item
-                                              key={`${p.role}_${p.id}`}
-                                              onClick={(e) => {
-                                                e.preventDefault();
+                                        <Dropdown.Item onClick={() => handleTaskCellChange(subtask.id, "status", "Done")}>
+                                          <CheckCircleFill size={14} className="text-success" /> Mark complete
+                                        </Dropdown.Item>
+                                        <Dropdown.Item onClick={() => handleOpenUpdatesDrawer(subtaskFull)}>
+                                          <MessageSquare size={14} /> Open task
+                                        </Dropdown.Item>
+                                        <Dropdown.Divider />
+                                        <Dropdown.Item
+                                          className="text-danger"
+                                          onClick={() => {
+                                            setDeleteTarget({ type: "task", id: subtask.id, name: subtask.title });
+                                            setShowDeleteModal(true);
+                                          }}
+                                        >
+                                          <Trash2 size={14} /> Delete
+                                        </Dropdown.Item>
+                                      </Dropdown.Menu>
+                                    </Dropdown>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                            {!isCollapsed && inlineSubtaskBuilders[task.id] !== undefined && (() => {
+                              const subtaskMeta = inlineSubtaskMeta[task.id] || { assignees: [], due_date: "", priority: "Normal" };
+                              const updateMeta = (parentTaskId, field, value) => {
+                                setInlineSubtaskMeta((prev) => ({
+                                  ...prev,
+                                  [parentTaskId]: {
+                                    ...(prev[parentTaskId] || { assignees: [], due_date: "", priority: "Normal" }),
+                                    [field]: value,
+                                  },
+                                }));
+                              };
+                              return (
+                                <tr className="workspace-subtask-builder-row">
+                                  <td />
+                                  <td />
+                                  <td colSpan="7">
+                                    <div className="zbot-inline-builder-row subtask-builder d-flex align-items-center justify-content-between" style={{ paddingLeft: "16px" }}>
+                                      <div className="d-flex align-items-center flex-grow-1 gap-2">
+                                        <span className="subtask-tree-line" style={{ width: "12px", height: "14px", borderLeft: "1.5px solid #cbd5e1", borderBottom: "1.5px solid #cbd5e1", borderBottomLeftRadius: "4px", display: "inline-block", marginRight: "2px", transform: "translateY(-5px)" }} />
+                                        <span className="color-dot rounded-circle d-inline-block border" style={{ backgroundColor: "#cbd5e1", width: "12px", height: "12px", borderStyle: "dashed" }} />
+                                        <input
+                                          type="text"
+                                          placeholder="Subtask name or type '/' for commands"
+                                          className="zbot-inline-builder-input flex-grow-1"
+                                          value={inlineSubtaskBuilders[task.id] || ""}
+                                          onChange={(e) =>
+                                            setInlineSubtaskBuilders((prev) => ({ ...prev, [task.id]: e.target.value }))
+                                          }
+                                          onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                              e.preventDefault();
+                                              handleAddSubtaskFromList(task, inlineSubtaskBuilders[task.id]);
+                                            }
+                                            if (e.key === "Escape") {
+                                              setInlineSubtaskBuilders((prev) => ({ ...prev, [task.id]: undefined }));
+                                              setInlineSubtaskMeta((prev) => ({ ...prev, [task.id]: undefined }));
+                                            }
+                                          }}
+                                          autoFocus
+                                        />
+                                      </div>
+                                      <div className="subtask-builder-meta-icons d-flex align-items-center gap-2 mx-2">
+                                        {/* Assignee Selector Dropdown */}
+                                        <Dropdown>
+                                          <Dropdown.Toggle as="div" className="cursor-pointer text-slate-400 hover:text-slate-700">
+                                            {subtaskMeta.assignees.length > 0 ? (
+                                              <div className="d-flex -space-x-1" style={{ marginRight: "4px" }}>
+                                                {subtaskMeta.assignees.slice(0, 2).map((a) => (
+                                                  <div key={getAssigneeKey(a)} className="assignee-avatar zbot-avatar-sm" title={a.name}>
+                                                    {getInitials(a.name)}
+                                                  </div>
+                                                ))}
+                                                {subtaskMeta.assignees.length > 2 && (
+                                                  <div className="assignee-avatar zbot-avatar-sm bg-slate-200 text-slate-600 font-bold d-flex align-items-center justify-content-center" style={{ fontSize: "10px" }}>
+                                                    +{subtaskMeta.assignees.length - 2}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            ) : (
+                                              <User size={14} className="text-slate-400" />
+                                            )}
+                                          </Dropdown.Toggle>
+                                          <Dropdown.Menu className="board-dropdown-menu p-0 border-0 shadow">
+                                            <SleekAssigneeSelector
+                                              selectedAssignees={subtaskMeta.assignees}
+                                              members={assignees}
+                                              currentUser={user}
+                                              onToggleAssignee={(p) => {
+                                                const isSelected = subtaskMeta.assignees.some((a) => getAssigneeKey(a) === getAssigneeKey(p));
                                                 const nextList = isSelected
                                                   ? subtaskMeta.assignees.filter((a) => getAssigneeKey(a) !== getAssigneeKey(p))
                                                   : [...subtaskMeta.assignees, p];
                                                 updateMeta(task.id, "assignees", nextList);
                                               }}
-                                              className="d-flex align-items-center gap-2"
-                                            >
-                                              <input type="checkbox" checked={isSelected} readOnly className="me-2" />
-                                              <span>{p.name}</span>
-                                            </Dropdown.Item>
-                                          );
-                                        })}
-                                      </Dropdown.Menu>
-                                    </Dropdown>
+                                              onInviteEmail={(email) => toast.info(email ? `Invitation email sent to ${email}!` : "Invitation email sent!")}
+                                            />
+                                          </Dropdown.Menu>
+                                        </Dropdown>
 
-                                    {/* Due Date Picker Hidden Input */}
-                                    <div className="position-relative d-flex align-items-center">
-                                      <input
-                                        type="date"
-                                        className="zbot-date-input-hidden"
-                                        value={subtaskMeta.due_date || ""}
-                                        onChange={(e) => updateMeta(task.id, "due_date", e.target.value)}
-                                        onClick={(e) => {
-                                          try {
-                                            e.target.showPicker();
-                                          } catch (err) {}
-                                        }}
-                                        style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer", zIndex: 2 }}
-                                      />
-                                      <div className="text-slate-400 hover:text-slate-700 cursor-pointer d-flex align-items-center gap-1">
-                                        <Calendar size={14} className={subtaskMeta.due_date ? "text-primary" : ""} />
-                                        {subtaskMeta.due_date && <span className="small text-primary" style={{ fontSize: "11px" }}>{format(parseISO(subtaskMeta.due_date), "MMM d")}</span>}
+                                        {/* Due Date Picker Hidden Input */}
+                                        <div className="position-relative d-flex align-items-center">
+                                          <input
+                                            type="date"
+                                            className="zbot-date-input-hidden"
+                                            value={subtaskMeta.due_date || ""}
+                                            onChange={(e) => updateMeta(task.id, "due_date", e.target.value)}
+                                            onClick={(e) => {
+                                              try {
+                                                e.target.showPicker();
+                                              } catch (err) {}
+                                            }}
+                                            style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer", zIndex: 2 }}
+                                          />
+                                          <div className="text-slate-400 hover:text-slate-700 cursor-pointer d-flex align-items-center gap-1">
+                                            <Calendar size={14} className={subtaskMeta.due_date ? "text-primary" : ""} />
+                                            {subtaskMeta.due_date && <span className="small text-primary" style={{ fontSize: "11px" }}>{format(parseISO(subtaskMeta.due_date), "MMM d")}</span>}
+                                          </div>
+                                        </div>
+
+                                        {/* Priority Dropdown */}
+                                        <Dropdown>
+                                          <Dropdown.Toggle as="div" className="cursor-pointer text-slate-400 hover:text-slate-700">
+                                            {getPriorityFlag(subtaskMeta.priority, 14)}
+                                          </Dropdown.Toggle>
+                                          <Dropdown.Menu className="board-dropdown-menu">
+                                            {PRIORITY_OPTIONS.map((prio) => (
+                                              <Dropdown.Item
+                                                key={prio}
+                                                onClick={() => updateMeta(task.id, "priority", prio)}
+                                                className="d-flex align-items-center gap-2"
+                                              >
+                                                {getPriorityFlag(prio, 12)}
+                                                <span>{prio}</span>
+                                              </Dropdown.Item>
+                                            ))}
+                                          </Dropdown.Menu>
+                                        </Dropdown>
                                       </div>
+                                      <button
+                                        type="button"
+                                        className="zbot-inline-save-btn"
+                                        onClick={() => handleAddSubtaskFromList(task, inlineSubtaskBuilders[task.id])}
+                                      >
+                                        Save
+                                      </button>
                                     </div>
-
-                                    {/* Priority Dropdown */}
-                                    <Dropdown>
-                                      <Dropdown.Toggle as="div" className="cursor-pointer text-slate-400 hover:text-slate-700">
-                                        {getPriorityFlag(subtaskMeta.priority, 14)}
-                                      </Dropdown.Toggle>
-                                      <Dropdown.Menu className="board-dropdown-menu">
-                                        {PRIORITY_OPTIONS.map((prio) => (
-                                          <Dropdown.Item
-                                            key={prio}
-                                            onClick={() => updateMeta(task.id, "priority", prio)}
-                                            className="d-flex align-items-center gap-2"
-                                          >
-                                            {getPriorityFlag(prio, 12)}
-                                            <span>{prio}</span>
-                                          </Dropdown.Item>
-                                        ))}
-                                      </Dropdown.Menu>
-                                    </Dropdown>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    className="zbot-inline-save-btn"
-                                    onClick={() => handleAddSubtaskFromList(task, inlineSubtaskBuilders[task.id])}
-                                  >
-                                    Save
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
+                                  </td>
+                                </tr>
+                              );
+                            })()}
+                            </React.Fragment>
                           );
-                        })()}
-                        </React.Fragment>
-                      ))}
+                        })}
 
                       {/* Inline Add Task Builder Row */}
                       {defaultGroupId && (
@@ -3099,39 +3415,21 @@ const BoardDetailPage = () => {
                                         <User size={13} />
                                       )}
                                     </Dropdown.Toggle>
-                                    <Dropdown.Menu className="board-dropdown-menu">
-                                      <div className="px-2 py-1 sticky-top bg-white border-bottom">
-                                        <input
-                                          type="text"
-                                          className="form-control form-control-sm"
-                                          placeholder="Search assignee..."
-                                          value={assigneeSearchQuery}
-                                          onChange={(e) => setAssigneeSearchQuery(e.target.value)}
-                                          onClick={(e) => e.stopPropagation()}
-                                          style={{ fontSize: "11px" }}
-                                        />
-                                      </div>
-                                      <Dropdown.Item onClick={() => {
-                                        setInlineTaskBuilders(prev => ({
-                                          ...prev,
-                                          [statusKey]: { ...prev[statusKey], assignee: null }
-                                        }));
-                                      }}>
-                                        <span className="text-muted">Unassigned</span>
-                                      </Dropdown.Item>
-                                      <Dropdown.Divider />
-                                      {assignees
-                                        .filter((a) => a.name.toLowerCase().includes(assigneeSearchQuery.toLowerCase()))
-                                        .map((a) => (
-                                        <Dropdown.Item key={`${a.role}_${a.id}`} onClick={() => {
+                                    <Dropdown.Menu className="board-dropdown-menu p-0 border-0 shadow">
+                                      <SleekAssigneeSelector
+                                        selectedAssignees={inlineTaskBuilders[statusKey]?.assignee}
+                                        members={assignees}
+                                        currentUser={user}
+                                        onToggleAssignee={(p) => {
+                                          const isSelected = inlineTaskBuilders[statusKey]?.assignee && getAssigneeKey(inlineTaskBuilders[statusKey].assignee) === getAssigneeKey(p);
+                                          const nextValue = isSelected ? null : p;
                                           setInlineTaskBuilders(prev => ({
                                             ...prev,
-                                            [statusKey]: { ...prev[statusKey], assignee: a }
+                                            [statusKey]: { ...prev[statusKey], assignee: nextValue }
                                           }));
-                                        }}>
-                                          <strong>{a.name}</strong>
-                                        </Dropdown.Item>
-                                      ))}
+                                        }}
+                                        onInviteEmail={(email) => toast.info(email ? `Invitation email sent to ${email}!` : "Invitation email sent!")}
+                                      />
                                     </Dropdown.Menu>
                                   </Dropdown>
 
@@ -3229,8 +3527,9 @@ const BoardDetailPage = () => {
                 </div>
               )}
             </div>
-          );
-        })}
+          </React.Fragment>
+        );
+      })}
 
         {/* ClickUp-style inline new status creator */}
         {showInlineStatusCreator ? (
@@ -3535,39 +3834,21 @@ const BoardDetailPage = () => {
                         </div>
                       )}
                     </Dropdown.Toggle>
-                    <Dropdown.Menu className="board-dropdown-menu">
-                      <div className="px-2 py-1 sticky-top bg-white border-bottom">
-                        <input
-                          type="text"
-                          className="form-control form-control-sm"
-                          placeholder="Search assignee..."
-                          value={assigneeSearchQuery}
-                          onChange={(e) => setAssigneeSearchQuery(e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          style={{ fontSize: "11px" }}
-                        />
-                      </div>
-                      <Dropdown.Item onClick={() => {
-                        setInlineTaskBuilders(prev => ({
-                          ...prev,
-                          table_builder: { ...prev.table_builder, assignee: null }
-                        }));
-                      }}>
-                        <span className="text-muted">Unassigned</span>
-                      </Dropdown.Item>
-                      <Dropdown.Divider />
-                      {assignees
-                        .filter((a) => a.name.toLowerCase().includes(assigneeSearchQuery.toLowerCase()))
-                        .map((a) => (
-                        <Dropdown.Item key={`${a.role}_${a.id}`} onClick={() => {
+                    <Dropdown.Menu className="board-dropdown-menu p-0 border-0 shadow">
+                      <SleekAssigneeSelector
+                        selectedAssignees={inlineTaskBuilders["table_builder"]?.assignee}
+                        members={assignees}
+                        currentUser={user}
+                        onToggleAssignee={(p) => {
+                          const isSelected = inlineTaskBuilders["table_builder"]?.assignee && getAssigneeKey(inlineTaskBuilders["table_builder"].assignee) === getAssigneeKey(p);
+                          const nextValue = isSelected ? null : p;
                           setInlineTaskBuilders(prev => ({
                             ...prev,
-                            table_builder: { ...prev.table_builder, assignee: a }
+                            table_builder: { ...prev.table_builder, assignee: nextValue }
                           }));
-                        }}>
-                          <strong>{a.name}</strong>
-                        </Dropdown.Item>
-                      ))}
+                        }}
+                        onInviteEmail={(email) => toast.info(email ? `Invitation email sent to ${email}!` : "Invitation email sent!")}
+                      />
                     </Dropdown.Menu>
                   </Dropdown>
                 </td>
@@ -3835,6 +4116,322 @@ const BoardDetailPage = () => {
       </div>
     </div>
   );
+
+  const renderEditStatusesModal = () => {
+    const onDragStart = (e, statusId) => {
+      e.dataTransfer.setData("text/plain", statusId);
+    };
+
+    const onDragOver = (e) => {
+      e.preventDefault();
+    };
+
+    const onDrop = (e, targetGroup, targetIndex) => {
+      e.preventDefault();
+      const statusId = e.dataTransfer.getData("text/plain");
+      if (!statusId) return;
+
+      const draggedIdx = modalStatuses.findIndex(s => s.id === statusId);
+      if (draggedIdx === -1) return;
+
+      const next = [...modalStatuses];
+      const [draggedItem] = next.splice(draggedIdx, 1);
+      draggedItem.type = targetGroup;
+
+      const groupItems = next.filter(s => s.type === targetGroup);
+      if (targetIndex !== undefined && targetIndex < groupItems.length) {
+        const targetItem = groupItems[targetIndex];
+        const targetAbsIndex = next.findIndex(s => s.id === targetItem.id);
+        next.splice(targetAbsIndex, 0, draggedItem);
+      } else {
+        const lastGroupAbsIndex = next.map((s, idx) => s.type === targetGroup ? idx : -1).reduce((a, b) => Math.max(a, b), -1);
+        if (lastGroupAbsIndex !== -1) {
+          next.splice(lastGroupAbsIndex + 1, 0, draggedItem);
+        } else {
+          if (targetGroup === "Not Started") {
+            next.unshift(draggedItem);
+          } else if (targetGroup === "Done") {
+            next.push(draggedItem);
+          } else {
+            const firstDoneIdx = next.findIndex(s => s.type === "Done");
+            if (firstDoneIdx !== -1) {
+              next.splice(firstDoneIdx, 0, draggedItem);
+            } else {
+              next.push(draggedItem);
+            }
+          }
+        }
+      }
+      setModalStatuses(next);
+    };
+
+    const handleRenameModalStatus = (id, newLabel) => {
+      setModalStatuses(prev => prev.map(s => s.id === id ? { ...s, label: newLabel } : s));
+    };
+
+    const handleColorModalStatus = (id, newColor) => {
+      setModalStatuses(prev => prev.map(s => s.id === id ? { ...s, color: newColor } : s));
+    };
+
+    const handleAddModalStatus = (groupType) => {
+      const colors = BOARD_COLORS;
+      const randomColor = colors[Math.floor(Math.random() * colors.length)];
+      const id = `status_${Date.now()}`;
+      const newStatus = {
+        id: id,
+        label: groupType === "Not Started" ? "New Not Started" : groupType === "Done" ? "New Done" : "New Active Status",
+        color: randomColor,
+        type: groupType
+      };
+      setModalStatuses(prev => [...prev, newStatus]);
+    };
+
+    const handleDeleteModalStatus = (id) => {
+      setModalStatuses(prev => prev.filter(s => s.id !== id));
+    };
+
+    const handleApplyStatuses = async () => {
+      try {
+        setSaving(true);
+        const custom = modalStatuses.map(s => ({
+          id: s.id.startsWith("status_") ? s.label : s.id,
+          label: s.label,
+          color: s.color,
+          type: s.type
+        }));
+        
+        const updated = await updateBoard(boardId, { custom_statuses: custom });
+        setBoard(updated);
+        setShowEditStatusesModal(false);
+        toast.success("Statuses updated successfully!");
+      } catch (err) {
+        toast.error("Failed to update custom statuses.");
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    const notStartedList = modalStatuses.filter(s => s.type === "Not Started");
+    const activeList = modalStatuses.filter(s => s.type === "Active");
+    const doneList = modalStatuses.filter(s => s.type === "Done");
+
+    return (
+      <Modal show={showEditStatusesModal} onHide={() => setShowEditStatusesModal(false)} size="lg" centered className="edit-statuses-modal text-dark">
+        <Modal.Header closeButton className="border-bottom-0 pb-0">
+          <Modal.Title className="fw-bold fs-5 text-dark">Edit {board?.name || "Project"} statuses</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="pt-2 text-dark">
+          <div className="row g-0 rounded border overflow-hidden">
+            <div className="col-md-4 border-end bg-light p-3" style={{ minHeight: "450px" }}>
+              <div className="mb-4">
+                <label className="fw-bold text-slate-700 small mb-2 d-block">Status type</label>
+                <div className="form-check mb-2">
+                  <input className="form-check-input" type="radio" name="statusType" id="inheritSpace" disabled />
+                  <label className="form-check-label text-muted small" htmlFor="inheritSpace">Inherit from Space</label>
+                </div>
+                <div className="form-check">
+                  <input className="form-check-input" type="radio" name="statusType" id="useCustom" defaultChecked />
+                  <label className="form-check-label fw-semibold text-slate-800 small" htmlFor="useCustom">Use custom statuses</label>
+                </div>
+              </div>
+
+              <div>
+                <label className="fw-bold text-slate-700 small mb-2 d-block">Status template</label>
+                <select className="form-select form-select-sm text-dark" defaultValue="custom">
+                  <option value="custom">Custom (edited)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="col-md-8 p-3 bg-white d-flex flex-column" style={{ maxHeight: "500px", overflowY: "auto" }}>
+              <div 
+                className="status-edit-group mb-4"
+                onDragOver={onDragOver}
+                onDrop={(e) => onDrop(e, "Not Started")}
+              >
+                <div className="fw-bold text-slate-500 small text-uppercase mb-2 d-flex align-items-center justify-content-between">
+                  <span>Not started</span>
+                  <Plus size={14} className="cursor-pointer" onClick={() => handleAddModalStatus("Not Started")} />
+                </div>
+                <div className="d-flex flex-column gap-2">
+                  {notStartedList.map((status, idx) => (
+                    <div 
+                      key={status.id}
+                      draggable
+                      onDragStart={(e) => onDragStart(e, status.id)}
+                      onDragOver={onDragOver}
+                      onDrop={(e) => onDrop(e, "Not Started", idx)}
+                      className="d-flex align-items-center gap-2 border p-2 rounded bg-white shadow-sm"
+                      style={{ cursor: "grab" }}
+                    >
+                      <span className="text-slate-400 fw-bold">::</span>
+                      <OverlayTrigger
+                        trigger="click"
+                        placement="bottom"
+                        rootClose
+                        overlay={
+                          <Popover id={`modal-color-${status.id}`} className="border-0 shadow-sm rounded-3">
+                            <Popover.Body className="p-2">
+                              <div className="clickup-color-picker-row d-flex gap-1">
+                                {BOARD_COLORS.map((c) => (
+                                  <button
+                                    key={c}
+                                    type="button"
+                                    className="color-swatch btn p-0 rounded-circle"
+                                    style={{ backgroundColor: c, width: "18px", height: "18px" }}
+                                    onClick={() => handleColorModalStatus(status.id, c)}
+                                  />
+                                ))}
+                              </div>
+                            </Popover.Body>
+                          </Popover>
+                        }
+                      >
+                        <span className="color-dot cursor-pointer rounded-circle d-inline-block" style={{ backgroundColor: status.color, width: "10px", height: "10px" }} />
+                      </OverlayTrigger>
+                      <input 
+                        type="text" 
+                        value={status.label} 
+                        onChange={(e) => handleRenameModalStatus(status.id, e.target.value)}
+                        className="form-control form-control-sm border-0 fw-semibold text-slate-800 p-0 shadow-none bg-transparent"
+                      />
+                      <Trash size={12} className="text-slate-400 hover:text-danger cursor-pointer" onClick={() => handleDeleteModalStatus(status.id)} />
+                    </div>
+                  ))}
+                  {notStartedList.length === 0 && <div className="text-center py-2 border border-dashed rounded text-muted small">Drag status here</div>}
+                </div>
+              </div>
+
+              <div 
+                className="status-edit-group mb-4"
+                onDragOver={onDragOver}
+                onDrop={(e) => onDrop(e, "Active")}
+              >
+                <div className="fw-bold text-slate-500 small text-uppercase mb-2 d-flex align-items-center justify-content-between">
+                  <span>Active</span>
+                  <Plus size={14} className="cursor-pointer" onClick={() => handleAddModalStatus("Active")} />
+                </div>
+                <div className="d-flex flex-column gap-2">
+                  {activeList.map((status, idx) => (
+                    <div 
+                      key={status.id}
+                      draggable
+                      onDragStart={(e) => onDragStart(e, status.id)}
+                      onDragOver={onDragOver}
+                      onDrop={(e) => onDrop(e, "Active", idx)}
+                      className="d-flex align-items-center gap-2 border p-2 rounded bg-white shadow-sm"
+                      style={{ cursor: "grab" }}
+                    >
+                      <span className="text-slate-400 fw-bold">::</span>
+                      <OverlayTrigger
+                        trigger="click"
+                        placement="bottom"
+                        rootClose
+                        overlay={
+                          <Popover id={`modal-color-${status.id}`} className="border-0 shadow-sm rounded-3">
+                            <Popover.Body className="p-2">
+                              <div className="clickup-color-picker-row d-flex gap-1">
+                                {BOARD_COLORS.map((c) => (
+                                  <button
+                                    key={c}
+                                    type="button"
+                                    className="color-swatch btn p-0 rounded-circle"
+                                    style={{ backgroundColor: c, width: "18px", height: "18px" }}
+                                    onClick={() => handleColorModalStatus(status.id, c)}
+                                  />
+                                ))}
+                              </div>
+                            </Popover.Body>
+                          </Popover>
+                        }
+                      >
+                        <span className="color-dot cursor-pointer rounded-circle d-inline-block" style={{ backgroundColor: status.color, width: "10px", height: "10px" }} />
+                      </OverlayTrigger>
+                      <input 
+                        type="text" 
+                        value={status.label} 
+                        onChange={(e) => handleRenameModalStatus(status.id, e.target.value)}
+                        className="form-control form-control-sm border-0 fw-semibold text-slate-800 p-0 shadow-none bg-transparent"
+                      />
+                      <Trash size={12} className="text-slate-400 hover:text-danger cursor-pointer" onClick={() => handleDeleteModalStatus(status.id)} />
+                    </div>
+                  ))}
+                  {activeList.length === 0 && <div className="text-center py-2 border border-dashed rounded text-muted small">Drag status here</div>}
+                </div>
+              </div>
+
+              <div 
+                className="status-edit-group mb-4"
+                onDragOver={onDragOver}
+                onDrop={(e) => onDrop(e, "Done")}
+              >
+                <div className="fw-bold text-slate-500 small text-uppercase mb-2 d-flex align-items-center justify-content-between">
+                  <span>Done</span>
+                  <Plus size={14} className="cursor-pointer" onClick={() => handleAddModalStatus("Done")} />
+                </div>
+                <div className="d-flex flex-column gap-2">
+                  {doneList.map((status, idx) => (
+                    <div 
+                      key={status.id}
+                      draggable
+                      onDragStart={(e) => onDragStart(e, status.id)}
+                      onDragOver={onDragOver}
+                      onDrop={(e) => onDrop(e, "Done", idx)}
+                      className="d-flex align-items-center gap-2 border p-2 rounded bg-white shadow-sm"
+                      style={{ cursor: "grab" }}
+                    >
+                      <span className="text-slate-400 fw-bold">::</span>
+                      <OverlayTrigger
+                        trigger="click"
+                        placement="bottom"
+                        rootClose
+                        overlay={
+                          <Popover id={`modal-color-${status.id}`} className="border-0 shadow-sm rounded-3">
+                            <Popover.Body className="p-2">
+                              <div className="clickup-color-picker-row d-flex gap-1">
+                                {BOARD_COLORS.map((c) => (
+                                  <button
+                                    key={c}
+                                    type="button"
+                                    className="color-swatch btn p-0 rounded-circle"
+                                    style={{ backgroundColor: c, width: "18px", height: "18px" }}
+                                    onClick={() => handleColorModalStatus(status.id, c)}
+                                  />
+                                ))}
+                              </div>
+                            </Popover.Body>
+                          </Popover>
+                        }
+                      >
+                        <span className="color-dot cursor-pointer rounded-circle d-inline-block" style={{ backgroundColor: status.color, width: "10px", height: "10px" }} />
+                      </OverlayTrigger>
+                      <input 
+                        type="text" 
+                        value={status.label} 
+                        onChange={(e) => handleRenameModalStatus(status.id, e.target.value)}
+                        className="form-control form-control-sm border-0 fw-semibold text-slate-800 p-0 shadow-none bg-transparent"
+                      />
+                      <Trash size={12} className="text-slate-400 hover:text-danger cursor-pointer" onClick={() => handleDeleteModalStatus(status.id)} />
+                    </div>
+                  ))}
+                  {doneList.length === 0 && <div className="text-center py-2 border border-dashed rounded text-muted small">Drag status here</div>}
+                </div>
+              </div>
+            </div>
+          </div>
+        </Modal.Body>
+        <Modal.Footer className="border-top-0 pt-0 d-flex justify-content-between">
+          <a href="#" className="small text-decoration-none text-slate-500 hover:text-slate-700" onClick={(e) => e.preventDefault()}>Learn more about statuses</a>
+          <div className="d-flex gap-2">
+            <Button variant="outline-secondary" size="sm" onClick={() => toast.success("Template saved!")}>Save as template</Button>
+            <Button variant="dark" size="sm" onClick={handleApplyStatuses} disabled={saving}>
+              {saving ? <Spinner size="sm" animation="border" /> : "Apply changes"}
+            </Button>
+          </div>
+        </Modal.Footer>
+      </Modal>
+    );
+  };
 
   if (loading) {
     return renderSkeletonLoader();
@@ -4436,52 +5033,147 @@ const BoardDetailPage = () => {
       {/* Floating Bulk Actions Bar */}
       {selectedTaskIds.length > 0 && (
         <div
-          className="position-fixed bottom-4 start-50 translate-middle-x bg-dark text-white p-3 rounded-4 shadow-lg d-flex align-items-center gap-3"
-          style={{ zIndex: 1050, bottom: "24px" }}
+          className="position-fixed bottom-4 start-50 translate-middle-x text-white p-2.5 rounded-3 shadow-lg d-flex align-items-center gap-2 border border-slate-700 clickup-bulk-toolbar"
+          style={{ zIndex: 1050, bottom: "30px", backgroundColor: "#1e1e24" }}
         >
-          <div className="fw-semibold small">
-            {selectedTaskIds.length} task(s) selected
+          <div className="d-flex align-items-center border-end pe-3 border-slate-700">
+            <span className="badge bg-primary text-white fw-bold me-2 px-2 py-1" style={{ fontSize: "12px", backgroundColor: "#673de6" }}>
+              {selectedTaskIds.length}
+            </span>
+            <span className="small fw-semibold">task(s) selected</span>
+            <span className="cursor-pointer text-slate-400 hover:text-white ms-2 text-xs" onClick={() => setSelectedTaskIds([])} title="Clear selection">✕</span>
           </div>
-          
-          <Dropdown>
-            <Dropdown.Toggle variant="outline-light" size="sm">
-              Status
-            </Dropdown.Toggle>
-            <Dropdown.Menu>
-              {STATUS_OPTIONS.map((status) => (
-                <Dropdown.Item key={status} onClick={() => handleBulkStatusChange(status)}>
-                  {STATUS_META[status]?.label || status}
-                </Dropdown.Item>
-              ))}
-            </Dropdown.Menu>
-          </Dropdown>
 
-          <Dropdown>
-            <Dropdown.Toggle variant="outline-light" size="sm">
-              Priority
-            </Dropdown.Toggle>
-            <Dropdown.Menu>
-              {PRIORITY_OPTIONS.map((p) => (
-                <Dropdown.Item key={p} onClick={() => handleBulkPriorityChange(p)}>
-                  {p}
-                </Dropdown.Item>
-              ))}
-            </Dropdown.Menu>
-          </Dropdown>
+          <div className="d-flex align-items-center gap-2 ps-2">
+            {/* Status Dropdown */}
+            <Dropdown>
+              <Dropdown.Toggle variant="link" className="text-white text-decoration-none btn-sm d-flex align-items-center gap-1" style={{ fontSize: "12px" }}>
+                <Activity size={13} /> Status
+              </Dropdown.Toggle>
+              <Dropdown.Menu className="shadow border rounded-3 py-1" style={{ fontSize: "12px" }}>
+                {STATUS_OPTIONS.map((status) => (
+                  <Dropdown.Item key={status} onClick={() => handleBulkStatusChange(status)}>
+                    {STATUS_META[status]?.label || status}
+                  </Dropdown.Item>
+                ))}
+              </Dropdown.Menu>
+            </Dropdown>
 
-          <button 
-            className="btn btn-danger btn-sm d-flex align-items-center gap-1" 
-            onClick={handleBulkDelete}
-            disabled={saving}
-          >
-            {saving ? <Spinner size="sm" animation="border" /> : <><Trash size={14} /> Delete</>}
-          </button>
-          
-          <button className="btn btn-link btn-sm text-white text-decoration-none" onClick={() => setSelectedTaskIds([])}>
-            Cancel
-          </button>
+            {/* Assignees Dropdown */}
+            <Dropdown>
+              <Dropdown.Toggle variant="link" className="text-white text-decoration-none btn-sm d-flex align-items-center gap-1" style={{ fontSize: "12px" }}>
+                <User size={13} /> Assignees
+              </Dropdown.Toggle>
+              <Dropdown.Menu className="shadow border rounded-3 py-1" style={{ fontSize: "12px", maxHeight: "200px", overflowY: "auto" }}>
+                <Dropdown.Item onClick={() => handleBulkAssigneeChange(null)}>
+                  <span className="text-muted">Unassigned</span>
+                </Dropdown.Item>
+                <Dropdown.Divider />
+                {assignees.map((a) => (
+                  <Dropdown.Item key={`${a.role}_${a.id}`} onClick={() => handleBulkAssigneeChange(a)}>
+                    {a.name}
+                  </Dropdown.Item>
+                ))}
+              </Dropdown.Menu>
+            </Dropdown>
+
+            {/* Dates Button */}
+            <div className="position-relative d-inline-block">
+              <button 
+                type="button" 
+                className="btn btn-link btn-sm text-white text-decoration-none d-flex align-items-center gap-1" 
+                style={{ fontSize: "12px" }}
+                onClick={() => document.getElementById("bulk-date-picker-hidden")?.showPicker()}
+              >
+                <Calendar size={13} /> Dates
+              </button>
+              <input 
+                type="date" 
+                id="bulk-date-picker-hidden" 
+                className="position-absolute opacity-0 top-0 start-0 w-100 h-100" 
+                style={{ pointerEvents: "none" }}
+                onChange={(e) => handleBulkDateChange(e.target.value)}
+              />
+            </div>
+
+            {/* Custom Fields */}
+            <button 
+              type="button" 
+              className="btn btn-link btn-sm text-white text-decoration-none d-flex align-items-center gap-1" 
+              style={{ fontSize: "12px" }}
+              onClick={() => toast.info("Bulk Custom Fields edit is not configured for this space.")}
+            >
+              <Layers size={13} /> Custom Fields
+            </button>
+
+            {/* Tags */}
+            <button 
+              type="button" 
+              className="btn btn-link btn-sm text-white text-decoration-none d-flex align-items-center gap-1" 
+              style={{ fontSize: "12px" }}
+              onClick={() => toast.info("Bulk Tags edit is coming soon!")}
+            >
+              <Pin size={13} /> Tags
+            </button>
+
+            {/* Move/Add */}
+            <button 
+              type="button" 
+              className="btn btn-link btn-sm text-white text-decoration-none d-flex align-items-center gap-1" 
+              style={{ fontSize: "12px" }}
+              onClick={() => toast.info("Bulk Move/Add is not configured.")}
+            >
+              <ArrowRight size={13} /> Move/Add
+            </button>
+
+            {/* Copy */}
+            <button 
+              type="button" 
+              className="btn btn-link btn-sm text-white text-decoration-none d-flex align-items-center gap-1" 
+              style={{ fontSize: "12px" }}
+              onClick={() => {
+                const names = selectedTaskIds.map(id => {
+                  const task = allTasks.find(t => t.id === id);
+                  return task ? task.title : id;
+                }).join("\n");
+                navigator.clipboard.writeText(names);
+                toast.success("Copied selected task titles to clipboard!");
+              }}
+            >
+              <Copy size={13} /> Copy
+            </button>
+
+            {/* Delete button (trash can) */}
+            <button 
+              type="button" 
+              className="btn btn-link btn-sm text-danger text-decoration-none d-inline-flex align-items-center p-1 ms-2"
+              onClick={handleBulkDelete}
+              disabled={saving}
+              title="Delete selected tasks"
+            >
+              <Trash2 size={15} />
+            </button>
+
+            {/* More options dropdown */}
+            <Dropdown className="d-inline-block">
+              <Dropdown.Toggle variant="link" className="text-white text-decoration-none btn-sm p-1 text-slate-400" style={{ fontSize: "12px" }}>
+                <MoreHorizontal size={14} />
+              </Dropdown.Toggle>
+              <Dropdown.Menu className="shadow border rounded-3 py-1" style={{ fontSize: "12px" }}>
+                <div className="dropdown-header text-uppercase fw-bold text-slate-400 pb-1" style={{ fontSize: "10px" }}>Change Priority</div>
+                {PRIORITY_OPTIONS.map((p) => (
+                  <Dropdown.Item key={p} onClick={() => handleBulkPriorityChange(p)}>
+                    {p}
+                  </Dropdown.Item>
+                ))}
+              </Dropdown.Menu>
+            </Dropdown>
+          </div>
         </div>
       )}
+
+      {/* Render custom statuses edit modal */}
+      {renderEditStatusesModal()}
 
       {activeTaskId && activeTask && (
         <UpdatesDrawer
