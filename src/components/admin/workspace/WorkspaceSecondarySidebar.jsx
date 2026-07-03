@@ -680,6 +680,10 @@ const WorkspaceSecondarySidebar = ({
                 fontSize: "11px",
                 color: isSelected ? "#673de6" : "#4b5563",
                 fontWeight: isSelected ? "700" : "500",
+                minWidth: 0,
+                flexGrow: 1,
+                flexShrink: 1,
+                display: "block"
               }}
             >
               {list.name}
@@ -759,7 +763,14 @@ const WorkspaceSecondarySidebar = ({
             </span>
             <span
               className="fw-semibold truncate-text"
-              style={{ fontSize: "11.5px", color: "#4b5563" }}
+              style={{ 
+                fontSize: "11.5px", 
+                color: "#4b5563",
+                minWidth: 0,
+                flexGrow: 1,
+                flexShrink: 1,
+                display: "block"
+              }}
             >
               {folder.name}
             </span>
@@ -828,7 +839,14 @@ const WorkspaceSecondarySidebar = ({
             <Link
               to={`/admin/boards/${space.id}`}
               className="text-decoration-none text-slate-800 fw-bold truncate-text"
-              style={{ fontSize: "12px", color: isSelected ? "#673de6" : "#374151" }}
+              style={{ 
+                fontSize: "12px", 
+                color: isSelected ? "#673de6" : "#374151",
+                minWidth: 0,
+                flexGrow: 1,
+                flexShrink: 1,
+                display: "block"
+              }}
               onClick={(e) => {
                 e.stopPropagation();
               }}
