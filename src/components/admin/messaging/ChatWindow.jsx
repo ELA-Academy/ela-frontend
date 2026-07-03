@@ -40,6 +40,28 @@ import { toast } from "react-toastify";
 // A global, persistent in-memory cache to store conversation histories
 const globalMessageCache = {};
 
+const renderMessageText = (text) => {
+  if (!text) return "";
+  const parts = text.split(/(https?:\/\/[^\s]+)/g);
+  return parts.map((part, index) => {
+    if (part.match(/https?:\/\/[^\s]+/)) {
+      return (
+        <a 
+          key={index} 
+          href={part} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-purple-600 hover:text-purple-800 text-decoration-underline"
+          style={{ wordBreak: "break-all" }}
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+};
+
 const ChatWindow = ({ conversationId, conversation }) => {
   const { user } = useAuth();
   
@@ -914,7 +936,7 @@ const ChatWindow = ({ conversationId, conversation }) => {
                                   wordBreak: "break-word",
                                 }}
                               >
-                                {msg.content}
+                                {renderMessageText(msg.content)}
                               </p>
                             )}
 
