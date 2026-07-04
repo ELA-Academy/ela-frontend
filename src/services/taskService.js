@@ -51,3 +51,11 @@ export const updateTask = async (taskId, taskData) => {
     throw error;
   }
 };
+
+export const getPersonalBoard = () => api.get('/tasks/personal-board').then(r => r.data);
+export const createPersonalList = (data) => api.post('/tasks/personal-lists', data).then(r => r.data);
+export const createPersonalTask = (data) => api.post('/tasks/personal-tasks', data).then(r => r.data);
+export const updatePersonalList = (listId, data) => api.put(`/tasks/personal-lists/${listId}`, data).then(r => r.data);
+export const deletePersonalList = (listId) => api.delete(`/tasks/personal-lists/${listId}`).then(r => r.data);
+export const updatePersonalTask = (taskId, data) => api.put(`/tasks/personal-tasks/${taskId}`, data).then(r => r.data);
+export const deletePersonalTask = (taskId) => api.delete(`/tasks/personal-tasks/${taskId}`).then(r => r.data);

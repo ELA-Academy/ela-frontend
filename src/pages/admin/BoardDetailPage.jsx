@@ -15,6 +15,7 @@ import { toast } from "react-toastify";
 import { format, parseISO } from "date-fns";
 
 import UpdatesDrawer from "../../components/admin/UpdatesDrawer";
+import InlineCommentPanel from "../../components/admin/workspace/InlineCommentPanel";
 import SleekAssigneeSelector from "../../components/admin/SleekAssigneeSelector";
 import SleekStatusSelector from "../../components/admin/SleekStatusSelector";
 import DeleteConfirmModal from "../../components/admin/DeleteConfirmModal";
@@ -191,6 +192,7 @@ const BoardDetailPage = () => {
   const [collapsedStatuses, setCollapsedStatuses] = useState({});
   const [activeTaskId, setActiveTaskId] = useState(null);
   const [activeCommentTaskId, setActiveCommentTaskId] = useState(null);
+
   const [newTaskTitles, setNewTaskTitles] = useState({});
   const [addingTask, setAddingTask] = useState({});
   const [inlineTaskBuilders, setInlineTaskBuilders] = useState({});
@@ -625,6 +627,10 @@ const BoardDetailPage = () => {
     }
     return null;
   }, [activeTaskId, board]);
+
+  const activeCommentTask = useMemo(() => {
+    return allTasks.find(t => t.id === activeCommentTaskId) || null;
+  }, [allTasks, activeCommentTaskId]);
 
   // Load templates and saved views
   const fetchTemplates = useCallback(async () => {
@@ -3061,19 +3067,19 @@ const BoardDetailPage = () => {
                               <td>{renderPriorityDropdown(task)}</td>
                               <td>{renderStatusDropdown(task)}</td>
                               <td className="text-center position-relative">
-                                <Dropdown show={activeCommentTaskId === task.id} onToggle={(isOpen) => setActiveCommentTaskId(isOpen ? task.id : null)}>
-                                  <Dropdown.Toggle as="div" className="chat-bubble-btn position-relative d-inline-flex align-items-center justify-content-center cursor-pointer" style={{ width: "24px", height: "24px" }}>
-                                    <MessageSquare size={13} className={task.updates_count > 0 ? "text-primary" : "text-slate-300"} />
-                                    {task.updates_count > 0 && (
-                                      <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: "9px", padding: "1px 3px" }}>
-                                        {task.updates_count}
-                                      </span>
-                                    )}
-                                  </Dropdown.Toggle>
-                                  <Dropdown.Menu className="p-3 shadow-lg border rounded-3 dropdown-menu-end" style={{ width: "380px", zIndex: 1050 }}>
-                                    <InlineTaskComments task={task} assignees={assignees} onCommentAdded={() => { fetchWorkspace(false); }} />
-                                  </Dropdown.Menu>
-                                </Dropdown>
+                                <button
+                                  type="button"
+                                  className="chat-bubble-btn position-relative d-inline-flex align-items-center justify-content-center cursor-pointer border-0 bg-transparent"
+                                  style={{ width: "24px", height: "24px" }}
+                                  onClick={() => setActiveCommentTaskId(activeCommentTaskId === task.id ? null : task.id)}
+                                >
+                                  <MessageSquare size={13} className={task.updates_count > 0 ? "text-primary" : "text-slate-300"} />
+                                  {task.updates_count > 0 && (
+                                    <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: "9px", padding: "1px 3px" }}>
+                                      {task.updates_count}
+                                    </span>
+                                  )}
+                                </button>
                               </td>
                               <td>
                                 <Dropdown align="end">
@@ -3177,19 +3183,19 @@ const BoardDetailPage = () => {
                                   <td>{renderPriorityDropdown(subtaskFull)}</td>
                                   <td>{renderStatusDropdown(subtaskFull)}</td>
                                   <td className="text-center position-relative">
-                                    <Dropdown show={activeCommentTaskId === subtask.id} onToggle={(isOpen) => setActiveCommentTaskId(isOpen ? subtask.id : null)}>
-                                      <Dropdown.Toggle as="div" className="chat-bubble-btn position-relative d-inline-flex align-items-center justify-content-center cursor-pointer" style={{ width: "24px", height: "24px" }}>
-                                        <MessageSquare size={13} className={subtask.updates_count > 0 ? "text-primary" : "text-slate-300"} />
-                                        {subtask.updates_count > 0 && (
-                                          <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: "9px", padding: "1px 3px" }}>
-                                            {subtask.updates_count}
-                                          </span>
-                                        )}
-                                      </Dropdown.Toggle>
-                                      <Dropdown.Menu className="p-3 shadow-lg border rounded-3 dropdown-menu-end" style={{ width: "380px", zIndex: 1050 }}>
-                                        <InlineTaskComments task={subtaskFull} assignees={assignees} onCommentAdded={() => { fetchWorkspace(false); }} />
-                                      </Dropdown.Menu>
-                                    </Dropdown>
+                                    <button
+                                      type="button"
+                                      className="chat-bubble-btn position-relative d-inline-flex align-items-center justify-content-center cursor-pointer border-0 bg-transparent"
+                                      style={{ width: "24px", height: "24px" }}
+                                      onClick={() => setActiveCommentTaskId(activeCommentTaskId === subtask.id ? null : subtask.id)}
+                                    >
+                                      <MessageSquare size={13} className={subtask.updates_count > 0 ? "text-primary" : "text-slate-300"} />
+                                      {subtask.updates_count > 0 && (
+                                        <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: "9px", padding: "1px 3px" }}>
+                                          {subtask.updates_count}
+                                        </span>
+                                      )}
+                                    </button>
                                   </td>
                                   <td>
                                     <Dropdown align="end">
@@ -4746,11 +4752,15 @@ const BoardDetailPage = () => {
 
             <button 
               type="button" 
-              onClick={() => refreshWorkspace()} 
+              onClick={() => {
+                refreshWorkspace();
+                fetchWorkspace(true);
+              }} 
               className="workspace-inline-tool-btn" 
               title="Refresh Feed"
+              disabled={loading}
             >
-              <RefreshCw size={12} />
+              <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
             </button>
 
             <button 
@@ -4970,65 +4980,83 @@ const BoardDetailPage = () => {
         </div>
       )}
 
-      {currentViewType === "overview" && renderOverviewView()}
-      {currentViewType === "list" && renderListView()}
-      {currentViewType === "board" && renderBoardView()}
-      {currentViewType === "table" && renderTableView()}
-      {currentViewType === "calendar" && (
-        <CalendarView
-          boardId={Number(boardId)}
-          onTaskClick={handleTaskClickFromView}
-          assignees={assignees}
-          refreshWorkspace={refreshWorkspace}
-        />
-      )}
-      {currentViewType === "gantt" && (
-        <GanttView
-          board={board}
-          onTaskClick={handleTaskClickFromView}
-        />
-      )}
-      {currentViewType === "docs" && (
-        <DocsView
-          boardId={Number(boardId)}
-          assignees={assignees}
-          departments={departments}
-        />
-      )}
-      {currentViewType === "custom_fields" && (
-        <CustomFieldsView
-          boardId={Number(boardId)}
-        />
-      )}
-      {currentViewType === "milestones" && (
-        <MilestonesView
-          boardId={Number(boardId)}
-        />
-      )}
-      {currentViewType === "files" && (
-        <FilesView
-          boardId={Number(boardId)}
-        />
-      )}
-      {currentViewType === "form" && (
-        <FormView
-          boardId={Number(boardId)}
-        />
-      )}
-      {currentViewType === "timesheets" && (
-        <TimesheetsView
-          boardId={Number(boardId)}
-          groups={board?.groups}
-        />
-      )}
-      {/* Dynamic Extra Views */}
-      {currentViewType === "timeline" && renderTimelineView()}
-      {currentViewType === "dashboard" && renderDashboardReportView()}
-      {currentViewType === "whiteboard" && renderWhiteboardView()}
-      {currentViewType === "activity" && renderActivityView()}
-      {currentViewType === "mind_map" && renderMindMapView()}
-      {currentViewType === "team" && renderTeamView()}
-      {currentViewType === "map" && renderMapView()}
+            <div 
+        className="board-views-wrapper"
+        style={{ 
+          paddingRight: activeCommentTaskId ? "420px" : "0",
+          transition: "padding-right 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
+        }}
+      >
+        {currentViewType === "overview" && renderOverviewView()}
+        {currentViewType === "list" && renderListView()}
+        {currentViewType === "board" && renderBoardView()}
+        {currentViewType === "table" && renderTableView()}
+        {currentViewType === "calendar" && (
+          <CalendarView
+            boardId={Number(boardId)}
+            onTaskClick={handleTaskClickFromView}
+            assignees={assignees}
+            refreshWorkspace={refreshWorkspace}
+          />
+        )}
+        {currentViewType === "gantt" && (
+          <GanttView
+            board={board}
+            onTaskClick={handleTaskClickFromView}
+          />
+        )}
+        {currentViewType === "docs" && (
+          <DocsView
+            boardId={Number(boardId)}
+            assignees={assignees}
+            departments={departments}
+          />
+        )}
+        {currentViewType === "custom_fields" && (
+          <CustomFieldsView
+            boardId={Number(boardId)}
+          />
+        )}
+        {currentViewType === "milestones" && (
+          <MilestonesView
+            boardId={Number(boardId)}
+          />
+        )}
+        {currentViewType === "files" && (
+          <FilesView
+            boardId={Number(boardId)}
+          />
+        )}
+        {currentViewType === "form" && (
+          <FormView
+            boardId={Number(boardId)}
+          />
+        )}
+        {currentViewType === "timesheets" && (
+          <TimesheetsView
+            boardId={Number(boardId)}
+            groups={board?.groups}
+          />
+        )}
+        {currentViewType === "timeline" && renderTimelineView()}
+        {currentViewType === "dashboard" && renderDashboardReportView()}
+        {currentViewType === "whiteboard" && renderWhiteboardView()}
+        {currentViewType === "activity" && renderActivityView()}
+        {currentViewType === "mind_map" && renderMindMapView()}
+        {currentViewType === "team" && renderTeamView()}
+        {currentViewType === "map" && renderMapView()}
+      </div>
+
+      <InlineCommentPanel
+        task={activeCommentTask}
+        isOpen={!!activeCommentTaskId}
+        onClose={() => setActiveCommentTaskId(null)}
+        assignees={assignees}
+        onCommentAdded={() => {
+          fetchWorkspace(false);
+        }}
+      />
+
 
       {/* Floating Bulk Actions Bar */}
       {selectedTaskIds.length > 0 && (
@@ -5346,310 +5374,5 @@ const BoardDetailPage = () => {
   );
 };
 
-const InlineTaskComments = ({ task, assignees = [], onCommentAdded }) => {
-  const [comments, setComments] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [newComment, setNewComment] = useState("");
-  const [posting, setPosting] = useState(false);
-  const [showMentions, setShowMentions] = useState(false);
-  const [mentionQuery, setMentionQuery] = useState("");
-  const [mentionCursorPos, setMentionCursorPos] = useState(0);
-  const [attachedFiles, setAttachedFiles] = useState([]);
-  const [uploading, setUploading] = useState(false);
-  const textareaRef = useRef(null);
-  const fileInputRef = useRef(null);
-
-  const fetchComments = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get(`/boards/tasks/${task.id}/updates`);
-      setComments(res.data || []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchComments();
-  }, [task.id]);
-
-  // Filter assignees for mention dropdown
-  const filteredMentions = useMemo(() => {
-    if (!mentionQuery) return assignees.slice(0, 8);
-    const q = mentionQuery.toLowerCase();
-    return assignees.filter(a => a.name?.toLowerCase().includes(q)).slice(0, 8);
-  }, [assignees, mentionQuery]);
-
-  const handleTextChange = (e) => {
-    const value = e.target.value;
-    const cursorPos = e.target.selectionStart;
-    setNewComment(value);
-
-    // Check if user just typed @ or is in a mention context
-    const textBeforeCursor = value.substring(0, cursorPos);
-    const atIndex = textBeforeCursor.lastIndexOf("@");
-    if (atIndex !== -1) {
-      const afterAt = textBeforeCursor.substring(atIndex + 1);
-      // Only show mentions if @ is at start or preceded by space/newline, and no space in query
-      if ((atIndex === 0 || /[\s\n]/.test(textBeforeCursor[atIndex - 1])) && !/\s/.test(afterAt)) {
-        setShowMentions(true);
-        setMentionQuery(afterAt);
-        setMentionCursorPos(cursorPos);
-        return;
-      }
-    }
-    setShowMentions(false);
-    setMentionQuery("");
-  };
-
-  const insertMention = (member) => {
-    const textBeforeCursor = newComment.substring(0, mentionCursorPos);
-    const atIndex = textBeforeCursor.lastIndexOf("@");
-    const before = newComment.substring(0, atIndex);
-    const after = newComment.substring(mentionCursorPos);
-    const mention = `@${member.name} `;
-    setNewComment(before + mention + after);
-    setShowMentions(false);
-    setMentionQuery("");
-    // Refocus textarea
-    setTimeout(() => {
-      if (textareaRef.current) {
-        const pos = (before + mention).length;
-        textareaRef.current.focus();
-        textareaRef.current.setSelectionRange(pos, pos);
-      }
-    }, 0);
-  };
-
-  const handleFileSelect = async (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-    setUploading(true);
-    try {
-      for (const file of files) {
-        const result = await uploadTaskAttachment(task.id, file);
-        setAttachedFiles(prev => [...prev, { name: file.name, id: result?.id, url: result?.url }]);
-      }
-    } catch (err) {
-      console.error("Upload failed:", err);
-      toast.error("Failed to upload file");
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
-
-  const removeAttachedFile = (index) => {
-    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!newComment.trim() && attachedFiles.length === 0) return;
-    setPosting(true);
-    try {
-      let htmlContent = newComment.replace(/\n/g, "<br/>");
-      // Wrap @mentions in bold
-      htmlContent = htmlContent.replace(/@(\S+(?:\s\S+)?)/g, '<strong style="color:#6366f1">@$1</strong>');
-      // Add file links if attached
-      if (attachedFiles.length > 0) {
-        const fileLinks = attachedFiles.map(f =>
-          f.url ? `<a href="${f.url}" target="_blank" style="color:#6366f1">${f.name}</a>` : `📎 ${f.name}`
-        ).join(", ");
-        htmlContent += `<br/><small style="color:#6b7280">Attached: ${fileLinks}</small>`;
-      }
-      await api.post(`/boards/tasks/${task.id}/updates`, {
-        body_html: `<p>${htmlContent}</p>`
-      });
-      setNewComment("");
-      setAttachedFiles([]);
-      fetchComments();
-      if (onCommentAdded) onCommentAdded();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setPosting(false);
-    }
-  };
-
-  return (
-    <div onClick={(e) => e.stopPropagation()} style={{ minWidth: "340px" }}>
-      {/* Hidden file input */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        style={{ display: "none" }}
-        multiple
-        onChange={handleFileSelect}
-      />
-
-      {/* Comments list */}
-      {loading ? (
-        <div className="text-center py-4"><Spinner size="sm" animation="border" variant="secondary" /></div>
-      ) : comments.length === 0 ? (
-        <div className="text-center py-4" style={{ color: "#9ca3af", fontSize: "13px" }}>No comments yet</div>
-      ) : (
-        <div className="mb-2">
-          {comments.map(c => (
-            <div key={c.id} className="d-flex gap-2 py-3" style={{ borderBottom: "1px solid #f3f4f6" }}>
-              {/* Avatar */}
-              <div className="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle text-white fw-bold" style={{
-                width: "30px", height: "30px", fontSize: "11px",
-                background: `hsl(${((c.author_name || "U").charCodeAt(0) * 47) % 360}, 50%, 55%)`
-              }}>
-                {(c.author_name || "U").substring(0, 2).toUpperCase()}
-              </div>
-              {/* Content */}
-              <div className="flex-grow-1" style={{ minWidth: 0 }}>
-                <div className="d-flex align-items-center gap-2 mb-1">
-                  <strong style={{ fontSize: "13px", color: "#1f2937" }}>{c.author_name}</strong>
-                  <span style={{ fontSize: "11px", color: "#9ca3af" }}>
-                    {format(parseISO(c.created_at), "MMM d 'at' h:mm a")}
-                  </span>
-                </div>
-                <div style={{ fontSize: "13px", color: "#374151", lineHeight: "1.5" }} dangerouslySetInnerHTML={{ __html: c.body_html }} />
-                {/* Reactions row */}
-                <div className="d-flex align-items-center justify-content-between mt-2" style={{ fontSize: "12px", color: "#9ca3af" }}>
-                  <div className="d-flex align-items-center gap-2">
-                    <span className="cursor-pointer" style={{ fontSize: "14px" }} title="Like">👍</span>
-                    <span className="cursor-pointer" style={{ fontSize: "14px" }} title="React">😊</span>
-                  </div>
-                  {(c.replies_count || 0) > 0 && (
-                    <div className="d-flex align-items-center gap-1">
-                      <span style={{ color: "#6366f1", fontWeight: 600, fontSize: "12px" }}>
-                        {c.replies_count} {c.replies_count === 1 ? "reply" : "replies"}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Input area */}
-      <Form onSubmit={handleSubmit}>
-        <div style={{ border: "1px solid #e5e7eb", borderRadius: "8px", padding: "10px 12px", marginTop: "4px", position: "relative" }}>
-          <Form.Control
-            ref={textareaRef}
-            as="textarea"
-            rows={1}
-            placeholder="Write a comment..."
-            value={newComment}
-            onChange={handleTextChange}
-            style={{
-              border: "none", background: "transparent", fontSize: "13px",
-              resize: "none", padding: "0", outline: "none", boxShadow: "none",
-              color: "#374151"
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey && !showMentions) { e.preventDefault(); handleSubmit(e); }
-              if (e.key === "Escape") setShowMentions(false);
-            }}
-          />
-
-          {/* @ Mention dropdown */}
-          {showMentions && filteredMentions.length > 0 && (
-            <div style={{
-              position: "absolute", bottom: "100%", left: 0, right: 0,
-              background: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.1)", zIndex: 1060,
-              maxHeight: "180px", overflowY: "auto", marginBottom: "4px"
-            }}>
-              {filteredMentions.map((member, idx) => (
-                <div
-                  key={`${member.role}_${member.id}_${idx}`}
-                  className="d-flex align-items-center gap-2 px-3 py-2 cursor-pointer"
-                  style={{ fontSize: "13px", transition: "background 0.1s" }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = "#f3f4f6"}
-                  onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-                  onClick={() => insertMention(member)}
-                >
-                  <div className="d-flex align-items-center justify-content-center rounded-circle text-white fw-bold" style={{
-                    width: "24px", height: "24px", fontSize: "9px", flexShrink: 0,
-                    background: `hsl(${((member.name || "U").charCodeAt(0) * 47) % 360}, 50%, 55%)`
-                  }}>
-                    {(member.name || "U").substring(0, 2).toUpperCase()}
-                  </div>
-                  <span style={{ color: "#1f2937", fontWeight: 500 }}>{member.name}</span>
-                  {member.role && (
-                    <span style={{ color: "#9ca3af", fontSize: "11px", marginLeft: "auto" }}>{member.role}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Attached files preview */}
-        {attachedFiles.length > 0 && (
-          <div className="d-flex flex-wrap gap-1 mt-2 px-1">
-            {attachedFiles.map((file, i) => (
-              <span key={i} className="d-inline-flex align-items-center gap-1 px-2 py-1 rounded-pill" style={{
-                background: "#f3f4f6", fontSize: "11px", color: "#374151"
-              }}>
-                <Paperclip size={10} />
-                {file.name}
-                <span className="cursor-pointer" style={{ color: "#ef4444", fontWeight: 700, marginLeft: "2px" }} onClick={() => removeAttachedFile(i)}>&times;</span>
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Bottom toolbar */}
-        <div className="d-flex align-items-center justify-content-between mt-2 px-1">
-          <div className="d-flex align-items-center gap-2" style={{ color: "#9ca3af" }}>
-            <Paperclip
-              size={15}
-              className="cursor-pointer"
-              style={{ strokeWidth: 1.5 }}
-              title="Attach file"
-              onClick={() => fileInputRef.current?.click()}
-            />
-            {uploading && <Spinner size="sm" animation="border" style={{ width: "14px", height: "14px", color: "#9ca3af" }} />}
-            <span
-              className="fw-bold cursor-pointer"
-              style={{ fontSize: "15px", lineHeight: 1 }}
-              title="Mention someone"
-              onClick={() => {
-                const pos = textareaRef.current?.selectionStart || newComment.length;
-                const before = newComment.substring(0, pos);
-                const after = newComment.substring(pos);
-                setNewComment(before + "@" + after);
-                setShowMentions(true);
-                setMentionQuery("");
-                setMentionCursorPos(pos + 1);
-                setTimeout(() => {
-                  if (textareaRef.current) {
-                    textareaRef.current.focus();
-                    textareaRef.current.setSelectionRange(pos + 1, pos + 1);
-                  }
-                }, 0);
-              }}
-            >@</span>
-          </div>
-          <button
-            type="submit"
-            disabled={posting || (!newComment.trim() && attachedFiles.length === 0)}
-            className="d-flex align-items-center justify-content-center border-0 rounded-circle"
-            style={{
-              width: "30px", height: "30px",
-              background: (newComment.trim() || attachedFiles.length > 0) ? "#6366f1" : "#e5e7eb",
-              color: (newComment.trim() || attachedFiles.length > 0) ? "#fff" : "#9ca3af",
-              cursor: (newComment.trim() || attachedFiles.length > 0) ? "pointer" : "not-allowed",
-              transition: "all 0.2s ease"
-            }}
-            title="Send"
-          >
-            {posting ? <Spinner size="sm" animation="border" style={{ width: "14px", height: "14px" }} /> : <Send size={14} />}
-          </button>
-        </div>
-      </Form>
-    </div>
-  );
-};
 
 export default BoardDetailPage;

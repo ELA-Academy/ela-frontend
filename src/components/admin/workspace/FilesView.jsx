@@ -296,21 +296,21 @@ const FilesView = ({ boardId }) => {
                 <div className="preview-container border rounded bg-light d-flex align-items-center justify-content-center p-3 mb-3" style={{ minHeight: "280px" }}>
                   {activeFile.file_type === "image" ? (
                     <img
-                      src={`${api.defaults.baseURL.replace("/api", "")}${activeFile.file_path}`}
+                      src={`${api.defaults.baseURL}${activeFile.file_path}`}
                       alt={activeFile.filename}
                       className="img-fluid rounded"
                       style={{ maxHeight: "260px" }}
                     />
                   ) : activeFile.file_type === "video" ? (
                     <video
-                      src={`${api.defaults.baseURL.replace("/api", "")}${activeFile.file_path}`}
+                      src={`${api.defaults.baseURL}${activeFile.file_path}`}
                       controls
                       className="w-100 rounded"
                       style={{ maxHeight: "260px" }}
                     />
                   ) : activeFile.file_type === "pdf" ? (
                     <iframe
-                      src={`${api.defaults.baseURL.replace("/api", "")}${activeFile.file_path}`}
+                      src={`${api.defaults.baseURL}${activeFile.file_path}`}
                       width="100%"
                       height="260px"
                       title={activeFile.filename}
@@ -383,7 +383,7 @@ const FilesView = ({ boardId }) => {
                   {activeFile.is_shared && (
                     <div className="p-2 border bg-light rounded text-break small">
                       <strong>Link:</strong> <br />
-                      <a href={`${api.defaults.baseURL.replace("/api", "")}${activeFile.file_path}`} target="_blank" rel="noopener noreferrer">
+                      <a href={`${api.defaults.baseURL}${activeFile.file_path}`} target="_blank" rel="noopener noreferrer">
                         Open Shared Link
                       </a>
                     </div>

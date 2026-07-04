@@ -945,14 +945,14 @@ const ChatWindow = ({ conversationId, conversation }) => {
                               <div className="mt-2">
                                 {msg.file_path.match(/\.(jpeg|jpg|gif|png)$/i) ? (
                                   <img 
-                                    src={`${api.defaults.baseURL.replace("/api", "")}${msg.file_path}`} 
+                                    src={`${api.defaults.baseURL}${msg.file_path}`} 
                                     alt={msg.filename} 
                                     className="max-width-[240px] rounded-lg border border-slate-100 shadow-sm"
                                     style={{ maxWidth: "260px" }}
                                   />
                                 ) : (
                                   <a 
-                                    href={`${api.defaults.baseURL.replace("/api", "")}${msg.file_path}`} 
+                                    href={`${api.defaults.baseURL}${msg.file_path}`} 
                                     target="_blank" 
                                     rel="noopener noreferrer" 
                                     className="d-inline-flex align-items-center gap-2 bg-slate-50 border rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 text-decoration-none"
