@@ -1,9 +1,24 @@
 .workspace-shell {
   display: grid;
-  grid-template-columns: 255px minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-width, 255px) 4px minmax(0, 1fr);
   min-height: calc(100vh - 80px);
   align-items: stretch;
   background: var(--content-bg);
+}
+
+.sidebar-resizer {
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.2s;
+  position: relative;
+  z-index: 10;
+  align-self: stretch;
+}
+
+.sidebar-resizer:hover,
+.sidebar-resizer.resizing {
+  background: var(--primary-color, #673de6);
 }
 
 .workspace-secondary-sidebar {
@@ -437,7 +452,7 @@
 
 @media (max-width: 1260px) {
   .workspace-shell {
-    grid-template-columns: 235px minmax(0, 1fr);
+    grid-template-columns: var(--sidebar-width, 235px) 4px minmax(0, 1fr);
   }
 
   .workspace-overview-layout {
@@ -448,6 +463,10 @@
 @media (max-width: 980px) {
   .workspace-shell {
     grid-template-columns: 1fr;
+  }
+
+  .sidebar-resizer {
+    display: none;
   }
 
   .workspace-secondary-sidebar {

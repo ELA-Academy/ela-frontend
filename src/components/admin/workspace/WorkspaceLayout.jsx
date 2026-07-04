@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { getBoards } from "../../../services/boardService";
@@ -32,6 +32,40 @@ const WorkspaceLayout = () => {
   const [departments, setDepartments] = useState([]);
   const [assignees, setAssignees] = useState([]);
   const [workspaceLoading, setWorkspaceLoading] = useState(true);
+
+  // Secondary sidebar resizer states & logic
+  const shellRef = useRef(null);
+  const [sidebarWidth, setSidebarWidth] = useState(255);
+  const [isResizing, setIsResizing] = useState(false);
+
+  const startResizing = useCallback((e) => {
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e) => {
+      if (!shellRef.current) return;
+      const shellRect = shellRef.current.getBoundingClientRect();
+      const newWidth = e.clientX - shellRect.left;
+      if (newWidth >= 180 && newWidth <= 600) {
+        setSidebarWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing]);
 
   // Settings & Creation Modals
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -391,7 +425,11 @@ const WorkspaceLayout = () => {
 
   return (
     <>
-      <div className="workspace-shell">
+      <div 
+        ref={shellRef}
+        className="workspace-shell"
+        style={{ "--sidebar-width": `${sidebarWidth}px` }}
+      >
         <WorkspaceSecondarySidebar
           conversations={conversations}
           auditConversations={auditConversations}
@@ -410,6 +448,11 @@ const WorkspaceLayout = () => {
           onGlobalCreateTask={() => setShowCreateTaskModal(true)}
           onRefreshWorkspace={() => fetchWorkspaceData(false)}
           loading={workspaceLoading}
+        />
+
+        <div 
+          className={`sidebar-resizer ${isResizing ? "resizing" : ""}`}
+          onMouseDown={startResizing}
         />
 
         <div className="workspace-content-pane">

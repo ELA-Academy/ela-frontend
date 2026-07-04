@@ -1861,7 +1861,7 @@ const UpdatesDrawer = ({
                       <div key={att.id} className="cu-attachment-row">
                         <Paperclip className="text-muted" size={12} />
                         <div className="flex-grow-1">
-                          <a href={`${api.defaults.baseURL.replace("/api", "")}${att.file_path}`} target="_blank" rel="noopener noreferrer" className="cu-attachment-name">
+                          <a href={`${api.defaults.baseURL}${att.file_path}`} target="_blank" rel="noopener noreferrer" className="cu-attachment-name">
                             {att.filename}
                           </a>
                           <div className="cu-attachment-meta">By {att.uploaded_by_name}</div>

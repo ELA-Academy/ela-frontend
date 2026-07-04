@@ -754,11 +754,11 @@ const WorkspaceSecondarySidebar = ({
           }`}
           style={{ cursor: "pointer", transition: "background 0.1s" }}
         >
-          <div className="d-flex align-items-center gap-2 min-width-0 flex-grow-1" onClick={(e) => toggleFolder(folder.id, e)}>
-            <span className="text-slate-400 d-flex align-items-center justify-content-center" style={{ width: "14px", height: "14px" }}>
+          <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ minWidth: 0, overflow: "hidden" }} onClick={(e) => toggleFolder(folder.id, e)}>
+            <span className="text-slate-400 d-flex align-items-center justify-content-center" style={{ width: "14px", height: "14px", flexShrink: 0 }}>
               {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
             </span>
-            <span className="text-amber-500">
+            <span className="text-amber-500" style={{ flexShrink: 0 }}>
               {folder.is_private ? <Lock size={13} className="text-rose-500" /> : <Folder size={13} fill="#f59e0b" className="text-amber-500" />}
             </span>
             <span
@@ -776,7 +776,7 @@ const WorkspaceSecondarySidebar = ({
             </span>
           </div>
 
-          <div className="workspace-tree-actions d-flex align-items-center gap-1">
+          <div className="workspace-tree-actions d-flex align-items-center gap-1" style={{ flexShrink: 0 }}>
             <button
               className="workspace-tree-action-btn"
               onClick={(e) => {
@@ -829,11 +829,11 @@ const WorkspaceSecondarySidebar = ({
           }`}
           style={{ cursor: "pointer", transition: "background 0.1s" }}
         >
-          <div className="d-flex align-items-center gap-2 min-width-0 flex-grow-1" onClick={(e) => toggleSpace(space.id, e)}>
-            <span className="text-slate-400 d-flex align-items-center justify-content-center" style={{ width: "16px", height: "16px" }}>
+          <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ minWidth: 0, overflow: "hidden" }} onClick={(e) => toggleSpace(space.id, e)}>
+            <span className="text-slate-400 d-flex align-items-center justify-content-center" style={{ width: "16px", height: "16px", flexShrink: 0 }}>
               {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             </span>
-            <span className="text-slate-500" style={{ fontSize: "14px" }}>
+            <span className="text-slate-500" style={{ fontSize: "14px", flexShrink: 0 }}>
               {space.icon || (space.is_private ? "🔒" : "📋")}
             </span>
             <Link
@@ -855,7 +855,7 @@ const WorkspaceSecondarySidebar = ({
             </Link>
           </div>
 
-          <div className="workspace-tree-actions d-flex align-items-center gap-1">
+          <div className="workspace-tree-actions d-flex align-items-center gap-1" style={{ flexShrink: 0 }}>
             <button
               className="workspace-tree-action-btn"
               onClick={(e) => {
