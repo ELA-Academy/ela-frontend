@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { unfollowChannel, markConversationUnread, toggleFavoriteConversation } from "../../../services/messagingService";
 import { Dropdown, Overlay } from "react-bootstrap";
 import { saveBoardAsTemplate, archiveBoard, unarchiveBoard } from "../../../services/boardService";
+import { getPersonalBoard } from "../../../services/taskService";
 import {
   ChevronRight,
   ChevronDown,
@@ -128,6 +129,32 @@ const WorkspaceSecondarySidebar = ({
   const [favoriteConvoIds, setFavoriteConvoIds] = useState([]);
   const [menuConfig, setMenuConfig] = useState(null);
   const navigate = useNavigate();
+
+  const [personalTasksCount, setPersonalTasksCount] = useState(0);
+  const [personalBoardId, setPersonalBoardId] = useState(null);
+
+  React.useEffect(() => {
+    const fetchCount = async () => {
+      try {
+        const board = await getPersonalBoard();
+        if (board) {
+          setPersonalBoardId(board.id);
+          let count = 0;
+          if (board.groups) {
+            board.groups.forEach(g => {
+              if (g.tasks) {
+                count += g.tasks.filter(t => t.status !== "Done").length;
+              }
+            });
+          }
+          setPersonalTasksCount(count);
+        }
+      } catch (err) {
+        console.error("Failed to fetch personal tasks count", err);
+      }
+    };
+    fetchCount();
+  }, [location.pathname, location.search]);
 
   const menuRef = useRef(null);
 
@@ -652,7 +679,7 @@ const WorkspaceSecondarySidebar = ({
     });
   };
 
-  const spaceTree = buildSpaceTree(boards);
+  const spaceTree = buildSpaceTree(boards.filter((b) => !b.is_personal));
 
   const renderListNode = (list) => {
     const isSelected = selectedBoardId === list.id;
@@ -1046,12 +1073,26 @@ const WorkspaceSecondarySidebar = ({
                 className={`workspace-secondary-link ${isInboxRoute && currentTab === "home" ? "active" : ""}`}
                 style={{ cursor: "pointer", padding: "4px 8px" }}
                 onClick={(e) => {
-                  setMyTasksExpanded(!myTasksExpanded);
+                  // If clicking the chevron, just toggle expansion
+                  if (e.target.closest('.chevron-toggle')) {
+                    setMyTasksExpanded(!myTasksExpanded);
+                    return;
+                  }
+                  navigate("/admin/inbox?tab=home");
                 }}
               >
                 <span className="workspace-secondary-link-icon" style={{ display: "inline-flex", alignItems: "center" }}>
-                  {myTasksExpanded ? <ChevronDown size={12} className="me-1 text-slate-400" /> : <ChevronRight size={12} className="me-1 text-slate-400" />}
-                  <CheckSquare size={14} />
+                  <span 
+                    className="chevron-toggle" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMyTasksExpanded(!myTasksExpanded);
+                    }}
+                    style={{ padding: "2px 6px", display: "inline-flex", alignItems: "center", cursor: "pointer" }}
+                  >
+                    {myTasksExpanded ? <ChevronDown size={12} className="text-slate-400" /> : <ChevronRight size={12} className="text-slate-400" />}
+                  </span>
+                  <CheckSquare size={14} className="ms-1" />
                 </span>
                 <span className="workspace-secondary-link-text ms-1">
                   <span className="workspace-secondary-link-title" style={{ fontSize: "12px", fontWeight: "500" }}>My Tasks</span>
@@ -1062,7 +1103,7 @@ const WorkspaceSecondarySidebar = ({
                 <div style={{ marginLeft: "20px", borderLeft: "1px dashed #cbd5e1", paddingLeft: "8px", display: "flex", flexDirection: "column", gap: "2px", marginTop: "2px" }}>
                   <Link
                     to="/admin/inbox?tab=home"
-                    className="workspace-secondary-link py-1"
+                    className={`workspace-secondary-link py-1 ${isInboxRoute && currentTab === "home" ? "active" : ""}`}
                     style={{ fontSize: "11px", padding: "3px 8px" }}
                   >
                     <span 
@@ -1092,6 +1133,29 @@ const WorkspaceSecondarySidebar = ({
                   >
                     <span className="workspace-secondary-link-icon me-2"><Calendar size={11} /></span>
                     <span className="workspace-secondary-link-title" style={{ fontSize: "11.5px", fontWeight: "500" }}>Today & Overdue</span>
+                  </Link>
+                  <Link
+                    to={personalBoardId ? `/admin/boards/${personalBoardId}` : "/admin/inbox?tab=personal"}
+                    className={`workspace-secondary-link py-1 ${location.pathname === `/admin/boards/${personalBoardId}` || (isInboxRoute && currentTab === "personal") ? "active" : ""}`}
+                    style={{ fontSize: "11px", padding: "3px 8px" }}
+                  >
+                    <span className="workspace-secondary-link-icon me-2" style={{ display: "inline-flex", alignItems: "center" }}><CheckSquare size={11} /></span>
+                    <span className="workspace-secondary-link-title" style={{ fontSize: "11.5px", fontWeight: "500" }}>Personal List</span>
+                    {personalTasksCount > 0 && (
+                      <span 
+                        className="ms-auto border font-bold" 
+                        style={{ 
+                          fontSize: "10px", 
+                          padding: "2px 6px", 
+                          borderRadius: "4px", 
+                          backgroundColor: "#e2e8f0", 
+                          color: "#334155",
+                          lineHeight: "1"
+                        }}
+                      >
+                        {personalTasksCount}
+                      </span>
+                    )}
                   </Link>
                 </div>
               )}

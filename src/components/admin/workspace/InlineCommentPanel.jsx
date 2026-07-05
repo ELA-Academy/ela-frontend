@@ -146,7 +146,13 @@ const InlineCommentPanel = ({ task, isOpen, onClose, assignees = [], onCommentAd
       toast.success("Attachment uploaded successfully");
     } catch (err) {
       console.error("Upload failed:", err);
-      toast.error("Failed to upload file");
+      const status = err.response?.status;
+      if (status === 413) {
+        toast.error("File size is too large. Please upload a smaller file (limit is 50MB).");
+      } else {
+        const errMsg = err.response?.data?.error || "Failed to upload file. Please try again.";
+        toast.error(errMsg);
+      }
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -197,7 +203,8 @@ const InlineCommentPanel = ({ task, isOpen, onClose, assignees = [], onCommentAd
       if (onCommentAdded) onCommentAdded();
     } catch (err) {
       console.error("Failed to post comment:", err);
-      toast.error("Failed to post comment");
+      const errMsg = err.response?.data?.error || "Failed to post comment. Please try again.";
+      toast.error(errMsg);
     } finally {
       setPosting(false);
     }
@@ -255,7 +262,8 @@ const InlineCommentPanel = ({ task, isOpen, onClose, assignees = [], onCommentAd
       if (onCommentAdded) onCommentAdded();
     } catch (err) {
       console.error("Failed to post reply:", err);
-      toast.error("Failed to post reply");
+      const errMsg = err.response?.data?.error || "Failed to post reply. Please try again.";
+      toast.error(errMsg);
     } finally {
       setPostingReplies(prev => ({ ...prev, [commentId]: false }));
     }
