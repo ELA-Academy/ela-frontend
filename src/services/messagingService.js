@@ -37,12 +37,12 @@ export const getMessages = async (conversationId) => {
   }
 };
 
-// Send a new message
-export const sendMessage = async (conversationId, content) => {
+// Send a new message (optionally replying to an existing message)
+export const sendMessage = async (conversationId, content, replyToMessageId = null) => {
   try {
     const response = await api.post(
       `/messaging/conversations/${conversationId}/messages`,
-      { content }
+      { content, reply_to_message_id: replyToMessageId }
     );
     return response.data;
   } catch (error) {
@@ -123,7 +123,7 @@ export const toggleFavoriteConversation = async (conversationId) => {
     const response = await api.post(`/messaging/conversations/${conversationId}/favorite`);
     return response.data;
   } catch (error) {
-    console.error("Error toggling favorite:", error);
+    console.error("Error toggling favorite on conversation:", error);
     throw error;
   }
 };
