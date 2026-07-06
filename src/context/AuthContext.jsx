@@ -61,6 +61,9 @@ export const AuthProvider = ({ children }) => {
         // Play premium double chime using Web Audio API
         try {
           const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          if (audioCtx.state === "suspended") {
+            audioCtx.resume();
+          }
           const playTone = (time, pitch) => {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
