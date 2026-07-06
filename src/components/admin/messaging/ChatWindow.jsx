@@ -32,7 +32,8 @@ import {
   MessageSquare,
   ArrowUpDown,
   ChevronRight,
-  Bell
+  Bell,
+  CornerUpLeft
 } from "lucide-react";
 import api from "../../../utils/api";
 import { toast } from "react-toastify";
@@ -129,6 +130,7 @@ const ChatWindow = ({ conversationId, conversation }) => {
   const [showDeleteMsgModal, setShowDeleteMsgModal] = useState(false);
   const [msgIdToDelete, setMsgIdToDelete] = useState(null);
   const [deletingMsg, setDeletingMsg] = useState(false);
+  const [replyingToMessage, setReplyingToMessage] = useState(null);
 
   // Keyboard Shortcuts for hovered message
   useEffect(() => {
@@ -615,6 +617,7 @@ const ChatWindow = ({ conversationId, conversation }) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
     const tempId = `temp_${Date.now()}`;
+    const replyId = replyingToMessage ? replyingToMessage.id : null;
     const optimisticMessage = {
       id: tempId,
       content: newMessage,
@@ -623,6 +626,12 @@ const ChatWindow = ({ conversationId, conversation }) => {
       sender_type: user.role,
       sender_name: user.name,
       status: "sending",
+      reply_to_message_id: replyId,
+      reply_to_details: replyingToMessage ? {
+        id: replyingToMessage.id,
+        content: replyingToMessage.content,
+        sender_name: replyingToMessage.sender_name
+      } : null
     };
     setMessages((prevMessages) => {
       const nextMessages = [...prevMessages, optimisticMessage];
@@ -630,10 +639,12 @@ const ChatWindow = ({ conversationId, conversation }) => {
       return nextMessages;
     });
     setNewMessage("");
+    setReplyingToMessage(null);
     try {
       const sentMessage = await sendMessage(
         conversationId,
-        optimisticMessage.content
+        optimisticMessage.content,
+        replyId
       );
       setMessages((prevMessages) =>
         prevMessages.map((msg) => (msg.id === tempId ? sentMessage : msg))
@@ -667,6 +678,10 @@ const ChatWindow = ({ conversationId, conversation }) => {
       formData.append("content", newMessage.trim());
       setNewMessage("");
     }
+    const replyId = replyingToMessage ? replyingToMessage.id : null;
+    if (replyId) {
+      formData.append("reply_to_message_id", replyId);
+    }
 
     try {
       const tempId = `temp_${Date.now()}`;
@@ -679,9 +694,16 @@ const ChatWindow = ({ conversationId, conversation }) => {
         sender_name: user.name,
         status: "sending",
         filename: file.name,
-        file_path: ""
+        file_path: "",
+        reply_to_message_id: replyId,
+        reply_to_details: replyingToMessage ? {
+          id: replyingToMessage.id,
+          content: replyingToMessage.content,
+          sender_name: replyingToMessage.sender_name
+        } : null
       };
       setMessages((prev) => [...prev, optimisticMessage]);
+      setReplyingToMessage(null);
 
       const res = await api.post(`/messaging/conversations/${conversationId}/upload`, formData, {
         headers: { "Content-Type": "multipart/form-data" }
@@ -845,6 +867,7 @@ const ChatWindow = ({ conversationId, conversation }) => {
                     return (
                       <div
                         key={msg.id}
+                        id={`msg-${msg.id}`}
                         onMouseEnter={() => setHoveredMessageId(msg.id)}
                         onMouseLeave={() => setHoveredMessageId(null)}
                         className={`zbot-message-row ${msg.status === "sending" ? "sending" : ""} ${
@@ -852,6 +875,14 @@ const ChatWindow = ({ conversationId, conversation }) => {
                         } ${isMe ? "is-me" : ""}`}
                       >
                         <div className="zbot-message-hover-actions">
+                          <button
+                            type="button"
+                            className="zbot-message-action-btn me-1"
+                            title="Reply"
+                            onClick={() => setReplyingToMessage(msg)}
+                          >
+                            <CornerUpLeft size={13} />
+                          </button>
                           <button
                             type="button"
                             className="zbot-message-action-btn"
@@ -928,16 +959,44 @@ const ChatWindow = ({ conversationId, conversation }) => {
                                 </div>
                               </div>
                             ) : (
-                              <p
-                                className="m-0"
-                                style={{
-                                  color: msg.status === "failed" ? "red" : "inherit",
-                                  whiteSpace: "pre-wrap",
-                                  wordBreak: "break-word",
-                                }}
-                              >
-                                {renderMessageText(msg.content)}
-                              </p>
+                              <>
+                                {/* Quoted Message Preview (Telegram/WhatsApp style) */}
+                                {msg.reply_to_details && (
+                                  <div 
+                                    className="zbot-quoted-message-preview mb-1.5 p-2 rounded-lg border-l-4 bg-slate-50 border-indigo-500 cursor-pointer"
+                                    style={{ fontSize: "12px", maxWidth: "450px" }}
+                                    onClick={() => {
+                                      // Scroll to the referenced message!
+                                      const element = document.getElementById(`msg-${msg.reply_to_details.id}`);
+                                      if (element) {
+                                        element.scrollIntoView({ behavior: "smooth", block: "center" });
+                                        element.classList.add("highlight-pulse");
+                                        setTimeout(() => {
+                                          element.classList.remove("highlight-pulse");
+                                        }, 2000);
+                                      }
+                                    }}
+                                  >
+                                    <div className="fw-bold text-indigo-600 mb-0.5" style={{ fontSize: "11px" }}>
+                                      {msg.reply_to_details.sender_name}
+                                    </div>
+                                    <div className="text-slate-600 truncate">
+                                      {msg.reply_to_details.content}
+                                    </div>
+                                  </div>
+                                )}
+
+                                <p
+                                  className="m-0"
+                                  style={{
+                                    color: msg.status === "failed" ? "red" : "inherit",
+                                    whiteSpace: "pre-wrap",
+                                    wordBreak: "break-word",
+                                  }}
+                                >
+                                  {renderMessageText(msg.content)}
+                                </p>
+                              </>
                             )}
 
                             {/* Attachment Rendering */}
@@ -1007,6 +1066,28 @@ const ChatWindow = ({ conversationId, conversation }) => {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+              {replyingToMessage && (
+                <div 
+                  className="zbot-reply-preview-bar d-flex align-items-center justify-content-between p-2 mb-2 bg-slate-50 border-l-4 border-indigo-500 rounded-lg"
+                  style={{ fontSize: "12.5px" }}
+                >
+                  <div className="min-width-0 flex-grow-1">
+                    <div className="fw-bold text-indigo-600 mb-0.5" style={{ fontSize: "11px" }}>
+                      Replying to {replyingToMessage.sender_name}
+                    </div>
+                    <div className="text-slate-500 truncate" style={{ fontSize: "12px" }}>
+                      {replyingToMessage.content}
+                    </div>
+                  </div>
+                  <button 
+                    type="button" 
+                    className="border-0 bg-transparent text-slate-400 hover:text-slate-600 p-1"
+                    onClick={() => setReplyingToMessage(null)}
+                  >
+                    <Plus size={16} style={{ transform: "rotate(45deg)" }} />
+                  </button>
                 </div>
               )}
               <Form onSubmit={handleSendMessage}>
@@ -1345,6 +1426,16 @@ const ChatWindow = ({ conversationId, conversation }) => {
                 <span className="shortcut">E</span>
               </div>
             )}
+            <div className="zbot-context-menu-item" onClick={() => {
+              setReplyingToMessage(activeMsgMenu.message);
+              setActiveMsgMenu(null);
+            }}>
+              <div className="d-flex align-items-center gap-2">
+                <CornerUpLeft size={13} />
+                <span>Reply (Quote)</span>
+              </div>
+              <span className="shortcut">R</span>
+            </div>
             <div className="zbot-context-menu-item" onClick={handleMarkUnread}>
               <div className="d-flex align-items-center gap-2">
                 <MessageSquare size={13} />

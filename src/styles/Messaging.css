@@ -802,3 +802,30 @@
   background: #f3f4f6;
 }
 
+/* Quoted Message & Replying styles */
+.zbot-quoted-message-preview {
+  border-left: 3px solid #6366f1;
+  background-color: #f8fafc;
+  padding: 6px 12px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+.zbot-quoted-message-preview:hover {
+  background-color: #f1f5f9;
+}
+.highlight-pulse {
+  animation: pulse-highlight 2s ease-out;
+}
+@keyframes pulse-highlight {
+  0% {
+    background-color: rgba(99, 102, 241, 0.2);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+.zbot-reply-preview-bar {
+  border-left: 3.5px solid #6366f1;
+  background-color: #f1f5f9;
+}
+
