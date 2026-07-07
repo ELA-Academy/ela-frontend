@@ -33,7 +33,8 @@ import {
   ArrowUpDown,
   ChevronRight,
   Bell,
-  CornerUpLeft
+  CornerUpLeft,
+  Copy
 } from "lucide-react";
 import api from "../../../utils/api";
 import { toast } from "react-toastify";
@@ -121,6 +122,7 @@ const ChatWindow = ({ conversationId, conversation }) => {
   const [mentionSearchQuery, setMentionSearchQuery] = useState("");
   const [mentionTriggerIndex, setMentionTriggerIndex] = useState(-1);
   const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
+  const [selectedMentions, setSelectedMentions] = useState([]);
 
   // Message Menu / Action States
   const [activeMsgMenu, setActiveMsgMenu] = useState(null); // { message, pos: { x, y } }
@@ -232,6 +234,14 @@ const ChatWindow = ({ conversationId, conversation }) => {
     setActiveMsgMenu(null);
   };
 
+  const handleCopyMessageText = (msg) => {
+    if (!msg || !msg.content) return;
+    navigator.clipboard.writeText(msg.content)
+      .then(() => toast.success("Message content copied to clipboard"))
+      .catch(() => toast.error("Failed to copy message content"));
+    setActiveMsgMenu(null);
+  };
+
   const handleMarkUnread = async () => {
     try {
       await markConversationUnread(conversationId);
@@ -336,6 +346,11 @@ const ChatWindow = ({ conversationId, conversation }) => {
     setMentionTriggerIndex(-1);
     setMentionSearchQuery("");
     
+    setSelectedMentions(prev => {
+      if (prev.some(u => u.id === userToMention.id && u.role === userToMention.role)) return prev;
+      return [...prev, { id: userToMention.id, role: userToMention.role, name: userToMention.name }];
+    });
+    
     const newCursorPos = triggerIndex + mentionText.length;
     setTimeout(() => {
       textarea.focus();
@@ -344,15 +359,20 @@ const ChatWindow = ({ conversationId, conversation }) => {
   };
 
   const filteredUsers = useMemo(() => {
+    let usersList = allAppUsers;
+    if (conversation?.conversation_type === "direct") {
+      usersList = targetUser ? [targetUser] : [];
+    }
+
     if (!mentionSearchQuery) {
-      return allAppUsers;
+      return usersList;
     }
     const q = mentionSearchQuery.toLowerCase();
-    return allAppUsers.filter(u => 
+    return usersList.filter(u => 
       u.name.toLowerCase().includes(q) || 
       (u.email && u.email.toLowerCase().includes(q))
     );
-  }, [allAppUsers, mentionSearchQuery]);
+  }, [allAppUsers, mentionSearchQuery, conversation, targetUser]);
 
   const messagesEndRef = useRef(null);
   const textAreaRef = useRef(null);
@@ -684,13 +704,16 @@ const ChatWindow = ({ conversationId, conversation }) => {
       globalMessageCache[conversationId] = nextMessages;
       return nextMessages;
     });
+    const activeMentions = selectedMentions.filter(u => optimisticMessage.content.includes(`@${u.name}`));
     setNewMessage("");
     setReplyingToMessage(null);
+    setSelectedMentions([]);
     try {
       const sentMessage = await sendMessage(
         conversationId,
         optimisticMessage.content,
-        replyId
+        replyId,
+        activeMentions.map(u => ({ id: u.id, role: u.role }))
       );
       setMessages((prevMessages) =>
         prevMessages.map((msg) => (msg.id === tempId ? sentMessage : msg))
@@ -1553,6 +1576,12 @@ const ChatWindow = ({ conversationId, conversation }) => {
                 <span>Copy link</span>
               </div>
               <span className="shortcut">C</span>
+            </div>
+            <div className="zbot-context-menu-item" onClick={() => handleCopyMessageText(activeMsgMenu.message)}>
+              <div className="d-flex align-items-center gap-2">
+                <Copy size={13} />
+                <span>Copy message</span>
+              </div>
             </div>
             
             <div className="zbot-context-menu-divider" />

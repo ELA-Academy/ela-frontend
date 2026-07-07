@@ -153,6 +153,8 @@ const UpdatesDrawer = ({
   // Editor states
   const [content, setContent] = useState("");
   const [trackedMentions, setTrackedMentions] = useState([]); // [{type, id, label}]
+  const [activeReactCommentId, setActiveReactCommentId] = useState(null);
+  const [showInputEmojiPicker, setShowInputEmojiPicker] = useState(false);
 
   // Autocomplete popup states
   const [showAutocomplete, setShowAutocomplete] = useState(false);
@@ -219,6 +221,17 @@ const UpdatesDrawer = ({
       descEditorRef.current.innerHTML = descriptionHtml || "";
     }
   }, [editingDesc]);
+
+  useEffect(() => {
+    if (!activeReactCommentId) return;
+    const handleGlobalClick = (e) => {
+      if (!e.target.closest(".clickup-comment-card")) {
+        setActiveReactCommentId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleGlobalClick);
+    return () => document.removeEventListener("mousedown", handleGlobalClick);
+  }, [activeReactCommentId]);
 
   useEffect(() => {
     // Sync states when task changes
@@ -940,6 +953,31 @@ const UpdatesDrawer = ({
     } finally {
       setPosting(false);
     }
+  };
+
+  const handleReactToComment = async (commentId, emoji) => {
+    try {
+      const res = await api.post(`/boards/updates/${commentId}/react`, { emoji });
+      setUpdates((prev) =>
+        prev.map((item) => {
+          if (item.id === commentId) {
+            return { ...item, reactions: res.data.reactions };
+          }
+          return item;
+        })
+      );
+    } catch (err) {
+      console.error("Comment reaction failed:", err);
+      toast.error("Failed to add reaction.");
+    } finally {
+      setActiveReactCommentId(null);
+    }
+  };
+
+  const handleInsertInputEmoji = (emoji) => {
+    setContent(prev => prev + emoji);
+    textareaRef.current?.focus();
+    setShowInputEmojiPicker(false);
   };
 
   const handleToggleLike = async (updateId) => {
@@ -1997,6 +2035,34 @@ const UpdatesDrawer = ({
                               </div>
                             )}
 
+                            {/* Reactions Pill Display row */}
+                            {item.reactions && item.reactions.length > 0 && (
+                              <div className="d-flex gap-1 flex-wrap mt-1 mb-2 ps-5">
+                                {Object.entries(
+                                  item.reactions.reduce((acc, r) => {
+                                    if (!acc[r.emoji]) acc[r.emoji] = [];
+                                    acc[r.emoji].push(r);
+                                    return acc;
+                                  }, {})
+                                ).map(([emoji, userList]) => {
+                                  const currentRole = user?.role === 'superadmin' ? 'superadmin' : 'staff';
+                                  const hasMyReaction = userList.some(r => r.user_id === user?.id && r.user_role === currentRole);
+                                  return (
+                                    <button
+                                      key={emoji}
+                                      className={`btn btn-sm py-0.5 px-2 d-flex align-items-center gap-1 border-slate-200 transition-all ${hasMyReaction ? "bg-indigo-50 border-indigo-300 text-indigo-700" : "bg-white text-slate-700"}`}
+                                      style={{ fontSize: "11px", fontWeight: "600", borderRadius: "12px", border: "1px solid" }}
+                                      onClick={() => handleReactToComment(item.id, emoji)}
+                                      title={userList.map(r => r.user_name).join(", ")}
+                                    >
+                                      <span>{emoji}</span>
+                                      <span>{userList.length}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+
                             <div className="update-actions border-top pt-2 mt-2 d-flex align-items-center justify-content-between ps-5">
                               <div className="d-flex align-items-center gap-3">
                                 <button
@@ -2007,9 +2073,29 @@ const UpdatesDrawer = ({
                                   {liked ? <HandThumbsUpFill size={14} style={{ color: "#673de6" }} /> : <HandThumbsUp size={14} />}
                                   {item.likes_count > 0 && <span style={{ fontSize: "11px" }}>{item.likes_count}</span>}
                                 </button>
-                                <button className="border-0 bg-transparent text-slate-400 hover:text-slate-600 p-0" title="Add reaction" onClick={() => toast.info("Emoji reactions coming soon!")}>
-                                  <Smile size={14} />
-                                </button>
+                                <div className="position-relative d-inline-block">
+                                  <button 
+                                    className="border-0 bg-transparent text-slate-400 hover:text-slate-600 p-0" 
+                                    title="Add reaction" 
+                                    onClick={() => setActiveReactCommentId(activeReactCommentId === item.id ? null : item.id)}
+                                  >
+                                    <Smile size={14} />
+                                  </button>
+                                  {activeReactCommentId === item.id && (
+                                    <div className="position-absolute bg-white border border-slate-200 rounded-lg shadow-lg p-2 d-flex gap-1" style={{ zIndex: 100, bottom: "24px", left: "0" }}>
+                                      {["👍", "✅", "🔥", "❤️", "😊", "🎉", "😮", "😢"].map(emoji => (
+                                        <button 
+                                          key={emoji}
+                                          className="btn btn-sm btn-light p-1 border-0 hover:bg-slate-100 rounded"
+                                          style={{ fontSize: "16px", cursor: "pointer" }}
+                                          onClick={() => handleReactToComment(item.id, emoji)}
+                                        >
+                                          {emoji}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
 
                               <button 
@@ -2149,9 +2235,30 @@ const UpdatesDrawer = ({
                       <button type="button" className="btn btn-link p-1 text-slate-400 hover:text-slate-600 bg-transparent border-0" title="Custom fields" onClick={() => toast.info("No custom fields configured.")}>
                         <List size={14} />
                       </button>
-                      <button type="button" className="btn btn-link p-1 text-slate-400 hover:text-slate-600 bg-transparent border-0" title="Emoji" onClick={() => toast.info("Emoji panel coming soon!")}>
-                        <Smile size={14} />
-                      </button>
+                      <div className="position-relative d-inline-block">
+                        <button 
+                          type="button" 
+                          className="btn btn-link p-1 text-slate-400 hover:text-slate-600 bg-transparent border-0" 
+                          title="Emoji" 
+                          onClick={() => setShowInputEmojiPicker(!showInputEmojiPicker)}
+                        >
+                          <Smile size={14} />
+                        </button>
+                        {showInputEmojiPicker && (
+                          <div className="position-absolute bg-white border border-slate-200 rounded-lg shadow-lg p-2 d-flex gap-1" style={{ zIndex: 100, bottom: "30px", left: "0" }}>
+                            {["👍", "✅", "🔥", "❤️", "😊", "🎉", "😮", "😢"].map(emoji => (
+                              <button 
+                                key={emoji}
+                                className="btn btn-sm btn-light p-1 border-0 hover:bg-slate-100 rounded"
+                                style={{ fontSize: "16px", cursor: "pointer" }}
+                                onClick={() => handleInsertInputEmoji(emoji)}
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                       <button type="button" className="btn btn-link p-1 text-slate-400 hover:text-slate-600 bg-transparent border-0" title="Video comment" onClick={() => toast.info("Video comments not supported on this device.")}>
                         <Video size={14} />
                       </button>

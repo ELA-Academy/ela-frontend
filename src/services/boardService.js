@@ -243,3 +243,17 @@ export const unarchiveBoard = async (boardId) => {
   return response.data;
 };
 
+export const bulkMoveTasks = async (taskIds, targetGroupId) => {
+  const response = await api.post("/boards/tasks/bulk-move", { task_ids: taskIds, target_group_id: targetGroupId });
+  return response.data;
+};
+
+export const bulkUpdateCustomFields = async (taskIds, fieldId, value) => {
+  const response = await api.post("/board-extensions/tasks/bulk-custom-fields", {
+    task_ids: taskIds,
+    field_id: fieldId,
+    value: value
+  });
+  return response.data;
+};
+
