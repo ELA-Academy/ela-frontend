@@ -46,6 +46,8 @@ import {
   createTaskTemplate,
   deleteTaskTemplate,
   uploadTaskAttachment,
+  bulkMoveTasks,
+  bulkUpdateCustomFields,
 } from "../../services/boardService";
 import "../../styles/Boards.css";
 import "../../styles/WorkspaceShell.css";
@@ -231,6 +233,170 @@ const BoardDetailPage = () => {
 
   // Bulk Actions
   const [selectedTaskIds, setSelectedTaskIds] = useState([]);
+
+  // Move Tasks Modal State
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [moveTargetTasks, setMoveTargetTasks] = useState([]);
+  const [destSpaceId, setDestSpaceId] = useState("");
+  const [destFolderId, setDestFolderId] = useState("");
+  const [destListId, setDestListId] = useState("");
+  const [destGroupId, setDestGroupId] = useState("");
+  const [destGroups, setDestGroups] = useState([]);
+  const [loadingDestGroups, setLoadingDestGroups] = useState(false);
+
+  // Bulk Custom Fields State
+  const [boardCustomFields, setBoardCustomFields] = useState([]);
+  const [showBulkCustomFieldsModal, setShowBulkCustomFieldsModal] = useState(false);
+  const [selectedBulkFieldId, setSelectedBulkFieldId] = useState("");
+  const [bulkFieldValue, setBulkFieldValue] = useState("");
+
+  const handleOpenMoveTaskModal = (task) => {
+    const tasksToMove = task ? [task] : selectedTaskIds.map(id => allTasks.find(t => t.id === id)).filter(Boolean);
+    if (tasksToMove.length === 0) return;
+    setMoveTargetTasks(tasksToMove);
+    
+    const firstTask = tasksToMove[0];
+    const firstTaskGroup = board.groups?.find(g => g.id === firstTask.group_id);
+    const currentBoard = boards.find(b => b.id === (firstTaskGroup?.board_id || boardId));
+    
+    let initialSpaceId = "";
+    if (currentBoard) {
+      if (currentBoard.parent_id === null) {
+        initialSpaceId = currentBoard.id;
+      } else {
+        const parent = boards.find(b => b.id === currentBoard.parent_id);
+        if (parent) {
+          initialSpaceId = parent.parent_id === null ? parent.id : parent.parent_id;
+        }
+      }
+    }
+    setDestSpaceId(initialSpaceId);
+    setDestFolderId("");
+    setDestListId("");
+    setDestGroupId("");
+    setDestGroups([]);
+    setShowMoveModal(true);
+  };
+
+  const handleSpaceChange = (spaceId) => {
+    setDestSpaceId(spaceId);
+    setDestFolderId("");
+    setDestListId("");
+    setDestGroupId("");
+    setDestGroups([]);
+  };
+
+  const handleFolderChange = (folderId) => {
+    setDestFolderId(folderId);
+    setDestListId("");
+    setDestGroupId("");
+    setDestGroups([]);
+  };
+
+  const handleListSelect = async (listId) => {
+    setDestListId(listId);
+    if (!listId) {
+      setDestGroups([]);
+      setDestGroupId("");
+      return;
+    }
+    setLoadingDestGroups(true);
+    try {
+      const res = await getBoard(listId);
+      setDestGroups(res.groups || []);
+      if (res.groups && res.groups.length > 0) {
+        setDestGroupId(res.groups[0].id);
+      } else {
+        setDestGroupId("");
+      }
+    } catch (err) {
+      toast.error("Failed to load target list statuses.");
+    } finally {
+      setLoadingDestGroups(false);
+    }
+  };
+
+  const handleExecuteMove = async () => {
+    if (!destGroupId) return;
+    setSaving(true);
+    try {
+      const taskIds = moveTargetTasks.map(t => t.id);
+      await bulkMoveTasks(taskIds, Number(destGroupId));
+      
+      setBoard((prev) => ({
+        ...prev,
+        groups: prev.groups.map(g => ({
+          ...g,
+          tasks: (g.tasks || []).filter(t => !taskIds.includes(t.id))
+        }))
+      }));
+      
+      setSelectedTaskIds([]);
+      setShowMoveModal(false);
+      toast.success(`Successfully moved ${taskIds.length} task(s)!`);
+    } catch (err) {
+      toast.error("Failed to move tasks.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleBulkTagsChange = async () => {
+    const nextTags = window.prompt("Enter comma-separated tags to apply to all selected tasks:");
+    if (nextTags === null) return;
+    setSaving(true);
+    try {
+      await Promise.all(selectedTaskIds.map(id => updateTask(id, { tags: nextTags })));
+      selectedTaskIds.forEach(id => {
+        patchTaskInState(id, (task) => ({ ...task, tags: nextTags }));
+      });
+      setSelectedTaskIds([]);
+      toast.success("Tags updated in bulk!");
+    } catch (err) {
+      toast.error("Failed to update tags in bulk.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleOpenBulkCustomFields = async () => {
+    try {
+      const res = await api.get(`/board-extensions/boards/${boardId}/custom-fields`);
+      setBoardCustomFields(res.data || []);
+      if (res.data && res.data.length > 0) {
+        setSelectedBulkFieldId(res.data[0].id);
+      } else {
+        setSelectedBulkFieldId("");
+      }
+      setBulkFieldValue("");
+      setShowBulkCustomFieldsModal(true);
+    } catch (err) {
+      toast.error("Failed to load custom fields for this board.");
+    }
+  };
+
+  const handleSaveBulkCustomFields = async () => {
+    if (!selectedBulkFieldId) return;
+    setSaving(true);
+    try {
+      let val = bulkFieldValue;
+      const field = boardCustomFields.find(f => f.id === Number(selectedBulkFieldId));
+      if (field) {
+        if (field.type === 'number' || field.type === 'rating') {
+          val = Number(bulkFieldValue);
+        }
+      }
+      await bulkUpdateCustomFields(selectedTaskIds, Number(selectedBulkFieldId), val);
+      setSelectedTaskIds([]);
+      setShowBulkCustomFieldsModal(false);
+      toast.success("Custom fields updated in bulk!");
+      fetchWorkspace(false);
+    } catch (err) {
+      toast.error("Failed to update custom fields in bulk.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // Saved Views
   const [savedViews, setSavedViews] = useState([]);
@@ -1194,6 +1360,13 @@ const BoardDetailPage = () => {
     const viewParam = params.get("view");
     if (viewParam) {
       setActiveView(viewParam);
+    }
+
+    if (params.get("manage_statuses") === "true") {
+      setShowCreateStatusModal(true);
+      const nextParams = new URLSearchParams(location.search);
+      nextParams.delete("manage_statuses");
+      navigate(`${location.pathname}?${nextParams.toString()}`, { replace: true });
     }
   }, [location.search, board, allTasks]);
 
@@ -3104,6 +3277,9 @@ const BoardDetailPage = () => {
                                     <Dropdown.Item onClick={() => handleTaskCellChange(task.id, "status", "Done")}>
                                       <CheckCircleFill size={14} className="text-success" /> Mark complete
                                     </Dropdown.Item>
+                                    <Dropdown.Item onClick={() => handleOpenMoveTaskModal(task)}>
+                                      <ArrowRight size={14} /> Move task
+                                    </Dropdown.Item>
                                     <Dropdown.Item onClick={() => handleOpenUpdatesDrawer(task)}>
                                       <MessageSquare size={14} /> Open task
                                     </Dropdown.Item>
@@ -3723,6 +3899,9 @@ const BoardDetailPage = () => {
                           <Dropdown.Divider />
                           <Dropdown.Item onClick={() => handleTaskCellChange(task.id, "status", "Done")}>
                             <CheckCircleFill size={14} className="text-success" /> Mark complete
+                          </Dropdown.Item>
+                          <Dropdown.Item onClick={() => handleOpenMoveTaskModal(task)}>
+                            <ArrowRight size={14} /> Move task
                           </Dropdown.Item>
                           <Dropdown.Item onClick={() => handleOpenUpdatesDrawer(task)}>
                             <MessageSquare size={14} /> Open task
@@ -5126,17 +5305,16 @@ const BoardDetailPage = () => {
 
             {/* Custom Fields */}
             <button 
-              type="button" 
-              className="btn btn-link btn-sm text-white text-decoration-none d-flex align-items-center gap-1" 
-              style={{ fontSize: "12px" }}
-              onClick={() => toast.info("Bulk Custom Fields edit is not configured for this space.")}
-            >
-              <Layers size={13} /> Custom Fields
-            </button>
+               type="button" 
+               className="btn btn-link btn-sm text-white text-decoration-none d-flex align-items-center gap-1" 
+               style={{ fontSize: "12px" }}
+               onClick={handleOpenBulkCustomFields}
+             >
+               <Layers size={13} /> Custom Fields
+             </button>
 
             {/* Tags */}
             <button 
-              type="button" 
               className="btn btn-link btn-sm text-white text-decoration-none d-flex align-items-center gap-1" 
               style={{ fontSize: "12px" }}
               onClick={() => toast.info("Bulk Tags edit is coming soon!")}
@@ -5367,6 +5545,203 @@ const BoardDetailPage = () => {
         <Modal.Footer className="border-t border-slate-100 p-4 bg-slate-50/50">
           <Button variant="light" onClick={() => setShowSharingModal(false)} className="text-xs font-bold px-4 py-2 border-0 rounded-xl">
             Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Move Task Modal */}
+      <Modal show={showMoveModal} onHide={() => setShowMoveModal(false)} centered size="md">
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title className="fw-bold text-slate-800" style={{ fontSize: "16px" }}>
+            Move {moveTargetTasks.length === 1 ? `'${moveTargetTasks[0].title}'` : `${moveTargetTasks.length} tasks`}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="pt-2">
+          <p className="text-muted small mb-4">Select a destination Space, List, and Status/Group to move these tasks to.</p>
+          <div className="d-flex flex-column gap-3">
+            <Form.Group>
+              <Form.Label className="fw-bold text-slate-700 text-xs uppercase mb-1">Destination Space</Form.Label>
+              <Form.Select 
+                value={destSpaceId} 
+                onChange={(e) => handleSpaceChange(e.target.value)}
+                style={{ fontSize: "13px" }}
+              >
+                <option value="">-- Select Space --</option>
+                {boards.filter(b => b.parent_id === null && !b.is_folder && !b.is_personal).map(s => (
+                  <option key={s.id} value={s.id}>{s.icon} {s.name}</option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+
+            {destSpaceId && boards.filter(b => b.parent_id === Number(destSpaceId) && b.is_folder).length > 0 && (
+              <Form.Group>
+                <Form.Label className="fw-bold text-slate-700 text-xs uppercase mb-1">Folder (Optional)</Form.Label>
+                <Form.Select 
+                  value={destFolderId} 
+                  onChange={(e) => handleFolderChange(e.target.value)}
+                  style={{ fontSize: "13px" }}
+                >
+                  <option value="">-- No Folder (Direct List) --</option>
+                  {boards.filter(b => b.parent_id === Number(destSpaceId) && b.is_folder).map(f => (
+                    <option key={f.id} value={f.id}>📁 {f.name}</option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+            )}
+
+            {destSpaceId && (
+              <Form.Group>
+                <Form.Label className="fw-bold text-slate-700 text-xs uppercase mb-1">Destination List</Form.Label>
+                <Form.Select 
+                  value={destListId} 
+                  onChange={(e) => handleListSelect(e.target.value)}
+                  style={{ fontSize: "13px" }}
+                >
+                  <option value="">-- Select List --</option>
+                  {(destFolderId !== "" 
+                    ? boards.filter(b => b.parent_id === Number(destFolderId) && !b.is_folder)
+                    : boards.filter(b => b.parent_id === Number(destSpaceId) && !b.is_folder)
+                  ).map(l => (
+                    <option key={l.id} value={l.id}>{l.icon || "📋"} {l.name}</option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+            )}
+
+            {destListId && (
+              <Form.Group>
+                <Form.Label className="fw-bold text-slate-700 text-xs uppercase mb-1">
+                  Destination Status / Group {loadingDestGroups && <Spinner animation="border" size="sm" className="ms-2" />}
+                </Form.Label>
+                <Form.Select 
+                  value={destGroupId} 
+                  onChange={(e) => setDestGroupId(e.target.value)}
+                  style={{ fontSize: "13px" }}
+                  disabled={loadingDestGroups}
+                >
+                  {destGroups.map(g => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+            )}
+          </div>
+        </Modal.Body>
+        <Modal.Footer className="border-0 pt-0">
+          <Button variant="light" onClick={() => setShowMoveModal(false)} className="px-4 py-1.5" style={{ fontSize: "12.5px" }}>
+            Cancel
+          </Button>
+          <Button 
+            variant="dark" 
+            onClick={handleExecuteMove} 
+            disabled={!destGroupId || saving}
+            className="px-4 py-1.5" 
+            style={{ fontSize: "12.5px" }}
+          >
+            {saving ? <Spinner animation="border" size="sm" /> : "Move Task(s)"}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Bulk Custom Fields Modal */}
+      <Modal show={showBulkCustomFieldsModal} onHide={() => setShowBulkCustomFieldsModal(false)} centered size="md">
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title className="fw-bold text-slate-800" style={{ fontSize: "16px" }}>
+            Bulk Update Custom Fields ({selectedTaskIds.length} tasks)
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="pt-2">
+          {boardCustomFields.length === 0 ? (
+            <p className="text-muted text-center py-4 mb-0">No custom fields configured for this space. Create some in the "Fields" view first!</p>
+          ) : (
+            <div className="d-flex flex-column gap-3">
+              <Form.Group>
+                <Form.Label className="fw-bold text-slate-700 text-xs uppercase mb-1">Custom Field</Form.Label>
+                <Form.Select 
+                  value={selectedBulkFieldId} 
+                  onChange={(e) => {
+                    setSelectedBulkFieldId(e.target.value);
+                    setBulkFieldValue("");
+                  }}
+                  style={{ fontSize: "13px" }}
+                >
+                  {boardCustomFields.map(f => (
+                    <option key={f.id} value={f.id}>{f.name} ({f.type})</option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+
+              <Form.Group>
+                <Form.Label className="fw-bold text-slate-700 text-xs uppercase mb-1">New Value</Form.Label>
+                {(() => {
+                  const activeField = boardCustomFields.find(f => f.id === Number(selectedBulkFieldId));
+                  if (!activeField) return <Form.Control type="text" disabled />;
+                  
+                  if (activeField.type === "dropdown" || activeField.type === "multi_select") {
+                    const opts = activeField.config?.options || [];
+                    return (
+                      <Form.Select 
+                        value={bulkFieldValue} 
+                        onChange={(e) => setBulkFieldValue(e.target.value)}
+                        style={{ fontSize: "13px" }}
+                      >
+                        <option value="">-- Choose Option --</option>
+                        {opts.map((opt, i) => (
+                          <option key={i} value={opt}>{opt}</option>
+                        ))}
+                      </Form.Select>
+                    );
+                  }
+                  
+                  if (activeField.type === "date") {
+                    return (
+                      <Form.Control 
+                        type="date" 
+                        value={bulkFieldValue} 
+                        onChange={(e) => setBulkFieldValue(e.target.value)}
+                        style={{ fontSize: "13px" }}
+                      />
+                    );
+                  }
+
+                  if (activeField.type === "number" || activeField.type === "currency" || activeField.type === "rating") {
+                    return (
+                      <Form.Control 
+                        type="number" 
+                        placeholder="Enter number value" 
+                        value={bulkFieldValue} 
+                        onChange={(e) => setBulkFieldValue(e.target.value)}
+                        style={{ fontSize: "13px" }}
+                      />
+                    );
+                  }
+
+                  return (
+                    <Form.Control 
+                      type="text" 
+                      placeholder="Enter value" 
+                      value={bulkFieldValue} 
+                      onChange={(e) => setBulkFieldValue(e.target.value)}
+                      style={{ fontSize: "13px" }}
+                    />
+                  );
+                })()}
+              </Form.Group>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer className="border-0 pt-0">
+          <Button variant="light" onClick={() => setShowBulkCustomFieldsModal(false)} className="px-4 py-1.5" style={{ fontSize: "12.5px" }}>
+            Cancel
+          </Button>
+          <Button 
+            variant="dark" 
+            onClick={handleSaveBulkCustomFields} 
+            disabled={boardCustomFields.length === 0 || saving}
+            className="px-4 py-1.5" 
+            style={{ fontSize: "12.5px" }}
+          >
+            {saving ? <Spinner animation="border" size="sm" /> : "Save Changes"}
           </Button>
         </Modal.Footer>
       </Modal>

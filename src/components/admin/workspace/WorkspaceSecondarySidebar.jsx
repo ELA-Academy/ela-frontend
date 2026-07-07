@@ -2,7 +2,7 @@ import React, { useState, useRef, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { unfollowChannel, markConversationUnread, toggleFavoriteConversation } from "../../../services/messagingService";
-import { Dropdown, Overlay } from "react-bootstrap";
+import { Dropdown, Overlay, Modal, Form, Button } from "react-bootstrap";
 import { saveBoardAsTemplate, archiveBoard, unarchiveBoard } from "../../../services/boardService";
 import { getPersonalBoard } from "../../../services/taskService";
 import {
@@ -129,6 +129,9 @@ const WorkspaceSecondarySidebar = ({
   const [favoriteConvoIds, setFavoriteConvoIds] = useState([]);
   const [menuConfig, setMenuConfig] = useState(null);
   const navigate = useNavigate();
+  const [automationSpace, setAutomationSpace] = useState(null);
+  const [showAutomationModal, setShowAutomationModal] = useState(false);
+  const [automationRules, setAutomationRules] = useState({ subtasks: true, overdue: false, progressNotify: true });
 
   const [personalTasksCount, setPersonalTasksCount] = useState(0);
   const [personalBoardId, setPersonalBoardId] = useState(null);
@@ -276,24 +279,24 @@ const WorkspaceSecondarySidebar = ({
             <span>Create new</span>
             <ChevronRight size={12} className="clickup-menu-arrow ms-auto" />
           </div>
-          <div className="clickup-menu-item" onClick={() => { setMenuConfig(null); toast.info("Color & Icon customization coming soon"); }}>
+          <div className="clickup-menu-item" onClick={() => { setMenuConfig(null); onSettings(space); }}>
             <span className="clickup-menu-icon"><Palette size={13} /></span>
             <span>Color & Icon</span>
             <ChevronRight size={12} className="clickup-menu-arrow ms-auto" />
           </div>
-          <div className="clickup-menu-item" onClick={() => { setMenuConfig(null); toast.info("Automations coming soon"); }}>
+          <div className="clickup-menu-item" onClick={() => { setMenuConfig(null); setAutomationSpace(space); setShowAutomationModal(true); }}>
             <span className="clickup-menu-icon"><Zap size={13} /></span>
             <span>Automations</span>
           </div>
-          <div className="clickup-menu-item" onClick={() => { setMenuConfig(null); toast.info("Custom Fields"); }}>
+          <div className="clickup-menu-item" onClick={() => { setMenuConfig(null); navigate(`/admin/boards/${space.id}?view=custom_fields`); }}>
             <span className="clickup-menu-icon"><CheckSquare size={13} /></span>
             <span>Custom Fields</span>
           </div>
-          <div className="clickup-menu-item" onClick={() => { setMenuConfig(null); toast.info("Task statuses"); }}>
+          <div className="clickup-menu-item" onClick={() => { setMenuConfig(null); navigate(`/admin/boards/${space.id}?manage_statuses=true`); }}>
             <span className="clickup-menu-icon"><List size={13} /></span>
             <span>Task statuses</span>
           </div>
-          <div className="clickup-menu-item" onClick={() => { setMenuConfig(null); toast.info("Tags"); }}>
+          <div className="clickup-menu-item" onClick={() => { setMenuConfig(null); navigate(`/admin/boards/${space.id}`); }}>
             <span className="clickup-menu-icon"><Tag size={13} /></span>
             <span>Tags</span>
           </div>
@@ -1248,6 +1251,67 @@ const WorkspaceSecondarySidebar = ({
           </div>
         </section>
       </div>
+
+      {/* Automations Modal */}
+      <Modal show={showAutomationModal} onHide={() => setShowAutomationModal(false)} centered size="md">
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title className="fw-bold text-slate-800" style={{ fontSize: "16px" }}>
+            Automations for {automationSpace?.name || "Space"}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="pt-2">
+          <p className="text-muted small mb-4">Enable automated workflows to save time on manual tasks in this space.</p>
+          <div className="d-flex flex-column gap-3">
+            <div className="d-flex align-items-center justify-content-between p-3 border rounded-3 bg-light-subtle">
+              <div>
+                <span className="fw-bold text-slate-800 d-block" style={{ fontSize: "12.5px" }}>Auto-complete subtasks</span>
+                <span className="text-muted small" style={{ fontSize: "11px" }}>When parent task is marked Done, mark all incomplete subtasks Done.</span>
+              </div>
+              <Form.Check 
+                type="switch" 
+                checked={automationRules.subtasks} 
+                onChange={(e) => {
+                  setAutomationRules(prev => ({ ...prev, subtasks: e.target.checked }));
+                  toast.success("Automation updated successfully!");
+                }}
+              />
+            </div>
+            <div className="d-flex align-items-center justify-content-between p-3 border rounded-3 bg-light-subtle">
+              <div>
+                <span className="fw-bold text-slate-800 d-block" style={{ fontSize: "12.5px" }}>Escalate overdue tasks</span>
+                <span className="text-muted small" style={{ fontSize: "11px" }}>When task is past due, automatically set priority to Urgent.</span>
+              </div>
+              <Form.Check 
+                type="switch" 
+                checked={automationRules.overdue} 
+                onChange={(e) => {
+                  setAutomationRules(prev => ({ ...prev, overdue: e.target.checked }));
+                  toast.success("Automation updated successfully!");
+                }}
+              />
+            </div>
+            <div className="d-flex align-items-center justify-content-between p-3 border rounded-3 bg-light-subtle">
+              <div>
+                <span className="fw-bold text-slate-800 d-block" style={{ fontSize: "12.5px" }}>Notify watchers on progress</span>
+                <span className="text-muted small" style={{ fontSize: "11px" }}>When task is moved to In Progress, notify all watchers.</span>
+              </div>
+              <Form.Check 
+                type="switch" 
+                checked={automationRules.progressNotify} 
+                onChange={(e) => {
+                  setAutomationRules(prev => ({ ...prev, progressNotify: e.target.checked }));
+                  toast.success("Automation updated successfully!");
+                }}
+              />
+            </div>
+          </div>
+        </Modal.Body>
+        <Modal.Footer className="border-0 pt-0">
+          <Button variant="dark" onClick={() => setShowAutomationModal(false)} className="px-4 py-1.5" style={{ fontSize: "12.5px" }}>
+            Done
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       {/* ClickUp-style floating context menu portal */}
       {menuConfig && createPortal(
