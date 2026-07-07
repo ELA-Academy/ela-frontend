@@ -80,6 +80,7 @@ const ChatWindow = ({ conversationId, conversation }) => {
     return !globalMessageCache[conversationId];
   });
   const [error, setError] = useState("");
+  const [activeReactMsgId, setActiveReactMsgId] = useState(null);
   
   // File Upload State
   const [uploading, setUploading] = useState(false);
@@ -589,6 +590,22 @@ const ChatWindow = ({ conversationId, conversation }) => {
 
     socket.emit("join", { conversation_id: conversationId });
 
+    socket.on("message_reaction_toggled", (data) => {
+      setMessages((prev) => {
+        const nextMessages = prev.map((msg) => {
+          if (msg.id === data.message_id) {
+            return {
+              ...msg,
+              reactions: data.reactions
+            };
+          }
+          return msg;
+        });
+        globalMessageCache[conversationId] = nextMessages;
+        return nextMessages;
+      });
+    });
+
     socket.on("new_message", (message) => {
       setMessages((prev) => {
         if (prev.some((msg) => msg.id === message.id)) {
@@ -612,6 +629,35 @@ const ChatWindow = ({ conversationId, conversation }) => {
       scrollToBottom();
     }
   }, [messages, activeTab]);
+
+  const handleReactToMessage = async (messageId, emoji) => {
+    try {
+      const res = await api.post(`/messaging/messages/${messageId}/react`, { emoji });
+      setMessages(prev => prev.map(m => {
+        if (m.id === messageId) {
+          return {
+            ...m,
+            reactions: res.data.reactions
+          };
+        }
+        return m;
+      }));
+      setActiveReactMsgId(null);
+    } catch (err) {
+      console.error("Message reaction failed:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (!activeReactMsgId) return;
+    const handleGlobalClick = (e) => {
+      if (!e.target.closest(".zbot-message-hover-actions")) {
+        setActiveReactMsgId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleGlobalClick);
+    return () => document.removeEventListener("mousedown", handleGlobalClick);
+  }, [activeReactMsgId]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -874,7 +920,37 @@ const ChatWindow = ({ conversationId, conversation }) => {
                           msg.status === "failed" ? "failed" : ""
                         } ${isMe ? "is-me" : ""}`}
                       >
-                        <div className="zbot-message-hover-actions">
+                        <div 
+                          className="zbot-message-hover-actions"
+                          style={{ display: activeReactMsgId === msg.id ? "flex" : undefined }}
+                        >
+                          <div className="position-relative d-inline-block">
+                            <button
+                              type="button"
+                              className="zbot-message-action-btn me-1"
+                              title="React"
+                              onClick={() => setActiveReactMsgId(activeReactMsgId === msg.id ? null : msg.id)}
+                            >
+                              <Smile size={13} />
+                            </button>
+
+                            {/* Emoji Selector Overlay */}
+                            {activeReactMsgId === msg.id && (
+                              <div className="position-absolute bg-white border border-slate-200 rounded-lg shadow-lg p-2 d-flex gap-1" style={{ zIndex: 100, bottom: "28px", right: "0" }}>
+                                {["👍", "✅", "🔥", "❤️", "😊", "🎉", "😮", "😢"].map(emoji => (
+                                  <button 
+                                    key={emoji}
+                                    className="btn btn-sm btn-light p-1 border-0 hover:bg-slate-100 rounded"
+                                    style={{ fontSize: "16px", cursor: "pointer" }}
+                                    onClick={() => handleReactToMessage(msg.id, emoji)}
+                                  >
+                                    {emoji}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
                           <button
                             type="button"
                             className="zbot-message-action-btn me-1"
@@ -1020,6 +1096,34 @@ const ChatWindow = ({ conversationId, conversation }) => {
                                     <span>{msg.filename}</span>
                                   </a>
                                 )}
+                              </div>
+                            )}
+
+                            {/* Reactions Pill Display row */}
+                            {msg.reactions && msg.reactions.length > 0 && (
+                              <div className="d-flex gap-1 flex-wrap mt-1.5 mb-1">
+                                {Object.entries(
+                                  msg.reactions.reduce((acc, r) => {
+                                    if (!acc[r.emoji]) acc[r.emoji] = [];
+                                    acc[r.emoji].push(r);
+                                    return acc;
+                                  }, {})
+                                ).map(([emoji, userList]) => {
+                                  const currentRole = user?.role === 'superadmin' ? 'superadmin' : 'staff';
+                                  const hasMyReaction = userList.some(r => r.user_id === user?.id && r.user_role === currentRole);
+                                  return (
+                                    <button
+                                      key={emoji}
+                                      className={`btn btn-sm py-0.5 px-2 d-flex align-items-center gap-1 border-slate-200 transition-all ${hasMyReaction ? "bg-indigo-50 border-indigo-300 text-indigo-700" : "bg-white text-slate-700"}`}
+                                      style={{ fontSize: "11px", fontWeight: "600", borderRadius: "12px", border: "1px solid" }}
+                                      onClick={() => handleReactToMessage(msg.id, emoji)}
+                                      title={userList.map(r => r.user_name).join(", ")}
+                                    >
+                                      <span>{emoji}</span>
+                                      <span>{userList.length}</span>
+                                    </button>
+                                  );
+                                })}
                               </div>
                             )}
 

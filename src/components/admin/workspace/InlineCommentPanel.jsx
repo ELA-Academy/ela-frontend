@@ -11,13 +11,16 @@ import { X, Send, Paperclip, Smile, MessageSquare, ThumbsUp, CornerDownRight } f
 import { format, parseISO } from "date-fns";
 import { toast } from "react-toastify";
 import api from "../../../utils/api";
+import { useAuth } from "../../../context/AuthContext";
 import "../../../styles/InlineCommentPanel.css";
 
 const InlineCommentPanel = ({ task, isOpen, onClose, assignees = [], onCommentAdded }) => {
+  const { user } = useAuth();
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [posting, setPosting] = useState(false);
+  const [activeReactCommentId, setActiveReactCommentId] = useState(null);
   
   // Threading / Replies states
   const [replyInputs, setReplyInputs] = useState({});
@@ -233,6 +236,35 @@ const InlineCommentPanel = ({ task, isOpen, onClose, assignees = [], onCommentAd
     }
   };
 
+  const handleReactToComment = async (commentId, emoji) => {
+    try {
+      const res = await api.post(`/boards/updates/${commentId}/react`, { emoji });
+      setComments(prev => prev.map(c => {
+        if (c.id === commentId) {
+          return {
+            ...c,
+            reactions: res.data.reactions
+          };
+        }
+        return c;
+      }));
+      setActiveReactCommentId(null);
+    } catch (err) {
+      console.error("Comment reaction failed:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (!activeReactCommentId) return;
+    const handleGlobalClick = (e) => {
+      if (!e.target.closest(".comment-actions")) {
+        setActiveReactCommentId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleGlobalClick);
+    return () => document.removeEventListener("mousedown", handleGlobalClick);
+  }, [activeReactCommentId]);
+
   // -------------------------------------------------------------
   // Reply Handler
   // -------------------------------------------------------------
@@ -342,6 +374,34 @@ const InlineCommentPanel = ({ task, isOpen, onClose, assignees = [], onCommentAd
                       dangerouslySetInnerHTML={{ __html: c.content }}
                     />
                     
+                    {/* Reactions Pill Display row */}
+                    {c.reactions && c.reactions.length > 0 && (
+                      <div className="d-flex gap-1 flex-wrap mt-1 mb-2">
+                        {Object.entries(
+                          c.reactions.reduce((acc, r) => {
+                            if (!acc[r.emoji]) acc[r.emoji] = [];
+                            acc[r.emoji].push(r);
+                            return acc;
+                          }, {})
+                        ).map(([emoji, userList]) => {
+                          const currentRole = user?.role === 'superadmin' ? 'superadmin' : 'staff';
+                          const hasMyReaction = userList.some(r => r.user_id === user?.id && r.user_role === currentRole);
+                          return (
+                            <button
+                              key={emoji}
+                              className={`btn btn-sm py-0.5 px-2 d-flex align-items-center gap-1 border-slate-200 transition-all ${hasMyReaction ? "bg-indigo-50 border-indigo-300 text-indigo-700" : "bg-white text-slate-700"}`}
+                              style={{ fontSize: "11px", fontWeight: "600", borderRadius: "12px", border: "1px solid" }}
+                              onClick={() => handleReactToComment(c.id, emoji)}
+                              title={userList.map(r => r.user_name).join(", ")}
+                            >
+                              <span>{emoji}</span>
+                              <span>{userList.length}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    
                     <div className="comment-actions">
                       <button 
                         className="comment-action-btn"
@@ -358,6 +418,32 @@ const InlineCommentPanel = ({ task, isOpen, onClose, assignees = [], onCommentAd
                         <MessageSquare size={12} />
                         <span>Reply</span>
                       </button>
+
+                      <div className="position-relative d-inline-block">
+                        <button 
+                          className="comment-action-btn"
+                          onClick={() => setActiveReactCommentId(activeReactCommentId === c.id ? null : c.id)}
+                        >
+                          <Smile size={12} />
+                          <span>React</span>
+                        </button>
+
+                        {/* Emoji Selector Overlay */}
+                        {activeReactCommentId === c.id && (
+                          <div className="position-absolute bg-white border border-slate-200 rounded-lg shadow-lg p-2 d-flex gap-1" style={{ zIndex: 100, bottom: "24px", left: "0" }}>
+                            {["👍", "✅", "🔥", "❤️", "😊", "🎉", "😮", "😢"].map(emoji => (
+                              <button 
+                                key={emoji}
+                                className="btn btn-sm btn-light p-1 border-0 hover:bg-slate-100 rounded"
+                                style={{ fontSize: "16px", cursor: "pointer" }}
+                                onClick={() => handleReactToComment(c.id, emoji)}
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
