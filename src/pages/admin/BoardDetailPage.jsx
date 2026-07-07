@@ -34,6 +34,7 @@ import { useWorkspace } from "../../components/admin/workspace/WorkspaceLayout";
 import { useAuth } from "../../context/AuthContext";
 import { getActivityLogs } from "../../services/activityService";
 import {
+  createBoard,
   createGroup,
   createTask,
   deleteGroup,
@@ -250,6 +251,10 @@ const BoardDetailPage = () => {
   const [selectedBulkFieldId, setSelectedBulkFieldId] = useState("");
   const [bulkFieldValue, setBulkFieldValue] = useState("");
 
+  // Bulk Tags State
+  const [showBulkTagsModal, setShowBulkTagsModal] = useState(false);
+  const [bulkTagsValue, setBulkTagsValue] = useState("");
+
   const handleOpenMoveTaskModal = (task) => {
     const tasksToMove = task ? [task] : selectedTaskIds.map(id => allTasks.find(t => t.id === id)).filter(Boolean);
     if (tasksToMove.length === 0) return;
@@ -281,8 +286,20 @@ const BoardDetailPage = () => {
   const handleSpaceChange = (spaceId) => {
     setDestSpaceId(spaceId);
     setDestFolderId("");
-    setDestListId("");
-    setDestGroupId("");
+    if (!spaceId) {
+      setDestListId("");
+      setDestGroupId("");
+      setDestGroups([]);
+      return;
+    }
+    const spaceLists = boards.filter(b => b.parent_id === Number(spaceId) && !b.is_folder);
+    if (spaceLists.length === 0) {
+      setDestListId("CREATE_DEFAULT");
+      setDestGroupId("CREATE_DEFAULT_GROUP");
+    } else {
+      setDestListId("");
+      setDestGroupId("");
+    }
     setDestGroups([]);
   };
 
@@ -320,8 +337,24 @@ const BoardDetailPage = () => {
     if (!destGroupId) return;
     setSaving(true);
     try {
+      let finalGroupId = destGroupId;
+      if (destListId === "CREATE_DEFAULT") {
+        const defaultList = await createBoard({
+          name: "General",
+          parent_id: Number(destSpaceId),
+          is_private: false,
+          is_folder: false
+        });
+        const boardDetail = await getBoard(defaultList.id);
+        if (boardDetail.groups && boardDetail.groups.length > 0) {
+          finalGroupId = boardDetail.groups[0].id;
+        } else {
+          throw new Error("Failed to create default group in new list");
+        }
+      }
+
       const taskIds = moveTargetTasks.map(t => t.id);
-      await bulkMoveTasks(taskIds, Number(destGroupId));
+      await bulkMoveTasks(taskIds, Number(finalGroupId));
       
       setBoard((prev) => ({
         ...prev,
@@ -335,22 +368,27 @@ const BoardDetailPage = () => {
       setShowMoveModal(false);
       toast.success(`Successfully moved ${taskIds.length} task(s)!`);
     } catch (err) {
+      console.error(err);
       toast.error("Failed to move tasks.");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleBulkTagsChange = async () => {
-    const nextTags = window.prompt("Enter comma-separated tags to apply to all selected tasks:");
-    if (nextTags === null) return;
+  const handleBulkTagsChange = () => {
+    setBulkTagsValue("");
+    setShowBulkTagsModal(true);
+  };
+
+  const handleSaveBulkTags = async () => {
     setSaving(true);
     try {
-      await Promise.all(selectedTaskIds.map(id => updateTask(id, { tags: nextTags })));
+      await Promise.all(selectedTaskIds.map(id => updateTask(id, { tags: bulkTagsValue })));
       selectedTaskIds.forEach(id => {
-        patchTaskInState(id, (task) => ({ ...task, tags: nextTags }));
+        patchTaskInState(id, (task) => ({ ...task, tags: bulkTagsValue }));
       });
       setSelectedTaskIds([]);
+      setShowBulkTagsModal(false);
       toast.success("Tags updated in bulk!");
     } catch (err) {
       toast.error("Failed to update tags in bulk.");
@@ -5317,7 +5355,7 @@ const BoardDetailPage = () => {
             <button 
               className="btn btn-link btn-sm text-white text-decoration-none d-flex align-items-center gap-1" 
               style={{ fontSize: "12px" }}
-              onClick={() => toast.info("Bulk Tags edit is coming soon!")}
+              onClick={handleBulkTagsChange}
             >
               <Pin size={13} /> Tags
             </button>
@@ -5327,7 +5365,7 @@ const BoardDetailPage = () => {
               type="button" 
               className="btn btn-link btn-sm text-white text-decoration-none d-flex align-items-center gap-1" 
               style={{ fontSize: "12px" }}
-              onClick={() => toast.info("Bulk Move/Add is not configured.")}
+              onClick={() => handleOpenMoveTaskModal(null)}
             >
               <ArrowRight size={13} /> Move/Add
             </button>
@@ -5598,6 +5636,9 @@ const BoardDetailPage = () => {
                   style={{ fontSize: "13px" }}
                 >
                   <option value="">-- Select List --</option>
+                  {boards.filter(b => b.parent_id === (destFolderId !== "" ? Number(destFolderId) : Number(destSpaceId)) && !b.is_folder).length === 0 && (
+                    <option value="CREATE_DEFAULT">-- Auto-create default list ('General') --</option>
+                  )}
                   {(destFolderId !== "" 
                     ? boards.filter(b => b.parent_id === Number(destFolderId) && !b.is_folder)
                     : boards.filter(b => b.parent_id === Number(destSpaceId) && !b.is_folder)
@@ -5617,11 +5658,15 @@ const BoardDetailPage = () => {
                   value={destGroupId} 
                   onChange={(e) => setDestGroupId(e.target.value)}
                   style={{ fontSize: "13px" }}
-                  disabled={loadingDestGroups}
+                  disabled={loadingDestGroups || destListId === "CREATE_DEFAULT"}
                 >
-                  {destGroups.map(g => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                  ))}
+                  {destListId === "CREATE_DEFAULT" ? (
+                    <option value="CREATE_DEFAULT_GROUP">Default Group ("List")</option>
+                  ) : (
+                    destGroups.map(g => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))
+                  )}
                 </Form.Select>
               </Form.Group>
             )}
@@ -5742,6 +5787,42 @@ const BoardDetailPage = () => {
             style={{ fontSize: "12.5px" }}
           >
             {saving ? <Spinner animation="border" size="sm" /> : "Save Changes"}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Bulk Tags Modal */}
+      <Modal show={showBulkTagsModal} onHide={() => setShowBulkTagsModal(false)} centered size="md">
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title className="fw-bold text-slate-800" style={{ fontSize: "16px" }}>
+            Bulk Update Tags ({selectedTaskIds.length} tasks)
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="pt-2">
+          <p className="text-muted small mb-4">Add or replace tags for the selected tasks. Separate multiple tags with commas.</p>
+          <Form.Group>
+            <Form.Label className="fw-bold text-slate-700 text-xs uppercase mb-1">Tags</Form.Label>
+            <Form.Control 
+              type="text" 
+              placeholder="e.g. urgent, feature, bug" 
+              value={bulkTagsValue} 
+              onChange={(e) => setBulkTagsValue(e.target.value)}
+              style={{ fontSize: "13px" }}
+            />
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer className="border-0 pt-0">
+          <Button variant="light" onClick={() => setShowBulkTagsModal(false)} className="px-4 py-1.5" style={{ fontSize: "12.5px" }}>
+            Cancel
+          </Button>
+          <Button 
+            variant="dark" 
+            onClick={handleSaveBulkTags} 
+            disabled={saving}
+            className="px-4 py-1.5" 
+            style={{ fontSize: "12.5px" }}
+          >
+            {saving ? <Spinner animation="border" size="sm" /> : "Save Tags"}
           </Button>
         </Modal.Footer>
       </Modal>

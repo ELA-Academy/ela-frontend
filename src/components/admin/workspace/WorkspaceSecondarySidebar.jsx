@@ -622,8 +622,11 @@ const WorkspaceSecondarySidebar = ({
           <span className="workspace-secondary-link-text">
             <span className="workspace-secondary-link-title">{dmTitle}</span>
             {(conversation.unread_count > 0) && (
-              <span className="workspace-secondary-link-meta">
-                {`${conversation.unread_count} unread`}
+              <span className="workspace-secondary-link-meta d-flex align-items-center gap-1" style={{ color: "#e53e3e", fontWeight: "700" }}>
+                <span className="badge rounded-pill bg-danger text-white px-1.5 py-0.5" style={{ fontSize: "9.5px", lineHeight: "1" }}>
+                  {conversation.unread_count}
+                </span>
+                <span>unread</span>
               </span>
             )}
           </span>
