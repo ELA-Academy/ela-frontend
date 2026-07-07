@@ -52,7 +52,7 @@ const formatTime = (totalSeconds) => {
 };
 
 const Header = () => {
-  const { user, unreadCount, notifications, markAllNotificationsAsRead, markNotificationAsRead } =
+  const { user, unreadCount, notifications, markAllNotificationsAsRead, markNotificationAsRead, vibrateBell } =
     useAuth();
   const navigate = useNavigate();
 
@@ -396,7 +396,23 @@ const Header = () => {
           className="hostinger-round-action relative cursor-pointer text-slate-600 hover:text-slate-900 transition-colors"
           onClick={() => setShowNotifications(true)}
         >
-          <Bell className="w-5 h-5" />
+          <style>{`
+            @keyframes bell-vibrate {
+              0% { transform: rotate(0); }
+              15% { transform: rotate(15deg); }
+              30% { transform: rotate(-15deg); }
+              45% { transform: rotate(10deg); }
+              60% { transform: rotate(-10deg); }
+              75% { transform: rotate(4deg); }
+              85% { transform: rotate(-4deg); }
+              100% { transform: rotate(0); }
+            }
+            .vibrate-bell-active {
+              animation: bell-vibrate 0.6s ease-in-out;
+              color: #f59e0b !important;
+            }
+          `}</style>
+          <Bell className={`w-5 h-5 transition-all ${vibrateBell ? "vibrate-bell-active" : ""}`} />
           {unreadCount > 0 && (
             <span className="absolute top-1 right-1 bg-rose-500 text-white font-bold rounded-full w-4 h-4 flex items-center justify-center text-[10px] border border-white shadow-sm leading-none">
               {unreadCount > 9 ? "9+" : unreadCount}

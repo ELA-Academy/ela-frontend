@@ -26,6 +26,90 @@ export const AuthProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadTasks, setUnreadTasks] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [vibrateBell, setVibrateBell] = useState(false);
+  const [socket, setSocket] = useState(null);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user) {
+      if (socket) {
+        socket.disconnect();
+        setSocket(null);
+      }
+      return;
+    }
+
+    const socketUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+    let activeSocket = null;
+
+    import("socket.io-client").then(({ io }) => {
+      if (!isAuthenticated) return;
+      
+      activeSocket = io(socketUrl, {
+        transports: ["polling", "websocket"],
+        withCredentials: true
+      });
+
+      activeSocket.on("connect", () => {
+        console.log("Global notification socket connected");
+        const roomName = `user_${user.role === 'superadmin' ? 'superadmin' : 'staff'}_${user.id}`;
+        activeSocket.emit("join", { conversation_id: roomName });
+      });
+
+      activeSocket.on("new_inapp_notification", (notif) => {
+        console.log("Real-time notification received:", notif);
+        
+        // Play premium double chime using Web Audio API
+        try {
+          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          if (audioCtx.state === "suspended") {
+            audioCtx.resume();
+          }
+          const playTone = (time, pitch) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(pitch, time);
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.3, time + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.8);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(time);
+            osc.stop(time + 0.8);
+          };
+          const now = audioCtx.currentTime;
+          playTone(now, 880);
+          playTone(now + 0.12, 1318.51);
+        } catch (err) {
+          console.log("Audio play blocked/failed:", err);
+        }
+
+        // Trigger visual vibration
+        setVibrateBell(true);
+        setTimeout(() => setVibrateBell(false), 800);
+
+        // Prepend to notifications state
+        setNotifications((prev) => {
+          // Avoid duplicate items if also polling
+          if (prev.some(n => n.id === notif.id)) return prev;
+          return [notif, ...prev];
+        });
+
+        // Increment unread count or refresh counts
+        if (notif.category === "assignment") {
+          setUnreadTasks((prev) => prev + 1);
+        }
+      });
+
+      setSocket(activeSocket);
+    });
+
+    return () => {
+      if (activeSocket) {
+        activeSocket.disconnect();
+      }
+    };
+  }, [isAuthenticated, user]);
 
   const fetchCounts = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -157,7 +241,8 @@ export const AuthProvider = ({ children }) => {
     unreadMessages,
     markAllNotificationsAsRead,
     markNotificationAsRead,
-    refreshCounts: fetchCounts, // Expose a manual refresh function
+    refreshCounts: fetchCounts,
+    vibrateBell,
   };
 
   return (
