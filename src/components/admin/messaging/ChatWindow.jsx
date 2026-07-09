@@ -130,6 +130,12 @@ const ChatWindow = ({ conversationId, conversation }) => {
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editingText, setEditingText] = useState("");
 
+  const hasScrolledToLastReadRef = useRef(false);
+
+  useEffect(() => {
+    hasScrolledToLastReadRef.current = false;
+  }, [conversationId]);
+
   const [showDeleteMsgModal, setShowDeleteMsgModal] = useState(false);
   const [msgIdToDelete, setMsgIdToDelete] = useState(null);
   const [deletingMsg, setDeletingMsg] = useState(false);
@@ -393,29 +399,52 @@ const ChatWindow = ({ conversationId, conversation }) => {
       }
 
       try {
-        const data = await getMessages(conversationId);
+        const res = await getMessages(conversationId);
+        const messagesData = res.messages || [];
+        const lastReadStr = res.last_read_at;
 
         setMessages((currentMessages) => {
-          if (currentMessages.length !== data.length) {
-            globalMessageCache[conversationId] = data;
-            return data;
+          if (currentMessages.length !== messagesData.length) {
+            globalMessageCache[conversationId] = messagesData;
+            return messagesData;
           }
 
           if (currentMessages.length > 0) {
             const lastCurrent = currentMessages[currentMessages.length - 1];
-            const lastData = data[data.length - 1];
+            const lastData = messagesData[messagesData.length - 1];
             if (
               lastCurrent.id !== lastData.id ||
               lastCurrent.status !== lastData.status ||
               lastCurrent.content !== lastData.content
             ) {
-              globalMessageCache[conversationId] = data;
-              return data;
+              globalMessageCache[conversationId] = messagesData;
+              return messagesData;
             }
           }
 
           return currentMessages;
         });
+
+        // Scroll to the first unread message on initial load
+        if (isInitialLoad && !hasScrolledToLastReadRef.current) {
+          hasScrolledToLastReadRef.current = true;
+          if (lastReadStr) {
+            const lastReadDate = new Date(lastReadStr);
+            const firstUnread = messagesData.find(m => new Date(m.created_at) > lastReadDate);
+            if (firstUnread) {
+              setTimeout(() => {
+                const el = document.getElementById(`msg-${firstUnread.id}`);
+                if (el) {
+                  el.scrollIntoView({ block: "center" });
+                }
+              }, 100);
+              return;
+            }
+          }
+          setTimeout(() => {
+            scrollToBottom();
+          }, 100);
+        }
       } catch (err) {
         setError("Failed to load messages.");
       } finally {
@@ -646,7 +675,9 @@ const ChatWindow = ({ conversationId, conversation }) => {
 
   useEffect(() => {
     if (activeTab === "chat") {
-      scrollToBottom();
+      if (hasScrolledToLastReadRef.current) {
+        scrollToBottom();
+      }
     }
   }, [messages, activeTab]);
 

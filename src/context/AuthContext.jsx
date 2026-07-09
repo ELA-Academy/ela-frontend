@@ -133,6 +133,16 @@ export const AuthProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, [fetchCounts]);
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      import("../utils/push-notifications")
+        .then(({ subscribeUser }) => {
+          subscribeUser().catch((err) => console.error("Error subscribing to push notifications:", err));
+        })
+        .catch((err) => console.error("Failed to import push notifications module:", err));
+    }
+  }, [isAuthenticated]);
+
   const markAllNotificationsAsRead = async () => {
     try {
       await markAllAsRead();
