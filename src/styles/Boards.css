@@ -430,6 +430,13 @@
   background: #fafafa;
 }
 
+.workspace-row.is-overdue {
+  background-color: #fff1f2 !important;
+}
+.workspace-row.is-overdue td {
+  background-color: #fff1f2 !important;
+}
+
 .row-color-bar {
   display: none !important;
 }
@@ -684,6 +691,11 @@
   border-radius: 14px;
   padding: 16px;
   box-shadow: none;
+}
+
+.kanban-task-card.is-overdue {
+  border-left: 4px solid #ef4444 !important;
+  background-color: #fef2f2 !important;
 }
 
 .kanban-task-title {
