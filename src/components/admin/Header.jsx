@@ -522,45 +522,61 @@ const Header = () => {
 
           <div className="flex-1 overflow-y-auto max-h-[calc(100vh-230px)]">
             {filteredNotifications.length > 0 ? (
-              filteredNotifications.map((notif) => (
-                <Link
-                  to={notif.target_link || "#"}
-                  key={notif.id}
-                  className={`flex gap-3 p-4 border-b border-slate-100 text-slate-700 hover:bg-slate-50 transition-colors text-decoration-none ${
-                    !notif.is_read ? "bg-slate-50/50" : ""
-                  }`}
-                  style={{ color: "inherit", display: "flex" }}
-                  onClick={() => {
-                    setShowNotifications(false);
-                    if (!notif.is_read) {
-                      markNotificationAsRead(notif.id);
-                    }
-                  }}
-                >
-                  {!notif.is_read && (
-                    <div className="w-2 h-2 rounded-full bg-rose-500 mt-1.5 flex-shrink-0" />
-                  )}
-                  
-                  <div
-                    className={`w-8 h-8 rounded-full font-bold flex items-center justify-center text-[10px] flex-shrink-0 border uppercase tracking-wider ${
-                      notif.category === "mention"
-                        ? "bg-sky-50 text-sky-600 border-sky-200"
-                        : "bg-slate-50 text-slate-600 border-slate-200"
-                    }`}
-                  >
-                    {getSenderInitials(notif.message)}
-                  </div>
-                  
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs text-slate-800 font-medium leading-relaxed m-0 whitespace-normal break-words">
-                      {notif.message}
-                    </p>
-                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1.5">
-                      {timeAgo(notif.created_at)}
+              filteredNotifications.map((notif) => {
+                const content = (
+                  <>
+                    {!notif.is_read && (
+                      <div className="w-2 h-2 rounded-full bg-rose-500 mt-1.5 flex-shrink-0" />
+                    )}
+                    
+                    <div
+                      className={`w-8 h-8 rounded-full font-bold flex items-center justify-center text-[10px] flex-shrink-0 border uppercase tracking-wider ${
+                        notif.category === "mention"
+                          ? "bg-sky-50 text-sky-600 border-sky-200"
+                          : "bg-slate-50 text-slate-600 border-slate-200"
+                      }`}
+                    >
+                      {getSenderInitials(notif.message)}
                     </div>
-                  </div>
-                </Link>
-              ))
+                    
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-slate-800 font-medium leading-relaxed m-0 whitespace-normal break-words">
+                        {notif.message}
+                      </p>
+                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1.5">
+                        {timeAgo(notif.created_at)}
+                      </div>
+                    </div>
+                  </>
+                );
+
+                if (notif.is_read) {
+                  return (
+                    <div
+                      key={notif.id}
+                      className="flex gap-3 p-4 border-b border-slate-100 text-slate-400 transition-colors"
+                      style={{ display: "flex" }}
+                    >
+                      {content}
+                    </div>
+                  );
+                }
+
+                return (
+                  <Link
+                    to={notif.target_link || "#"}
+                    key={notif.id}
+                    className="flex gap-3 p-4 border-b border-slate-100 text-slate-700 hover:bg-slate-50 transition-colors text-decoration-none bg-slate-50/50"
+                    style={{ color: "inherit", display: "flex" }}
+                    onClick={() => {
+                      setShowNotifications(false);
+                      markNotificationAsRead(notif.id);
+                    }}
+                  >
+                    {content}
+                  </Link>
+                );
+              })
             ) : (
               <div className="flex flex-col items-center justify-center py-20 text-slate-400">
                 <CheckCircle className="w-10 h-10 mb-2 opacity-50 text-slate-600" />
