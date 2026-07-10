@@ -32,6 +32,9 @@ import {
   MessageSquare,
   ArrowUpDown,
   ChevronRight,
+  ChevronLeft,
+  X,
+  FileIcon,
   Bell,
   CornerUpLeft,
   Copy
@@ -85,6 +88,8 @@ const ChatWindow = ({ conversationId, conversation }) => {
   
   // File Upload State
   const [uploading, setUploading] = useState(false);
+  const [pendingAttachments, setPendingAttachments] = useState([]);
+  const [lightboxIndex, setLightboxIndex] = useState(null);
   
   // Target Participant (for direct messages)
   const [targetUser, setTargetUser] = useState(null);
@@ -131,6 +136,34 @@ const ChatWindow = ({ conversationId, conversation }) => {
   const [editingText, setEditingText] = useState("");
 
   const hasScrolledToLastReadRef = useRef(false);
+
+  const imageMessages = useMemo(() => {
+    return messages.filter(
+      (msg) => msg.file_path && msg.file_path.match(/\.(jpeg|jpg|gif|png)$/i)
+    );
+  }, [messages]);
+
+  const handleImageClick = (msgId) => {
+    const idx = imageMessages.findIndex((m) => m.id === msgId);
+    if (idx !== -1) {
+      setLightboxIndex(idx);
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (lightboxIndex === null) return;
+      if (e.key === "ArrowRight") {
+        setLightboxIndex((prev) => (prev + 1) % imageMessages.length);
+      } else if (e.key === "ArrowLeft") {
+        setLightboxIndex((prev) => (prev - 1 + imageMessages.length) % imageMessages.length);
+      } else if (e.key === "Escape") {
+        setLightboxIndex(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [lightboxIndex, imageMessages]);
 
   useEffect(() => {
     hasScrolledToLastReadRef.current = false;
@@ -712,88 +745,37 @@ const ChatWindow = ({ conversationId, conversation }) => {
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
-    const tempId = `temp_${Date.now()}`;
+    if (!newMessage.trim() && pendingAttachments.length === 0) return;
+
     const replyId = replyingToMessage ? replyingToMessage.id : null;
-    const optimisticMessage = {
-      id: tempId,
-      content: newMessage,
-      created_at: new Date().toISOString(),
-      sender_id: user.id,
-      sender_type: user.role,
-      sender_name: user.name,
-      status: "sending",
-      reply_to_message_id: replyId,
-      reply_to_details: replyingToMessage ? {
-        id: replyingToMessage.id,
-        content: replyingToMessage.content,
-        sender_name: replyingToMessage.sender_name
-      } : null
-    };
-    setMessages((prevMessages) => {
-      const nextMessages = [...prevMessages, optimisticMessage];
-      globalMessageCache[conversationId] = nextMessages;
-      return nextMessages;
-    });
-    const activeMentions = selectedMentions.filter(u => optimisticMessage.content.includes(`@${u.name}`));
-    setNewMessage("");
-    setReplyingToMessage(null);
-    setSelectedMentions([]);
-    try {
-      const sentMessage = await sendMessage(
-        conversationId,
-        optimisticMessage.content,
-        replyId,
-        activeMentions.map(u => ({ id: u.id, role: u.role }))
-      );
-      setMessages((prevMessages) =>
-        prevMessages.map((msg) => (msg.id === tempId ? sentMessage : msg))
-      );
-      globalMessageCache[conversationId] = (globalMessageCache[conversationId] || []).map(
-        (msg) => (msg.id === tempId ? sentMessage : msg)
-      );
-    } catch (err) {
-      setError("Failed to send message.");
-      setMessages((prevMessages) =>
-        prevMessages.map((msg) =>
-          msg.id === tempId ? { ...msg, status: "failed" } : msg
-        )
-      );
-    }
-  };
+    const tempIdBase = Date.now();
 
-  const handlePaperclipClick = () => {
-    fileInputRef.current?.click();
-  };
+    if (pendingAttachments.length > 0) {
+      setUploading(true);
+      const filesToUpload = [...pendingAttachments];
+      setPendingAttachments([]);
 
-  // Upload message attachment
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+      // 1. Upload first file together with message text
+      const firstFile = filesToUpload[0];
+      const firstFormData = new FormData();
+      firstFormData.append("file", firstFile);
+      if (newMessage.trim()) {
+        firstFormData.append("content", newMessage.trim());
+      }
+      if (replyId) {
+        firstFormData.append("reply_to_message_id", replyId);
+      }
 
-    setUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-    if (newMessage.trim()) {
-      formData.append("content", newMessage.trim());
-      setNewMessage("");
-    }
-    const replyId = replyingToMessage ? replyingToMessage.id : null;
-    if (replyId) {
-      formData.append("reply_to_message_id", replyId);
-    }
-
-    try {
-      const tempId = `temp_${Date.now()}`;
-      const optimisticMessage = {
-        id: tempId,
-        content: newMessage.trim() || `Uploaded attachment: ${file.name}`,
+      const tempId1 = `temp_1_${tempIdBase}`;
+      const optimistic1 = {
+        id: tempId1,
+        content: newMessage.trim() || `Uploaded attachment: ${firstFile.name}`,
         created_at: new Date().toISOString(),
         sender_id: user.id,
         sender_type: user.role,
         sender_name: user.name,
         status: "sending",
-        filename: file.name,
+        filename: firstFile.name,
         file_path: "",
         reply_to_message_id: replyId,
         reply_to_details: replyingToMessage ? {
@@ -802,24 +784,128 @@ const ChatWindow = ({ conversationId, conversation }) => {
           sender_name: replyingToMessage.sender_name
         } : null
       };
-      setMessages((prev) => [...prev, optimisticMessage]);
-      setReplyingToMessage(null);
 
-      const res = await api.post(`/messaging/conversations/${conversationId}/upload`, formData, {
-        headers: { "Content-Type": "multipart/form-data" }
+      setMessages((prevMessages) => {
+        const nextMessages = [...prevMessages, optimistic1];
+        globalMessageCache[conversationId] = nextMessages;
+        return nextMessages;
       });
 
-      setMessages((prev) =>
-        prev.map((msg) => (msg.id === tempId ? res.data : msg))
-      );
-      globalMessageCache[conversationId] = (globalMessageCache[conversationId] || []).map(
-        (msg) => (msg.id === tempId ? res.data : msg)
-      );
-    } catch (err) {
-      console.error("Upload failed", err);
-      toast.error("Failed to upload attachment.");
-    } finally {
-      setUploading(false);
+      setNewMessage("");
+      setReplyingToMessage(null);
+      setSelectedMentions([]);
+
+      try {
+        const res1 = await api.post(`/messaging/conversations/${conversationId}/upload`, firstFormData, {
+          headers: { "Content-Type": "multipart/form-data" }
+        });
+
+        setMessages((prev) =>
+          prev.map((msg) => (msg.id === tempId1 ? res1.data : msg))
+        );
+        globalMessageCache[conversationId] = (globalMessageCache[conversationId] || []).map(
+          (msg) => (msg.id === tempId1 ? res1.data : msg)
+        );
+
+        // 2. Upload rest of files sequentially
+        for (let i = 1; i < filesToUpload.length; i++) {
+          const file = filesToUpload[i];
+          const formData = new FormData();
+          formData.append("file", file);
+
+          const tempIdN = `temp_${i + 1}_${tempIdBase}`;
+          const optimisticN = {
+            id: tempIdN,
+            content: `Uploaded attachment: ${file.name}`,
+            created_at: new Date().toISOString(),
+            sender_id: user.id,
+            sender_type: user.role,
+            sender_name: user.name,
+            status: "sending",
+            filename: file.name,
+            file_path: ""
+          };
+
+          setMessages((prev) => [...prev, optimisticN]);
+
+          const resN = await api.post(`/messaging/conversations/${conversationId}/upload`, formData, {
+            headers: { "Content-Type": "multipart/form-data" }
+          });
+
+          setMessages((prev) =>
+            prev.map((msg) => (msg.id === tempIdN ? resN.data : msg))
+          );
+          globalMessageCache[conversationId] = (globalMessageCache[conversationId] || []).map(
+            (msg) => (msg.id === tempIdN ? resN.data : msg)
+          );
+        }
+
+      } catch (err) {
+        console.error("Upload failed", err);
+        toast.error("Failed to upload all attachments.");
+      } finally {
+        setUploading(false);
+      }
+    } else {
+      const tempId = `temp_${tempIdBase}`;
+      const optimisticMessage = {
+        id: tempId,
+        content: newMessage,
+        created_at: new Date().toISOString(),
+        sender_id: user.id,
+        sender_type: user.role,
+        sender_name: user.name,
+        status: "sending",
+        reply_to_message_id: replyId,
+        reply_to_details: replyingToMessage ? {
+          id: replyingToMessage.id,
+          content: replyingToMessage.content,
+          sender_name: replyingToMessage.sender_name
+        } : null
+      };
+      setMessages((prevMessages) => {
+        const nextMessages = [...prevMessages, optimisticMessage];
+        globalMessageCache[conversationId] = nextMessages;
+        return nextMessages;
+      });
+      const activeMentions = selectedMentions.filter(u => optimisticMessage.content.includes(`@${u.name}`));
+      setNewMessage("");
+      setReplyingToMessage(null);
+      setSelectedMentions([]);
+      try {
+        const sentMessage = await sendMessage(
+          conversationId,
+          optimisticMessage.content,
+          replyId,
+          activeMentions.map(u => ({ id: u.id, role: u.role }))
+        );
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) => (msg.id === tempId ? sentMessage : msg))
+        );
+        globalMessageCache[conversationId] = (globalMessageCache[conversationId] || []).map(
+          (msg) => (msg.id === tempId ? sentMessage : msg)
+        );
+      } catch (err) {
+        setError("Failed to send message.");
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg.id === tempId ? { ...msg, status: "failed" } : msg
+          )
+        );
+      }
+    }
+  };
+
+  const handlePaperclipClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileUpload = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    setPendingAttachments((prev) => [...prev, ...files]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
@@ -1136,8 +1222,9 @@ const ChatWindow = ({ conversationId, conversation }) => {
                                   <img 
                                     src={`${api.defaults.baseURL}${msg.file_path}`} 
                                     alt={msg.filename} 
-                                    className="max-width-[240px] rounded-lg border border-slate-100 shadow-sm"
-                                    style={{ maxWidth: "260px" }}
+                                    className="max-width-[240px] rounded-lg border border-slate-100 shadow-sm img-clickable"
+                                    style={{ maxWidth: "260px", cursor: "pointer", transition: "opacity 0.2s" }}
+                                    onClick={() => handleImageClick(msg.id)}
                                   />
                                 ) : (
                                   <a 
@@ -1249,6 +1336,35 @@ const ChatWindow = ({ conversationId, conversation }) => {
                 </div>
               )}
               <Form onSubmit={handleSendMessage}>
+                {pendingAttachments.length > 0 && (
+                  <div className="pending-attachments-container d-flex flex-wrap gap-2 p-2 mb-2 bg-light rounded border border-dashed" style={{ border: "1px dashed #cbd5e1" }}>
+                    {pendingAttachments.map((file, idx) => (
+                      <div key={idx} className="pending-attachment-preview d-flex align-items-center gap-2 p-1.5 bg-white rounded border border-slate-100 position-relative" style={{ minWidth: "150px", maxWidth: "240px", flex: "1 1 auto" }}>
+                        {file.type.startsWith("image/") ? (
+                          <img 
+                            src={URL.createObjectURL(file)} 
+                            alt="preview" 
+                            style={{ width: "32px", height: "32px", objectFit: "cover", borderRadius: "4px" }} 
+                          />
+                        ) : (
+                          <FileIcon size={16} className="text-muted" />
+                        )}
+                        <div className="flex-grow-1 min-w-0" style={{ fontSize: "12px" }}>
+                          <div className="text-truncate font-semibold" style={{ maxWidth: "120px" }}>{file.name}</div>
+                          <div className="text-xs text-muted" style={{ fontSize: "10px" }}>{(file.size / 1024).toFixed(1)} KB</div>
+                        </div>
+                        <Button 
+                          variant="link" 
+                          size="sm" 
+                          className="p-0 text-danger ms-auto" 
+                          onClick={() => setPendingAttachments((prev) => prev.filter((_, i) => i !== idx))}
+                        >
+                          <X size={14} />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <Form.Control
                   as="textarea"
                   ref={textAreaRef}
@@ -1278,11 +1394,12 @@ const ChatWindow = ({ conversationId, conversation }) => {
                       ref={fileInputRef} 
                       onChange={handleFileUpload} 
                       style={{ display: "none" }} 
+                      multiple
                     />
                     {uploading && <Spinner size="sm" animation="border" className="ms-2" />}
                   </div>
                   <div className="zbot-toolbar-right">
-                    <button type="submit" className="zbot-send-btn" disabled={!newMessage.trim() || uploading} title="Send message">
+                    <button type="submit" className="zbot-send-btn" disabled={(!newMessage.trim() && pendingAttachments.length === 0) || uploading} title="Send message">
                       <SendFill size={13} />
                     </button>
                   </div>
@@ -1667,6 +1784,60 @@ const ChatWindow = ({ conversationId, conversation }) => {
             )}
           </div>
         </>
+      )}
+
+      {/* Lightbox Carousel Modal */}
+      {lightboxIndex !== null && imageMessages[lightboxIndex] && (
+        <Modal
+          show={lightboxIndex !== null}
+          onHide={() => setLightboxIndex(null)}
+          centered
+          dialogClassName="modal-90w shadow-lg lightbox-modal"
+          contentClassName="bg-dark text-white border-0"
+        >
+          <Modal.Header 
+            closeButton 
+            closeVariant="white"
+            className="border-0 pb-0"
+            style={{ position: "absolute", top: 10, right: 10, zIndex: 1050 }}
+          />
+          <Modal.Body className="p-0 position-relative d-flex flex-column align-items-center justify-content-center" style={{ minHeight: "350px", backgroundColor: "#0f172a" }}>
+            {imageMessages.length > 1 && (
+              <button
+                className="btn position-absolute start-0 text-white hover:text-slate-300 p-3"
+                style={{ top: "50%", transform: "translateY(-50%)", zIndex: 10, border: 0, background: "rgba(0,0,0,0.3)", borderRadius: "0 4px 4px 0" }}
+                onClick={() => setLightboxIndex((prev) => (prev - 1 + imageMessages.length) % imageMessages.length)}
+              >
+                <ChevronLeft size={28} />
+              </button>
+            )}
+
+            <div className="text-center p-4 d-flex align-items-center justify-content-center" style={{ flexGrow: 1, maxHeight: "70vh", width: "100%" }}>
+              <img
+                src={`${api.defaults.baseURL}${imageMessages[lightboxIndex].file_path}`}
+                alt={imageMessages[lightboxIndex].filename}
+                style={{ maxHeight: "70vh", maxWidth: "100%", objectFit: "contain", borderRadius: "8px" }}
+              />
+            </div>
+
+            {imageMessages.length > 1 && (
+              <button
+                className="btn position-absolute end-0 text-white hover:text-slate-300 p-3"
+                style={{ top: "50%", transform: "translateY(-50%)", zIndex: 10, border: 0, background: "rgba(0,0,0,0.3)", borderRadius: "4px 0 0 4px" }}
+                onClick={() => setLightboxIndex((prev) => (prev + 1) % imageMessages.length)}
+              >
+                <ChevronRight size={28} />
+              </button>
+            )}
+
+            <div className="w-100 p-3 text-center bg-black bg-opacity-50 border-t border-secondary text-sm">
+              <div className="fw-semibold text-truncate mb-1">{imageMessages[lightboxIndex].filename}</div>
+              <div className="text-muted text-xs">
+                Sent by {imageMessages[lightboxIndex].sender_name} at {new Date(imageMessages[lightboxIndex].created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+          </Modal.Body>
+        </Modal>
       )}
 
       {/* Delete Confirmation Modal for Messages */}
