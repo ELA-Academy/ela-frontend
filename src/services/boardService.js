@@ -257,3 +257,8 @@ export const bulkUpdateCustomFields = async (taskIds, fieldId, value) => {
   return response.data;
 };
 
+export const reorderChecklistItems = async (taskId, orderedIds) => {
+  const response = await api.post(`/boards/tasks/${taskId}/checklists/reorder`, { ordered_ids: orderedIds });
+  return response.data;
+};
+

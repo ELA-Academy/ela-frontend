@@ -2124,10 +2124,12 @@ const BoardDetailPage = () => {
     const checklistProgress = checklistCount ? Math.round((checklistDone / checklistCount) * 100) : 0;
     const subtaskCount = task.subtasks?.length || 0;
 
+    const isOverdue = task.due_date && task.status !== "Done" && new Date(`${task.due_date}T23:59:59`) < new Date();
+
     return (
       <article
         key={task.id}
-        className="kanban-task-card"
+        className={`kanban-task-card ${isOverdue ? "is-overdue" : ""}`}
         draggable
         onDragStart={(e) => handleDragStart(e, task.id)}
       >
@@ -3172,7 +3174,10 @@ const BoardDetailPage = () => {
                           const subtaskCount = task.subtasks?.length || 0;
                           return (
                             <React.Fragment key={task.id}>
-                            <tr className="workspace-row" onDoubleClick={() => handleOpenUpdatesDrawer(task)}>
+                            <tr 
+                              className={`workspace-row ${task.due_date && task.status !== "Done" && new Date(`${task.due_date}T23:59:59`) < new Date() ? "is-overdue" : ""}`}
+                              onDoubleClick={() => handleOpenUpdatesDrawer(task)}
+                            >
                               <td style={{ textAlign: "center", verticalAlign: "middle" }}>
                                 <input
                                   type="checkbox"
@@ -3853,7 +3858,10 @@ const BoardDetailPage = () => {
               const statusMeta = STATUS_META[task.status] || STATUS_META["Not Started"];
               return (
                 <React.Fragment key={task.id}>
-                  <tr className="workspace-row" onDoubleClick={() => handleOpenUpdatesDrawer(task)}>
+                  <tr 
+                    className={`workspace-row ${task.due_date && task.status !== "Done" && new Date(`${task.due_date}T23:59:59`) < new Date() ? "is-overdue" : ""}`}
+                    onDoubleClick={() => handleOpenUpdatesDrawer(task)}
+                  >
                     <td style={{ textAlign: "center", verticalAlign: "middle" }}>
                       <span
                         className="task-complete-dot"

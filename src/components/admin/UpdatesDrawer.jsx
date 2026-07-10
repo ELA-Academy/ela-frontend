@@ -24,6 +24,8 @@ import {
   Plus,
   Mic,
   Video,
+  GripVertical,
+  Edit2,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import {
@@ -34,6 +36,7 @@ import {
   addTaskChecklistItem,
   updateChecklistItem,
   deleteChecklistItem,
+  reorderChecklistItems,
   addTaskWatcher,
   removeTaskWatcher,
   uploadTaskAttachment,
@@ -143,6 +146,9 @@ const UpdatesDrawer = ({
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [newSubtaskMeta, setNewSubtaskMeta] = useState({ assignees: [], due_date: "", priority: "Normal" });
   const [newChecklistItemTitle, setNewChecklistItemTitle] = useState("");
+  const [editingChecklistItemId, setEditingChecklistItemId] = useState(null);
+  const [editingChecklistItemTitle, setEditingChecklistItemTitle] = useState("");
+  const [draggedItemIndex, setDraggedItemIndex] = useState(null);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
 
   // Advanced feature states
@@ -791,6 +797,60 @@ const UpdatesDrawer = ({
       });
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleStartEditChecklist = (item) => {
+    setEditingChecklistItemId(item.id);
+    setEditingChecklistItemTitle(item.title);
+  };
+
+  const handleSaveChecklistItemTitle = async (itemId, oldTitle) => {
+    const clean = editingChecklistItemTitle.trim();
+    if (!clean || clean === oldTitle) {
+      setEditingChecklistItemId(null);
+      return;
+    }
+    try {
+      const updated = await updateChecklistItem(itemId, { title: clean });
+      setChecklist(prev => {
+        const next = prev.map(item => item.id === itemId ? updated : item);
+        if (onTaskUpdated) onTaskUpdated(taskId, { checklist: next });
+        return next;
+      });
+      setEditingChecklistItemId(null);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDragStartChecklist = (e, index) => {
+    setDraggedItemIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOverChecklist = (e, targetIndex) => {
+    e.preventDefault();
+    if (draggedItemIndex === null || draggedItemIndex === targetIndex) return;
+
+    const items = [...checklist];
+    const draggedItem = items[draggedItemIndex];
+    items.splice(draggedItemIndex, 1);
+    items.splice(targetIndex, 0, draggedItem);
+
+    setDraggedItemIndex(targetIndex);
+    setChecklist(items);
+  };
+
+  const handleDragEndChecklist = async () => {
+    if (draggedItemIndex === null) return;
+    setDraggedItemIndex(null);
+    try {
+      const orderedIds = checklist.map(item => item.id);
+      await reorderChecklistItems(taskId, orderedIds);
+      if (onTaskUpdated) onTaskUpdated(taskId, { checklist });
+    } catch (err) {
+      console.error("Failed to save checklist order:", err);
     }
   };
 
@@ -1844,21 +1904,73 @@ const UpdatesDrawer = ({
                       <div className="progress-bar bg-success" style={{ width: `${(checklist.filter(item => item.is_checked).length / checklist.length) * 100}%` }} />
                     </div>
                     <div className="cu-checklist-items">
-                      {checklist.map((item) => (
-                        <div key={item.id} className="cu-checklist-row">
-                          <Form.Check
-                            type="checkbox"
-                            checked={item.is_checked}
-                            onChange={() => handleToggleChecklist(item.id, item.is_checked)}
-                            label={
-                              <span className={item.is_checked ? "text-decoration-line-through text-muted" : ""} style={{ fontSize: "13px" }}>
+                      {checklist.map((item, idx) => (
+                        <div 
+                          key={item.id} 
+                          className="cu-checklist-row d-flex align-items-center justify-content-between p-1 rounded"
+                          style={{ 
+                            cursor: draggedItemIndex === idx ? "grabbing" : "default",
+                            backgroundColor: draggedItemIndex === idx ? "#f1f5f9" : "transparent"
+                          }}
+                          draggable
+                          onDragStart={(e) => handleDragStartChecklist(e, idx)}
+                          onDragOver={(e) => handleDragOverChecklist(e, idx)}
+                          onDragEnd={handleDragEndChecklist}
+                        >
+                          <div className="d-flex align-items-center gap-2 flex-grow-1">
+                            <span 
+                              style={{ cursor: "grab", color: "#94a3b8" }}
+                              className="d-inline-flex align-items-center"
+                              title="Drag to reorder"
+                            >
+                              <GripVertical size={13} />
+                            </span>
+
+                            <Form.Check
+                              type="checkbox"
+                              checked={item.is_checked}
+                              onChange={() => handleToggleChecklist(item.id, item.is_checked)}
+                              className="mb-0"
+                            />
+
+                            {editingChecklistItemId === item.id ? (
+                              <input
+                                type="text"
+                                className="form-control form-control-sm py-0.5 border-primary"
+                                style={{ fontSize: "13px" }}
+                                value={editingChecklistItemTitle}
+                                onChange={(e) => setEditingChecklistItemTitle(e.target.value)}
+                                onBlur={() => handleSaveChecklistItemTitle(item.id, item.title)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") handleSaveChecklistItemTitle(item.id, item.title);
+                                  if (e.key === "Escape") setEditingChecklistItemId(null);
+                                }}
+                                autoFocus
+                              />
+                            ) : (
+                              <span 
+                                className={item.is_checked ? "text-decoration-line-through text-muted" : ""} 
+                                style={{ fontSize: "13px", cursor: "pointer" }}
+                                onClick={() => handleStartEditChecklist(item)}
+                                title="Click to edit"
+                              >
                                 {item.title}
                               </span>
-                            }
-                          />
-                          <Button variant="link" size="sm" className="p-0 text-danger cu-delete-icon" onClick={() => handleDeleteChecklistItem(item.id)}>
-                            <Trash size={12} />
-                          </Button>
+                            )}
+                          </div>
+                          <div className="d-flex align-items-center gap-1">
+                            <Button 
+                              variant="link" 
+                              size="sm" 
+                              className="p-0 text-slate-400 hover:text-slate-600" 
+                              onClick={() => handleStartEditChecklist(item)}
+                            >
+                              <Edit2 size={12} />
+                            </Button>
+                            <Button variant="link" size="sm" className="p-0 text-danger cu-delete-icon" onClick={() => handleDeleteChecklistItem(item.id)}>
+                              <Trash size={12} />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
