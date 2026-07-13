@@ -10,7 +10,7 @@ import {
   Plus,
   Trash,
 } from "react-bootstrap-icons";
-import { FileText, LayoutList, Kanban, Flag, User, Calendar, BookOpen, Folder, Repeat, GitFork, Link, MoreHorizontal, Copy, Star, Edit3, Bell, ArrowRight, PlusSquare, Layers, ClipboardCopy, Zap, Clock, Mail, Archive, Trash2, MessageSquare, Search, AlignLeft, Table, PieChart, Image, Activity, Share2, Users, MapPin, Pin, Settings, Lock, Filter, RefreshCw, Columns, ChevronDown, Send, MousePointer, Type, PenTool, StickyNote, Eraser, Square, Target, Paperclip } from "lucide-react";
+import { FileText, LayoutList, Kanban, Flag, User, Calendar, BookOpen, Folder, Repeat, GitFork, Link, MoreHorizontal, Copy, Star, Edit3, Bell, ArrowRight, PlusSquare, Layers, ClipboardCopy, Zap, Clock, Mail, Archive, Trash2, MessageSquare, Search, AlignLeft, Table, PieChart, Image, Activity, Share2, Users, MapPin, Pin, Settings, Lock, Filter, RefreshCw, Columns, ChevronDown, Send, MousePointer, Type, PenTool, StickyNote, Eraser, Square, Target, Paperclip, Hash, Globe, DollarSign, CheckSquare, PlusCircle, ArrowLeft, ListPlus, Tag, Sparkles, Phone } from "lucide-react";
 import { toast } from "react-toastify";
 import { format, parseISO } from "date-fns";
 
@@ -50,6 +50,7 @@ import {
   bulkMoveTasks,
   bulkUpdateCustomFields,
 } from "../../services/boardService";
+import api from "../../utils/api";
 import "../../styles/Boards.css";
 import "../../styles/WorkspaceShell.css";
 
@@ -250,6 +251,59 @@ const BoardDetailPage = () => {
   const [showBulkCustomFieldsModal, setShowBulkCustomFieldsModal] = useState(false);
   const [selectedBulkFieldId, setSelectedBulkFieldId] = useState("");
   const [bulkFieldValue, setBulkFieldValue] = useState("");
+
+  // Custom Fields Offcanvas States
+  const [showCustomFieldsOffcanvas, setShowCustomFieldsOffcanvas] = useState(false);
+  const [customFieldsOffcanvasTab, setCustomFieldsOffcanvasTab] = useState("create");
+
+  // Custom Fields Offcanvas Form States
+  const [selectedFieldType, setSelectedFieldType] = useState("");
+  const [fieldName, setFieldName] = useState("");
+  const [fieldDesc, setFieldDesc] = useState("");
+  const [fieldDefaultValue, setFieldDefaultValue] = useState("");
+  const [fieldOptions, setFieldOptions] = useState("");
+  const [fieldRequired, setFieldRequired] = useState(false);
+  const [fieldPinned, setFieldPinned] = useState(false);
+  const [fieldVisibleToGuests, setFieldVisibleToGuests] = useState(true);
+  const [offcanvasStep, setOffcanvasStep] = useState(1);
+  const [offcanvasSearchQuery, setOffcanvasSearchQuery] = useState("");
+  const [workspaceFields, setWorkspaceFields] = useState([]);
+  const [loadingWorkspaceFields, setLoadingWorkspaceFields] = useState(false);
+  const [showMoreSettings, setShowMoreSettings] = useState(false);
+  const [savingField, setSavingField] = useState(false);
+
+  // Advanced dropdown/labels option builder states
+  const [fieldOptionsList, setFieldOptionsList] = useState([
+    { label: "Simple", color: "#10b981" },
+    { label: "Moderate", color: "#f59e0b" },
+    { label: "Complex", color: "#ef4444" }
+  ]);
+  const [newOptionText, setNewOptionText] = useState("");
+
+  // Button field configuration states
+  const [buttonName, setButtonName] = useState("");
+  const [buttonColor, setButtonColor] = useState("#64748b");
+
+  // Money configuration state
+  const [currencyCode, setCurrencyCode] = useState("USD");
+
+  const fetchWorkspaceFields = async () => {
+    try {
+      setLoadingWorkspaceFields(true);
+      const res = await api.get("/board-extensions/custom-fields/workspace");
+      setWorkspaceFields(res.data || []);
+    } catch (err) {
+      console.error("Failed to fetch workspace custom fields:", err);
+    } finally {
+      setLoadingWorkspaceFields(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showCustomFieldsOffcanvas && customFieldsOffcanvasTab === "existing") {
+      fetchWorkspaceFields();
+    }
+  }, [showCustomFieldsOffcanvas, customFieldsOffcanvasTab]);
 
   // Bulk Tags State
   const [showBulkTagsModal, setShowBulkTagsModal] = useState(false);
@@ -762,6 +816,9 @@ const BoardDetailPage = () => {
 
       const boardData = await getBoard(boardId);
       setBoard(boardData);
+      
+      const res = await api.get(`/board-extensions/boards/${boardId}/custom-fields`);
+      setBoardCustomFields(res.data || []);
     } catch (fetchError) {
       setError("Failed to load space details.");
     } finally {
@@ -3159,13 +3216,25 @@ const BoardDetailPage = () => {
                             />
                           </th>
                           <th style={{ width: "3%" }}></th>
-                          <th style={{ width: "37%" }}>Name</th>
-                          <th style={{ width: "15%" }}>Assignee</th>
-                          <th style={{ width: "12%" }}>Due date</th>
-                          <th style={{ width: "10%" }}>Priority</th>
-                          <th style={{ width: "12%" }}>Status</th>
+                          <th style={{ width: "32%" }}>Name</th>
+                          <th style={{ width: "12%" }}>Assignee</th>
+                          <th style={{ width: "10%" }}>Due date</th>
+                          <th style={{ width: "8%" }}>Priority</th>
+                          <th style={{ width: "10%" }}>Status</th>
+                          {boardCustomFields.map(field => (
+                            <th key={field.id} style={{ width: "10%" }}>{field.name}</th>
+                          ))}
                           <th style={{ width: "5%" }}>Comments</th>
-                          <th style={{ width: "3%" }}></th>
+                          <th style={{ width: "3%" }}>
+                            <button
+                              type="button"
+                              className="header-plus-circle-btn"
+                              onClick={() => handleOpenCustomFieldsOffcanvas(false)}
+                              title="Add Custom Field"
+                            >
+                              <Plus size={12} />
+                            </button>
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
@@ -3282,6 +3351,11 @@ const BoardDetailPage = () => {
                               <td>{renderDateCell(task, "due_date")}</td>
                               <td>{renderPriorityDropdown(task)}</td>
                               <td>{renderStatusDropdown(task)}</td>
+                              {boardCustomFields.map(field => (
+                                <td key={field.id}>
+                                  {renderCustomFieldCell(task, field)}
+                                </td>
+                              ))}
                               <td className="text-center position-relative">
                                 <button
                                   type="button"
@@ -3845,11 +3919,24 @@ const BoardDetailPage = () => {
           <thead>
             <tr>
               <th style={{ width: "3%" }}></th>
-              <th style={{ width: "37%" }}>Name</th>
-              <th style={{ width: "15%" }}>Assignee</th>
-              <th style={{ width: "15%" }}>Status</th>
-              <th style={{ width: "12%" }}>Due date</th>
-              <th style={{ width: "10%" }}>Priority</th>
+              <th style={{ width: "32%" }}>Name</th>
+              <th style={{ width: "12%" }}>Assignee</th>
+              <th style={{ width: "12%" }}>Status</th>
+              <th style={{ width: "10%" }}>Due date</th>
+              <th style={{ width: "8%" }}>Priority</th>
+              {boardCustomFields.map(field => (
+                <th key={field.id} style={{ width: "10%" }}>{field.name}</th>
+              ))}
+              <th style={{ width: "3%" }}>
+                <button
+                  type="button"
+                  className="header-plus-circle-btn"
+                  onClick={() => handleOpenCustomFieldsOffcanvas(false)}
+                  title="Add Custom Field"
+                >
+                  <Plus size={12} />
+                </button>
+              </th>
               <th style={{ width: "8%" }}>Actions</th>
             </tr>
           </thead>
@@ -3922,6 +4009,12 @@ const BoardDetailPage = () => {
                     <td>{renderStatusDropdown(task)}</td>
                     <td>{renderDateCell(task, "due_date")}</td>
                     <td>{renderPriorityDropdown(task)}</td>
+                    {boardCustomFields.map(field => (
+                      <td key={field.id}>
+                        {renderCustomFieldCell(task, field)}
+                      </td>
+                    ))}
+                    <td></td>
                     <td>
                       {/* Three-dot context menu */}
                       <Dropdown align="end">
@@ -4675,6 +4768,763 @@ const BoardDetailPage = () => {
       </div>
     );
   }
+
+
+
+  const getFieldDefaultName = (type) => {
+    switch (type) {
+      case "email": return "User's Email";
+      case "dropdown": return "Dropdown";
+      case "multi_select":
+      case "labels": return "Labels";
+      case "text": return "Text Field";
+      case "text_area": return "Long Text";
+      case "number": return "Number Field";
+      case "date": return "Due Date";
+      case "checkbox": return "Checkbox Field";
+      case "money":
+      case "currency": return "Budget";
+      case "rating": return "Rating";
+      case "website": return "Website Url";
+      default: return `${type.charAt(0).toUpperCase() + type.slice(1)} Field`;
+    }
+  };
+
+  const handleOpenCustomFieldsOffcanvas = (addExisting = false) => {
+    setOffcanvasStep(1);
+    setCustomFieldsOffcanvasTab(addExisting ? "existing" : "create");
+    setSelectedFieldType("");
+    setFieldName("");
+    setFieldDesc("");
+    setFieldDefaultValue("");
+    setFieldOptions("");
+    setFieldRequired(false);
+    setFieldPinned(false);
+    setFieldVisibleToGuests(true);
+    setShowMoreSettings(false);
+    setSavingField(false);
+    setFieldOptionsList([
+      { label: "Simple", color: "#10b981" },
+      { label: "Moderate", color: "#f59e0b" },
+      { label: "Complex", color: "#ef4444" }
+    ]);
+    setNewOptionText("");
+    setButtonName("");
+    setButtonColor("#64748b");
+    setCurrencyCode("USD");
+    setShowCustomFieldsOffcanvas(true);
+  };
+
+  const handleCreateCustomField = async (e) => {
+    if (e) e.preventDefault();
+    if (!fieldName.trim()) {
+      toast.error("Field name is required");
+      return;
+    }
+
+    try {
+      setSavingField(true);
+      const config = {
+        description: fieldDesc,
+        defaultValue: fieldDefaultValue,
+        required: fieldRequired,
+        pinned: fieldPinned,
+        visibleToGuests: fieldVisibleToGuests,
+      };
+
+      if (selectedFieldType === "dropdown" || selectedFieldType === "multi_select" || selectedFieldType === "labels") {
+        config.options = fieldOptionsList.map(opt => opt.label.trim()).filter(Boolean);
+        config.optionColors = fieldOptionsList.reduce((acc, opt) => {
+          if (opt.label.trim()) acc[opt.label.trim()] = opt.color;
+          return acc;
+        }, {});
+      } else if (selectedFieldType === "currency" || selectedFieldType === "money") {
+        config.currencyCode = currencyCode;
+        config.currencySymbol = currencyCode === "USD" ? "$" : (currencyCode === "EUR" ? "€" : (currencyCode === "GBP" ? "£" : "$"));
+      } else if (selectedFieldType === "button") {
+        config.buttonName = buttonName.trim() || "Click";
+        config.buttonColor = buttonColor;
+      }
+
+      const payload = {
+        name: fieldName.trim(),
+        type: selectedFieldType === "labels" ? "multi_select" : selectedFieldType,
+        config: config
+      };
+
+      await api.post(`/board-extensions/boards/${boardId}/custom-fields`, payload);
+      toast.success("Custom field created successfully!");
+      setShowCustomFieldsOffcanvas(false);
+      
+      // Reload custom fields and board data
+      fetchWorkspace(false);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to create custom field");
+    } finally {
+      setSavingField(false);
+    }
+  };
+
+  const handleAddExistingField = async (existingField) => {
+    try {
+      const payload = {
+        name: existingField.name,
+        type: existingField.type,
+        config: existingField.config
+      };
+
+      await api.post(`/board-extensions/boards/${boardId}/custom-fields`, payload);
+      toast.success(`Added custom field "${existingField.name}" to space!`);
+      setShowCustomFieldsOffcanvas(false);
+      
+      // Reload custom fields and board data
+      fetchWorkspace(false);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to add existing custom field");
+    }
+  };
+
+  const renderCustomFieldCell = (task, field) => {
+    const value = task.custom_field_values?.[field.id] ?? "";
+    
+    const handleUpdateValue = async (newVal) => {
+      // Optimistic state update
+      patchTaskInState(task.id, (t) => {
+        const updated = { ...(t.custom_field_values || {}), [field.id]: newVal };
+        return { ...t, custom_field_values: updated };
+      });
+      
+      try {
+        await api.put(`/board-extensions/tasks/${task.id}/custom-fields`, {
+          field_id: field.id,
+          value: newVal
+        });
+      } catch (err) {
+        console.error("Failed to update custom field:", err);
+        toast.error("Failed to update custom field");
+      }
+    };
+
+    switch (field.type) {
+      case "text":
+      case "email":
+      case "phone":
+      case "website":
+      case "text_area":
+        return (
+          <input
+            type={field.type === "email" ? "email" : "text"}
+            className="cell-editable-text w-100"
+            value={value}
+            onChange={(e) => {
+              const val = e.target.value;
+              patchTaskInState(task.id, (t) => {
+                const updated = { ...(t.custom_field_values || {}), [field.id]: val };
+                return { ...t, custom_field_values: updated };
+              });
+            }}
+            onBlur={(e) => handleUpdateValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.target.blur();
+            }}
+            placeholder="-"
+          />
+        );
+      case "number":
+      case "currency":
+      case "money":
+        return (
+          <input
+            type="number"
+            className="cell-editable-text w-100"
+            value={value}
+            onChange={(e) => {
+              const val = e.target.value;
+              patchTaskInState(task.id, (t) => {
+                const updated = { ...(t.custom_field_values || {}), [field.id]: val };
+                return { ...t, custom_field_values: updated };
+              });
+            }}
+            onBlur={(e) => handleUpdateValue(e.target.value ? Number(e.target.value) : "")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.target.blur();
+            }}
+            placeholder="-"
+          />
+        );
+      case "checkbox":
+        return (
+          <input
+            type="checkbox"
+            className="form-check-input cursor-pointer"
+            checked={!!value}
+            onChange={(e) => handleUpdateValue(e.target.checked)}
+          />
+        );
+      case "date":
+        return (
+          <input
+            type="date"
+            className="cell-editable-text w-100 px-1"
+            value={value ? value.split("T")[0] : ""}
+            onChange={(e) => handleUpdateValue(e.target.value)}
+          />
+        );
+      case "dropdown": {
+        const options = field.config?.options || [];
+        return (
+          <Form.Select
+            size="sm"
+            className="border-0 bg-transparent py-0 px-1 cursor-pointer font-medium"
+            style={{ fontSize: "12px", minWidth: "80px" }}
+            value={value}
+            onChange={(e) => handleUpdateValue(e.target.value)}
+          >
+            <option value="">-</option>
+            {options.map((opt, idx) => (
+              <option key={idx} value={opt}>{opt}</option>
+            ))}
+          </Form.Select>
+        );
+      }
+      case "multi_select":
+      case "labels": {
+        const options = field.config?.options || [];
+        const selected = Array.isArray(value) ? value : (value ? [value] : []);
+        
+        const toggleOption = (opt) => {
+          let updated;
+          if (selected.includes(opt)) {
+            updated = selected.filter(o => o !== opt);
+          } else {
+            updated = [...selected, opt];
+          }
+          handleUpdateValue(updated);
+        };
+
+        return (
+          <Dropdown align="end" className="w-100">
+            <Dropdown.Toggle as="div" className="cursor-pointer d-flex flex-wrap gap-1 align-items-center w-100 min-h-[24px]">
+              {selected.length === 0 ? <span className="text-slate-300">-</span> : (
+                selected.map((opt, i) => (
+                  <Badge key={i} bg="light" className="text-dark border" style={{ fontSize: "10px" }}>{opt}</Badge>
+                ))
+              )}
+            </Dropdown.Toggle>
+            <Dropdown.Menu className="shadow-sm border rounded-3 p-2" style={{ fontSize: "12px" }}>
+              {options.map((opt, idx) => (
+                <Form.Check
+                  key={idx}
+                  type="checkbox"
+                  label={opt}
+                  id={`field-${field.id}-opt-${idx}`}
+                  checked={selected.includes(opt)}
+                  onChange={() => toggleOption(opt)}
+                  className="mb-1"
+                />
+              ))}
+            </Dropdown.Menu>
+          </Dropdown>
+        );
+      }
+      case "rating": {
+        const rating = Number(value) || 0;
+        return (
+          <div className="d-flex align-items-center gap-0.5 text-warning cursor-pointer">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <span
+                key={star}
+                onClick={() => handleUpdateValue(rating === star ? 0 : star)}
+                style={{ fontSize: "13px" }}
+              >
+                {star <= rating ? "★" : "☆"}
+              </span>
+            ))}
+          </div>
+        );
+      }
+      default:
+        return (
+          <input
+            type="text"
+            className="cell-editable-text w-100"
+            value={typeof value === 'object' ? JSON.stringify(value) : value}
+            onChange={(e) => handleUpdateValue(e.target.value)}
+            placeholder="-"
+          />
+        );
+    }
+  };
+
+  const getFieldIcon = (type) => {
+    switch (type) {
+      case "text":
+      case "text_area":
+        return <FileText size={13} className="text-slate-400" />;
+      case "number":
+        return <Hash size={13} className="text-slate-400" />;
+      case "date":
+        return <Calendar size={13} className="text-slate-400" />;
+      case "dropdown":
+      case "multi_select":
+      case "labels":
+        return <ListPlus size={13} className="text-slate-400" />;
+      case "currency":
+      case "money":
+        return <DollarSign size={13} className="text-slate-400" />;
+      case "email":
+        return <Mail size={13} className="text-slate-400" />;
+      case "phone":
+        return <Phone size={13} className="text-slate-400" />;
+      case "website":
+        return <Globe size={13} className="text-slate-400" />;
+      case "rating":
+        return <Star size={13} className="text-slate-400" />;
+      case "checkbox":
+        return <CheckSquare size={13} className="text-slate-400" />;
+      default:
+        return <Layers size={13} className="text-slate-400" />;
+    }
+  };
+
+  const renderCustomFieldsOffcanvasContent = () => {
+    const popularList = [
+      { type: "dropdown", label: "Dropdown", icon: <ListPlus size={14} /> },
+      { type: "text", label: "Text", icon: <FileText size={14} /> },
+      { type: "date", label: "Date", icon: <Calendar size={14} /> },
+      { type: "text_area", label: "Text area (Long Text)", icon: <AlignLeft size={14} /> },
+      { type: "number", label: "Number", icon: <Hash size={14} /> },
+      { type: "labels", label: "Labels (Multi-select)", icon: <Tag size={14} /> }
+    ];
+
+    const allList = [
+      { type: "button", label: "Button", icon: <MousePointer size={14} /> },
+      { type: "checkbox", label: "Checkbox", icon: <CheckSquare size={14} /> },
+      { type: "date", label: "Date", icon: <Calendar size={14} /> },
+      { type: "dropdown", label: "Dropdown", icon: <ListPlus size={14} /> },
+      { type: "email", label: "Email", icon: <Mail size={14} /> },
+      { type: "files", label: "Files", icon: <Paperclip size={14} /> },
+      { type: "formula", label: "Formula", icon: <Type size={14} /> },
+      { type: "labels", label: "Labels (Multi-select)", icon: <Tag size={14} /> },
+      { type: "location", label: "Location", icon: <MapPin size={14} /> },
+      { type: "money", label: "Money", icon: <DollarSign size={14} /> },
+      { type: "number", label: "Number", icon: <Hash size={14} /> },
+      { type: "people", label: "People", icon: <Users size={14} /> },
+      { type: "phone", label: "Phone", icon: <Phone size={14} /> },
+      { type: "progress_auto", label: "Progress (Auto)", icon: <Columns size={14} /> },
+      { type: "progress_manual", label: "Progress (Manual)", icon: <Columns size={14} /> },
+      { type: "rating", label: "Rating", icon: <Star size={14} /> },
+      { type: "relationship", label: "Relationship", icon: <Link size={14} /> },
+      { type: "rollup", label: "Rollup", icon: <Repeat size={14} /> },
+      { type: "signature", label: "Signature", icon: <PenTool size={14} /> },
+      { type: "tasks", label: "Tasks", icon: <CheckSquare size={14} /> },
+      { type: "text", label: "Text", icon: <FileText size={14} /> },
+      { type: "text_area", label: "Text area (Long Text)", icon: <AlignLeft size={14} /> },
+      { type: "voting", label: "Voting", icon: <ArrowRight size={14} /> },
+      { type: "website", label: "Website", icon: <Globe size={14} /> }
+    ];
+
+    const filterQuery = offcanvasSearchQuery.toLowerCase().trim();
+    const filteredPopular = popularList.filter(f => f.label.toLowerCase().includes(filterQuery));
+    const filteredAll = allList.filter(f => f.label.toLowerCase().includes(filterQuery));
+
+    if (offcanvasStep === 1) {
+      return (
+        <>
+          <div className="d-flex align-items-center justify-content-between p-3 border-bottom bg-light">
+            <h5 className="fw-bold text-slate-800 mb-0 d-flex align-items-center gap-2">
+              <Settings size={18} className="text-slate-500" />
+              Fields
+            </h5>
+            <button type="button" className="btn-close" onClick={() => setShowCustomFieldsOffcanvas(false)}></button>
+          </div>
+
+          <div className="p-3 border-bottom">
+            <div className="input-group">
+              <span className="input-group-text bg-white border-end-0 text-slate-400">
+                <Search size={14} />
+              </span>
+              <input
+                type="text"
+                className="form-control border-start-0 ps-0 text-xs"
+                placeholder="Search Task Fields"
+                value={offcanvasSearchQuery}
+                onChange={(e) => setOffcanvasSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="d-flex border-bottom bg-light">
+            <button
+              type="button"
+              className={`flex-grow-1 py-2 border-0 bg-transparent text-xs fw-bold ${customFieldsOffcanvasTab === 'create' ? 'border-bottom border-primary border-2 text-primary' : 'text-slate-500'}`}
+              onClick={() => setCustomFieldsOffcanvasTab('create')}
+            >
+              Create new
+            </button>
+            <button
+              type="button"
+              className={`flex-grow-1 py-2 border-0 bg-transparent text-xs fw-bold ${customFieldsOffcanvasTab === 'existing' ? 'border-bottom border-primary border-2 text-primary' : 'text-slate-500'}`}
+              onClick={() => setCustomFieldsOffcanvasTab('existing')}
+            >
+              Add existing
+            </button>
+          </div>
+
+          <div className="custom-fields-list-scroll flex-grow-1">
+            {customFieldsOffcanvasTab === 'create' ? (
+              <>
+                {filteredPopular.length > 0 && (
+                  <>
+                    <div className="custom-fields-section-title">Popular</div>
+                    <div className="d-flex flex-column gap-1 mb-3">
+                      {filteredPopular.map(f => (
+                        <button
+                          key={f.type}
+                          type="button"
+                          className="custom-field-item-btn"
+                          onClick={() => {
+                            setSelectedFieldType(f.type);
+                            setFieldName(getFieldDefaultName(f.type));
+                            setOffcanvasStep(2);
+                          }}
+                        >
+                          {f.icon}
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {filteredAll.length > 0 && (
+                  <>
+                    <div className="custom-fields-section-title">All</div>
+                    <div className="d-flex flex-column gap-1">
+                      {filteredAll.map((f, idx) => (
+                        <button
+                          key={`${f.type}-${idx}`}
+                          type="button"
+                          className="custom-field-item-btn"
+                          onClick={() => {
+                            setSelectedFieldType(f.type);
+                            setFieldName(getFieldDefaultName(f.type));
+                            setOffcanvasStep(2);
+                          }}
+                        >
+                          {f.icon}
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {filteredPopular.length === 0 && filteredAll.length === 0 && (
+                  <div className="text-center py-5 text-muted small">No fields match your search.</div>
+                )}
+              </>
+            ) : (
+              // Add existing tab
+              <div>
+                {loadingWorkspaceFields ? (
+                  <div className="text-center py-5"><Spinner size="sm" animation="border" /></div>
+                ) : workspaceFields.filter(wf => !boardCustomFields.some(bcf => bcf.name === wf.name)).length === 0 ? (
+                  <div className="text-center py-5 text-muted small">No other custom fields found in workspace.</div>
+                ) : (
+                  <div className="d-flex flex-column gap-1">
+                    {workspaceFields
+                      .filter(wf => !boardCustomFields.some(bcf => bcf.name === wf.name))
+                      .map(f => (
+                        <button
+                          key={f.id}
+                          type="button"
+                          className="custom-field-item-btn d-flex justify-content-between align-items-center"
+                          onClick={() => handleAddExistingField(f)}
+                        >
+                          <span className="d-flex align-items-center gap-2">
+                            {getFieldIcon(f.type)}
+                            <strong>{f.name}</strong>
+                          </span>
+                          <Badge bg="light" className="text-dark border text-capitalize" style={{ fontSize: "10px" }}>{f.type}</Badge>
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </>
+      );
+    }
+
+    if (offcanvasStep === 2) {
+      return (
+        <form onSubmit={handleCreateCustomField} className="d-flex flex-column h-100 bg-white">
+          <div className="d-flex align-items-center justify-content-between p-3 border-bottom bg-white">
+            <div className="d-flex align-items-center gap-2">
+              <button
+                type="button"
+                className="btn btn-link p-0 text-slate-500 hover:text-slate-700"
+                onClick={() => setOffcanvasStep(1)}
+              >
+                <ArrowLeft size={18} />
+              </button>
+              <span className="fw-bold text-slate-800 text-capitalize">{selectedFieldType.replace('_', ' ')}</span>
+            </div>
+            <button type="button" className="btn-close" onClick={() => setShowCustomFieldsOffcanvas(false)}></button>
+          </div>
+
+          <div className="custom-fields-list-scroll flex-grow-1 d-flex flex-column gap-4 bg-white">
+            <Form.Group>
+              <Form.Label className="small fw-semibold text-slate-700">Field name *</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder="e.g. Task Complexity"
+                value={fieldName}
+                onChange={(e) => setFieldName(e.target.value)}
+                required
+                autoFocus
+                style={{ fontSize: "13px" }}
+              />
+            </Form.Group>
+
+            {(selectedFieldType === "dropdown" || selectedFieldType === "multi_select" || selectedFieldType === "labels") && (
+              <Form.Group>
+                <div className="d-flex align-items-center justify-content-between mb-1.5">
+                  <Form.Label className="small fw-semibold text-slate-700 mb-0">Dropdown options *</Form.Label>
+                  <span className="text-muted small d-inline-flex align-items-center gap-1" style={{ fontSize: "11px" }}>
+                    <Columns size={11} /> Manual
+                  </span>
+                </div>
+                <div className="d-flex flex-column gap-2 mb-2">
+                  {fieldOptionsList.map((opt, idx) => (
+                    <div key={idx} className="d-flex align-items-center gap-2">
+                      <span
+                        className="rounded-circle d-inline-block"
+                        style={{ backgroundColor: opt.color, width: "10px", height: "10px", flexShrink: 0 }}
+                      />
+                      <Form.Control
+                        type="text"
+                        value={opt.label}
+                        onChange={(e) => {
+                          const newText = e.target.value;
+                          setFieldOptionsList(prev => prev.map((item, i) => i === idx ? { ...item, label: newText } : item));
+                        }}
+                        style={{ fontSize: "13px", height: "32px" }}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-link text-slate-400 hover:text-danger p-0 border-0"
+                        onClick={() => setFieldOptionsList(prev => prev.filter((_, i) => i !== idx))}
+                        style={{ textDecoration: "none", fontSize: "11px" }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="d-flex align-items-center gap-2">
+                  <Form.Control
+                    type="text"
+                    placeholder="+ Add option"
+                    value={newOptionText}
+                    onChange={(e) => setNewOptionText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && newOptionText.trim()) {
+                        e.preventDefault();
+                        const color = BOARD_COLORS[fieldOptionsList.length % BOARD_COLORS.length] || "#64748b";
+                        setFieldOptionsList(prev => [...prev, { label: newOptionText.trim(), color }]);
+                        setNewOptionText("");
+                      }
+                    }}
+                    style={{ fontSize: "13px", height: "32px" }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary p-1 d-flex align-items-center justify-content-center"
+                    style={{ width: "32px", height: "32px", borderRadius: "6px" }}
+                    onClick={() => {
+                      if (newOptionText.trim()) {
+                        const color = BOARD_COLORS[fieldOptionsList.length % BOARD_COLORS.length] || "#64748b";
+                        setFieldOptionsList(prev => [...prev, { label: newOptionText.trim(), color }]);
+                        setNewOptionText("");
+                      }
+                    }}
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+              </Form.Group>
+            )}
+
+            {(selectedFieldType === "currency" || selectedFieldType === "money") && (
+              <Form.Group>
+                <Form.Label className="small fw-semibold text-slate-700">Currency</Form.Label>
+                <Form.Select
+                  value={currencyCode}
+                  onChange={(e) => setCurrencyCode(e.target.value)}
+                  style={{ fontSize: "13px" }}
+                >
+                  <option value="USD">USD - US Dollar ($)</option>
+                  <option value="EUR">EUR - Euro (€)</option>
+                  <option value="GBP">GBP - British Pound (£)</option>
+                  <option value="NGN">NGN - Nigerian Naira (₦)</option>
+                </Form.Select>
+              </Form.Group>
+            )}
+
+            {selectedFieldType === "button" && (
+              <Form.Group>
+                <Form.Label className="small fw-semibold text-slate-700">Button details</Form.Label>
+                <div className="d-flex align-items-center gap-2">
+                  <Form.Control
+                    type="text"
+                    placeholder="Enter button name"
+                    value={buttonName}
+                    onChange={(e) => setButtonName(e.target.value)}
+                    style={{ fontSize: "13px" }}
+                  />
+                  <OverlayTrigger
+                    trigger="click"
+                    rootClose
+                    placement="bottom"
+                    overlay={
+                      <Popover id="button-color-popover" className="shadow border-0 p-2" style={{ zIndex: 1100 }}>
+                        <Popover.Body className="p-1">
+                          <div className="d-flex flex-wrap gap-1.5" style={{ width: "160px" }}>
+                            {BOARD_COLORS.map(c => (
+                              <span
+                                key={c}
+                                className="color-dot cursor-pointer rounded-circle d-inline-block"
+                                style={{ backgroundColor: c, width: "18px", height: "18px", border: buttonColor === c ? "2px solid #000" : "1px solid #e2e8f0" }}
+                                onClick={() => setButtonColor(c)}
+                              />
+                            ))}
+                          </div>
+                        </Popover.Body>
+                      </Popover>
+                    }
+                  >
+                    <span
+                      className="cursor-pointer rounded-circle d-inline-block border"
+                      style={{ backgroundColor: buttonColor, width: "24px", height: "24px", flexShrink: 0 }}
+                      title="Select Button Color"
+                    />
+                  </OverlayTrigger>
+                </div>
+              </Form.Group>
+            )}
+
+            <div>
+              <button
+                type="button"
+                className="btn btn-link p-0 text-decoration-none small text-slate-600 fw-bold d-flex align-items-center gap-1"
+                onClick={() => setShowMoreSettings(!showMoreSettings)}
+                style={{ fontSize: "12.5px" }}
+              >
+                More settings and permissions <ChevronDown size={14} style={{ transform: showMoreSettings ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+              </button>
+
+              {showMoreSettings && (
+                <div className="card mt-2 p-3 bg-light border border-slate-200 d-flex flex-column gap-3">
+                  <Form.Group>
+                    <Form.Label className="small fw-semibold text-slate-700">Description</Form.Label>
+                    <Form.Control
+                      as="textarea"
+                      rows={2}
+                      placeholder="Tell other users how to use this field"
+                      value={fieldDesc}
+                      onChange={(e) => setFieldDesc(e.target.value)}
+                      style={{ fontSize: "12.5px" }}
+                    />
+                  </Form.Group>
+
+                  <Form.Group>
+                    <Form.Label className="small fw-semibold text-slate-700">Default value</Form.Label>
+                    <Form.Control
+                      type="text"
+                      placeholder="e.g. Default text"
+                      value={fieldDefaultValue}
+                      onChange={(e) => setFieldDefaultValue(e.target.value)}
+                      style={{ fontSize: "12.5px" }}
+                    />
+                  </Form.Group>
+
+                  <Form.Group>
+                    <Form.Label className="small fw-semibold text-slate-700">Permissions</Form.Label>
+                    <Form.Select
+                      value="Workspace default"
+                      disabled
+                      style={{ fontSize: "12.5px" }}
+                    >
+                      <option>Workspace default</option>
+                    </Form.Select>
+                  </Form.Group>
+
+                  <div className="d-flex flex-column gap-2 border-top pt-2">
+                    <div className="config-setting-row">
+                      <span className="config-setting-label">Required in tasks</span>
+                      <Form.Check
+                        type="switch"
+                        id="req-switch"
+                        checked={fieldRequired}
+                        onChange={(e) => setFieldRequired(e.target.checked)}
+                      />
+                    </div>
+
+                    <div className="config-setting-row">
+                      <span className="config-setting-label">Pinned</span>
+                      <Form.Check
+                        type="switch"
+                        id="pin-switch"
+                        checked={fieldPinned}
+                        onChange={(e) => setFieldPinned(e.target.checked)}
+                      />
+                    </div>
+
+                    <div className="config-setting-row">
+                      <span className="config-setting-label">Visible to Guests and Limited Members</span>
+                      <Form.Check
+                        type="switch"
+                        id="guest-switch"
+                        checked={fieldVisibleToGuests}
+                        onChange={(e) => setFieldVisibleToGuests(e.target.checked)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="p-3 border-top bg-white d-flex justify-content-end gap-2">
+            <Button
+              type="button"
+              variant="outline-secondary"
+              className="px-3.5 py-1.5 fw-bold"
+              style={{ fontSize: "12.5px", borderRadius: "6px" }}
+              onClick={() => setOffcanvasStep(1)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="dark"
+              className="px-4 py-1.5 fw-bold d-flex align-items-center gap-1.5"
+              style={{ fontSize: "12.5px", borderRadius: "6px" }}
+              disabled={savingField}
+            >
+              {savingField && <Spinner animation="border" size="sm" className="me-1" />}
+              Create
+            </Button>
+          </div>
+        </form>
+      );
+    }
+  };
 
   // Handle task click inside views
   const handleTaskClickFromView = (taskId) => {
@@ -5432,6 +6282,8 @@ const BoardDetailPage = () => {
           taskId={activeTaskId}
           task={activeTask}
           boardId={Number(boardId)}
+          boardCustomFields={boardCustomFields}
+          onOpenCustomFields={handleOpenCustomFieldsOffcanvas}
           onClose={handleCloseUpdatesDrawer}
           allTasks={allTasks}
           onTaskUpdated={(tId, updates) => patchTaskInState(tId, (t) => ({ ...t, ...updates }))}
@@ -5834,6 +6686,14 @@ const BoardDetailPage = () => {
           </Button>
         </Modal.Footer>
       </Modal>
+
+      {/* Custom Fields Offcanvas */}
+      {showCustomFieldsOffcanvas && (
+        <div className="custom-fields-offcanvas-overlay" onClick={() => setShowCustomFieldsOffcanvas(false)}></div>
+      )}
+      <div className={`custom-fields-offcanvas ${showCustomFieldsOffcanvas ? "open" : ""}`}>
+        {renderCustomFieldsOffcanvasContent()}
+      </div>
     </>
   );
 };

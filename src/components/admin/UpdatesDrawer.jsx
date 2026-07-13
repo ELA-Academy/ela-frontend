@@ -22,10 +22,20 @@ import {
   Users,
   Smile,
   Plus,
+  PlusCircle,
   Mic,
   Video,
   GripVertical,
   Edit2,
+  FileText,
+  Hash,
+  Globe,
+  DollarSign,
+  Mail,
+  Phone,
+  Star,
+  Layers,
+  ListPlus,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import {
@@ -63,6 +73,8 @@ const UpdatesDrawer = ({
   taskId,
   task,
   boardId,
+  boardCustomFields = [],
+  onOpenCustomFields,
   onClose,
   allTasks = [],
   onTaskUpdated,
@@ -72,12 +84,179 @@ const UpdatesDrawer = ({
   customStatuses
 }) => {
   const { user } = useAuth();
+  useEffect(() => {
+    if (task && task.custom_field_values) {
+      setCustomFieldValues(task.custom_field_values);
+    }
+  }, [task?.custom_field_values]);
   const formatCommentDate = (dateStr) => {
     try {
       const d = new Date(dateStr);
       return format(d, "MMM d 'at' h:mm a");
     } catch (e) {
       return dateStr;
+    }
+  };
+
+  const getFieldIcon = (type) => {
+    switch (type) {
+      case "text":
+      case "text_area":
+        return <FileText size={13} className="text-slate-400" />;
+      case "number":
+        return <Hash size={13} className="text-slate-400" />;
+      case "date":
+        return <CalendarDays size={13} className="text-slate-400" />;
+      case "dropdown":
+      case "multi_select":
+      case "labels":
+        return <ListPlus size={13} className="text-slate-400" />;
+      case "currency":
+      case "money":
+        return <DollarSign size={13} className="text-slate-400" />;
+      case "email":
+        return <Mail size={13} className="text-slate-400" />;
+      case "phone":
+        return <Phone size={13} className="text-slate-400" />;
+      case "website":
+        return <Globe size={13} className="text-slate-400" />;
+      case "rating":
+        return <Star size={13} className="text-slate-400" />;
+      case "checkbox":
+        return <CheckSquare size={13} className="text-slate-400" />;
+      default:
+        return <Layers size={13} className="text-slate-400" />;
+    }
+  };
+
+  const renderCustomFieldCell = (field, value, onChange) => {
+    switch (field.type) {
+      case "text":
+      case "email":
+      case "phone":
+      case "website":
+      case "text_area":
+        return (
+          <input
+            type={field.type === "email" ? "email" : "text"}
+            className="form-control form-control-sm text-xs bg-light border-0"
+            value={value || ""}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="-"
+          />
+        );
+      case "number":
+      case "currency":
+      case "money":
+        return (
+          <input
+            type="number"
+            className="form-control form-control-sm text-xs bg-light border-0"
+            value={value || ""}
+            onChange={(e) => onChange(e.target.value ? Number(e.target.value) : "")}
+            placeholder="-"
+          />
+        );
+      case "checkbox":
+        return (
+          <input
+            type="checkbox"
+            className="form-check-input cursor-pointer"
+            checked={!!value}
+            onChange={(e) => onChange(e.target.checked)}
+          />
+        );
+      case "date":
+        return (
+          <input
+            type="date"
+            className="form-control form-control-sm text-xs bg-light border-0"
+            value={value ? value.split("T")[0] : ""}
+            onChange={(e) => onChange(e.target.value)}
+          />
+        );
+      case "dropdown": {
+        const options = field.config?.options || [];
+        return (
+          <Form.Select
+            size="sm"
+            className="text-xs bg-light border-0 py-1"
+            value={value || ""}
+            onChange={(e) => onChange(e.target.value)}
+          >
+            <option value="">-</option>
+            {options.map((opt, idx) => (
+              <option key={idx} value={opt}>{opt}</option>
+            ))}
+          </Form.Select>
+        );
+      }
+      case "multi_select":
+      case "labels": {
+        const options = field.config?.options || [];
+        const selected = Array.isArray(value) ? value : (value ? [value] : []);
+        
+        const toggleOption = (opt) => {
+          let updated;
+          if (selected.includes(opt)) {
+            updated = selected.filter(o => o !== opt);
+          } else {
+            updated = [...selected, opt];
+          }
+          onChange(updated);
+        };
+
+        return (
+          <Dropdown align="end" className="w-100">
+            <Dropdown.Toggle as="div" className="cursor-pointer d-flex flex-wrap gap-1 align-items-center w-100 min-h-[24px] bg-light rounded px-2 py-1">
+              {selected.length === 0 ? <span className="text-slate-400 small">-</span> : (
+                selected.map((opt, i) => (
+                  <Badge key={i} bg="light" className="text-dark border" style={{ fontSize: "10px" }}>{opt}</Badge>
+                ))
+              )}
+            </Dropdown.Toggle>
+            <Dropdown.Menu className="shadow-sm border rounded-3 p-2" style={{ fontSize: "12px" }}>
+              {options.map((opt, idx) => (
+                <Form.Check
+                  key={idx}
+                  type="checkbox"
+                  label={opt}
+                  id={`field-drawer-${field.id}-opt-${idx}`}
+                  checked={selected.includes(opt)}
+                  onChange={() => toggleOption(opt)}
+                  className="mb-1"
+                />
+              ))}
+            </Dropdown.Menu>
+          </Dropdown>
+        );
+      }
+      case "rating": {
+        const rating = Number(value) || 0;
+        return (
+          <div className="d-flex align-items-center gap-0.5 text-warning cursor-pointer">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <span
+                key={star}
+                onClick={() => onChange(rating === star ? 0 : star)}
+                style={{ fontSize: "15px" }}
+              >
+                {star <= rating ? "★" : "☆"}
+              </span>
+            ))}
+          </div>
+        );
+      }
+      default:
+        return (
+          <input
+            type="text"
+            className="form-control form-control-sm text-xs bg-light border-0"
+            value={typeof value === 'object' ? JSON.stringify(value) : value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="-"
+          />
+        );
     }
   };
 
@@ -213,6 +392,14 @@ const UpdatesDrawer = ({
         value: nextValue
       });
       refreshHistoryLogs();
+      if (onTaskUpdated) {
+        onTaskUpdated(taskId, {
+          custom_field_values: {
+            ...(task.custom_field_values || {}),
+            [fieldId]: nextValue
+          }
+        });
+      }
     } catch (err) {
       console.error("Failed to save custom field value", err);
     }
@@ -1683,6 +1870,53 @@ const UpdatesDrawer = ({
                     )}
                   </div>
                 )}
+              </div>
+
+              {/* Custom Fields Section (Zbot style) */}
+              <div className="cu-collapsible-section cu-custom-fields-section border-top pt-3 mt-3">
+                <div className="d-flex align-items-center justify-content-between mb-3">
+                  <div className="d-flex align-items-center gap-1.5">
+                    <span className="cu-section-icon"><ChevronDown size={14} /></span>
+                    <span className="cu-section-title fw-bold text-slate-800">Custom Fields</span>
+                  </div>
+                  <Dropdown popperConfig={{ strategy: "fixed" }}>
+                    <Dropdown.Toggle as="button" className="btn btn-link text-slate-500 p-0 text-decoration-none d-flex align-items-center gap-1 font-semibold border-0 bg-transparent" style={{ fontSize: "11px" }}>
+                      <Plus size={12} /> Add Field
+                    </Dropdown.Toggle>
+                    <Dropdown.Menu className="shadow border-0" style={{ fontSize: "12px", minWidth: "180px", zIndex: 1100 }}>
+                      <Dropdown.Item onClick={() => onOpenCustomFields && onOpenCustomFields(false)}>
+                        <PlusCircle size={14} className="me-2 text-primary" /> Create a field
+                      </Dropdown.Item>
+                      <Dropdown.Item onClick={() => onOpenCustomFields && onOpenCustomFields(true)}>
+                        <Layers size={14} className="me-2 text-slate-500" /> Add field from Workspace
+                      </Dropdown.Item>
+                    </Dropdown.Menu>
+                  </Dropdown>
+                </div>
+
+                <div className="d-flex flex-column gap-2.5">
+                  {boardCustomFields.length === 0 ? (
+                    <div className="text-muted text-center py-2.5 small bg-light rounded border border-dashed">
+                      No custom fields configured. Click "Add Field" to start!
+                    </div>
+                  ) : (
+                    boardCustomFields.map((field) => {
+                      const val = customFieldValues[field.id] ?? "";
+                      
+                      return (
+                        <div key={field.id} className="cu-custom-field-row d-flex align-items-center justify-content-between">
+                          <span className="text-slate-600 font-medium d-flex align-items-center gap-2" style={{ fontSize: "12.5px", width: "160px" }}>
+                            {getFieldIcon(field.type)}
+                            {field.name}
+                          </span>
+                          <div className="flex-grow-1 ms-3">
+                            {renderCustomFieldCell(field, val, (newVal) => handleCustomFieldChange(field.id, newVal))}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
               </div>
 
               {/* Subtasks section (Zbot style) */}
