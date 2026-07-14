@@ -102,6 +102,7 @@ const getAvatarBg = (name) => {
 
 const WorkspaceSecondarySidebar = ({
   conversations = [],
+  onlineUsers = [],
   auditConversations = [],
   boards = [],
   selectedBoardId = null,
@@ -546,12 +547,14 @@ const WorkspaceSecondarySidebar = ({
     (item) => (item.conversation_type === "channel" || item.conversation_type === "department") && !closedDmIds.includes(item.id)
   ).filter((conv, index, self) =>
     index === self.findIndex((c) => c.id === conv.id)
-  );
+  ).sort((a, b) => new Date(b.last_message_time) - new Date(a.last_message_time));
+  
   const directMessages = conversations.filter(
     (item) => item.conversation_type === "direct" && !closedDmIds.includes(item.id)
   ).filter((conv, index, self) =>
     index === self.findIndex((c) => c.id === conv.id)
-  );
+  ).sort((a, b) => new Date(b.last_message_time) - new Date(a.last_message_time));
+  
   const auditOnlyConversations = auditConversations.filter(
     (item) => !conversations.some((conversation) => conversation.id === item.id)
   );
@@ -592,7 +595,12 @@ const WorkspaceSecondarySidebar = ({
           {isDirect ? (
             <div className="zbot-sidebar-avatar" style={{ backgroundColor: avatarBg }}>
               {initials}
-              <span className={`avatar-status-dot ${dmTitle.includes("— You") ? "online" : "offline"}`}></span>
+              <span className={`avatar-status-dot ${(() => {
+                const userKey = user ? `${user.role}_${user.id}` : "";
+                const otherUserKey = conversation.participant_keys?.find(k => k !== userKey) || userKey;
+                const isOnline = onlineUsers.includes(otherUserKey) || dmTitle.includes("— You");
+                return isOnline ? "online" : "offline";
+              })()}`}></span>
             </div>
           ) : isChannel && channelSuffixInitial ? (
             <span className="workspace-secondary-link-icon d-flex align-items-center">

@@ -1,5 +1,139 @@
 /* === Boards Workspace CSS Style === */
 
+/* Zbot Sticky Columns for List View (3 sticky columns) */
+.zbot-sticky-col-1 {
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 10 !important;
+  background-color: #ffffff !important;
+}
+.zbot-sticky-col-2 {
+  position: sticky !important;
+  left: 40px !important;
+  z-index: 10 !important;
+  background-color: #ffffff !important;
+}
+.zbot-sticky-col-3 {
+  position: sticky !important;
+  left: 80px !important;
+  z-index: 10 !important;
+  background-color: #ffffff !important;
+  border-right: 1.5px solid #e2e8f0 !important;
+}
+
+/* Zbot Sticky Columns for Table View (2 sticky columns) */
+.zbot-sticky-table-col-1 {
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 10 !important;
+  background-color: #ffffff !important;
+}
+.zbot-sticky-table-col-2 {
+  position: sticky !important;
+  left: 40px !important;
+  z-index: 10 !important;
+  background-color: #ffffff !important;
+  border-right: 1.5px solid #e2e8f0 !important;
+}
+
+/* Zbot Sticky Columns Pinned to the Right */
+.zbot-sticky-col-right {
+  position: sticky !important;
+  right: 0 !important;
+  z-index: 10 !important;
+  background-color: #ffffff !important;
+  border-left: 1.5px solid #e2e8f0 !important;
+}
+
+.zbot-sticky-table-col-right-1 {
+  position: sticky !important;
+  right: 0 !important;
+  z-index: 10 !important;
+  background-color: #ffffff !important;
+  border-left: 1.5px solid #e2e8f0 !important;
+}
+
+.zbot-sticky-table-col-right-2 {
+  position: sticky !important;
+  right: 50px !important; /* matches width of the actions column */
+  z-index: 10 !important;
+  background-color: #ffffff !important;
+}
+
+/* Sticky Add Task link and builder container at the bottom */
+.zbot-add-task-link, 
+.zbot-inline-builder-row:not(.subtask-builder) {
+  position: sticky !important;
+  left: 80px !important; /* aligns with name column text offset */
+  display: inline-flex !important;
+  z-index: 5 !important;
+  margin-left: 0 !important;
+}
+
+/* Header th cell backgrounds */
+th.zbot-sticky-col-1, th.zbot-sticky-col-2, th.zbot-sticky-col-3,
+th.zbot-sticky-table-col-1, th.zbot-sticky-table-col-2,
+th.zbot-sticky-col-right, th.zbot-sticky-table-col-right-1, th.zbot-sticky-table-col-right-2 {
+  z-index: 20 !important;
+  background-color: #ffffff !important;
+}
+
+/* Specific selector overrides to bypass global list-view transparent th backgrounds */
+.workspace-list-view .workspace-table th.zbot-sticky-col-1,
+.workspace-list-view .workspace-table th.zbot-sticky-col-2,
+.workspace-list-view .workspace-table th.zbot-sticky-col-3,
+.workspace-list-view .workspace-table th.zbot-sticky-col-right,
+.workspace-list-view .workspace-table th.zbot-sticky-table-col-1,
+.workspace-list-view .workspace-table th.zbot-sticky-table-col-2,
+.workspace-list-view .workspace-table th.zbot-sticky-table-col-right-1,
+.workspace-list-view .workspace-table th.zbot-sticky-table-col-right-2,
+.zbot-proper-table .workspace-table th.zbot-sticky-col-1,
+.zbot-proper-table .workspace-table th.zbot-sticky-col-2,
+.zbot-proper-table .workspace-table th.zbot-sticky-col-3,
+.zbot-proper-table .workspace-table th.zbot-sticky-table-col-1,
+.zbot-proper-table .workspace-table th.zbot-sticky-table-col-2,
+.zbot-proper-table .workspace-table th.zbot-sticky-col-right,
+.zbot-proper-table .workspace-table th.zbot-sticky-table-col-right-1,
+.zbot-proper-table .workspace-table th.zbot-sticky-table-col-right-2 {
+  background-color: #ffffff !important;
+  z-index: 20 !important;
+}
+
+/* Hover cell backgrounds */
+.workspace-row:hover .zbot-sticky-col-1,
+.workspace-row:hover .zbot-sticky-col-2,
+.workspace-row:hover .zbot-sticky-col-3,
+.workspace-row:hover .zbot-sticky-table-col-1,
+.workspace-row:hover .zbot-sticky-table-col-2,
+.workspace-row:hover .zbot-sticky-col-right,
+.workspace-row:hover .zbot-sticky-table-col-right-1,
+.workspace-row:hover .zbot-sticky-table-col-right-2 {
+  background-color: #f8f9fb !important;
+}
+
+/* Overdue cell backgrounds */
+.workspace-row.is-overdue .zbot-sticky-col-1,
+.workspace-row.is-overdue .zbot-sticky-col-2,
+.workspace-row.is-overdue .zbot-sticky-col-3,
+.workspace-row.is-overdue .zbot-sticky-table-col-1,
+.workspace-row.is-overdue .zbot-sticky-table-col-2,
+.workspace-row.is-overdue .zbot-sticky-col-right,
+.workspace-row.is-overdue .zbot-sticky-table-col-right-1,
+.workspace-row.is-overdue .zbot-sticky-table-col-right-2 {
+  background-color: #fff1f2 !important;
+}
+
+.workspace-row.is-overdue:hover .zbot-sticky-col-1,
+.workspace-row.is-overdue:hover .zbot-sticky-col-2,
+.workspace-row.is-overdue:hover .zbot-sticky-col-3,
+.workspace-row.is-overdue:hover .zbot-sticky-table-col-1,
+.workspace-row.is-overdue:hover .zbot-sticky-table-col-2,
+.workspace-row.is-overdue:hover .zbot-sticky-col-right,
+.workspace-row.is-overdue:hover .zbot-sticky-table-col-right-1,
+.workspace-row.is-overdue:hover .zbot-sticky-table-col-right-2 {
+  background-color: #ffe4e6 !important;
+}
+
 /* Boards Page */
 .boards-grid {
   display: grid;
@@ -1604,7 +1738,11 @@
 
 /* === Dropdown Overflow Fixes === */
 .workspace-table-container {
-  overflow: visible !important;
+  overflow-x: auto !important;
+  scrollbar-width: none !important;
+}
+.workspace-table-container::-webkit-scrollbar {
+  display: none !important;
 }
 
 .group-container {
@@ -2301,7 +2439,7 @@
 /* Workspace table - Zbot flat style */
 .workspace-list-view .workspace-table {
   border-collapse: collapse !important;
-  width: 100% !important;
+  width: 100%;
   margin: 0 !important;
 }
 

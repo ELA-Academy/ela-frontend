@@ -3196,10 +3196,10 @@ const BoardDetailPage = () => {
                 {/* Status Tasks Table */}
                 {!isStatusCollapsed && (
                   <div className="workspace-table-container">
-                    <table className="workspace-table">
+                    <table className="workspace-table" style={{ minWidth: boardCustomFields.length > 0 ? "1100px" : "100%" }}>
                       <thead>
                         <tr>
-                          <th style={{ width: "3%" }}>
+                           <th style={{ width: "3%" }} className="zbot-sticky-col-1">
                             <input
                               type="checkbox"
                               className="form-check-input"
@@ -3215,17 +3215,17 @@ const BoardDetailPage = () => {
                               }}
                             />
                           </th>
-                          <th style={{ width: "3%" }}></th>
-                          <th style={{ width: "32%" }}>Name</th>
-                          <th style={{ width: "12%" }}>Assignee</th>
-                          <th style={{ width: "10%" }}>Due date</th>
-                          <th style={{ width: "8%" }}>Priority</th>
-                          <th style={{ width: "10%" }}>Status</th>
+                          <th style={{ width: "3%" }} className="zbot-sticky-col-2"></th>
+                          <th style={{ width: "32%", minWidth: "350px" }} className="zbot-sticky-col-3">Name</th>
+                          <th style={{ width: "12%", minWidth: "120px" }}>Assignee</th>
+                          <th style={{ width: "10%", minWidth: "110px" }}>Due date</th>
+                          <th style={{ width: "8%", minWidth: "90px" }}>Priority</th>
+                          <th style={{ width: "10%", minWidth: "120px" }}>Status</th>
                           {boardCustomFields.map(field => (
-                            <th key={field.id} style={{ width: "10%" }}>{field.name}</th>
+                            <th key={field.id} style={{ width: "140px", minWidth: "140px", maxWidth: "180px" }} className="text-truncate" title={field.name}>{field.name}</th>
                           ))}
-                          <th style={{ width: "5%" }}>Comments</th>
-                          <th style={{ width: "3%" }}>
+                          <th style={{ width: "5%", minWidth: "80px" }}>Comments</th>
+                          <th style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }} className="zbot-sticky-col-right">
                             <button
                               type="button"
                               className="header-plus-circle-btn"
@@ -3247,7 +3247,7 @@ const BoardDetailPage = () => {
                               className={`workspace-row ${task.due_date && task.status !== "Done" && new Date(`${task.due_date}T23:59:59`) < new Date() ? "is-overdue" : ""}`}
                               onDoubleClick={() => handleOpenUpdatesDrawer(task)}
                             >
-                              <td style={{ textAlign: "center", verticalAlign: "middle" }}>
+                              <td style={{ textAlign: "center", verticalAlign: "middle" }} className="zbot-sticky-col-1">
                                 <input
                                   type="checkbox"
                                   className={`form-check-input task-select-checkbox ${selectedTaskIds.includes(task.id) ? "opacity-100" : "opacity-0"}`}
@@ -3262,7 +3262,7 @@ const BoardDetailPage = () => {
                                   }}
                                 />
                               </td>
-                              <td style={{ textAlign: "center", verticalAlign: "middle" }}>
+                              <td style={{ textAlign: "center", verticalAlign: "middle" }} className="zbot-sticky-col-2">
                                 <div className="d-flex align-items-center justify-content-center gap-1">
                                   {subtaskCount > 0 ? (
                                     <span
@@ -3285,7 +3285,7 @@ const BoardDetailPage = () => {
                                   {renderTaskCheckCircleDropdown(task, statusMeta)}
                                 </div>
                               </td>
-                              <td>
+                              <td style={{ minWidth: "350px" }} className="zbot-sticky-col-3">
                                 <div className="d-flex align-items-center gap-2">
                                   <input
                                     type="text"
@@ -3347,16 +3347,16 @@ const BoardDetailPage = () => {
                                   </button>
                                 </div>
                               </td>
-                              <td>{renderAssigneeCell(task)}</td>
-                              <td>{renderDateCell(task, "due_date")}</td>
-                              <td>{renderPriorityDropdown(task)}</td>
-                              <td>{renderStatusDropdown(task)}</td>
+                              <td style={{ minWidth: "120px" }}>{renderAssigneeCell(task)}</td>
+                              <td style={{ minWidth: "110px" }}>{renderDateCell(task, "due_date")}</td>
+                              <td style={{ minWidth: "90px" }}>{renderPriorityDropdown(task)}</td>
+                              <td style={{ minWidth: "120px" }}>{renderStatusDropdown(task)}</td>
                               {boardCustomFields.map(field => (
-                                <td key={field.id}>
+                                <td key={field.id} style={{ width: "140px", minWidth: "140px", maxWidth: "180px" }} className="text-truncate">
                                   {renderCustomFieldCell(task, field)}
                                 </td>
                               ))}
-                              <td className="text-center position-relative">
+                              <td className="text-center position-relative" style={{ minWidth: "80px" }}>
                                 <button
                                   type="button"
                                   className="chat-bubble-btn position-relative d-inline-flex align-items-center justify-content-center cursor-pointer border-0 bg-transparent"
@@ -3371,7 +3371,7 @@ const BoardDetailPage = () => {
                                   )}
                                 </button>
                               </td>
-                              <td>
+                              <td style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }} className="zbot-sticky-col-right">
                                 <Dropdown align="end">
                                   <Dropdown.Toggle as="button" className="task-row-menu-btn">
                                     <MoreHorizontal size={16} />
@@ -3422,9 +3422,9 @@ const BoardDetailPage = () => {
                                   className="workspace-row workspace-subtask-row"
                                   onDoubleClick={() => handleOpenUpdatesDrawer(subtaskFull)}
                                 >
-                                  <td></td>
-                                  <td></td>
-                                  <td>
+                                  <td className="zbot-sticky-col-1"></td>
+                                  <td className="zbot-sticky-col-2"></td>
+                                  <td className="zbot-sticky-col-3" style={{ minWidth: "350px" }}>
                                     <div className="d-flex align-items-center gap-2" style={{ paddingLeft: "16px" }}>
                                       <span className="subtask-tree-line" style={{ width: "12px", height: "14px", borderLeft: "1.5px solid #cbd5e1", borderBottom: "1.5px solid #cbd5e1", borderBottomLeftRadius: "4px", display: "inline-block", marginRight: "2px", transform: "translateY(-5px)" }} />
                                       {renderSubtaskCheckCircleDropdown(subtask, subtaskFull, STATUS_META[subtask.status] || STATUS_META["Not Started"])}
@@ -3471,11 +3471,14 @@ const BoardDetailPage = () => {
                                       </button>
                                     </div>
                                   </td>
-                                  <td>{renderAssigneeCell(subtaskFull)}</td>
-                                  <td>{renderDateCell(subtaskFull, "due_date")}</td>
-                                  <td>{renderPriorityDropdown(subtaskFull)}</td>
-                                  <td>{renderStatusDropdown(subtaskFull)}</td>
-                                  <td className="text-center position-relative">
+                                  <td style={{ minWidth: "120px" }}>{renderAssigneeCell(subtaskFull)}</td>
+                                  <td style={{ minWidth: "110px" }}>{renderDateCell(subtaskFull, "due_date")}</td>
+                                  <td style={{ minWidth: "90px" }}>{renderPriorityDropdown(subtaskFull)}</td>
+                                  <td style={{ minWidth: "120px" }}>{renderStatusDropdown(subtaskFull)}</td>
+                                  {boardCustomFields.map(field => (
+                                    <td key={field.id} style={{ width: "140px", minWidth: "140px" }}></td>
+                                  ))}
+                                  <td className="text-center position-relative" style={{ minWidth: "80px" }}>
                                     <button
                                       type="button"
                                       className="chat-bubble-btn position-relative d-inline-flex align-items-center justify-content-center cursor-pointer border-0 bg-transparent"
@@ -3490,7 +3493,7 @@ const BoardDetailPage = () => {
                                       )}
                                     </button>
                                   </td>
-                                  <td>
+                                  <td style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }} className="zbot-sticky-col-right">
                                     <Dropdown align="end">
                                       <Dropdown.Toggle as="button" className="task-row-menu-btn">
                                         <MoreHorizontal size={16} />
@@ -3545,8 +3548,8 @@ const BoardDetailPage = () => {
                               };
                               return (
                                 <tr className="workspace-subtask-builder-row">
-                                  <td />
-                                  <td />
+                                  <td className="zbot-sticky-col-1" />
+                                  <td className="zbot-sticky-col-2" />
                                   <td colSpan="7">
                                     <div className="zbot-inline-builder-row subtask-builder d-flex align-items-center justify-content-between" style={{ paddingLeft: "16px" }}>
                                       <div className="d-flex align-items-center flex-grow-1 gap-2">
@@ -3915,19 +3918,19 @@ const BoardDetailPage = () => {
   const renderTableView = () => {
     return (
       <div className="workspace-table-container zbot-proper-table bg-white rounded-3 shadow-sm border p-2">
-        <table className="workspace-table">
+        <table className="workspace-table" style={{ minWidth: boardCustomFields.length > 0 ? "1100px" : "100%" }}>
           <thead>
             <tr>
-              <th style={{ width: "3%" }}></th>
-              <th style={{ width: "32%" }}>Name</th>
-              <th style={{ width: "12%" }}>Assignee</th>
-              <th style={{ width: "12%" }}>Status</th>
-              <th style={{ width: "10%" }}>Due date</th>
-              <th style={{ width: "8%" }}>Priority</th>
+              <th style={{ width: "3%" }} className="zbot-sticky-table-col-1"></th>
+              <th style={{ width: "32%", minWidth: "350px" }} className="zbot-sticky-table-col-2">Name</th>
+              <th style={{ width: "12%", minWidth: "120px" }}>Assignee</th>
+              <th style={{ width: "12%", minWidth: "120px" }}>Status</th>
+              <th style={{ width: "10%", minWidth: "110px" }}>Due date</th>
+              <th style={{ width: "8%", minWidth: "90px" }}>Priority</th>
               {boardCustomFields.map(field => (
-                <th key={field.id} style={{ width: "10%" }}>{field.name}</th>
+                <th key={field.id} style={{ width: "140px", minWidth: "140px", maxWidth: "180px" }} className="text-truncate" title={field.name}>{field.name}</th>
               ))}
-              <th style={{ width: "3%" }}>
+              <th style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }} className="zbot-sticky-table-col-right-2">
                 <button
                   type="button"
                   className="header-plus-circle-btn"
@@ -3937,7 +3940,7 @@ const BoardDetailPage = () => {
                   <Plus size={12} />
                 </button>
               </th>
-              <th style={{ width: "8%" }}>Actions</th>
+              <th style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }} className="zbot-sticky-table-col-right-1">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -3949,7 +3952,7 @@ const BoardDetailPage = () => {
                     className={`workspace-row ${task.due_date && task.status !== "Done" && new Date(`${task.due_date}T23:59:59`) < new Date() ? "is-overdue" : ""}`}
                     onDoubleClick={() => handleOpenUpdatesDrawer(task)}
                   >
-                    <td style={{ textAlign: "center", verticalAlign: "middle" }}>
+                    <td style={{ textAlign: "center", verticalAlign: "middle" }} className="zbot-sticky-table-col-1">
                       <span
                         className="task-complete-dot"
                         style={{
@@ -3973,7 +3976,7 @@ const BoardDetailPage = () => {
                         {task.status === "Done" && <CheckCircleFill size={14} style={{ color: statusMeta.color }} />}
                       </span>
                     </td>
-                    <td>
+                    <td style={{ minWidth: "350px" }} className="zbot-sticky-table-col-2">
                       <div className="d-flex align-items-center gap-2">
                         <input
                           type="text"
@@ -4005,17 +4008,17 @@ const BoardDetailPage = () => {
                         </button>
                       </div>
                     </td>
-                    <td>{renderAssigneeCell(task)}</td>
-                    <td>{renderStatusDropdown(task)}</td>
-                    <td>{renderDateCell(task, "due_date")}</td>
-                    <td>{renderPriorityDropdown(task)}</td>
+                    <td style={{ minWidth: "120px" }}>{renderAssigneeCell(task)}</td>
+                    <td style={{ minWidth: "120px" }}>{renderStatusDropdown(task)}</td>
+                    <td style={{ minWidth: "110px" }}>{renderDateCell(task, "due_date")}</td>
+                    <td style={{ minWidth: "90px" }}>{renderPriorityDropdown(task)}</td>
                     {boardCustomFields.map(field => (
-                      <td key={field.id}>
+                      <td key={field.id} style={{ width: "140px", minWidth: "140px", maxWidth: "180px" }} className="text-truncate">
                         {renderCustomFieldCell(task, field)}
                       </td>
                     ))}
-                    <td></td>
-                    <td>
+                    <td style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }} className="zbot-sticky-table-col-right-2"></td>
+                    <td style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }} className="zbot-sticky-table-col-right-1">
                       {/* Three-dot context menu */}
                       <Dropdown align="end">
                         <Dropdown.Toggle as="button" className="task-row-menu-btn">
@@ -6284,6 +6287,7 @@ const BoardDetailPage = () => {
           boardId={Number(boardId)}
           boardCustomFields={boardCustomFields}
           onOpenCustomFields={handleOpenCustomFieldsOffcanvas}
+          onRefreshWorkspace={() => fetchWorkspace(false)}
           onClose={handleCloseUpdatesDrawer}
           allTasks={allTasks}
           onTaskUpdated={(tId, updates) => patchTaskInState(tId, (t) => ({ ...t, ...updates }))}

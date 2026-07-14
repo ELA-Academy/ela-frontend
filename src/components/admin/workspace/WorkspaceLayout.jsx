@@ -32,6 +32,7 @@ const WorkspaceLayout = () => {
   const [departments, setDepartments] = useState([]);
   const [assignees, setAssignees] = useState([]);
   const [workspaceLoading, setWorkspaceLoading] = useState(true);
+  const [onlineUsers, setOnlineUsers] = useState([]);
 
   // Secondary sidebar resizer states & logic
   const shellRef = useRef(null);
@@ -269,13 +270,22 @@ const WorkspaceLayout = () => {
     fetchWorkspaceData(true);
   }, [fetchWorkspaceData]);
 
-  // Socket.io for live updates
+  // Socket.io for live updates and presence
   useEffect(() => {
+    if (!user) return;
     const socketUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-    const socket = io(socketUrl, { transports: ["polling"] });
+    const socket = io(socketUrl, { transports: ["polling", "websocket"] });
+
+    socket.on("connect", () => {
+      socket.emit("user_online", { id: user.id, role: user.role });
+    });
+
+    socket.on("online_users_list", (list) => {
+      setOnlineUsers(list);
+    });
 
     socket.on("conversation_updated", (data) => {
-      if (user && data.recipient_id === user.id && data.recipient_role === user.role) {
+      if (data.recipient_id === user.id && data.recipient_role === user.role) {
         fetchWorkspaceData(false);
       }
     });
@@ -432,6 +442,7 @@ const WorkspaceLayout = () => {
       >
         <WorkspaceSecondarySidebar
           conversations={conversations}
+          onlineUsers={onlineUsers}
           auditConversations={auditConversations}
           boards={boards}
           selectedBoardId={activeBoardId}
