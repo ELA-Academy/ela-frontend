@@ -2057,7 +2057,7 @@ const BoardDetailPage = () => {
           </div>
         )}
       </Dropdown.Toggle>
-      <Dropdown.Menu className="board-dropdown-menu p-0 border-0 shadow">
+      <Dropdown.Menu className="board-dropdown-menu p-0 border-0 shadow" popperConfig={{ strategy: "fixed" }}>
         <SleekAssigneeSelector
           selectedAssignees={selectedAssignees}
           members={assignees}
@@ -2077,7 +2077,7 @@ const BoardDetailPage = () => {
         <Dropdown.Toggle as="div">
           <span className={`monday-badge ${meta.className}`} style={{ backgroundColor: meta.color }}>{meta.label}</span>
         </Dropdown.Toggle>
-        <Dropdown.Menu className="board-dropdown-menu p-0 border-0 shadow">
+        <Dropdown.Menu className="board-dropdown-menu p-0 border-0 shadow" popperConfig={{ strategy: "fixed" }}>
           <SleekStatusSelector
             currentStatus={task.status}
             customStatuses={board?.custom_statuses}
@@ -2104,7 +2104,7 @@ const BoardDetailPage = () => {
             <span className="dot-inner" style={{ background: statusMeta.color || "#8c9baf", width: "8px", height: "8px", borderRadius: "50%" }} />
           )}
         </Dropdown.Toggle>
-        <Dropdown.Menu className="board-dropdown-menu p-0 border-0 shadow" style={{ zIndex: 1050 }}>
+        <Dropdown.Menu className="board-dropdown-menu p-0 border-0 shadow" style={{ zIndex: 1050 }} popperConfig={{ strategy: "fixed" }}>
           <SleekStatusSelector
             currentStatus={task.status}
             customStatuses={board?.custom_statuses}
@@ -2136,7 +2136,7 @@ const BoardDetailPage = () => {
             <span className="dot-inner" style={{ background: statusMeta.color || "#8c9baf", width: "8px", height: "8px", borderRadius: "50%" }} />
           )}
         </Dropdown.Toggle>
-        <Dropdown.Menu className="board-dropdown-menu p-0 border-0 shadow" style={{ zIndex: 1050 }}>
+        <Dropdown.Menu className="board-dropdown-menu p-0 border-0 shadow" style={{ zIndex: 1050 }} popperConfig={{ strategy: "fixed" }}>
           <SleekStatusSelector
             currentStatus={subtask.status}
             customStatuses={board?.custom_statuses}
@@ -2154,7 +2154,7 @@ const BoardDetailPage = () => {
         <Dropdown.Toggle as="div" className="d-inline-flex align-items-center justify-content-center cursor-pointer w-100">
           {getPriorityFlag(task.priority, 13)}
         </Dropdown.Toggle>
-        <Dropdown.Menu className="board-dropdown-menu board-status-menu">
+        <Dropdown.Menu className="board-dropdown-menu board-status-menu" popperConfig={{ strategy: "fixed" }}>
           {PRIORITY_OPTIONS.map((priority) => (
             <Dropdown.Item
               key={priority}
@@ -4024,7 +4024,7 @@ const BoardDetailPage = () => {
                         <Dropdown.Toggle as="button" className="task-row-menu-btn">
                           <MoreHorizontal size={16} />
                         </Dropdown.Toggle>
-                        <Dropdown.Menu className="task-context-menu">
+                        <Dropdown.Menu className="task-context-menu" popperConfig={{ strategy: "fixed" }}>
                           <Dropdown.Item onClick={() => handleOpenUpdatesDrawer(task)}>
                             <Edit3 size={14} /> Rename
                           </Dropdown.Item>
@@ -4161,7 +4161,7 @@ const BoardDetailPage = () => {
                         </div>
                       )}
                     </Dropdown.Toggle>
-                    <Dropdown.Menu className="board-dropdown-menu p-0 border-0 shadow">
+                    <Dropdown.Menu className="board-dropdown-menu p-0 border-0 shadow" popperConfig={{ strategy: "fixed" }}>
                       <SleekAssigneeSelector
                         selectedAssignees={inlineTaskBuilders["table_builder"]?.assignee}
                         members={assignees}
@@ -4187,7 +4187,7 @@ const BoardDetailPage = () => {
                         {STATUS_META[inlineTaskBuilders["table_builder"]?.status || "Not Started"]?.label || "To do"}
                       </span>
                     </Dropdown.Toggle>
-                    <Dropdown.Menu className="board-dropdown-menu board-status-menu">
+                    <Dropdown.Menu className="board-dropdown-menu board-status-menu" popperConfig={{ strategy: "fixed" }}>
                       {STATUS_OPTIONS.map((status) => (
                         <Dropdown.Item
                           key={status}
@@ -4243,7 +4243,7 @@ const BoardDetailPage = () => {
                     <Dropdown.Toggle as="div" className="d-inline-flex align-items-center justify-content-center cursor-pointer w-100">
                       {getPriorityFlag(inlineTaskBuilders["table_builder"]?.priority || "Normal", 13)}
                     </Dropdown.Toggle>
-                    <Dropdown.Menu className="board-dropdown-menu board-status-menu">
+                    <Dropdown.Menu className="board-dropdown-menu board-status-menu" popperConfig={{ strategy: "fixed" }}>
                       {PRIORITY_OPTIONS.map((p) => (
                         <Dropdown.Item
                           key={p}

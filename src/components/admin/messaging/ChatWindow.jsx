@@ -67,8 +67,17 @@ const renderMessageText = (text) => {
   });
 };
 
-const ChatWindow = ({ conversationId, conversation }) => {
+const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
   const { user } = useAuth();
+  
+  const isDirect = conversation?.conversation_type === "direct";
+  const isOnline = useMemo(() => {
+    if (!isDirect) return false;
+    const userKey = user ? `${user.role}_${user.id}` : "";
+    const otherUserKey = conversation.participant_keys?.find(k => k !== userKey) || userKey;
+    const dmTitle = conversation?.title || "";
+    return onlineUsers.includes(otherUserKey) || dmTitle.includes("— You") || dmTitle.includes("- You") || dmTitle.includes("(You)");
+  }, [conversation, user, onlineUsers, isDirect]);
   
   // Navigation tabs: 'chat' | 'calendar' | 'tasks'
   const [activeTab, setActiveTab] = useState("chat");
@@ -975,7 +984,9 @@ const ChatWindow = ({ conversationId, conversation }) => {
           </div>
           <div className="zbot-header-info">
             <h5>{chatTitle}</h5>
-            <span className="zbot-header-status-dot" />
+            {isDirect && (
+              <span className={`zbot-header-status-dot ${isOnline ? "online" : "offline"}`} />
+            )}
           </div>
         </div>
         <div className="zbot-header-tabs">

@@ -550,31 +550,26 @@ const Header = () => {
                   </>
                 );
 
-                if (notif.is_read) {
-                  return (
-                    <div
-                      key={notif.id}
-                      className="flex gap-3 p-4 border-b border-slate-100 text-slate-400 transition-colors"
-                      style={{ display: "flex" }}
-                    >
-                      {content}
-                    </div>
-                  );
-                }
+                const isLink = !!notif.target_link;
+                const Wrapper = isLink ? Link : "div";
+                const wrapperProps = isLink 
+                  ? { to: notif.target_link, className: `flex gap-3 p-4 border-b border-slate-100 transition-colors text-decoration-none ${notif.is_read ? 'text-slate-400 hover:bg-slate-50' : 'text-slate-700 bg-slate-50/50 hover:bg-slate-50'}` }
+                  : { className: `flex gap-3 p-4 border-b border-slate-100 transition-colors ${notif.is_read ? 'text-slate-400' : 'text-slate-700 bg-slate-50/50'}` };
 
                 return (
-                  <Link
-                    to={notif.target_link || "#"}
+                  <Wrapper
                     key={notif.id}
-                    className="flex gap-3 p-4 border-b border-slate-100 text-slate-700 hover:bg-slate-50 transition-colors text-decoration-none bg-slate-50/50"
-                    style={{ color: "inherit", display: "flex" }}
+                    style={{ color: "inherit", display: "flex", cursor: isLink ? "pointer" : "default" }}
+                    {...wrapperProps}
                     onClick={() => {
                       setShowNotifications(false);
-                      markNotificationAsRead(notif.id);
+                      if (!notif.is_read) {
+                        markNotificationAsRead(notif.id);
+                      }
                     }}
                   >
                     {content}
-                  </Link>
+                  </Wrapper>
                 );
               })
             ) : (
