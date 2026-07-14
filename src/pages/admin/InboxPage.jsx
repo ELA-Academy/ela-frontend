@@ -326,9 +326,34 @@ const InboxPage = () => {
     }
   };
 
-  // Filter notifications based on sub-tabs
+  const [savedComments, setSavedComments] = useState(() => {
+    try {
+      const saved = localStorage.getItem("zbot_saved_comments_data");
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const handleRemoveSavedComment = (commentId) => {
+    const next = { ...savedComments };
+    delete next[commentId];
+    setSavedComments(next);
+    localStorage.setItem("zbot_saved_comments_data", JSON.stringify(next));
+
+    try {
+      const bookmarkedStr = localStorage.getItem("zbot_bookmarked_comments");
+      if (bookmarkedStr) {
+        const bookmarked = JSON.parse(bookmarkedStr);
+        bookmarked[commentId] = false;
+        localStorage.setItem("zbot_bookmarked_comments", JSON.stringify(bookmarked));
+      }
+    } catch (e) {}
+    toast.success("Comment removed from Later.");
+  };
+
   const filteredNotifications = useMemo(() => {
-    return notifications.filter((notif) => {
+    const list = notifications.filter((notif) => {
       const isSnoozed = laterIds.includes(notif.id);
 
       if (inboxSubTab === "cleared") {
@@ -339,22 +364,56 @@ const InboxPage = () => {
         return isSnoozed && !notif.is_read;
       }
 
-      // Hide cleared or snoozed from Active (Primary/Other)
       if (notif.is_read || isSnoozed) return false;
 
-      // Primary: mentions & assignments
       if (inboxSubTab === "primary") {
         return notif.category === "mention" || notif.category === "assignment";
       }
 
-      // Other: general notifications
       if (inboxSubTab === "other") {
         return notif.category !== "mention" && notif.category !== "assignment";
       }
-
       return true;
     });
-  }, [notifications, inboxSubTab, laterIds]);
+
+    if (inboxSubTab === "later") {
+      const commentsList = Object.values(savedComments).map((c) => ({
+        id: `saved_comment_${c.id}`,
+        is_comment: true,
+        comment_id: c.id,
+        content: c.content,
+        sender_name: c.sender_name,
+        created_at: c.created_at,
+        task_id: c.task_id,
+        task_title: c.task_title,
+        board_id: c.board_id,
+        board_name: c.board_name,
+        target_link: c.target_link,
+        is_read: false
+      }));
+      return [...list, ...commentsList];
+    }
+
+    return list;
+  }, [notifications, inboxSubTab, laterIds, savedComments]);
+
+  const primaryCount = useMemo(() => {
+    return notifications.filter(notif => !notif.is_read && !laterIds.includes(notif.id) && (notif.category === "mention" || notif.category === "assignment")).length;
+  }, [notifications, laterIds]);
+
+  const otherCount = useMemo(() => {
+    return notifications.filter(notif => !notif.is_read && !laterIds.includes(notif.id) && notif.category !== "mention" && notif.category !== "assignment").length;
+  }, [notifications, laterIds]);
+
+  const laterCount = useMemo(() => {
+    const snoozedNotifsCount = notifications.filter(notif => !notif.is_read && laterIds.includes(notif.id)).length;
+    const savedCommentsCount = Object.keys(savedComments).length;
+    return snoozedNotifsCount + savedCommentsCount;
+  }, [notifications, laterIds, savedComments]);
+
+  const clearedCount = useMemo(() => {
+    return notifications.filter(notif => notif.is_read).length;
+  }, [notifications]);
 
   // Filter replies (mock replies feed from notifications or updates)
   const replyNotifications = useMemo(() => {
@@ -749,25 +808,25 @@ const InboxPage = () => {
                     className={`notif-sub-tab-btn ${inboxSubTab === "primary" ? "active" : ""}`}
                     onClick={() => setInboxSubTab("primary")}
                   >
-                    Primary
+                    Primary <Badge bg={inboxSubTab === "primary" ? "dark" : "secondary"} className="ms-1 text-white">{primaryCount}</Badge>
                   </button>
                   <button
                     className={`notif-sub-tab-btn ${inboxSubTab === "other" ? "active" : ""}`}
                     onClick={() => setInboxSubTab("other")}
                   >
-                    Other
+                    Other <Badge bg={inboxSubTab === "other" ? "dark" : "secondary"} className="ms-1 text-white">{otherCount}</Badge>
                   </button>
                   <button
                     className={`notif-sub-tab-btn ${inboxSubTab === "later" ? "active" : ""}`}
                     onClick={() => setInboxSubTab("later")}
                   >
-                    Later
+                    Later <Badge bg={inboxSubTab === "later" ? "dark" : "secondary"} className="ms-1 text-white">{laterCount}</Badge>
                   </button>
                   <button
                     className={`notif-sub-tab-btn ${inboxSubTab === "cleared" ? "active" : ""}`}
                     onClick={() => setInboxSubTab("cleared")}
                   >
-                    Cleared
+                    Cleared <Badge bg={inboxSubTab === "cleared" ? "dark" : "secondary"} className="ms-1 text-white">{clearedCount}</Badge>
                   </button>
                 </div>
                 {inboxSubTab !== "cleared" && filteredNotifications.length > 0 && (
@@ -790,66 +849,105 @@ const InboxPage = () => {
                   </p>
                 </div>
               ) : (
-                filteredNotifications.map((notif) => (
-                  <div key={notif.id} className="notif-card">
-                    <div className="d-flex align-items-start gap-3 min-width-0">
-                      <span className={`notif-category-badge badge-${notif.category || "general"}`}>
-                        {notif.category || "general"}
-                      </span>
-                      <div className="min-width-0">
-                        {notif.target_link ? (
-                          <Link
-                            to={notif.target_link}
-                            className="text-slate-800 fw-bold text-decoration-none hover-purple d-block truncate-text mb-1"
-                            style={{ fontSize: "13px" }}
-                          >
-                            {notif.message}
-                          </Link>
-                        ) : (
-                          <span className="text-slate-800 fw-semibold d-block truncate-text mb-1" style={{ fontSize: "13px" }}>
-                            {notif.message}
+                filteredNotifications.map((notif) => {
+                  if (notif.is_comment) {
+                    return (
+                      <div key={notif.id} className="notif-card border-start border-warning" style={{ borderLeftWidth: "4px" }}>
+                        <div className="d-flex align-items-start gap-3 min-width-0 w-100">
+                          <span className="notif-category-badge badge bg-warning text-dark px-2.5 py-1 text-xs" style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                            Saved Comment
                           </span>
-                        )}
-                        <small className="text-slate-400" style={{ fontSize: "11px" }}>
-                          {format(new Date(notif.created_at), "PPp")}
-                        </small>
+                          <div className="min-width-0 flex-grow-1">
+                            <div className="text-slate-800 mb-2" style={{ fontSize: "13px", lineHeight: "1.4" }}>
+                              <strong>{notif.sender_name}</strong> commented in task{" "}
+                              <Link to={notif.target_link} className="fw-semibold text-indigo-600 hover-underline">
+                                {notif.task_title}
+                              </Link>{" "}
+                              under board <strong>{notif.board_name}</strong>:
+                              <div className="mt-2 p-2 bg-slate-50 border rounded text-slate-600 fst-italic" style={{ borderStyle: "dashed" }}>
+                                "{notif.content}"
+                              </div>
+                            </div>
+                            <small className="text-slate-400" style={{ fontSize: "11px" }}>
+                              Saved {format(new Date(notif.created_at), "PPp")}
+                            </small>
+                          </div>
+                        </div>
+                        <div className="d-flex align-items-center gap-2 flex-shrink-0 ms-3">
+                          <button
+                            className="btn btn-sm btn-light border rounded-pill p-1 px-2.5 d-flex align-items-center gap-1 text-slate-500 hover:bg-slate-50 transition-colors"
+                            style={{ fontSize: "11px" }}
+                            onClick={() => handleRemoveSavedComment(notif.comment_id)}
+                          >
+                            <Trash2 size={12} className="text-slate-400" />
+                            <span>Un-save</span>
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    );
+                  }
 
-                    {/* Actions */}
-                    <div className="d-flex align-items-center gap-2 flex-shrink-0">
-                      {inboxSubTab === "later" ? (
-                        <button
-                          className="btn btn-sm btn-light border rounded-pill p-1 px-2 d-flex align-items-center gap-1 text-slate-500"
-                          style={{ fontSize: "11px" }}
-                          onClick={() => handleUnsnoozeNotif(notif.id)}
-                        >
-                          <Clock size={12} />
-                          <span>Un-snooze</span>
-                        </button>
-                      ) : !notif.is_read ? (
-                        <>
+                  return (
+                    <div key={notif.id} className="notif-card">
+                      <div className="d-flex align-items-start gap-3 min-width-0">
+                        <span className={`notif-category-badge badge-${notif.category || "general"}`}>
+                          {notif.category || "general"}
+                        </span>
+                        <div className="min-width-0">
+                          {notif.target_link ? (
+                            <Link
+                              to={notif.target_link}
+                              className="text-slate-800 fw-bold text-decoration-none hover-purple d-block truncate-text mb-1"
+                              style={{ fontSize: "13px" }}
+                            >
+                              {notif.message}
+                            </Link>
+                          ) : (
+                            <span className="text-slate-800 fw-semibold d-block truncate-text mb-1" style={{ fontSize: "13px" }}>
+                              {notif.message}
+                            </span>
+                          )}
+                          <small className="text-slate-400" style={{ fontSize: "11px" }}>
+                            {format(new Date(notif.created_at), "PPp")}
+                          </small>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                        {inboxSubTab === "later" ? (
                           <button
                             className="btn btn-sm btn-light border rounded-pill p-1 px-2 d-flex align-items-center gap-1 text-slate-500"
                             style={{ fontSize: "11px" }}
-                            onClick={() => handleSnoozeNotif(notif.id)}
+                            onClick={() => handleUnsnoozeNotif(notif.id)}
                           >
                             <Clock size={12} />
-                            <span>Later</span>
+                            <span>Un-snooze</span>
                           </button>
-                          <button
-                            className="btn btn-sm btn-success rounded-pill p-1 px-2 d-flex align-items-center gap-1 text-white border-0"
-                            style={{ fontSize: "11px", backgroundColor: "#00b67a" }}
-                            onClick={() => handleClearNotif(notif.id)}
-                          >
-                            <CheckCircle size={12} />
-                            <span>Clear</span>
-                          </button>
-                        </>
-                      ) : null}
+                        ) : !notif.is_read ? (
+                          <>
+                            <button
+                              className="btn btn-sm btn-light border rounded-pill p-1 px-2 d-flex align-items-center gap-1 text-slate-500"
+                              style={{ fontSize: "11px" }}
+                              onClick={() => handleSnoozeNotif(notif.id)}
+                            >
+                              <Clock size={12} />
+                              <span>Later</span>
+                            </button>
+                            <button
+                              className="btn btn-sm btn-success rounded-pill p-1 px-2 d-flex align-items-center gap-1 text-white border-0"
+                              style={{ fontSize: "11px", backgroundColor: "#00b67a" }}
+                              onClick={() => handleClearNotif(notif.id)}
+                            >
+                              <CheckCircle size={12} />
+                              <span>Clear</span>
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           )}

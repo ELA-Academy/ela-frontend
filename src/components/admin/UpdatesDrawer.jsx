@@ -427,7 +427,7 @@ const UpdatesDrawer = ({
                 <button
                   type="button"
                   className="btn btn-link text-slate-400 hover:text-warning p-0 border-0"
-                  onClick={() => handleToggleBookmark(currentComment.id)}
+                  onClick={() => handleToggleBookmark(currentComment.id, currentComment)}
                   title="Save to Inbox Later"
                   style={{ textDecoration: "none" }}
                   disabled={bookmarkingCommentId === currentComment.id}
@@ -502,7 +502,22 @@ const UpdatesDrawer = ({
                 />
                 <div className="d-flex justify-content-end gap-1.5 mt-2">
                   <Button size="sm" variant="outline-secondary" className="px-2.5 py-0.5 text-xs" onClick={() => setEditingCommentId(null)}>Cancel</Button>
-                  <Button size="sm" variant="dark" className="px-3 py-0.5 text-xs" onClick={() => handleSaveEditComment(currentComment.id)}>Save</Button>
+                  <Button
+                    size="sm"
+                    variant="dark"
+                    className="px-3 py-0.5 text-xs d-flex align-items-center gap-1"
+                    onClick={() => handleSaveEditComment(currentComment.id)}
+                    disabled={savingCommentId === currentComment.id}
+                  >
+                    {savingCommentId === currentComment.id ? (
+                      <>
+                        <Spinner size="sm" animation="border" style={{ width: "10px", height: "10px" }} />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      "Save"
+                    )}
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -552,29 +567,45 @@ const UpdatesDrawer = ({
               className="form-control"
               placeholder="Reply to comment..."
               value={replyInputs[currentComment.id] || ""}
-              onChange={(e) => setReplyInputs(prev => ({ ...prev, [currentComment.id]: e.target.value }))}
+              onChange={(e) => {
+                const val = e.target.value;
+                setReplyInputs(prev => ({ ...prev, [currentComment.id]: val }));
+                if (val.endsWith("@")) {
+                  setActiveReplyDropdown(currentComment.id);
+                } else if (!val.includes("@")) {
+                  setActiveReplyDropdown(null);
+                }
+              }}
               onKeyDown={(e) => { if (e.key === "Enter") handleAddReply(currentComment.id); }}
             />
-            <Dropdown align="end">
+            <Dropdown align="end" show={activeReplyDropdown === currentComment.id} onToggle={(isOpen) => setActiveReplyDropdown(isOpen ? currentComment.id : null)}>
               <Dropdown.Toggle as="button" className="btn btn-outline-secondary d-flex align-items-center justify-content-center px-2 py-0 border-end-0" style={{ borderTop: "1px solid #ced4da", borderBottom: "1px solid #ced4da", borderRadius: 0 }}>
                 @
               </Dropdown.Toggle>
               <Dropdown.Menu className="shadow border-0 py-1" style={{ fontSize: "11px", maxHeight: "200px", overflowY: "auto", zIndex: 1100 }}>
-                {mentionOptions.filter(m => m.type !== 'department').map(member => (
-                  <Dropdown.Item
-                    key={`${member.type}_${member.id}`}
-                    onClick={() => {
-                      const currentVal = replyInputs[currentComment.id] || "";
-                      setReplyInputs(prev => ({ ...prev, [currentComment.id]: currentVal + `@${member.label} ` }));
-                      setReplyMentions(prev => {
-                        const currentMentions = prev[currentComment.id] || [];
-                        return { ...prev, [currentComment.id]: [...currentMentions, { type: member.type, id: member.id, label: member.label }] };
-                      });
-                    }}
-                  >
-                    {member.label}
-                  </Dropdown.Item>
-                ))}
+                {(() => {
+                  const currentVal = replyInputs[currentComment.id] || "";
+                  const lastAtIdx = currentVal.lastIndexOf("@");
+                  const query = lastAtIdx !== -1 ? currentVal.slice(lastAtIdx + 1).toLowerCase() : "";
+                  const filtered = mentionOptions.filter(m => m.type !== 'department' && m.searchStr.includes(query));
+                  if (filtered.length === 0) return <Dropdown.Item disabled>No matching users</Dropdown.Item>;
+                  return filtered.map(member => (
+                    <Dropdown.Item
+                      key={`${member.type}_${member.id}`}
+                      onClick={() => {
+                        const baseVal = currentVal.slice(0, lastAtIdx);
+                        setReplyInputs(prev => ({ ...prev, [currentComment.id]: baseVal + `@${member.label} ` }));
+                        setReplyMentions(prev => {
+                          const currentMentions = prev[currentComment.id] || [];
+                          return { ...prev, [currentComment.id]: [...currentMentions, { type: member.type, id: member.id, label: member.label }] };
+                        });
+                        setActiveReplyDropdown(null);
+                      }}
+                    >
+                      {member.label}
+                    </Dropdown.Item>
+                  ));
+                })()}
               </Dropdown.Menu>
             </Dropdown>
             <Button
@@ -847,6 +878,9 @@ const UpdatesDrawer = ({
 
   // Reply mentions state
   const [replyMentions, setReplyMentions] = useState({}); // {updateId: [{type, id, label}]}
+  const [activeReplyDropdown, setActiveReplyDropdown] = useState(null); // commentId or null
+  const [savingCommentId, setSavingCommentId] = useState(null);
+  const [savingChecklistItemId, setSavingChecklistItemId] = useState(null);
 
   // Bookmark comments state
   const [bookmarkedComments, setBookmarkedComments] = useState(() => {
@@ -860,17 +894,44 @@ const UpdatesDrawer = ({
 
   const [bookmarkingCommentId, setBookmarkingCommentId] = useState(null);
 
-  const handleToggleBookmark = async (commentId) => {
+  const handleToggleBookmark = async (commentId, commentItem) => {
     try {
       setBookmarkingCommentId(commentId);
-      const next = { ...bookmarkedComments, [commentId]: !bookmarkedComments[commentId] };
+      const isBookmarked = !bookmarkedComments[commentId];
+      const next = { ...bookmarkedComments, [commentId]: isBookmarked };
       setBookmarkedComments(next);
       localStorage.setItem("zbot_bookmarked_comments", JSON.stringify(next));
+      
+      const savedDataStr = localStorage.getItem("zbot_saved_comments_data");
+      let savedData = {};
+      try {
+        savedData = savedDataStr ? JSON.parse(savedDataStr) : {};
+      } catch {
+        savedData = {};
+      }
+      
+      if (isBookmarked && commentItem) {
+        savedData[commentId] = {
+          id: commentId,
+          content: commentItem.content || commentItem.message || "",
+          sender_name: commentItem.sender_name || "Unknown",
+          sender_email: commentItem.sender_email || "",
+          created_at: commentItem.created_at || new Date().toISOString(),
+          task_id: taskId,
+          task_title: task?.title || "Task",
+          board_id: boardId,
+          board_name: boardName || "Board",
+          target_link: `/admin/boards/${boardId}?task=${taskId}`
+        };
+      } else {
+        delete savedData[commentId];
+      }
+      localStorage.setItem("zbot_saved_comments_data", JSON.stringify(savedData));
       
       // Simulate/add a tiny delay so the user sees the loader spinning
       await new Promise(resolve => setTimeout(resolve, 800));
       
-      if (next[commentId]) {
+      if (isBookmarked) {
         showToast("Comment saved to Later!");
       } else {
         showToast("Comment removed from Later.");
@@ -893,6 +954,7 @@ const UpdatesDrawer = ({
       return;
     }
     try {
+      setSavingCommentId(commentId);
       await api.put(`/boards/updates/${commentId}`, { content: editingCommentContent.trim() });
       showToast("Comment updated!");
       setEditingCommentId(null);
@@ -900,6 +962,8 @@ const UpdatesDrawer = ({
     } catch (err) {
       console.error(err);
       showToast("Failed to update comment", "danger");
+    } finally {
+      setSavingCommentId(null);
     }
   };
 
@@ -1081,26 +1145,22 @@ const UpdatesDrawer = ({
 
     const loadMentionOptions = async () => {
       try {
-        const [staffRes, deptRes] = await Promise.all([
-          api.get("/staff"),
+        const [usersRes, deptRes] = await Promise.all([
+          api.get("/messaging/users"),
           api.get("/departments")
         ]);
         
         const options = [];
-        options.push({
-          type: "superadmin",
-          id: 1,
-          label: "Super Admin",
-          searchStr: "super admin superadmin admin@ela-school.org"
-        });
         
-        if (Array.isArray(staffRes.data)) {
-          staffRes.data.forEach((s) => {
+        if (Array.isArray(usersRes.data)) {
+          usersRes.data.forEach((u) => {
+            const [uRole, rawId] = u.id.split("_");
+            const cleanLabel = u.name.replace(" (You)", "");
             options.push({
-              type: "staff",
-              id: s.id,
-              label: s.name,
-              searchStr: `${s.name} ${s.email}`.toLowerCase()
+              type: uRole,
+              id: Number(rawId),
+              label: cleanLabel,
+              searchStr: `${cleanLabel} ${u.email || ""}`.toLowerCase()
             });
           });
         }
@@ -1593,6 +1653,7 @@ const UpdatesDrawer = ({
       return;
     }
     try {
+      setSavingChecklistItemId(itemId);
       const updated = await updateChecklistItem(itemId, { title: clean });
       setChecklist(prev => {
         const next = prev.map(item => item.id === itemId ? updated : item);
@@ -1602,6 +1663,8 @@ const UpdatesDrawer = ({
       setEditingChecklistItemId(null);
     } catch (err) {
       console.error(err);
+    } finally {
+      setSavingChecklistItemId(null);
     }
   };
 
@@ -2783,19 +2846,25 @@ const UpdatesDrawer = ({
                             />
 
                             {editingChecklistItemId === item.id ? (
-                              <input
-                                type="text"
-                                className="form-control form-control-sm py-0.5 border-primary"
-                                style={{ fontSize: "13px" }}
-                                value={editingChecklistItemTitle}
-                                onChange={(e) => setEditingChecklistItemTitle(e.target.value)}
-                                onBlur={() => handleSaveChecklistItemTitle(item.id, item.title)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") handleSaveChecklistItemTitle(item.id, item.title);
-                                  if (e.key === "Escape") setEditingChecklistItemId(null);
-                                }}
-                                autoFocus
-                              />
+                              <div className="position-relative w-100 d-flex align-items-center">
+                                <input
+                                  type="text"
+                                  className="form-control form-control-sm py-0.5 border-primary pe-4"
+                                  style={{ fontSize: "13px" }}
+                                  value={editingChecklistItemTitle}
+                                  onChange={(e) => setEditingChecklistItemTitle(e.target.value)}
+                                  onBlur={() => handleSaveChecklistItemTitle(item.id, item.title)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") handleSaveChecklistItemTitle(item.id, item.title);
+                                    if (e.key === "Escape") setEditingChecklistItemId(null);
+                                  }}
+                                  autoFocus
+                                  disabled={savingChecklistItemId === item.id}
+                                />
+                                {savingChecklistItemId === item.id && (
+                                  <Spinner size="sm" animation="border" className="position-absolute end-0 me-2" style={{ width: "12px", height: "12px" }} />
+                                )}
+                              </div>
                             ) : (
                               <span 
                                 className={item.is_checked ? "text-decoration-line-through text-muted" : ""} 
@@ -2985,7 +3054,7 @@ const UpdatesDrawer = ({
                                     <button
                                       type="button"
                                       className="btn btn-link text-slate-400 hover:text-warning p-0 border-0"
-                                      onClick={() => handleToggleBookmark(item.id)}
+                                      onClick={() => handleToggleBookmark(item.id, item)}
                                       title="Save to Inbox Later"
                                       style={{ textDecoration: "none" }}
                                       disabled={bookmarkingCommentId === item.id}
@@ -3073,7 +3142,22 @@ const UpdatesDrawer = ({
                                     />
                                     <div className="d-flex justify-content-end gap-1.5 mt-2">
                                       <Button size="sm" variant="outline-secondary" className="px-2.5 py-0.5 text-xs" onClick={() => setEditingCommentId(null)}>Cancel</Button>
-                                      <Button size="sm" variant="dark" className="px-3 py-0.5 text-xs" onClick={() => handleSaveEditComment(item.id)}>Save</Button>
+                                      <Button
+                                        size="sm"
+                                        variant="dark"
+                                        className="px-3 py-0.5 text-xs d-flex align-items-center gap-1"
+                                        onClick={() => handleSaveEditComment(item.id)}
+                                        disabled={savingCommentId === item.id}
+                                      >
+                                        {savingCommentId === item.id ? (
+                                          <>
+                                            <Spinner size="sm" animation="border" style={{ width: "10px", height: "10px" }} />
+                                            <span>Saving...</span>
+                                          </>
+                                        ) : (
+                                          "Save"
+                                        )}
+                                      </Button>
                                     </div>
                                   </div>
                                 ) : (

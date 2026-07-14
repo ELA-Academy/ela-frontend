@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import api from "../../../utils/api";
 import { toast } from "react-toastify";
+import { useWorkspace } from "../workspace/WorkspaceLayout";
 
 // A global, persistent in-memory cache to store conversation histories
 const globalMessageCache = {};
@@ -69,6 +70,23 @@ const renderMessageText = (text) => {
 
 const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
   const { user } = useAuth();
+  const { setConversations } = useWorkspace();
+
+  const updateSidebarConversation = useCallback((convoId, lastMsgText, timeStr) => {
+    if (!setConversations) return;
+    setConversations((prev) => {
+      const idx = prev.findIndex(c => c.id === convoId);
+      if (idx === -1) return prev;
+      const updated = {
+        ...prev[idx],
+        last_message: lastMsgText,
+        last_message_time: timeStr || new Date().toISOString()
+      };
+      const next = [...prev];
+      next.splice(idx, 1);
+      return [updated, ...next];
+    });
+  }, [setConversations]);
   
   const isDirect = conversation?.conversation_type === "direct";
   const isOnline = useMemo(() => {
@@ -707,6 +725,7 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
         globalMessageCache[conversationId] = nextMessages;
         return nextMessages;
       });
+      updateSidebarConversation(conversationId, message.content, message.created_at);
     });
 
     return () => {
@@ -799,6 +818,7 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
         globalMessageCache[conversationId] = nextMessages;
         return nextMessages;
       });
+      updateSidebarConversation(conversationId, optimistic1.content, optimistic1.created_at);
 
       setNewMessage("");
       setReplyingToMessage(null);
@@ -877,6 +897,7 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
         globalMessageCache[conversationId] = nextMessages;
         return nextMessages;
       });
+      updateSidebarConversation(conversationId, optimisticMessage.content, optimisticMessage.created_at);
       const activeMentions = selectedMentions.filter(u => optimisticMessage.content.includes(`@${u.name}`));
       setNewMessage("");
       setReplyingToMessage(null);
