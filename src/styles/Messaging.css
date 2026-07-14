@@ -114,7 +114,12 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: #10b981;
+}
+.zbot-header-status-dot.online {
+  background-color: #00ca72;
+}
+.zbot-header-status-dot.offline {
+  background-color: #94a3b8;
 }
 
 .zbot-header-tabs {

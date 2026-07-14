@@ -19,6 +19,7 @@ const MessagingPage = () => {
     workspaceLoading: loading,
     openCreateChannelModal,
     openNewMessageModal,
+    onlineUsers,
   } = useWorkspace();
 
   const activeConversationId = Number(searchParams.get("conversation")) || null;
@@ -127,6 +128,7 @@ const MessagingPage = () => {
           <ChatWindow
             conversationId={activeConversationId}
             conversation={activeConversation}
+            onlineUsers={onlineUsers}
             key={activeConversationId}
           />
         </div>

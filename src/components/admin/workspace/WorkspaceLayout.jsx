@@ -421,6 +421,7 @@ const WorkspaceLayout = () => {
     departments,
     assignees,
     workspaceLoading,
+    onlineUsers,
     refreshWorkspace: () => fetchWorkspaceData(false),
     openCreateSpaceModal: () => handleOpenSettings(null),
     openSettingsModal: (board) => handleOpenSettings(board),

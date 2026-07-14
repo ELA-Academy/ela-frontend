@@ -4261,3 +4261,13 @@ th.zbot-sticky-col-right, th.zbot-sticky-table-col-right-1, th.zbot-sticky-table
   border-bottom: 0;
 }
 
+/* Ensure open dropdowns stack above other table rows/columns */
+.workspace-table tr:has(.show),
+.workspace-table td:has(.show) {
+  z-index: 1000 !important;
+}
+
+.workspace-table .dropdown-menu.show {
+  z-index: 10000 !important;
+}
+
