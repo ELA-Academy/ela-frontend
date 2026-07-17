@@ -33,6 +33,27 @@ const WorkspaceLayout = () => {
   const [assignees, setAssignees] = useState([]);
   const [workspaceLoading, setWorkspaceLoading] = useState(true);
   const [onlineUsers, setOnlineUsers] = useState([]);
+  const [localLastMessageTimes, setLocalLastMessageTimes] = useState({});
+
+  const updateLocalLastMessageTime = useCallback((convoId) => {
+    setLocalLastMessageTimes(prev => ({
+      ...prev,
+      [convoId]: new Date().toISOString()
+    }));
+  }, []);
+
+  const conversationsWithLocalTimes = useMemo(() => {
+    return conversations.map(c => {
+      const localTime = localLastMessageTimes[c.id];
+      if (!localTime) return c;
+      const bTime = c.last_message_time ? new Date(c.last_message_time) : new Date(c.created_at);
+      const lTime = new Date(localTime);
+      return {
+        ...c,
+        last_message_time: lTime > bTime ? localTime : c.last_message_time
+      };
+    });
+  }, [conversations, localLastMessageTimes]);
 
   // Secondary sidebar resizer states & logic
   const shellRef = useRef(null);
@@ -418,6 +439,7 @@ const WorkspaceLayout = () => {
     conversations,
     auditConversations,
     setConversations,
+    updateLocalLastMessageTime,
     departments,
     assignees,
     workspaceLoading,
@@ -442,7 +464,7 @@ const WorkspaceLayout = () => {
         style={{ "--sidebar-width": `${sidebarWidth}px` }}
       >
         <WorkspaceSecondarySidebar
-          conversations={conversations}
+          conversations={conversationsWithLocalTimes}
           onlineUsers={onlineUsers}
           auditConversations={auditConversations}
           boards={boards}

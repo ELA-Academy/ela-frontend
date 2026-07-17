@@ -70,9 +70,12 @@ const renderMessageText = (text) => {
 
 const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
   const { user } = useAuth();
-  const { setConversations } = useWorkspace();
+  const { setConversations, updateLocalLastMessageTime } = useWorkspace();
 
   const updateSidebarConversation = useCallback((convoId, lastMsgText, timeStr) => {
+    if (updateLocalLastMessageTime) {
+      updateLocalLastMessageTime(convoId);
+    }
     if (!setConversations) return;
     setConversations((prev) => {
       const idx = prev.findIndex(c => c.id === convoId);
@@ -86,7 +89,7 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
       next.splice(idx, 1);
       return [updated, ...next];
     });
-  }, [setConversations]);
+  }, [setConversations, updateLocalLastMessageTime]);
   
   const isDirect = conversation?.conversation_type === "direct";
   const isOnline = useMemo(() => {
@@ -1313,6 +1316,7 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
 
           {/* Zbot Footer with greeting banner and dark panel input */}
           <div className="zbot-chat-footer">
+            {/* 
             {!bannerDismissed && (
               <div className="zbot-footer-banner">
                 <span>👋 Send a message to #{chatTitle} to get the conversation started!</span>
@@ -1321,6 +1325,7 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
                 </button>
               </div>
             )}
+            */}
 
             <div className="zbot-input-card" style={{ position: "relative" }}>
               {showMentionsDropdown && filteredUsers.length > 0 && (

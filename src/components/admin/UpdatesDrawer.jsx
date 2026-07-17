@@ -524,8 +524,9 @@ const UpdatesDrawer = ({
               <div
                 className="update-content text-slate-700 ps-5 mb-2"
                 style={{ fontSize: "13px" }}
-                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(currentComment.content || currentComment.message) }}
-              />
+              >
+                {renderParsedContent(currentComment.content || currentComment.message)}
+              </div>
             )}
           </div>
 
@@ -537,20 +538,80 @@ const UpdatesDrawer = ({
             {currentComment.replies && currentComment.replies.length > 0 ? (
               currentComment.replies.map((reply) => (
                 <div key={reply.id} className="update-reply-item bg-light p-2.5 rounded-3 mb-2.5 border">
-                  <div className="reply-author d-flex align-items-center gap-2 mb-1">
-                    <span className="assignee-avatar zbot-avatar-sm" style={{ width: "18px", height: "18px", fontSize: "8px" }}>
-                      {getAvatarInitials(reply.sender_name)}
-                    </span>
-                    <strong style={{ fontSize: "11px" }}>{reply.sender_name}</strong>
-                    <span className="reply-timestamp ms-auto text-muted" style={{ fontSize: "9px" }}>
-                      {new Date(reply.created_at).toLocaleDateString()} at {new Date(reply.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+                  <div className="reply-author d-flex align-items-center justify-content-between mb-1">
+                    <div className="d-flex align-items-center gap-2">
+                      <span className="assignee-avatar zbot-avatar-sm" style={{ width: "18px", height: "18px", fontSize: "8px" }}>
+                        {getAvatarInitials(reply.sender_name)}
+                      </span>
+                      <strong style={{ fontSize: "11px" }}>{reply.sender_name}</strong>
+                      <span className="reply-timestamp text-muted" style={{ fontSize: "9px" }}>
+                        {new Date(reply.created_at).toLocaleDateString()} at {new Date(reply.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+
+                    {/* Actions: Edit, Delete */}
+                    {editingReplyId !== reply.id && (user?.role === 'superadmin' || reply.sender_email === user?.email) && (
+                      <div className="d-flex align-items-center gap-1.5">
+                        <button
+                          type="button"
+                          className="btn btn-link text-slate-400 hover:text-slate-600 p-0 border-0"
+                          onClick={() => handleStartEditReply(reply)}
+                          title="Edit reply"
+                          style={{ textDecoration: "none" }}
+                        >
+                          <Pencil size={11} />
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-link text-slate-400 hover:text-danger p-0 border-0"
+                          onClick={() => handleDeleteReply(reply.id, currentComment.id)}
+                          title="Delete reply"
+                          style={{ textDecoration: "none" }}
+                        >
+                          <Trash size={11} />
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <div 
-                    className="reply-content text-secondary" 
-                    style={{ fontSize: "11px" }} 
-                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(reply.content || reply.message) }} 
-                  />
+
+                  {editingReplyId === reply.id ? (
+                    <div className="mb-2 mt-1">
+                      <Form.Control
+                        as="textarea"
+                        rows={2}
+                        value={editingReplyContent}
+                        onChange={(e) => setEditingReplyContent(e.target.value)}
+                        style={{ fontSize: "12px" }}
+                      />
+                      <div className="d-flex justify-content-end gap-1.5 mt-1.5">
+                        <Button size="sm" variant="outline-secondary" className="px-2 py-0.5" style={{ fontSize: "10px" }} onClick={() => setEditingReplyId(null)}>Cancel</Button>
+                        <Button
+                          size="sm"
+                          variant="dark"
+                          className="px-2.5 py-0.5 d-flex align-items-center gap-1"
+                          style={{ fontSize: "10px" }}
+                          onClick={() => handleSaveEditReply(reply.id, currentComment.id)}
+                          disabled={savingReplyId === reply.id}
+                        >
+                          {savingReplyId === reply.id ? (
+                            <>
+                              <Spinner size="sm" animation="border" style={{ width: "8px", height: "8px" }} />
+                              <span>Saving...</span>
+                            </>
+                          ) : (
+                            "Save"
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div 
+                      className="reply-content text-secondary" 
+                      style={{ fontSize: "11px" }} 
+                    >
+                      {renderParsedContent(reply.content || reply.message)}
+                    </div>
+                  )}
                 </div>
               ))
             ) : (
@@ -561,60 +622,50 @@ const UpdatesDrawer = ({
 
         {/* Reply Input Wrapper */}
         <div className="reply-input-wrapper mt-auto border-top pt-2">
-          <div className="input-group input-group-sm">
-            <input
-              type="text"
-              className="form-control"
+          <div className="cu-comment-editor border rounded-3 p-2 bg-white position-relative" style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
+            <textarea
+              ref={replyTextareaRef}
+              className="cu-comment-textarea border-0 w-100 bg-transparent text-slate-800"
+              style={{ outline: "none", fontSize: "13px", resize: "none" }}
               placeholder="Reply to comment..."
               value={replyInputs[currentComment.id] || ""}
-              onChange={(e) => {
-                const val = e.target.value;
-                setReplyInputs(prev => ({ ...prev, [currentComment.id]: val }));
-                if (val.endsWith("@")) {
-                  setActiveReplyDropdown(currentComment.id);
-                } else if (!val.includes("@")) {
-                  setActiveReplyDropdown(null);
-                }
-              }}
-              onKeyDown={(e) => { if (e.key === "Enter") handleAddReply(currentComment.id); }}
+              onChange={(e) => handleReplyTextareaChange(e, currentComment.id)}
+              onKeyDown={(e) => handleReplyKeyDown(e, currentComment.id)}
+              rows={2}
             />
-            <Dropdown align="end" show={activeReplyDropdown === currentComment.id} onToggle={(isOpen) => setActiveReplyDropdown(isOpen ? currentComment.id : null)}>
-              <Dropdown.Toggle as="button" className="btn btn-outline-secondary d-flex align-items-center justify-content-center px-2 py-0 border-end-0" style={{ borderTop: "1px solid #ced4da", borderBottom: "1px solid #ced4da", borderRadius: 0 }}>
-                @
-              </Dropdown.Toggle>
-              <Dropdown.Menu className="shadow border-0 py-1" style={{ fontSize: "11px", maxHeight: "200px", overflowY: "auto", zIndex: 1100 }}>
-                {(() => {
-                  const currentVal = replyInputs[currentComment.id] || "";
-                  const lastAtIdx = currentVal.lastIndexOf("@");
-                  const query = lastAtIdx !== -1 ? currentVal.slice(lastAtIdx + 1).toLowerCase() : "";
-                  const filtered = mentionOptions.filter(m => m.type !== 'department' && m.searchStr.includes(query));
-                  if (filtered.length === 0) return <Dropdown.Item disabled>No matching users</Dropdown.Item>;
-                  return filtered.map(member => (
-                    <Dropdown.Item
-                      key={`${member.type}_${member.id}`}
-                      onClick={() => {
-                        const baseVal = currentVal.slice(0, lastAtIdx);
-                        setReplyInputs(prev => ({ ...prev, [currentComment.id]: baseVal + `@${member.label} ` }));
-                        setReplyMentions(prev => {
-                          const currentMentions = prev[currentComment.id] || [];
-                          return { ...prev, [currentComment.id]: [...currentMentions, { type: member.type, id: member.id, label: member.label }] };
-                        });
-                        setActiveReplyDropdown(null);
-                      }}
-                    >
-                      {member.label}
-                    </Dropdown.Item>
-                  ));
-                })()}
-              </Dropdown.Menu>
-            </Dropdown>
-            <Button
-              variant="primary"
-              onClick={() => handleAddReply(currentComment.id)}
-              disabled={postingReplies[currentComment.id] || !(replyInputs[currentComment.id] || "").trim()}
-            >
-              {postingReplies[currentComment.id] ? <Spinner size="sm" animation="border" /> : <Send size={12} />}
-            </Button>
+
+            {showReplyAutocomplete && replyAutocompleteSuggestions.length > 0 && (
+              <div className="autocomplete-dropdown position-absolute bg-white border rounded shadow-lg p-2" style={{ bottom: "100%", left: 0, right: 0, zIndex: 9999 }}>
+                {replyAutocompleteSuggestions.map((s, idx) => (
+                  <div
+                    key={`${s.type}_${s.id}`}
+                    className={`autocomplete-item p-2 cursor-pointer rounded ${idx === replyAutocompleteIndex ? "bg-light text-primary" : ""}`}
+                    onClick={() => handleReplySuggestionSelect(s, currentComment.id)}
+                  >
+                    <span className={`badge me-2 ${s.type === "department" ? "bg-info" : (s.type === "superadmin" ? "bg-warning" : "bg-secondary")}`}>
+                      {s.type === "department" ? "Dept" : (s.type === "superadmin" ? "Admin" : "Staff")}
+                    </span>
+                    <span>{s.label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="d-flex align-items-center justify-content-between mt-2 pt-2 border-top">
+              <div className="d-flex align-items-center gap-2">
+                {/* Clean inline style */}
+              </div>
+              <Button
+                size="sm"
+                variant="dark"
+                className="px-3 rounded-pill fw-semibold d-flex align-items-center gap-1"
+                onClick={() => handleAddReply(currentComment.id)}
+                disabled={postingReplies[currentComment.id] || !(replyInputs[currentComment.id] || "").trim()}
+              >
+                {postingReplies[currentComment.id] ? <Spinner size="sm" animation="border" style={{ width: "10px", height: "10px" }} /> : <Send size={11} />}
+                <span>Reply</span>
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -868,6 +919,17 @@ const UpdatesDrawer = ({
   const [autocompleteSuggestions, setAutocompleteSuggestions] = useState([]);
   const [autocompletePosition, setAutocompletePosition] = useState({ top: 0, left: 0 });
 
+  // Reply autocomplete states
+  const [showReplyAutocomplete, setShowReplyAutocomplete] = useState(false);
+  const [replyAutocompleteQuery, setReplyAutocompleteQuery] = useState("");
+  const [replyAutocompleteIndex, setReplyAutocompleteIndex] = useState(0);
+  const [replyAutocompleteSuggestions, setReplyAutocompleteSuggestions] = useState([]);
+
+  // Reply editing/deleting states
+  const [editingReplyId, setEditingReplyId] = useState(null);
+  const [editingReplyContent, setEditingReplyContent] = useState("");
+  const [savingReplyId, setSavingReplyId] = useState(null);
+
   // Threaded replies local input states
   const [replyInputs, setReplyInputs] = useState({}); // {updateId: string}
   const [postingReplies, setPostingReplies] = useState({}); // {updateId: boolean}
@@ -1064,6 +1126,7 @@ const UpdatesDrawer = ({
   };
 
   const textareaRef = useRef(null);
+  const replyTextareaRef = useRef(null);
   const fileInputRef = useRef(null);
   const descEditorRef = useRef(null);
 
@@ -1958,15 +2021,163 @@ const UpdatesDrawer = ({
     }
   };
 
+  const handleReplyTextareaChange = (e, commentId) => {
+    const value = e.target.value;
+    setReplyInputs(prev => ({ ...prev, [commentId]: value }));
+
+    // Parse for @ trigger
+    const cursor = e.target.selectionStart;
+    const textBeforeCursor = value.slice(0, cursor);
+    const lastAtIdx = textBeforeCursor.lastIndexOf("@");
+
+    if (lastAtIdx !== -1 && lastAtIdx >= textBeforeCursor.lastIndexOf(" ")) {
+      const query = textBeforeCursor.slice(lastAtIdx + 1);
+      setReplyAutocompleteQuery(query);
+      
+      const filtered = mentionOptions.filter((opt) =>
+        opt.searchStr.includes(query.toLowerCase())
+      );
+      
+      setReplyAutocompleteSuggestions(filtered);
+      setReplyAutocompleteIndex(0);
+      setShowReplyAutocomplete(filtered.length > 0);
+    } else {
+      setShowReplyAutocomplete(false);
+    }
+  };
+
+  const handleReplySuggestionSelect = (suggestion, commentId) => {
+    const textarea = replyTextareaRef.current;
+    if (!textarea) return;
+
+    const cursor = textarea.selectionStart;
+    const currentVal = replyInputs[commentId] || "";
+    const textBeforeCursor = currentVal.slice(0, cursor);
+    const lastAtIdx = textBeforeCursor.lastIndexOf("@");
+    
+    if (lastAtIdx !== -1) {
+      const textAfterCursor = currentVal.slice(cursor);
+      const mentionText = `@${suggestion.label} `;
+      
+      const newContent = currentVal.slice(0, lastAtIdx) + mentionText + textAfterCursor;
+      setReplyInputs(prev => ({ ...prev, [commentId]: newContent }));
+      
+      setReplyMentions((prev) => {
+        const currentMentions = prev[commentId] || [];
+        return {
+          ...prev,
+          [commentId]: [
+            ...currentMentions.filter((m) => m.id !== suggestion.id || m.type !== suggestion.type),
+            { type: suggestion.type, id: suggestion.id, label: suggestion.label }
+          ]
+        };
+      });
+      
+      setShowReplyAutocomplete(false);
+      
+      setTimeout(() => {
+        textarea.focus();
+        const newCursorPos = lastAtIdx + mentionText.length;
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+      }, 50);
+    }
+  };
+
+  const handleReplyKeyDown = (e, commentId) => {
+    if (showReplyAutocomplete && replyAutocompleteSuggestions.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setReplyAutocompleteIndex((prev) => (prev + 1) % replyAutocompleteSuggestions.length);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setReplyAutocompleteIndex(
+          (prev) => (prev - 1 + replyAutocompleteSuggestions.length) % replyAutocompleteSuggestions.length
+        );
+      } else if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        handleReplySuggestionSelect(replyAutocompleteSuggestions[replyAutocompleteIndex], commentId);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        setShowReplyAutocomplete(false);
+      }
+    } else if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleAddReply(commentId);
+    }
+  };
+
+  const handleStartEditReply = (reply) => {
+    setEditingReplyId(reply.id);
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = reply.content || reply.message;
+    setEditingReplyContent(tempDiv.textContent || tempDiv.innerText || "");
+  };
+
+  const handleSaveEditReply = async (replyId, commentId) => {
+    if (!editingReplyContent.trim()) {
+      showToast("Reply content cannot be empty", "danger");
+      return;
+    }
+    try {
+      setSavingReplyId(replyId);
+      const response = await api.put(`/boards/replies/${replyId}`, { content: editingReplyContent.trim() });
+      showToast("Reply updated!");
+      setEditingReplyId(null);
+      
+      setUpdates((prev) =>
+        prev.map((up) => {
+          if (up.id === commentId) {
+            return {
+              ...up,
+              replies: up.replies.map((r) => (r.id === replyId ? response.data : r)),
+            };
+          }
+          return up;
+        })
+      );
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to update reply", "danger");
+    } finally {
+      setSavingReplyId(null);
+    }
+  };
+
+  const handleDeleteReply = (replyId, commentId) => {
+    setConfirmAction({
+      message: "Are you sure you want to delete this reply?",
+      onConfirm: async () => {
+        try {
+          await api.delete(`/boards/replies/${replyId}`);
+          showToast("Reply deleted!");
+          setUpdates((prev) =>
+            prev.map((up) => {
+              if (up.id === commentId) {
+                return {
+                  ...up,
+                  replies: up.replies.filter((r) => r.id !== replyId),
+                };
+              }
+              return up;
+            })
+          );
+        } catch (err) {
+          console.error(err);
+          showToast("Failed to delete reply", "danger");
+        }
+      }
+    });
+  };
+
   const renderParsedContent = (text) => {
     if (!text) return "";
-    const parts = text.split(/(@[a-zA-Z0-9\s]+ Department|@[a-zA-Z0-9\s]+)/g);
+    const parts = text.split(/(@[a-zA-Z0-9\s]+ Department|@[a-zA-Z0-9\s\-_]+)/g);
     return parts.map((part, idx) => {
       if (part.startsWith("@")) {
         return (
-          <a key={idx} href="#" className="mention-link" onClick={(e) => e.preventDefault()}>
+          <span key={idx} className="fw-semibold text-indigo-600 px-1 py-0.5 rounded bg-indigo-50" style={{ fontSize: "inherit" }}>
             {part}
-          </a>
+          </span>
         );
       }
       return part;
@@ -3164,8 +3375,9 @@ const UpdatesDrawer = ({
                                   <div
                                     className="update-content text-slate-700 ps-5 mb-2"
                                     style={{ fontSize: "13px" }}
-                                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(item.content || item.message) }}
-                                  />
+                                  >
+                                    {renderParsedContent(item.content || item.message)}
+                                  </div>
                                 )}
 
                                 {item.mentioned_names && item.mentioned_names.length > 0 && (
