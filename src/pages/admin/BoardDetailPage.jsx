@@ -272,6 +272,20 @@ const BoardDetailPage = () => {
   const [showMoreSettings, setShowMoreSettings] = useState(false);
   const [savingField, setSavingField] = useState(false);
 
+  // Custom Field Manager & Column Editing States
+  const [showFieldManagerModal, setShowFieldManagerModal] = useState(false);
+  const [managerSelectedLocation, setManagerSelectedLocation] = useState("all");
+  const [managerFields, setManagerFields] = useState([]);
+  const [loadingManagerFields, setLoadingManagerFields] = useState(false);
+  const [managerSearchQuery, setManagerSearchQuery] = useState("");
+  const [editingCustomField, setEditingCustomField] = useState(null);
+  const [editFieldNameInput, setEditFieldNameInput] = useState("");
+  const [showDeleteConfirmFieldId, setShowDeleteConfirmFieldId] = useState(null);
+  const [managerEditingFieldId, setManagerEditingFieldId] = useState(null);
+  const [managerEditingFieldName, setManagerEditingFieldName] = useState("");
+  const [managerDeletingFieldId, setManagerDeletingFieldId] = useState(null);
+  const [dropdownSearchQuery, setDropdownSearchQuery] = useState("");
+
   // Advanced dropdown/labels option builder states
   const [fieldOptionsList, setFieldOptionsList] = useState([
     { label: "Simple", color: "#10b981" },
@@ -1278,8 +1292,15 @@ const BoardDetailPage = () => {
     }
 
     result.sort((a, b) => {
-      let valA = a[sortBy];
-      let valB = b[sortBy];
+      let valA, valB;
+      if (typeof sortBy === "string" && sortBy.startsWith("custom_field_")) {
+        const fieldId = Number(sortBy.replace("custom_field_", ""));
+        valA = a.custom_field_values?.[fieldId] ?? "";
+        valB = b.custom_field_values?.[fieldId] ?? "";
+      } else {
+        valA = a[sortBy];
+        valB = b[sortBy];
+      }
 
       if (sortBy === "assignee") {
         valA = getTaskAssignees(a).map((assignee) => assignee.name).join(", ");
@@ -3221,9 +3242,7 @@ const BoardDetailPage = () => {
                           <th style={{ width: "10%", minWidth: "110px" }}>Due date</th>
                           <th style={{ width: "8%", minWidth: "90px" }}>Priority</th>
                           <th style={{ width: "10%", minWidth: "120px" }}>Status</th>
-                          {boardCustomFields.map(field => (
-                            <th key={field.id} style={{ width: "140px", minWidth: "140px", maxWidth: "180px" }} className="text-truncate" title={field.name}>{field.name}</th>
-                          ))}
+                          {boardCustomFields.map(field => renderCustomFieldHeader(field))}
                           <th style={{ width: "5%", minWidth: "80px" }}>Comments</th>
                           <th style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }} className="zbot-sticky-col-right">
                             <button
@@ -3927,9 +3946,7 @@ const BoardDetailPage = () => {
               <th style={{ width: "12%", minWidth: "120px" }}>Status</th>
               <th style={{ width: "10%", minWidth: "110px" }}>Due date</th>
               <th style={{ width: "8%", minWidth: "90px" }}>Priority</th>
-              {boardCustomFields.map(field => (
-                <th key={field.id} style={{ width: "140px", minWidth: "140px", maxWidth: "180px" }} className="text-truncate" title={field.name}>{field.name}</th>
-              ))}
+              {boardCustomFields.map(field => renderCustomFieldHeader(field))}
               <th style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }} className="zbot-sticky-table-col-right-2">
                 <button
                   type="button"
@@ -4760,21 +4777,51 @@ const BoardDetailPage = () => {
     );
   };
 
-  if (loading) {
-    return renderSkeletonLoader();
-  }
+  // Custom Field Manager & Column Editing Callbacks
+  const fetchManagerFields = useCallback(async () => {
+    try {
+      setLoadingManagerFields(true);
+      if (managerSelectedLocation === "all" || managerSelectedLocation === "workspace") {
+        const res = await api.get("/board-extensions/boards/custom-fields/workspace?all=true");
+        setManagerFields(res.data || []);
+      } else {
+        const res = await api.get(`/board-extensions/boards/${managerSelectedLocation}/custom-fields`);
+        setManagerFields(res.data || []);
+      }
+    } catch (err) {
+      console.error("Failed to load manager fields:", err);
+    } finally {
+      setLoadingManagerFields(false);
+    }
+  }, [managerSelectedLocation]);
 
-  if (!board) {
-    return (
-      <div className="workspace-panel">
-        <Alert variant="danger">Space not found.</Alert>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (showFieldManagerModal) {
+      fetchManagerFields();
+    }
+  }, [showFieldManagerModal, fetchManagerFields]);
 
+  const groupedManagerFields = useMemo(() => {
+    let list = managerFields || [];
+    const query = managerSearchQuery.toLowerCase().trim();
+    if (query) {
+      list = list.filter(f => f.name.toLowerCase().includes(query) || f.type.toLowerCase().includes(query));
+    }
+    
+    const groups = {};
+    list.forEach(f => {
+      const typeLabel = f.type ? (f.type.charAt(0).toUpperCase() + f.type.slice(1)) : "Text";
+      if (!groups[typeLabel]) {
+        groups[typeLabel] = [];
+      }
+      groups[typeLabel].push(f);
+    });
+    return groups;
+  }, [managerFields, managerSearchQuery]);
 
-
-  const getFieldDefaultName = (type) => {
+  // Helper mapping types to friendly names
+  const getFriendlyFieldTypeLabel = (type) => {
+    if (!type) return "Text";
     switch (type) {
       case "email": return "User's Email";
       case "dropdown": return "Dropdown";
@@ -4816,6 +4863,136 @@ const BoardDetailPage = () => {
     setButtonColor("#64748b");
     setCurrencyCode("USD");
     setShowCustomFieldsOffcanvas(true);
+  };
+
+  if (loading) {
+    return renderSkeletonLoader();
+  }
+
+  if (!board) {
+    return (
+      <div className="workspace-panel">
+        <Alert variant="danger">Space not found.</Alert>
+      </div>
+    );
+  }
+
+  const getFieldDefaultName = (type) => {
+    switch (type) {
+      case "email": return "User's Email";
+      case "dropdown": return "Dropdown";
+      case "multi_select":
+      case "labels": return "Labels";
+      case "text": return "Text Field";
+      case "text_area": return "Long Text";
+      case "number": return "Number Field";
+      case "date": return "Due Date";
+      case "checkbox": return "Checkbox Field";
+      case "money":
+      case "currency": return "Budget";
+      case "rating": return "Rating";
+      case "website": return "Website Url";
+      default: return `${type.charAt(0).toUpperCase() + type.slice(1)} Field`;
+    }
+  };
+
+  const handleManagerSelectTypeForCreation = (type) => {
+    let normalizedType = type.toLowerCase().replace(" ", "_");
+    if (normalizedType === "text_area_(long_text)") normalizedType = "text_area";
+    if (normalizedType === "labels_(multi-select)") normalizedType = "labels";
+    if (normalizedType === "text_area") normalizedType = "text_area";
+
+    setShowFieldManagerModal(false);
+    setSelectedFieldType(normalizedType);
+    setFieldName("");
+    setFieldDesc("");
+    setFieldDefaultValue("");
+    setFieldOptions("");
+    setFieldRequired(false);
+    setFieldPinned(false);
+    setFieldVisibleToGuests(true);
+    setOffcanvasStep(2);
+    setShowCustomFieldsOffcanvas(true);
+  };
+
+  const handleSortColumn = (fieldId, order) => {
+    setSortBy(`custom_field_${fieldId}`);
+    setSortOrder(order);
+  };
+
+  const handleMoveColumn = (fieldId, direction) => {
+    setBoardCustomFields(prev => {
+      const idx = prev.findIndex(f => f.id === fieldId);
+      if (idx === -1) return prev;
+      const next = [...prev];
+      const [item] = next.splice(idx, 1);
+      if (direction === "start") {
+        next.unshift(item);
+      } else {
+        next.push(item);
+      }
+      return next;
+    });
+  };
+
+  const handleHideColumn = (fieldId) => {
+    setBoardCustomFields(prev => prev.filter(f => f.id !== fieldId));
+    toast.success("Column hidden. You can add it back from the 'Fields' side panel.");
+  };
+
+  const handleDuplicateColumn = async (field) => {
+    try {
+      const payload = {
+        name: `${field.name} Copy`,
+        type: field.type,
+        config: field.config
+      };
+      await api.post(`/board-extensions/boards/${boardId}/custom-fields`, payload);
+      toast.success("Column duplicated successfully!");
+      fetchWorkspace(false);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to duplicate column.");
+    }
+  };
+
+  const handleDeleteFieldConfirm = async (fieldId) => {
+    if (window.confirm("Are you sure you want to delete this custom field? This will delete all task values associated with it.")) {
+      try {
+        await api.delete(`/board-extensions/custom-fields/${fieldId}`);
+        toast.success("Custom field deleted successfully.");
+        setEditingCustomField(null);
+        fetchWorkspace(false);
+        if (showFieldManagerModal) {
+          fetchManagerFields();
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to delete custom field.");
+      }
+    }
+  };
+
+  const handleSaveEditField = async (fieldId) => {
+    const cleanName = editFieldNameInput.trim();
+    if (!cleanName) {
+      toast.error("Field name cannot be empty.");
+      return;
+    }
+    try {
+      await api.put(`/board-extensions/custom-fields/${fieldId}`, {
+        name: cleanName
+      });
+      toast.success("Field updated successfully!");
+      setEditingCustomField(null);
+      fetchWorkspace(false);
+      if (showFieldManagerModal) {
+        fetchManagerFields();
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update custom field.");
+    }
   };
 
   const handleCreateCustomField = async (e) => {
@@ -4864,6 +5041,57 @@ const BoardDetailPage = () => {
     } catch (err) {
       console.error(err);
       toast.error("Failed to create custom field");
+    } finally {
+      setSavingField(false);
+    }
+  };
+
+  const handleSaveCustomFieldChanges = async (e) => {
+    if (e) e.preventDefault();
+    if (!fieldName || !fieldName.trim()) {
+      toast.error("Field name is required");
+      return;
+    }
+
+    try {
+      setSavingField(true);
+      const config = {
+        description: fieldDesc,
+        defaultValue: fieldDefaultValue,
+        required: fieldRequired,
+        pinned: fieldPinned,
+        visibleToGuests: fieldVisibleToGuests,
+      };
+
+      if (selectedFieldType === "dropdown" || selectedFieldType === "multi_select" || selectedFieldType === "labels") {
+        config.options = fieldOptionsList.map(opt => opt.label.trim()).filter(Boolean);
+        config.optionColors = fieldOptionsList.reduce((acc, opt) => {
+          if (opt.label.trim()) acc[opt.label.trim()] = opt.color;
+          return acc;
+        }, {});
+      } else if (selectedFieldType === "currency" || selectedFieldType === "money") {
+        config.currencyCode = currencyCode;
+        config.currencySymbol = currencyCode === "USD" ? "$" : (currencyCode === "EUR" ? "€" : (currencyCode === "GBP" ? "£" : "$"));
+      } else if (selectedFieldType === "button") {
+        config.buttonName = buttonName.trim() || "Click";
+        config.buttonColor = buttonColor;
+      }
+
+      const payload = {
+        name: fieldName.trim(),
+        type: selectedFieldType === "labels" ? "multi_select" : selectedFieldType,
+        config: config
+      };
+
+      await api.put(`/board-extensions/custom-fields/${editingCustomField.id}`, payload);
+      toast.success("Custom field updated successfully!");
+      setShowCustomFieldsOffcanvas(false);
+      setEditingCustomField(null);
+      fetchWorkspace(false);
+      fetchManagerFields();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update custom field");
     } finally {
       setSavingField(false);
     }
@@ -5138,7 +5366,18 @@ const BoardDetailPage = () => {
         <>
           <div className="d-flex align-items-center justify-content-between p-3 border-bottom bg-light">
             <h5 className="fw-bold text-slate-800 mb-0 d-flex align-items-center gap-2">
-              <Settings size={18} className="text-slate-500" />
+              <button 
+                type="button" 
+                className="bg-transparent border-0 p-0 text-slate-500 hover:text-slate-700" 
+                onClick={() => {
+                  setShowFieldManagerModal(true);
+                  setShowCustomFieldsOffcanvas(false);
+                }}
+                title="Open Custom Field Manager"
+                style={{ cursor: "pointer", display: "inline-flex", alignItems: "center" }}
+              >
+                <Settings size={18} />
+              </button>
               Fields
             </h5>
             <button type="button" className="btn-close" onClick={() => setShowCustomFieldsOffcanvas(false)}></button>
@@ -5265,19 +5504,21 @@ const BoardDetailPage = () => {
 
     if (offcanvasStep === 2) {
       return (
-        <form onSubmit={handleCreateCustomField} className="d-flex flex-column h-100 bg-white">
+        <form onSubmit={editingCustomField ? handleSaveCustomFieldChanges : handleCreateCustomField} className="d-flex flex-column h-100 bg-white">
           <div className="d-flex align-items-center justify-content-between p-3 border-bottom bg-white">
             <div className="d-flex align-items-center gap-2">
-              <button
-                type="button"
-                className="btn btn-link p-0 text-slate-500 hover:text-slate-700"
-                onClick={() => setOffcanvasStep(1)}
-              >
-                <ArrowLeft size={18} />
-              </button>
+              {!editingCustomField && (
+                <button
+                  type="button"
+                  className="btn btn-link p-0 text-slate-500 hover:text-slate-700"
+                  onClick={() => setOffcanvasStep(1)}
+                >
+                  <ArrowLeft size={18} />
+                </button>
+              )}
               <span className="fw-bold text-slate-800 text-capitalize">{selectedFieldType.replace('_', ' ')}</span>
             </div>
-            <button type="button" className="btn-close" onClick={() => setShowCustomFieldsOffcanvas(false)}></button>
+            <button type="button" className="btn-close" onClick={() => { setShowCustomFieldsOffcanvas(false); setEditingCustomField(null); }}></button>
           </div>
 
           <div className="custom-fields-list-scroll flex-grow-1 d-flex flex-column gap-4 bg-white">
@@ -5503,26 +5744,50 @@ const BoardDetailPage = () => {
             </div>
           </div>
 
-          <div className="p-3 border-top bg-white d-flex justify-content-end gap-2">
-            <Button
-              type="button"
-              variant="outline-secondary"
-              className="px-3.5 py-1.5 fw-bold"
-              style={{ fontSize: "12.5px", borderRadius: "6px" }}
-              onClick={() => setOffcanvasStep(1)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="dark"
-              className="px-4 py-1.5 fw-bold d-flex align-items-center gap-1.5"
-              style={{ fontSize: "12.5px", borderRadius: "6px" }}
-              disabled={savingField}
-            >
-              {savingField && <Spinner animation="border" size="sm" className="me-1" />}
-              Create
-            </Button>
+          <div className="p-3 border-top bg-white d-flex align-items-center justify-content-between">
+            <div>
+              {editingCustomField && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center p-2 rounded-circle"
+                  style={{ width: "34px", height: "34px" }}
+                  onClick={() => {
+                    setManagerDeletingFieldId(editingCustomField.id);
+                  }}
+                  title="Delete Custom Field"
+                >
+                  <Trash2 size={15} />
+                </button>
+              )}
+            </div>
+            <div className="d-flex gap-2">
+              <Button
+                type="button"
+                variant="outline-secondary"
+                className="px-3.5 py-1.5 fw-bold"
+                style={{ fontSize: "12.5px", borderRadius: "6px" }}
+                onClick={() => {
+                  if (editingCustomField) {
+                    setShowCustomFieldsOffcanvas(false);
+                    setEditingCustomField(null);
+                  } else {
+                    setOffcanvasStep(1);
+                  }
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="dark"
+                className="px-4 py-1.5 fw-bold d-flex align-items-center gap-1.5"
+                style={{ fontSize: "12.5px", borderRadius: "6px" }}
+                disabled={savingField}
+              >
+                {savingField && <Spinner animation="border" size="sm" className="me-1" />}
+                {editingCustomField ? "Save" : "Create"}
+              </Button>
+            </div>
           </div>
         </form>
       );
@@ -5535,6 +5800,63 @@ const BoardDetailPage = () => {
     if (task) {
       handleOpenUpdatesDrawer(task);
     }
+  };
+
+  const renderCustomFieldHeader = (field) => {
+    return (
+      <th 
+        key={field.id} 
+        style={{ width: "140px", minWidth: "140px", maxWidth: "180px", cursor: "pointer" }} 
+        className="position-relative"
+      >
+        <Dropdown align="end">
+          <Dropdown.Toggle as="div" className="d-flex align-items-center justify-content-between w-100 fw-semibold text-slate-700">
+            <span className="text-truncate">{field.name}</span>
+            <ChevronDown size={10} className="ms-1 text-slate-400 opacity-50" />
+          </Dropdown.Toggle>
+          <Dropdown.Menu className="shadow border-0 py-1" style={{ fontSize: "12px", minWidth: "180px", zIndex: 1060 }} popperConfig={{ strategy: "fixed" }}>
+            <Dropdown.Item onClick={() => handleSortColumn(field.id, "asc")}>Sort</Dropdown.Item>
+            <Dropdown.Item onClick={() => handleSortColumn(field.id, "desc")}>Sort entire column</Dropdown.Item>
+            <Dropdown.Divider />
+            <Dropdown.Item onClick={() => {
+              setEditingCustomField(field);
+              setFieldName(field.name);
+              setSelectedFieldType(field.type);
+              
+              if (field.config?.options) {
+                setFieldOptionsList(field.config.options);
+              } else {
+                setFieldOptionsList([]);
+              }
+              if (field.config?.currency) {
+                setCurrencyCode(field.config.currency);
+              }
+              if (field.config?.button_name) {
+                setButtonName(field.config.button_name);
+                setButtonColor(field.config.button_color || "#3b82f6");
+              }
+              
+              setFieldDesc(field.description || "");
+              setFieldRequired(field.required || false);
+              setFieldPinned(field.pinned || false);
+              setFieldVisibleToGuests(field.visible_to_guests !== false);
+              
+              setOffcanvasStep(2);
+              setShowCustomFieldsOffcanvas(true);
+            }}>Edit field</Dropdown.Item>
+
+            <Dropdown.Item onClick={() => handleMoveColumn(field.id, "start")}>Move to start</Dropdown.Item>
+            <Dropdown.Item onClick={() => handleMoveColumn(field.id, "end")}>Move to end</Dropdown.Item>
+            <Dropdown.Divider />
+            <Dropdown.Item onClick={() => handleHideColumn(field.id)}>Hide column</Dropdown.Item>
+            <Dropdown.Item onClick={() => handleDuplicateColumn(field)}>Duplicate</Dropdown.Item>
+            <Dropdown.Item onClick={() => {
+              setManagerDeletingFieldId(field.id);
+            }} className="text-danger">Delete field</Dropdown.Item>
+          </Dropdown.Menu>
+        </Dropdown>
+      </th>
+    );
   };
 
   return (
@@ -6698,6 +7020,422 @@ const BoardDetailPage = () => {
       <div className={`custom-fields-offcanvas ${showCustomFieldsOffcanvas ? "open" : ""}`}>
         {renderCustomFieldsOffcanvasContent()}
       </div>
+
+      {/* Custom Field Manager Modal */}
+      <Modal 
+        show={showFieldManagerModal} 
+        onHide={() => setShowFieldManagerModal(false)} 
+        centered 
+        size="xl" 
+        dialogClassName="custom-field-manager-modal"
+      >
+        <Modal.Body className="p-0 d-flex" style={{ height: "650px", overflow: "hidden" }}>
+          
+          {/* Sidebar */}
+          <div className="border-end p-3 bg-light d-flex flex-column" style={{ width: "260px" }}>
+            <div className="d-flex align-items-center gap-2 mb-4">
+              <Settings className="text-primary" size={18} />
+              <h6 className="fw-bold text-slate-800 mb-0">Custom Field Manager</h6>
+            </div>
+            
+            <div className="d-flex flex-column gap-1 overflow-auto flex-grow-1">
+              <button 
+                type="button" 
+                className={`btn btn-sm text-start py-2 px-3 border-0 rounded text-xs ${managerSelectedLocation === "all" ? "bg-white shadow-sm text-primary fw-bold" : "text-slate-600 bg-transparent"}`}
+                onClick={() => setManagerSelectedLocation("all")}
+              >
+                All Custom Fields
+              </button>
+              <button 
+                type="button" 
+                className={`btn btn-sm text-start py-2 px-3 border-0 rounded text-xs ${managerSelectedLocation === "workspace" ? "bg-white shadow-sm text-primary fw-bold" : "text-slate-600 bg-transparent"}`}
+                onClick={() => setManagerSelectedLocation("workspace")}
+              >
+                Workspace Fields
+              </button>
+              
+              <div className="text-slate-400 text-xs fw-semibold uppercase px-3 pt-3 pb-1.5" style={{ fontSize: "10px", letterSpacing: "0.5px" }}>By Location</div>
+              {boards.map(b => (
+                <button 
+                  key={b.id}
+                  type="button" 
+                  className={`btn btn-sm text-start py-2 px-3 border-0 rounded text-truncate text-xs d-flex align-items-center gap-2 ${managerSelectedLocation === b.id ? "bg-white shadow-sm text-primary fw-bold" : "text-slate-600 bg-transparent"}`}
+                  onClick={() => setManagerSelectedLocation(b.id)}
+                  title={b.name}
+                >
+                  <span className="text-warning">📂</span>
+                  <span>{b.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Main Pane */}
+          <div className="flex-grow-1 p-4 d-flex flex-column bg-white" style={{ minWidth: 0 }}>
+            {/* Header toolbar */}
+            <div className="d-flex align-items-center justify-content-between mb-4">
+              <div className="d-flex align-items-center gap-2">
+                <span className="text-slate-400 text-xs font-semibold">
+                  {managerSelectedLocation === "all" ? "All Locations" : managerSelectedLocation === "workspace" ? "Workspace Fields" : `Space / ${boards.find(b => b.id === managerSelectedLocation)?.name || "Space"}`}
+                </span>
+              </div>
+              <div className="d-flex align-items-center gap-2">
+                <button 
+                  type="button" 
+                  className="btn btn-sm btn-outline-secondary px-3 py-1.5 text-xs bg-white text-slate-600 border" 
+                  onClick={() => {
+                    const existing = workspaceFields.find(wf => !boardCustomFields.some(bcf => bcf.name === wf.name));
+                    if (existing) {
+                      api.post(`/board-extensions/boards/${boardId}/custom-fields`, {
+                        name: existing.name,
+                        type: existing.type,
+                        config: existing.config
+                      }).then(() => {
+                        toast.success("Added custom field successfully!");
+                        fetchWorkspace(false);
+                        fetchManagerFields();
+                      });
+                    } else {
+                      toast.info("No other custom fields found to add.");
+                    }
+                  }}
+                  style={{ fontWeight: "600" }}
+                >
+                  Add existing
+                </button>
+
+                <Dropdown align="end" className="position-relative">
+                  <Dropdown.Toggle as="button" className="btn btn-sm btn-dark px-3 py-1.5 text-xs text-white border-0" style={{ fontWeight: "600", backgroundColor: "#1e293b", borderRadius: "5px" }}>
+                    Create new
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu 
+                    className="shadow-lg border border-slate-200 py-2" 
+                    style={{ 
+                      fontSize: "12.5px", 
+                      width: "250px", 
+                      maxHeight: "400px", 
+                      overflowY: "auto", 
+                      borderRadius: "8px",
+                      zIndex: 2100 
+                    }}
+                    popperConfig={{ strategy: "fixed" }}
+                  >
+                    <div className="px-2.5 pb-2 border-bottom mb-2">
+                      <input 
+                        type="text" 
+                        className="form-control form-control-sm text-xs" 
+                        placeholder="Search..." 
+                        style={{ borderRadius: "4px" }}
+                        value={dropdownSearchQuery}
+                        onChange={(e) => setDropdownSearchQuery(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    <div className="px-3 py-1 text-slate-400 text-uppercase fw-bold" style={{ fontSize: "9.5px", letterSpacing: "0.5px" }}>All</div>
+                    {[
+                      { label: "Dropdown", type: "Dropdown", icon: <ListPlus size={13} className="text-success" /> },
+                      { label: "Text", type: "Text", icon: <Type size={13} className="text-primary" /> },
+                      { label: "Date", type: "Date", icon: <Calendar size={13} className="text-info" /> },
+                      { label: "Text area (Long Text)", type: "Text area", icon: <AlignLeft size={13} className="text-secondary" /> },
+                      { label: "Number", type: "Number", icon: <Hash size={13} className="text-primary" /> },
+                      { label: "Labels (Multi-select)", type: "Labels", icon: <Tag size={13} className="text-warning" /> },
+                      { label: "Checkbox", type: "Checkbox", icon: <CheckSquare size={13} className="text-slate-500" /> },
+                      { label: "Money", type: "Money", icon: <DollarSign size={13} className="text-success" /> },
+                      { label: "Website", type: "Website", icon: <Globe size={13} className="text-info" /> },
+                      { label: "Files", type: "Files", icon: <Paperclip size={13} className="text-secondary" /> },
+                      { label: "Relationship", type: "Relationship", icon: <Link size={13} className="text-primary" /> },
+                      { label: "People", type: "People", icon: <Users size={13} className="text-purple" /> }
+                    ]
+                    .filter(item => item.label.toLowerCase().includes(dropdownSearchQuery.toLowerCase()))
+                    .map(item => (
+                      <Dropdown.Item 
+                        key={item.label} 
+                        className="d-flex align-items-center gap-2.5 py-2 px-3"
+                        onClick={() => handleManagerSelectTypeForCreation(item.type)}
+                      >
+                        {item.icon}
+                        <span>{item.label}</span>
+                      </Dropdown.Item>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown>
+
+                <button 
+                  type="button" 
+                  className="btn-close ms-2" 
+                  onClick={() => setShowFieldManagerModal(false)}
+                ></button>
+              </div>
+            </div>
+
+            {/* Search toolbar */}
+            <div className="mb-4 d-flex gap-3">
+              <div className="input-group input-group-sm flex-grow-1" style={{ maxWidth: "300px" }}>
+                <span className="input-group-text bg-light border-end-0 text-slate-400">
+                  <Search size={14} />
+                </span>
+                <input
+                  type="text"
+                  className="form-control bg-light border-start-0 ps-0 text-xs"
+                  placeholder="Search fields..."
+                  value={managerSearchQuery}
+                  onChange={(e) => setManagerSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Fields table view */}
+            <div className="flex-grow-1 overflow-auto border rounded bg-white">
+              {loadingManagerFields ? (
+                <div className="h-100 w-100 d-flex align-items-center justify-content-center">
+                  <Spinner animation="border" className="text-primary" />
+                </div>
+              ) : Object.keys(groupedManagerFields).length === 0 ? (
+                <div className="h-100 w-100 d-flex flex-column align-items-center justify-content-center text-muted py-5">
+                  <span style={{ fontSize: "36px" }}>📂</span>
+                  <span className="mt-2 text-xs">No custom fields found in this location.</span>
+                </div>
+              ) : (
+                <table className="table table-hover align-middle mb-0 text-slate-700" style={{ fontSize: "12.5px" }}>
+                  <thead className="bg-light sticky-top" style={{ zIndex: 1 }}>
+                    <tr className="text-slate-400 text-uppercase fw-semibold" style={{ fontSize: "10.5px" }}>
+                      <th className="ps-3 py-2.5" style={{ width: "35%" }}>Name</th>
+                      <th className="py-2.5" style={{ width: "20%" }}>Type</th>
+                      <th className="py-2.5" style={{ width: "15%" }}>Created By</th>
+                      <th className="py-2.5" style={{ width: "15%" }}>Date Created</th>
+                      <th className="py-2.5" style={{ width: "15%" }}>Location(s)</th>
+                      <th className="text-end pe-3 py-2.5" style={{ width: "5%" }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(groupedManagerFields).map(([typeLabel, fieldsList]) => (
+                      <React.Fragment key={typeLabel}>
+                        {/* Group Header */}
+                        <tr className="bg-light border-bottom border-top">
+                          <td colSpan={6} className="ps-3 py-2 text-slate-500 fw-bold" style={{ fontSize: "11px" }}>
+                            {typeLabel} <span className="badge bg-secondary-subtle text-secondary rounded-pill ms-1.5">{fieldsList.length}</span>
+                          </td>
+                        </tr>
+                        {/* Field list rows */}
+                        {fieldsList.map(f => {
+                          const fLocationBoard = boards.find(b => b.id === f.board_id);
+                          return (
+                            <tr key={f.id}>
+                              <td className="ps-3 py-2.5 fw-semibold text-slate-800">
+                                {managerEditingFieldId === f.id ? (
+                                  <input 
+                                    type="text" 
+                                    className="form-control form-control-sm text-xs py-0.5 px-1.5 w-75 border-primary shadow-sm"
+                                    value={managerEditingFieldName}
+                                    onChange={(e) => setManagerEditingFieldName(e.target.value)}
+                                    onBlur={async () => {
+                                      const cleanVal = managerEditingFieldName.trim();
+                                      if (!cleanVal) {
+                                        toast.error("Field name cannot be empty.");
+                                        setManagerEditingFieldId(null);
+                                        return;
+                                      }
+                                      try {
+                                        await api.put(`/board-extensions/custom-fields/${f.id}`, { name: cleanVal });
+                                        toast.success("Field renamed successfully!");
+                                        setManagerEditingFieldId(null);
+                                        fetchManagerFields();
+                                        fetchWorkspace(false);
+                                      } catch (err) {
+                                        console.error(err);
+                                        toast.error("Failed to rename field.");
+                                      }
+                                    }}
+                                    onKeyDown={async (e) => {
+                                      if (e.key === "Enter") {
+                                        const cleanVal = managerEditingFieldName.trim();
+                                        if (!cleanVal) {
+                                          toast.error("Field name cannot be empty.");
+                                          setManagerEditingFieldId(null);
+                                          return;
+                                        }
+                                        try {
+                                          await api.put(`/board-extensions/custom-fields/${f.id}`, { name: cleanVal });
+                                          toast.success("Field renamed successfully!");
+                                          setManagerEditingFieldId(null);
+                                          fetchManagerFields();
+                                          fetchWorkspace(false);
+                                        } catch (err) {
+                                          console.error(err);
+                                          toast.error("Failed to rename field.");
+                                        }
+                                      }
+                                      if (e.key === "Escape") {
+                                        setManagerEditingFieldId(null);
+                                      }
+                                    }}
+                                    autoFocus
+                                  />
+                                ) : (
+                                  f.name
+                                )}
+                              </td>
+                              <td className="py-2.5 d-flex align-items-center gap-2">
+                                {(() => {
+                                  let typeIcon = <Type size={13} className="text-slate-400" />;
+                                  if (f.type === "dropdown") typeIcon = <ListPlus size={13} className="text-success" />;
+                                  if (f.type === "date") typeIcon = <Calendar size={13} className="text-info" />;
+                                  if (f.type === "number") typeIcon = <Hash size={13} className="text-primary" />;
+                                  if (f.type === "labels") typeIcon = <Tag size={13} className="text-warning" />;
+                                  if (f.type === "checkbox") typeIcon = <CheckSquare size={13} className="text-slate-500" />;
+                                  if (f.type === "money") typeIcon = <DollarSign size={13} className="text-success" />;
+                                  return (
+                                    <>
+                                      {typeIcon}
+                                      <span className="text-slate-500 text-xs capitalize">{f.type}</span>
+                                    </>
+                                  );
+                                })()}
+                              </td>
+                              <td className="py-2.5">
+                                <div className="assignee-avatar bg-purple text-white fw-bold d-flex align-items-center justify-content-center rounded-circle" style={{ width: "22px", height: "22px", fontSize: "9px" }}>
+                                  {user ? user.name.substring(0, 2).toUpperCase() : "SA"}
+                                </div>
+                              </td>
+                              <td className="py-2.5 text-slate-400" style={{ fontSize: "11.5px" }}>
+                                {f.created_at ? new Date(f.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : "N/A"}
+                              </td>
+                              <td className="py-2.5">
+                                <span className="badge bg-light text-slate-600 border px-2 py-1 text-xs d-inline-flex align-items-center gap-1.5">
+                                  <span className="text-warning">📂</span>
+                                  <span>{fLocationBoard ? fLocationBoard.name : "Space"}</span>
+                                </span>
+                              </td>
+                              <td className="text-end pe-3 py-2.5">
+                                <Dropdown align="end">
+                                  <Dropdown.Toggle as="button" className="btn btn-link text-slate-400 hover:text-slate-600 p-0 border-0">
+                                    <MoreHorizontal size={14} />
+                                  </Dropdown.Toggle>
+                                  <Dropdown.Menu 
+                                    className="shadow-lg border-0 py-1.5" 
+                                    style={{ fontSize: "12.5px", minWidth: "160px", borderRadius: "6px" }} 
+                                    popperConfig={{ strategy: "fixed" }}
+                                  >
+                                    <Dropdown.Item 
+                                      className="d-flex align-items-center gap-2 py-2 px-3"
+                                      onClick={() => {
+                                        setShowFieldManagerModal(false);
+                                        setEditingCustomField(f);
+                                        setFieldName(f.name);
+                                        setSelectedFieldType(f.type);
+                                        
+                                        if (f.config?.options) {
+                                          setFieldOptionsList(f.config.options);
+                                        } else {
+                                          setFieldOptionsList([]);
+                                        }
+                                        if (f.config?.currency) {
+                                          setCurrencyCode(f.config.currency);
+                                        }
+                                        if (f.config?.button_name) {
+                                          setButtonName(f.config.button_name);
+                                          setButtonColor(f.config.button_color || "#3b82f6");
+                                        }
+                                        
+                                        setFieldDesc(f.description || "");
+                                        setFieldRequired(f.required || false);
+                                        setFieldPinned(f.pinned || false);
+                                        setFieldVisibleToGuests(f.visible_to_guests !== false);
+                                        
+                                        setOffcanvasStep(2);
+                                        setShowCustomFieldsOffcanvas(true);
+                                      }}
+                                    >
+                                      <Edit3 size={13} className="text-slate-400" />
+                                      <span>Edit</span>
+                                    </Dropdown.Item>
+
+                                    <Dropdown.Item 
+                                      className="d-flex align-items-center gap-2 py-2 px-3"
+                                      onClick={() => {
+                                        setManagerEditingFieldId(f.id);
+                                        setManagerEditingFieldName(f.name);
+                                      }}
+                                    >
+                                      <Type size={13} className="text-slate-400" />
+                                      <span>Rename</span>
+                                    </Dropdown.Item>
+
+                                    <Dropdown.Item 
+                                      className="d-flex align-items-center gap-2 py-2 px-3"
+                                      onClick={() => handleDuplicateColumn(f)}
+                                    >
+                                      <Copy size={13} className="text-slate-400" />
+                                      <span>Duplicate</span>
+                                    </Dropdown.Item>
+
+                                    <Dropdown.Item 
+                                      className="d-flex align-items-center gap-2 py-2 px-3"
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(f.id);
+                                        toast.success("Field ID copied to clipboard!");
+                                      }}
+                                    >
+                                      <ClipboardCopy size={13} className="text-slate-400" />
+                                      <span>Copy field ID</span>
+                                    </Dropdown.Item>
+
+                                    <Dropdown.Divider />
+
+                                    <Dropdown.Item 
+                                      className="d-flex align-items-center gap-2 py-2 px-3 text-danger"
+                                      onClick={() => setManagerDeletingFieldId(f.id)}
+                                    >
+                                      <Trash2 size={13} className="text-danger" />
+                                      <span>Delete</span>
+                                    </Dropdown.Item>
+                                  </Dropdown.Menu>
+                                </Dropdown>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </React.Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+
+        </Modal.Body>
+      </Modal>
+
+      {/* Styled Native confirmation delete modal replacement */}
+      <Modal show={!!managerDeletingFieldId} onHide={() => setManagerDeletingFieldId(null)} centered size="sm">
+        <Modal.Body className="p-3 text-center">
+          <span style={{ fontSize: "28px" }} className="text-warning mb-2 d-block">⚠️</span>
+          <h6 className="fw-bold text-slate-800 mb-2">Delete Custom Field?</h6>
+          <p className="text-slate-500 mb-3" style={{ fontSize: "11.5px" }}>This will delete the custom field and all associated task values permanently.</p>
+          <div className="d-flex gap-2 justify-content-center">
+            <button type="button" className="btn btn-xs btn-light border px-3 py-1" style={{ fontSize: "12px" }} onClick={() => setManagerDeletingFieldId(null)}>Cancel</button>
+            <button 
+              type="button" 
+              className="btn btn-xs btn-danger text-white px-3 py-1" 
+              style={{ fontSize: "12px" }}
+              onClick={async () => {
+                try {
+                  await api.delete(`/board-extensions/custom-fields/${managerDeletingFieldId}`);
+                  toast.success("Custom field deleted successfully.");
+                  setManagerDeletingFieldId(null);
+                  fetchWorkspace(false);
+                  fetchManagerFields();
+                } catch (err) {
+                  console.error(err);
+                  toast.error("Failed to delete custom field.");
+                }
+              }}
+            >
+              Delete
+            </button>
+          </div>
+        </Modal.Body>
+      </Modal>
     </>
   );
 };
