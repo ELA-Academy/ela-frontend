@@ -10,7 +10,7 @@ import {
   Plus,
   Trash,
 } from "react-bootstrap-icons";
-import { FileText, LayoutList, Kanban, Flag, User, Calendar, BookOpen, Folder, Repeat, GitFork, Link, MoreHorizontal, Copy, Star, Edit3, Bell, ArrowRight, PlusSquare, Layers, ClipboardCopy, Zap, Clock, Mail, Archive, Trash2, MessageSquare, Search, AlignLeft, Table, PieChart, Image, Activity, Share2, Users, MapPin, Pin, Settings, Lock, Filter, RefreshCw, Columns, ChevronDown, Send, MousePointer, Type, PenTool, StickyNote, Eraser, Square, Target, Paperclip, Hash, Globe, DollarSign, CheckSquare, PlusCircle, ArrowLeft, ListPlus, Tag, Sparkles, Phone } from "lucide-react";
+import { FileText, LayoutList, Kanban, Flag, User, Calendar, BookOpen, Folder, Repeat, GitFork, Link, MoreHorizontal, Copy, Star, Edit3, Bell, ArrowRight, PlusSquare, Layers, ClipboardCopy, Zap, Clock, Mail, Archive, Trash2, MessageSquare, Search, AlignLeft, Table, PieChart, Image, Activity, Share2, Users, MapPin, Pin, Settings, Lock, Filter, RefreshCw, Columns, ChevronDown, Send, MousePointer, Type, PenTool, StickyNote, Eraser, Square, Target, Paperclip, Hash, Globe, DollarSign, CheckSquare, PlusCircle, ArrowLeft, ListPlus, Tag, Sparkles, Phone, Upload } from "lucide-react";
 import { toast } from "react-toastify";
 import { format, parseISO } from "date-fns";
 
@@ -21,6 +21,7 @@ import SleekStatusSelector from "../../components/admin/SleekStatusSelector";
 import DeleteConfirmModal from "../../components/admin/DeleteConfirmModal";
 import SpaceSettingsModal from "../../components/admin/workspace/SpaceSettingsModal";
 import CreateTaskModal from "../../components/admin/workspace/CreateTaskModal";
+import SpreadsheetImportModal from "../../components/admin/workspace/SpreadsheetImportModal";
 import CalendarView from "../../components/admin/workspace/CalendarView";
 import GanttView from "../../components/admin/workspace/GanttView";
 import DocsView from "../../components/admin/workspace/DocsView";
@@ -117,6 +118,66 @@ const getViewIcon = (type) => {
   }
 };
 
+const CustomFieldTextInput = ({ initialValue, type, onSave, placeholder }) => {
+  const [val, setVal] = useState(initialValue || "");
+
+  useEffect(() => {
+    setVal(initialValue || "");
+  }, [initialValue]);
+
+  const handleBlur = () => {
+    if (val !== initialValue) {
+      onSave(val);
+    }
+  };
+
+  return (
+    <input
+      type={type}
+      className="cell-editable-text w-100"
+      value={val}
+      onChange={(e) => setVal(e.target.value)}
+      onBlur={handleBlur}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.target.blur();
+        }
+      }}
+      placeholder={placeholder || "-"}
+    />
+  );
+};
+
+const CustomFieldNumberInput = ({ initialValue, onSave, placeholder }) => {
+  const [val, setVal] = useState(initialValue !== undefined && initialValue !== null ? initialValue : "");
+
+  useEffect(() => {
+    setVal(initialValue !== undefined && initialValue !== null ? initialValue : "");
+  }, [initialValue]);
+
+  const handleBlur = () => {
+    if (val !== initialValue) {
+      onSave(val !== "" ? Number(val) : "");
+    }
+  };
+
+  return (
+    <input
+      type="number"
+      className="cell-editable-text w-100"
+      value={val}
+      onChange={(e) => setVal(e.target.value)}
+      onBlur={handleBlur}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.target.blur();
+        }
+      }}
+      placeholder={placeholder || "-"}
+    />
+  );
+};
+
 const BOARD_COLORS = ["#673de6", "#00ca72", "#ff9f1a", "#ff59a3", "#1a73e8", "#ff3860"];
 
 const BoardDetailPage = () => {
@@ -209,6 +270,7 @@ const BoardDetailPage = () => {
   const [showSpaceSettingsModal, setShowSpaceSettingsModal] = useState(false);
   const [updatingSpaceSettings, setUpdatingSpaceSettings] = useState(false);
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
+  const [showSpreadsheetImportModal, setShowSpreadsheetImportModal] = useState(false);
   const [targetGroupId, setTargetGroupId] = useState(null);
 
   // Sorting & Grouping
@@ -3217,7 +3279,7 @@ const BoardDetailPage = () => {
                 {/* Status Tasks Table */}
                 {!isStatusCollapsed && (
                   <div className="workspace-table-container">
-                    <table className="workspace-table" style={{ minWidth: boardCustomFields.length > 0 ? "1100px" : "100%" }}>
+                    <table className="workspace-table" style={{ minWidth: boardCustomFields.length > 0 ? `${800 + boardCustomFields.length * 150}px` : "100%" }}>
                       <thead>
                         <tr>
                            <th style={{ width: "3%" }} className="zbot-sticky-col-1">
@@ -3237,11 +3299,11 @@ const BoardDetailPage = () => {
                             />
                           </th>
                           <th style={{ width: "3%" }} className="zbot-sticky-col-2"></th>
-                          <th style={{ width: "32%", minWidth: "350px" }} className="zbot-sticky-col-3">Name</th>
-                          <th style={{ width: "12%", minWidth: "120px" }}>Assignee</th>
-                          <th style={{ width: "10%", minWidth: "110px" }}>Due date</th>
-                          <th style={{ width: "8%", minWidth: "90px" }}>Priority</th>
-                          <th style={{ width: "10%", minWidth: "120px" }}>Status</th>
+                          {renderStandardFieldHeader("title", "Name", { width: "32%", minWidth: "350px" }, "zbot-sticky-col-3")}
+                          {renderStandardFieldHeader("assignee", "Assignee", { width: "12%", minWidth: "120px" })}
+                          {renderStandardFieldHeader("due_date", "Due date", { width: "10%", minWidth: "110px" })}
+                          {renderStandardFieldHeader("priority", "Priority", { width: "8%", minWidth: "90px" })}
+                          {renderStandardFieldHeader("status", "Status", { width: "10%", minWidth: "120px" })}
                           {boardCustomFields.map(field => renderCustomFieldHeader(field))}
                           <th style={{ width: "5%", minWidth: "80px" }}>Comments</th>
                           <th style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }} className="zbot-sticky-col-right">
@@ -3937,17 +3999,17 @@ const BoardDetailPage = () => {
   const renderTableView = () => {
     return (
       <div className="workspace-table-container zbot-proper-table bg-white rounded-3 shadow-sm border p-2">
-        <table className="workspace-table" style={{ minWidth: boardCustomFields.length > 0 ? "1100px" : "100%" }}>
+        <table className="workspace-table" style={{ minWidth: boardCustomFields.length > 0 ? `${800 + boardCustomFields.length * 150}px` : "100%" }}>
           <thead>
             <tr>
-              <th style={{ width: "3%" }} className="zbot-sticky-table-col-1"></th>
-              <th style={{ width: "32%", minWidth: "350px" }} className="zbot-sticky-table-col-2">Name</th>
-              <th style={{ width: "12%", minWidth: "120px" }}>Assignee</th>
-              <th style={{ width: "12%", minWidth: "120px" }}>Status</th>
-              <th style={{ width: "10%", minWidth: "110px" }}>Due date</th>
-              <th style={{ width: "8%", minWidth: "90px" }}>Priority</th>
+              <th style={{ width: "3%" }}></th>
+              {renderStandardFieldHeader("title", "Name", { width: "32%", minWidth: "350px" })}
+              {renderStandardFieldHeader("assignee", "Assignee", { width: "12%", minWidth: "120px" })}
+              {renderStandardFieldHeader("status", "Status", { width: "12%", minWidth: "120px" })}
+              {renderStandardFieldHeader("due_date", "Due date", { width: "10%", minWidth: "110px" })}
+              {renderStandardFieldHeader("priority", "Priority", { width: "8%", minWidth: "90px" })}
               {boardCustomFields.map(field => renderCustomFieldHeader(field))}
-              <th style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }} className="zbot-sticky-table-col-right-2">
+              <th style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }}>
                 <button
                   type="button"
                   className="header-plus-circle-btn"
@@ -3957,7 +4019,7 @@ const BoardDetailPage = () => {
                   <Plus size={12} />
                 </button>
               </th>
-              <th style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }} className="zbot-sticky-table-col-right-1">Actions</th>
+              <th style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -3969,7 +4031,7 @@ const BoardDetailPage = () => {
                     className={`workspace-row ${task.due_date && task.status !== "Done" && new Date(`${task.due_date}T23:59:59`) < new Date() ? "is-overdue" : ""}`}
                     onDoubleClick={() => handleOpenUpdatesDrawer(task)}
                   >
-                    <td style={{ textAlign: "center", verticalAlign: "middle" }} className="zbot-sticky-table-col-1">
+                    <td style={{ textAlign: "center", verticalAlign: "middle" }}>
                       <span
                         className="task-complete-dot"
                         style={{
@@ -3993,7 +4055,7 @@ const BoardDetailPage = () => {
                         {task.status === "Done" && <CheckCircleFill size={14} style={{ color: statusMeta.color }} />}
                       </span>
                     </td>
-                    <td style={{ minWidth: "350px" }} className="zbot-sticky-table-col-2">
+                    <td style={{ minWidth: "350px" }}>
                       <div className="d-flex align-items-center gap-2">
                         <input
                           type="text"
@@ -4034,8 +4096,8 @@ const BoardDetailPage = () => {
                         {renderCustomFieldCell(task, field)}
                       </td>
                     ))}
-                    <td style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }} className="zbot-sticky-table-col-right-2"></td>
-                    <td style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }} className="zbot-sticky-table-col-right-1">
+                    <td style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }}></td>
+                    <td style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }}>
                       {/* Three-dot context menu */}
                       <Dropdown align="end">
                         <Dropdown.Toggle as="button" className="task-row-menu-btn">
@@ -5037,7 +5099,7 @@ const BoardDetailPage = () => {
       setShowCustomFieldsOffcanvas(false);
       
       // Reload custom fields and board data
-      fetchWorkspace(false);
+      await fetchWorkspace(false);
     } catch (err) {
       console.error(err);
       toast.error("Failed to create custom field");
@@ -5087,7 +5149,7 @@ const BoardDetailPage = () => {
       toast.success("Custom field updated successfully!");
       setShowCustomFieldsOffcanvas(false);
       setEditingCustomField(null);
-      fetchWorkspace(false);
+      await fetchWorkspace(false);
       fetchManagerFields();
     } catch (err) {
       console.error(err);
@@ -5110,7 +5172,7 @@ const BoardDetailPage = () => {
       setShowCustomFieldsOffcanvas(false);
       
       // Reload custom fields and board data
-      fetchWorkspace(false);
+      await fetchWorkspace(false);
     } catch (err) {
       console.error(err);
       toast.error("Failed to add existing custom field");
@@ -5145,20 +5207,15 @@ const BoardDetailPage = () => {
       case "website":
       case "text_area":
         return (
-          <input
+          <CustomFieldTextInput
             type={field.type === "email" ? "email" : "text"}
-            className="cell-editable-text w-100"
-            value={value}
-            onChange={(e) => {
-              const val = e.target.value;
+            initialValue={value}
+            onSave={(newVal) => {
               patchTaskInState(task.id, (t) => {
-                const updated = { ...(t.custom_field_values || {}), [field.id]: val };
+                const updated = { ...(t.custom_field_values || {}), [field.id]: newVal };
                 return { ...t, custom_field_values: updated };
               });
-            }}
-            onBlur={(e) => handleUpdateValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") e.target.blur();
+              handleUpdateValue(newVal);
             }}
             placeholder="-"
           />
@@ -5167,20 +5224,14 @@ const BoardDetailPage = () => {
       case "currency":
       case "money":
         return (
-          <input
-            type="number"
-            className="cell-editable-text w-100"
-            value={value}
-            onChange={(e) => {
-              const val = e.target.value;
+          <CustomFieldNumberInput
+            initialValue={value}
+            onSave={(newVal) => {
               patchTaskInState(task.id, (t) => {
-                const updated = { ...(t.custom_field_values || {}), [field.id]: val };
+                const updated = { ...(t.custom_field_values || {}), [field.id]: newVal };
                 return { ...t, custom_field_values: updated };
               });
-            }}
-            onBlur={(e) => handleUpdateValue(e.target.value ? Number(e.target.value) : "")}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") e.target.blur();
+              handleUpdateValue(newVal);
             }}
             placeholder="-"
           />
@@ -5516,7 +5567,32 @@ const BoardDetailPage = () => {
                   <ArrowLeft size={18} />
                 </button>
               )}
-              <span className="fw-bold text-slate-800 text-capitalize">{selectedFieldType.replace('_', ' ')}</span>
+              <Dropdown>
+                <Dropdown.Toggle variant="light" size="sm" className="fw-bold text-slate-800 text-capitalize d-flex align-items-center gap-1 border rounded-2 px-2.5 py-1 bg-light" style={{ fontSize: "13px" }}>
+                  <span>
+                    {selectedFieldType === "dropdown" ? "Dropdown" :
+                     selectedFieldType === "labels" ? "Labels" :
+                     selectedFieldType === "text" ? "Text" :
+                     selectedFieldType === "long_text" ? "Text area (Long Text)" :
+                     selectedFieldType === "number" ? "Number" :
+                     selectedFieldType === "date" ? "Date" :
+                     selectedFieldType === "currency" ? "Currency" :
+                     selectedFieldType === "rating" ? "Rating (1-5 Stars)" :
+                     selectedFieldType.replace('_', ' ')}
+                  </span>
+                  <ChevronDown size={14} className="text-slate-500 ms-1" />
+                </Dropdown.Toggle>
+                <Dropdown.Menu className="shadow border-0 py-1" style={{ fontSize: "13px", zIndex: 1100 }}>
+                  <Dropdown.Item onClick={() => setSelectedFieldType("dropdown")}>Dropdown</Dropdown.Item>
+                  <Dropdown.Item onClick={() => setSelectedFieldType("labels")}>Labels</Dropdown.Item>
+                  <Dropdown.Item onClick={() => setSelectedFieldType("text")}>Text</Dropdown.Item>
+                  <Dropdown.Item onClick={() => setSelectedFieldType("long_text")}>Text area (Long Text)</Dropdown.Item>
+                  <Dropdown.Item onClick={() => setSelectedFieldType("number")}>Number</Dropdown.Item>
+                  <Dropdown.Item onClick={() => setSelectedFieldType("date")}>Date</Dropdown.Item>
+                  <Dropdown.Item onClick={() => setSelectedFieldType("currency")}>Currency</Dropdown.Item>
+                  <Dropdown.Item onClick={() => setSelectedFieldType("rating")}>Rating (1-5 Stars)</Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown>
             </div>
             <button type="button" className="btn-close" onClick={() => { setShowCustomFieldsOffcanvas(false); setEditingCustomField(null); }}></button>
           </div>
@@ -5802,6 +5878,41 @@ const BoardDetailPage = () => {
     }
   };
 
+  const renderStandardFieldHeader = (fieldKey, fieldName, style = {}, className = "") => {
+    return (
+      <th 
+        key={fieldKey} 
+        style={{ cursor: "pointer", position: "relative", ...style }}
+        className={className}
+      >
+        <Dropdown align="start">
+          <Dropdown.Toggle as="div" className="d-flex align-items-center justify-content-between w-100 fw-semibold text-slate-700">
+            <span className="text-truncate">{fieldName}</span>
+            <ChevronDown size={10} className="ms-1 text-slate-400 opacity-50" />
+          </Dropdown.Toggle>
+          <Dropdown.Menu className="shadow border-0 py-1" style={{ fontSize: "12px", minWidth: "190px", zIndex: 1060 }} popperConfig={{ strategy: "fixed" }}>
+            <Dropdown.Item onClick={() => handleSortColumn(fieldKey, "asc")}>Sort ascending</Dropdown.Item>
+            <Dropdown.Item onClick={() => handleSortColumn(fieldKey, "desc")}>Sort descending</Dropdown.Item>
+            <Dropdown.Item onClick={() => setGroupBy(fieldKey)}>Group by {fieldName.toLowerCase()}</Dropdown.Item>
+            <Dropdown.Divider />
+            {fieldKey === "status" && (
+              <Dropdown.Item onClick={() => setShowEditStatusesModal(true)}>Edit statuses</Dropdown.Item>
+            )}
+            <Dropdown.Item onClick={() => handleOpenCustomFieldsOffcanvas(false)}>Insert left</Dropdown.Item>
+            <Dropdown.Item onClick={() => handleOpenCustomFieldsOffcanvas(false)}>Insert right</Dropdown.Item>
+            <Dropdown.Item onClick={() => toast.info(`${fieldName} column fit to content`)}>Fit to content</Dropdown.Item>
+            <Dropdown.Item onClick={() => toast.info(`${fieldName} column pinned`)}>Pin column</Dropdown.Item>
+            <Dropdown.Divider />
+            <Dropdown.Item onClick={() => handleMoveColumn(fieldKey, "start")}>Move to start</Dropdown.Item>
+            <Dropdown.Item onClick={() => handleMoveColumn(fieldKey, "end")}>Move to end</Dropdown.Item>
+            <Dropdown.Divider />
+            <Dropdown.Item onClick={() => handleHideColumn(fieldKey)}>Hide column</Dropdown.Item>
+          </Dropdown.Menu>
+        </Dropdown>
+      </th>
+    );
+  };
+
   const renderCustomFieldHeader = (field) => {
     return (
       <th 
@@ -5824,7 +5935,14 @@ const BoardDetailPage = () => {
               setSelectedFieldType(field.type);
               
               if (field.config?.options) {
-                setFieldOptionsList(field.config.options);
+                const opts = field.config.options.map(opt => {
+                  if (typeof opt === "string") {
+                    const color = field.config?.optionColors?.[opt] || "#64748b";
+                    return { label: opt, color };
+                  }
+                  return opt;
+                });
+                setFieldOptionsList(opts);
               } else {
                 setFieldOptionsList([]);
               }
@@ -5886,6 +6004,10 @@ const BoardDetailPage = () => {
           </Button>
           <Button variant="light" size="sm" className="workspace-icon-action" onClick={() => setActiveView("overview")}>
             Overview
+          </Button>
+          <Button variant="light" size="sm" className="workspace-icon-action" onClick={() => setShowSpreadsheetImportModal(true)}>
+            <Upload size={14} className="me-1" />
+            Import
           </Button>
           <Button variant="primary" size="sm" onClick={() => {
             setTargetGroupId(board.groups?.[0]?.id || null);
@@ -6430,6 +6552,7 @@ const BoardDetailPage = () => {
         {currentViewType === "form" && (
           <FormView
             boardId={Number(boardId)}
+            boardCustomFields={boardCustomFields}
           />
         )}
         {currentViewType === "timesheets" && (
@@ -7325,7 +7448,14 @@ const BoardDetailPage = () => {
                                         setSelectedFieldType(f.type);
                                         
                                         if (f.config?.options) {
-                                          setFieldOptionsList(f.config.options);
+                                          const opts = f.config.options.map(opt => {
+                                            if (typeof opt === "string") {
+                                              const color = f.config?.optionColors?.[opt] || "#64748b";
+                                              return { label: opt, color };
+                                            }
+                                            return opt;
+                                          });
+                                          setFieldOptionsList(opts);
                                         } else {
                                           setFieldOptionsList([]);
                                         }
@@ -7436,6 +7566,15 @@ const BoardDetailPage = () => {
           </div>
         </Modal.Body>
       </Modal>
+
+      <SpreadsheetImportModal
+        show={showSpreadsheetImportModal}
+        onHide={() => setShowSpreadsheetImportModal(false)}
+        boardId={Number(boardId)}
+        groups={board?.groups || []}
+        existingCustomFields={boardCustomFields}
+        onImportComplete={() => fetchWorkspace(false)}
+      />
     </>
   );
 };
