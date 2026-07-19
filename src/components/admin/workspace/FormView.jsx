@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Table, Button, Spinner, Row, Col, Card, Badge, Form as BootstrapForm, Modal } from "react-bootstrap";
-import { Plus, Trash2, Clipboard, Eye, Copy, ArrowLeft, ArrowUp, ArrowDown, Image as ImageIcon, Sparkles, Check, CheckSquare, Settings } from "lucide-react";
+import { Table, Button, Spinner, Row, Col, Card, Badge, Form as BootstrapForm, Modal, Dropdown } from "react-bootstrap";
+import { Plus, Trash2, Clipboard, Eye, Copy, ArrowLeft, ArrowUp, ArrowDown, Image as ImageIcon, Sparkles, Check, CheckSquare, Settings, Type, AlignJustify, Calendar, Paperclip, Hash } from "lucide-react";
 import api from "../../../utils/api";
 import { showSuccess, showError } from "../../../utils/notificationService";
 
@@ -11,9 +11,9 @@ const PRESET_BANNERS = [
   { id: "banner4", name: "Playful Learning", url: "https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?w=1200&auto=format&fit=crop&q=80" }
 ];
 
-const FormView = ({ boardId }) => {
+const FormView = ({ boardId, boardCustomFields = [] }) => {
   const [forms, setForms] = useState([]);
-  const [customFields, setCustomFields] = useState([]);
+  const customFields = boardCustomFields;
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [deletingFormId, setDeletingFormId] = useState(null);
@@ -32,6 +32,19 @@ const FormView = ({ boardId }) => {
   const [formDesc, setFormDesc] = useState("");
   const [headerImageUrl, setHeaderImageUrl] = useState("");
   const [questions, setQuestions] = useState([]);
+  
+  // Advanced Form Builder tab and page selection states
+  const [builderTab, setBuilderTab] = useState("build"); // "build" | "settings" | "preview"
+  const [selectedPage, setSelectedPage] = useState("questions"); // "welcome" | "questions" | "thankyou"
+  const [welcomeTitle, setWelcomeTitle] = useState("Welcome to ELA Form");
+  const [welcomeDesc, setWelcomeDesc] = useState("Please fill out this form to submit your request.");
+  const [thankYouTitle, setThankYouTitle] = useState("Submission Successful!");
+  const [thankYouDesc, setThankYouDesc] = useState("Thank you for your submission. Your request has been registered.");
+
+  // Dropdown states for mapping new questions
+  const [showAddQuestionDropdown, setShowAddQuestionDropdown] = useState(false);
+  const [questionSearchQuery, setQuestionSearchQuery] = useState("");
+  const [activeSubMenu, setActiveSubMenu] = useState(null); // null | 'dates' | 'task_property'
 
   // Banners UI state
   const [showBannerPicker, setShowBannerPicker] = useState(false);
@@ -57,10 +70,19 @@ const FormView = ({ boardId }) => {
     try {
       setLoading(true);
       const res = await api.get(`/board-extensions/boards/${boardId}/forms`);
-      setForms(res.data);
-      
-      const cfRes = await api.get(`/board-extensions/boards/${boardId}/custom-fields`);
-      setCustomFields(cfRes.data);
+      // Parse form structure from json if it's a string
+      const parsed = (res.data || []).map(f => {
+        let struct = f.form_structure;
+        if (typeof struct === "string") {
+          try {
+            struct = JSON.parse(struct);
+          } catch (e) {
+            struct = [];
+          }
+        }
+        return { ...f, form_structure: struct || [] };
+      });
+      setForms(parsed);
     } catch (err) {
       showError("Failed to fetch forms.");
     } finally {
@@ -77,8 +99,14 @@ const FormView = ({ boardId }) => {
   // Visual Builder Actions
   const handleStartCreate = () => {
     setEditingFormId(null);
-    setFormName("Untitled Form");
-    setFormDesc("Provide instructions or details for this form submission...");
+    setFormName("Form");
+    setFormDesc("");
+    setWelcomeTitle("Welcome to ELA Form");
+    setWelcomeDesc("Please fill out this form to submit your request.");
+    setThankYouTitle("Submission Successful!");
+    setThankYouDesc("Thank you for your submission. Your request has been registered.");
+    setBuilderTab("build");
+    setSelectedPage("questions");
     setHeaderImageUrl(PRESET_BANNERS[0].url);
     setQuestions([
       { id: 1, label: "Task Title", type: "text", mapping: "title", required: true }
@@ -90,8 +118,20 @@ const FormView = ({ boardId }) => {
     setEditingFormId(formConfig.id);
     setFormName(formConfig.name);
     setFormDesc(formConfig.description || "");
+    setBuilderTab("build");
+    setSelectedPage("questions");
     setHeaderImageUrl(formConfig.header_image_url || PRESET_BANNERS[0].url);
-    setQuestions(formConfig.form_structure || []);
+
+    // Parse welcome and thank you configurations from structure
+    const welcome = formConfig.form_structure?.find(q => q.type === "welcome");
+    const thankyou = formConfig.form_structure?.find(q => q.type === "thankyou");
+
+    setWelcomeTitle(welcome?.label || "Welcome to ELA Form");
+    setWelcomeDesc(welcome?.description || "Please fill out this form to submit your request.");
+    setThankYouTitle(thankyou?.label || "Submission Successful!");
+    setThankYouDesc(thankyou?.description || "Thank you for your submission. Your request has been registered.");
+
+    setQuestions(formConfig.form_structure?.filter(q => q.type !== "welcome" && q.type !== "thankyou") || []);
     setIsEditing(true);
   };
 
@@ -135,10 +175,16 @@ const FormView = ({ boardId }) => {
 
     setSubmitting(true);
     try {
+      const fullStructure = [
+        { id: "welcome", type: "welcome", label: welcomeTitle, description: welcomeDesc },
+        { id: "thankyou", type: "thankyou", label: thankYouTitle, description: thankYouDesc },
+        ...questions
+      ];
+
       const payload = {
         name: formName.trim(),
         description: formDesc.trim(),
-        form_structure: questions,
+        form_structure: fullStructure,
         header_image_url: headerImageUrl
       };
 
@@ -226,380 +272,384 @@ const FormView = ({ boardId }) => {
     return String(parentAnswer || "").toLowerCase() === String(q.depends_value).toLowerCase();
   };
 
-  // Visual Designer Layout
   if (isEditing) {
     return (
-      <div className="bg-slate-50 min-vh-100 p-0 mt-3 rounded shadow-sm border overflow-hidden">
-        {/* Editor Top Bar */}
-        <div className="d-flex align-items-center justify-content-between p-3 bg-white border-bottom shadow-sm">
+      <div className="bg-white min-vh-100 p-0 mt-3 rounded-4 shadow-sm border border-slate-100 overflow-hidden">
+        {/* Sleek Header */}
+        <div className="d-flex align-items-center justify-content-between p-3 bg-white border-bottom border-slate-100">
           <div className="d-flex align-items-center gap-2">
-            <Button variant="light" size="sm" onClick={() => setIsEditing(false)} className="border">
+            <Button variant="light" size="sm" onClick={() => setIsEditing(false)} className="border-0 bg-slate-50 text-slate-700 rounded-lg px-3">
               <ArrowLeft size={16} /> Back
             </Button>
             <div>
-              <h5 className="fw-bold text-slate-800 mb-0">
-                {editingFormId ? "Editing Form Layout" : "Design New Form"}
+              <h5 className="fw-bold text-slate-850 mb-0" style={{ fontSize: "13.5px" }}>
+                {editingFormId ? "Design Form" : "Create Form"}
               </h5>
-              <span className="small text-muted">Interactive Form Designer</span>
             </div>
           </div>
           <div className="d-flex gap-2">
-            <Button variant="outline-secondary" size="sm" onClick={() => setShowPreviewModal(true)}>
-              <Eye size={15} className="me-1" /> Preview Layout
+            <Button variant="light" size="sm" onClick={() => setShowPreviewModal(true)} className="border-0 bg-slate-50 text-slate-650 rounded-lg px-3">
+              <Eye size={14} className="me-1" /> Preview Layout
             </Button>
-            <Button variant="primary" size="sm" onClick={handleSaveForm} disabled={submitting}>
+            <Button variant="primary" size="sm" onClick={handleSaveForm} disabled={submitting} className="border-0 bg-slate-900 hover:bg-slate-800 text-white rounded-lg px-3 fw-semibold">
               {submitting ? <Spinner animation="border" size="sm" /> : "Save Changes"}
             </Button>
           </div>
         </div>
 
-        <Row className="g-0" style={{ minHeight: "calc(100vh - 160px)" }}>
-          {/* Main Visual Canvas Sheet */}
-          <Col lg={9} className="p-4 d-flex justify-content-center overflow-auto" style={{ maxHeight: "calc(100vh - 160px)" }}>
-            <div className="w-100" style={{ maxWidth: "680px" }}>
+        <Row className="g-0">
+          {/* Sleek Canvas */}
+          <Col lg={9} className="p-4 bg-white border-end border-slate-100 overflow-auto" style={{ maxHeight: "calc(100vh - 160px)" }}>
+            <div className="mx-auto" style={{ maxWidth: "620px" }}>
               
-              {/* Card Banner Header Area */}
-              <div 
-                className="position-relative rounded-t-lg bg-slate-200 border border-bottom-0 shadow-sm overflow-hidden" 
-                style={{ 
-                  height: "200px", 
-                  backgroundImage: `url(${getFullUrl(headerImageUrl)})`, 
-                  backgroundSize: "cover", 
-                  backgroundPosition: "center",
-                  borderRadius: "16px 16px 0 0" 
-                }}
-              >
-                <div className="position-absolute top-0 end-0 p-3 bg-gradient-to-l from-black/55 to-transparent w-100 h-100 d-flex justify-content-end align-items-start">
-                  <Button 
-                    variant="light" 
-                    size="sm" 
-                    onClick={() => setShowBannerPicker(!showBannerPicker)}
-                    className="shadow-sm border d-flex align-items-center gap-1 opacity-90 hover:opacity-100 font-semibold"
-                  >
-                    <ImageIcon size={14} /> Change Banner
-                  </Button>
+              {/* Optional Header image cover area */}
+              {headerImageUrl && (
+                <div 
+                  className="position-relative bg-slate-100 overflow-hidden mb-4 rounded-xl border border-slate-100" 
+                  style={{ 
+                    height: "140px", 
+                    backgroundImage: `url(${getFullUrl(headerImageUrl)})`, 
+                    backgroundSize: "cover", 
+                    backgroundPosition: "center" 
+                  }}
+                >
+                  <div className="position-absolute top-0 end-0 p-2">
+                    <Button 
+                      variant="light" 
+                      size="sm" 
+                      onClick={() => setShowBannerPicker(!showBannerPicker)}
+                      className="border-0 bg-white/80 hover:bg-white text-slate-700 shadow-sm rounded-lg"
+                      style={{ fontSize: "11px" }}
+                    >
+                      Change Cover
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Banner Pick Panel Drawer */}
+              {/* Cover Banner Selection Panel */}
               {showBannerPicker && (
-                <div className="bg-white border rounded p-3 mb-3 shadow-md border-slate-200" style={{ borderTop: "none", borderRadius: "0 0 12px 12px" }}>
-                  <h6 className="fw-bold text-slate-800 small mb-2">Select Banner Design</h6>
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 mb-4">
+                  <h6 className="fw-bold text-slate-805 small mb-2">Select Cover Design</h6>
                   <Row className="g-2 mb-3">
                     {PRESET_BANNERS.map((banner) => (
                       <Col key={banner.id} xs={3}>
                         <div 
                           onClick={() => setHeaderImageUrl(banner.url)}
-                          className={`rounded border overflow-hidden cursor-pointer position-relative ${headerImageUrl === banner.url ? "border-indigo-600 border-2" : "border-slate-200"}`}
-                          style={{ height: "60px", backgroundImage: `url(${banner.url})`, backgroundSize: "cover", backgroundPosition: "center" }}
+                          className={`rounded-lg border overflow-hidden cursor-pointer position-relative ${headerImageUrl === banner.url ? "border-indigo-600 border-2" : "border-slate-200"}`}
+                          style={{ height: "50px", backgroundImage: `url(${banner.url})`, backgroundSize: "cover", backgroundPosition: "center" }}
                         >
                           {headerImageUrl === banner.url && (
-                            <div className="position-absolute top-0 start-0 w-100 h-100 bg-indigo-600/20 d-flex align-items-center justify-content-center text-white">
-                              <Check size={20} className="fw-bold bg-indigo-600 rounded-circle p-1" />
+                            <div className="position-absolute top-0 start-0 w-100 h-100 bg-indigo-650/10 d-flex align-items-center justify-content-center text-white">
+                              <Check size={18} className="bg-indigo-650 rounded-circle p-1" />
                             </div>
                           )}
                         </div>
                       </Col>
                     ))}
                   </Row>
-                  <div className="border-top pt-2 d-flex align-items-center justify-content-between">
-                    <span className="small text-muted">Or upload custom banner:</span>
+                  <div className="border-top border-slate-200 pt-2 d-flex align-items-center justify-content-between">
+                    <span className="small text-muted text-xs">Or custom image URL:</span>
                     <input 
-                      type="file" 
-                      id="custom-banner-upload" 
-                      className="d-none" 
-                      accept="image/*"
-                      onChange={handleBannerUpload}
+                      type="text" 
+                      className="form-control form-control-sm w-50 border-slate-200 text-xs rounded-lg"
+                      placeholder="https://..."
+                      value={headerImageUrl}
+                      onChange={(e) => setHeaderImageUrl(e.target.value)}
                     />
-                    <label htmlFor="custom-banner-upload" className="btn btn-outline-secondary btn-sm mb-0 cursor-pointer fw-semibold">
-                      {uploadingBanner ? <Spinner size="sm" animation="border" /> : "Upload Image"}
-                    </label>
                   </div>
                 </div>
               )}
 
-              {/* Form Design Sheet Content */}
-              <div className="bg-white border rounded-b-lg shadow-lg p-4 mb-5" style={{ borderRadius: "0 0 16px 16px", borderTop: "none" }}>
-                {/* Form Title & Description Inputs */}
-                <div className="mb-4 pb-3 border-bottom">
-                  <BootstrapForm.Group className="mb-3">
-                    <BootstrapForm.Label className="small fw-semibold text-slate-500">Form Name</BootstrapForm.Label>
-                    <BootstrapForm.Control
-                      type="text"
-                      className="fw-bold text-slate-905 fs-4 border-slate-200 rounded-lg p-2"
-                      placeholder="e.g. Staff Leave Request Form"
-                      value={formName}
-                      onChange={(e) => setFormName(e.target.value)}
-                      required
-                    />
-                  </BootstrapForm.Group>
-                  <BootstrapForm.Group>
-                    <BootstrapForm.Label className="small fw-semibold text-slate-500">Form Instructions / Description</BootstrapForm.Label>
-                    <BootstrapForm.Control
-                      as="textarea"
-                      rows={2}
-                      className="text-muted border-slate-200 rounded-lg p-2"
-                      placeholder="Provide instructions or details for this form submission..."
-                      value={formDesc}
-                      onChange={(e) => setFormDesc(e.target.value)}
-                    />
-                  </BootstrapForm.Group>
-                </div>
-
-                {/* Form Questions Canvas */}
-                {questions.length === 0 ? (
-                  <div className="text-center py-5 border-dashed border-2 rounded text-slate-400 bg-slate-50">
-                    <Sparkles size={32} className="mb-2 text-slate-300" />
-                    <h6>Interactive Canvas is Empty</h6>
-                    <p className="small mb-0">Use the palette on the right to add entry fields!</p>
-                  </div>
-                ) : (
-                  <div className="d-flex flex-column gap-3">
-                    {questions.map((q, idx) => (
-                      <Card key={q.id} className="border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md transition-all overflow-hidden rounded-xl">
-                        <Card.Body className="p-3 bg-slate-50/30">
-                          <Row className="g-2 align-items-center">
-                            
-                            {/* Reordering column handle */}
-                            <Col xs="auto" className="d-flex flex-column align-items-center">
-                              <Button variant="link" className="p-0 text-slate-400 hover:text-slate-800" onClick={() => moveQuestion(idx, "up")}>
-                                <ArrowUp size={16} />
-                              </Button>
-                              <Button variant="link" className="p-0 text-slate-400 hover:text-slate-800" onClick={() => moveQuestion(idx, "down")}>
-                                <ArrowDown size={16} />
-                              </Button>
-                            </Col>
-
-                            {/* Label Entry Field */}
-                            <Col>
-                              <BootstrapForm.Group>
-                                <BootstrapForm.Label className="small fw-semibold text-slate-500 mb-1">Field Label / Header</BootstrapForm.Label>
-                                <input
-                                  type="text"
-                                  className="form-control form-control-sm border-slate-300 rounded-lg fw-medium"
-                                  value={q.label}
-                                  onChange={(e) => handleQuestionChange(q.id, "label", e.target.value)}
-                                  placeholder="e.g. Employee Name"
-                                  required
-                                />
-                              </BootstrapForm.Group>
-                            </Col>
-
-                            {/* Field Type Display */}
-                            <Col xs={2}>
-                              <BootstrapForm.Group>
-                                <BootstrapForm.Label className="small fw-semibold text-slate-500 mb-1">Type</BootstrapForm.Label>
-                                <BootstrapForm.Select
-                                  size="sm"
-                                  className="border-slate-300 rounded-lg"
-                                  value={q.type}
-                                  onChange={(e) => handleQuestionChange(q.id, "type", e.target.value)}
-                                >
-                                  <option value="text">Short Text</option>
-                                  <option value="textarea">Paragraph</option>
-                                  <option value="number">Number</option>
-                                  <option value="date">Date</option>
-                                  <option value="file">File Upload</option>
-                                  <option value="signature">Signature Pad</option>
-                                </BootstrapForm.Select>
-                              </BootstrapForm.Group>
-                            </Col>
-
-                            {/* Target Model Mapping Column */}
-                            <Col xs={3}>
-                              <BootstrapForm.Group>
-                                <BootstrapForm.Label className="small fw-semibold text-slate-500 mb-1">Task Mapping</BootstrapForm.Label>
-                                <BootstrapForm.Select
-                                  size="sm"
-                                  className="border-slate-300 rounded-lg"
-                                  value={q.mapping}
-                                  onChange={(e) => handleQuestionChange(q.id, "mapping", e.target.value)}
-                                  required
-                                >
-                                  <option value="">Select Target...</option>
-                                  <optgroup label="Default Task Fields">
-                                    <option value="title">Task Title</option>
-                                    <option value="priority">Priority</option>
-                                    <option value="notes">Description / Notes</option>
-                                    <option value="due_date">Due Date</option>
-                                    <option value="file">File Attachment</option>
-                                  </optgroup>
-                                  {customFields.length > 0 && (
-                                    <optgroup label="Custom Fields">
-                                      {customFields.map(cf => (
-                                        <option key={cf.id} value={`custom_field_${cf.id}`}>{cf.name}</option>
-                                      ))}
-                                    </optgroup>
-                                  )}
-                                </BootstrapForm.Select>
-                              </BootstrapForm.Group>
-                            </Col>
-
-                            {/* Actions Column */}
-                            <Col xs="auto" className="d-flex align-items-center gap-2 pt-4">
-                              <BootstrapForm.Check
-                                type="switch"
-                                id={`req-switch-${q.id}`}
-                                label="Required"
-                                className="small mb-0 text-slate-600 font-semibold"
-                                checked={q.required || false}
-                                onChange={(e) => handleQuestionChange(q.id, "required", e.target.checked)}
-                              />
-                              <Button 
-                                variant="link" 
-                                className="text-danger p-1" 
-                                onClick={() => handleRemoveQuestion(q.id)}
-                                disabled={q.mapping === "title"}
-                              >
-                                <Trash2 size={16} />
-                              </Button>
-                            </Col>
-
-                            {/* Conditional Display Field Logic settings */}
-                            <Col xs={12} className="mt-2 border-top pt-2">
-                              <div className="d-flex align-items-center gap-2 flex-wrap">
-                                <BootstrapForm.Check
-                                  type="checkbox"
-                                  id={`cond-${q.id}`}
-                                  label="Conditional field dependency"
-                                  checked={q.conditional || false}
-                                  className="small text-slate-500 font-medium mb-0"
-                                  onChange={(e) => handleQuestionChange(q.id, "conditional", e.target.checked)}
-                                />
-                                {q.conditional && (
-                                  <div className="d-flex align-items-center gap-1 ms-3">
-                                    <span className="small text-muted text-xs">Show if</span>
-                                    <BootstrapForm.Select
-                                      size="sm"
-                                      value={q.depends_on || ""}
-                                      onChange={(e) => handleQuestionChange(q.id, "depends_on", Number(e.target.value))}
-                                      style={{ width: "150px", fontSize: "11px" }}
-                                    >
-                                      <option value="">Select question...</option>
-                                      {questions.filter(other => other.id !== q.id).map(other => (
-                                        <option key={other.id} value={other.id}>{other.label}</option>
-                                      ))}
-                                    </BootstrapForm.Select>
-                                    <span className="small text-muted text-xs">equals</span>
-                                    <input
-                                      type="text"
-                                      className="form-control form-control-sm"
-                                      style={{ width: "100px", fontSize: "11px" }}
-                                      value={q.depends_value || ""}
-                                      onChange={(e) => handleQuestionChange(q.id, "depends_value", e.target.value)}
-                                      placeholder="Value..."
-                                    />
-                                  </div>
-                                )}
-                              </div>
-                            </Col>
-
-                          </Row>
-                        </Card.Body>
-                      </Card>
-                    ))}
-                  </div>
-                )}
+              {/* Form Title & Description */}
+              <div className="mb-4 pb-3 border-bottom border-slate-100">
+                <input
+                  type="text"
+                  className="fw-bold text-slate-800 border-0 bg-transparent w-100 p-0 mb-1"
+                  style={{ fontSize: "20px", outline: "none", boxShadow: "none" }}
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  placeholder="Untitled Form"
+                />
+                <textarea
+                  rows={2}
+                  className="text-slate-500 border-0 bg-transparent w-100 p-0 text-sm"
+                  style={{ outline: "none", boxShadow: "none", resize: "none" }}
+                  value={formDesc}
+                  onChange={(e) => setFormDesc(e.target.value)}
+                  placeholder="Form description (optional)"
+                />
               </div>
 
+              {/* Form Fields In Canvas */}
+              {questions.length === 0 ? (
+                <div className="text-center py-5 border border-dashed border-slate-200 rounded-xl text-slate-400 bg-slate-50/50">
+                  <Sparkles size={24} className="mb-2 text-slate-350" />
+                  <h6 className="small text-slate-500 font-semibold mb-1">Your form is empty</h6>
+                  <p className="small text-slate-400 mb-0" style={{ fontSize: "11px" }}>Add elements from the palette on the right to begin.</p>
+                </div>
+              ) : (
+                <div className="d-flex flex-column">
+                  {/* Table header (rendered once) */}
+                  <div className="d-none d-md-flex align-items-center px-2 py-2 text-slate-400 font-bold uppercase tracking-wider text-[10px] border-bottom border-slate-100 mb-1">
+                    <div style={{ width: "30px" }}></div>
+                    <div className="flex-grow-1 ms-2">Field Label / Title</div>
+                    <div style={{ width: "110px" }} className="ms-3">Input Type</div>
+                    <div style={{ width: "160px" }} className="ms-3">Task Field Map</div>
+                    <div style={{ width: "80px" }} className="ms-3 text-center">Required</div>
+                    <div style={{ width: "30px" }} className="ms-2"></div>
+                  </div>
+
+                  {questions.map((q, idx) => (
+                    <div key={q.id} className="py-2.5 border-bottom border-slate-100 px-2 rounded-lg transition-colors">
+                      <Row className="g-2 align-items-center">
+                        {/* Drag handles */}
+                        <Col xs="auto" className="d-flex align-items-center justify-content-center" style={{ width: "30px" }}>
+                          <div className="d-flex flex-column align-items-center">
+                            <Button variant="link" className="p-0 text-slate-400 hover:text-slate-700" onClick={() => moveQuestion(idx, "up")}>
+                              <ArrowUp size={12} />
+                            </Button>
+                            <Button variant="link" className="p-0 text-slate-400 hover:text-slate-700" onClick={() => moveQuestion(idx, "down")}>
+                              <ArrowDown size={12} />
+                            </Button>
+                          </div>
+                        </Col>
+
+                        {/* Question label */}
+                        <Col className="ms-2">
+                          <input
+                            type="text"
+                            className="form-control form-control-sm border-0 border-bottom border-slate-200 rounded-0 px-0 bg-transparent font-medium text-slate-800 text-sm"
+                            style={{ boxShadow: "none" }}
+                            value={q.label}
+                            onChange={(e) => handleQuestionChange(q.id, "label", e.target.value)}
+                            placeholder="Enter field label..."
+                            required
+                          />
+                        </Col>
+
+                        {/* Question Type */}
+                        <Col xs="auto" style={{ width: "110px" }} className="ms-3">
+                          <BootstrapForm.Select
+                            size="sm"
+                            className="border-0 border-bottom border-slate-200 rounded-0 px-0 bg-transparent text-xs font-semibold text-slate-650"
+                            value={q.type}
+                            onChange={(e) => handleQuestionChange(q.id, "type", e.target.value)}
+                          >
+                            <option value="text">Short Text</option>
+                            <option value="textarea">Paragraph</option>
+                            <option value="number">Number</option>
+                            <option value="date">Date</option>
+                            <option value="file">File Upload</option>
+                            <option value="signature">Signature Pad</option>
+                          </BootstrapForm.Select>
+                        </Col>
+
+                        {/* Mapping target */}
+                        <Col xs="auto" style={{ width: "160px" }} className="ms-3">
+                          <BootstrapForm.Select
+                            size="sm"
+                            className="border-0 border-bottom border-slate-200 rounded-0 px-0 bg-transparent text-xs font-semibold text-indigo-650"
+                            value={q.mapping || ""}
+                            onChange={(e) => handleQuestionChange(q.id, "mapping", e.target.value)}
+                          >
+                            <option value="">Choose Target...</option>
+                            <optgroup label="Default Fields">
+                              <option value="title">Task Title</option>
+                              <option value="notes">Description / Notes</option>
+                              <option value="start_date">Start Date</option>
+                              <option value="due_date">End Date / Due Date</option>
+                              <option value="priority">Priority</option>
+                              <option value="status">Status</option>
+                            </optgroup>
+                            {customFields.length > 0 && (
+                              <optgroup label="Custom Fields">
+                                {customFields.map(cf => (
+                                  <option key={cf.id} value={`custom_field_${cf.id}`}>{cf.name}</option>
+                                ))}
+                              </optgroup>
+                            )}
+                          </BootstrapForm.Select>
+                        </Col>
+
+                        {/* Required toggle */}
+                        <Col xs="auto" style={{ width: "80px" }} className="ms-3 d-flex justify-content-center">
+                          <BootstrapForm.Check
+                            type="switch"
+                            id={`req-${q.id}`}
+                            label=""
+                            className="mb-0 text-slate-500"
+                            checked={q.required || false}
+                            onChange={(e) => handleQuestionChange(q.id, "required", e.target.checked)}
+                          />
+                        </Col>
+
+                        {/* Delete button */}
+                        <Col xs="auto" style={{ width: "30px" }} className="ms-2 d-flex justify-content-center">
+                          <Button 
+                            variant="link" 
+                            className="text-rose-500 hover:text-rose-700 p-0 border-0"
+                            onClick={() => handleRemoveQuestion(q.id)}
+                            disabled={q.mapping === "title"}
+                          >
+                            <Trash2 size={13} />
+                          </Button>
+                        </Col>
+
+                        {/* Conditional Display Logic */}
+                        <Col xs={12} className="mt-1 ms-4 ps-3">
+                          <div className="d-flex align-items-center gap-2 flex-wrap">
+                            <BootstrapForm.Check
+                              type="checkbox"
+                              id={`cond-${q.id}`}
+                              label="Conditional display logic"
+                              checked={q.conditional || false}
+                              className="text-muted mb-0 font-medium"
+                              style={{ fontSize: "10.5px" }}
+                              onChange={(e) => handleQuestionChange(q.id, "conditional", e.target.checked)}
+                            />
+                            {q.conditional && (
+                              <div className="d-flex align-items-center gap-1.5 ms-2 text-slate-500 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100" style={{ fontSize: "11px" }}>
+                                <span>Show if</span>
+                                <BootstrapForm.Select
+                                  size="sm"
+                                  className="border-0 border-bottom border-slate-200 bg-transparent text-xs p-0 rounded-0 font-semibold"
+                                  value={q.depends_on || ""}
+                                  onChange={(e) => handleQuestionChange(q.id, "depends_on", Number(e.target.value))}
+                                  style={{ width: "105px", outline: "none", boxShadow: "none" }}
+                                >
+                                  <option value="">Select field...</option>
+                                  {questions.filter(other => other.id !== q.id).map(other => (
+                                    <option key={other.id} value={other.id}>{other.label}</option>
+                                  ))}
+                                </BootstrapForm.Select>
+                                <span>equals</span>
+                                <input
+                                  type="text"
+                                  className="border-0 border-bottom border-slate-200 bg-transparent text-xs p-0 text-slate-800 font-semibold"
+                                  style={{ width: "70px", outline: "none", boxShadow: "none" }}
+                                  value={q.depends_value || ""}
+                                  onChange={(e) => handleQuestionChange(q.id, "depends_value", e.target.value)}
+                                  placeholder="Value..."
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </Col>
+                      </Row>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </Col>
 
-          {/* Designer Palette Sidebar */}
-          <Col lg={3} className="bg-white border-start p-3 overflow-auto shadow-sm" style={{ maxHeight: "calc(100vh - 160px)" }}>
-            <h6 className="fw-bold text-slate-800 mb-3 border-bottom pb-2">Fields Palette</h6>
+          {/* Sleek Elements Palette */}
+          <Col lg={3} className="p-4 bg-white overflow-auto" style={{ maxHeight: "calc(100vh - 160px)" }}>
+            <h6 className="fw-bold text-slate-850 mb-3" style={{ fontSize: "13px" }}>Fields Palette</h6>
             
-            {/* Standard Element Inserters */}
             <div className="d-flex flex-column gap-2 mb-4">
-              <span className="small text-muted font-bold tracking-wider uppercase mb-1">Standard Field Types</span>
+              <span className="small text-muted font-bold tracking-wider uppercase mb-1" style={{ fontSize: "9px" }}>Standard Fields</span>
               <Button 
-                variant="outline-primary" 
+                variant="light" 
                 size="sm" 
-                className="text-start d-flex align-items-center gap-2 py-2 border-slate-200 text-indigo-700 hover:bg-indigo-50/50 rounded-lg transition-all"
-                onClick={() => handleAddQuestion("text", "Short Text Question")}
+                className="text-start d-flex align-items-center gap-2 py-2 border-0 bg-slate-50 text-slate-700 hover:bg-slate-100 rounded-xl transition-all"
+                style={{ fontSize: "12.5px" }}
+                onClick={() => handleAddQuestion("text", "Short Text")}
               >
-                <span className="bg-indigo-100 text-indigo-700 p-1 rounded-sm"><Plus size={13} /></span> Short Text Field
+                <span className="p-1 bg-indigo-50 text-indigo-650 rounded-md d-inline-flex"><Type size={11} /></span>
+                Short Text
               </Button>
               <Button 
-                variant="outline-primary" 
+                variant="light" 
                 size="sm" 
-                className="text-start d-flex align-items-center gap-2 py-2 border-slate-200 text-indigo-700 hover:bg-indigo-50/50 rounded-lg transition-all"
-                onClick={() => handleAddQuestion("textarea", "Detailed Response")}
+                className="text-start d-flex align-items-center gap-2 py-2 border-0 bg-slate-50 text-slate-700 hover:bg-slate-100 rounded-xl transition-all"
+                style={{ fontSize: "12.5px" }}
+                onClick={() => handleAddQuestion("textarea", "Paragraph / Notes", "notes")}
               >
-                <span className="bg-indigo-100 text-indigo-700 p-1 rounded-sm"><Plus size={13} /></span> Paragraph / Notes
+                <span className="p-1 bg-blue-50 text-blue-650 rounded-md d-inline-flex"><AlignJustify size={11} /></span>
+                Paragraph / Notes
               </Button>
               <Button 
-                variant="outline-primary" 
+                variant="light" 
                 size="sm" 
-                className="text-start d-flex align-items-center gap-2 py-2 border-slate-200 text-indigo-700 hover:bg-indigo-50/50 rounded-lg transition-all"
-                onClick={() => handleAddQuestion("number", "Count / Value")}
+                className="text-start d-flex align-items-center gap-2 py-2 border-0 bg-slate-50 text-slate-700 hover:bg-slate-100 rounded-xl transition-all"
+                style={{ fontSize: "12.5px" }}
+                onClick={() => handleAddQuestion("number", "Numeric Value")}
               >
-                <span className="bg-indigo-100 text-indigo-700 p-1 rounded-sm"><Plus size={13} /></span> Numeric Entry
+                <span className="p-1 bg-amber-50 text-amber-650 rounded-md d-inline-flex"><Hash size={11} /></span>
+                Numeric Value
               </Button>
               <Button 
-                variant="outline-primary" 
+                variant="light" 
                 size="sm" 
-                className="text-start d-flex align-items-center gap-2 py-2 border-slate-200 text-indigo-700 hover:bg-indigo-50/50 rounded-lg transition-all"
-                onClick={() => handleAddQuestion("date", "Due Date / Selected Date", "due_date")}
+                className="text-start d-flex align-items-center gap-2 py-2 border-0 bg-slate-50 text-slate-700 hover:bg-slate-100 rounded-xl transition-all"
+                style={{ fontSize: "12.5px" }}
+                onClick={() => handleAddQuestion("date", "Due Date", "due_date")}
               >
-                <span className="bg-indigo-100 text-indigo-700 p-1 rounded-sm"><Plus size={13} /></span> Date Selector
+                <span className="p-1 bg-rose-50 text-rose-650 rounded-md d-inline-flex"><Calendar size={11} /></span>
+                Date / Time
               </Button>
               <Button 
-                variant="outline-primary" 
+                variant="light" 
                 size="sm" 
-                className="text-start d-flex align-items-center gap-2 py-2 border-slate-200 text-indigo-700 hover:bg-indigo-50/50 rounded-lg transition-all"
-                onClick={() => handleAddQuestion("file", "Document Attachments", "file")}
+                className="text-start d-flex align-items-center gap-2 py-2 border-0 bg-slate-50 text-slate-700 hover:bg-slate-100 rounded-xl transition-all"
+                style={{ fontSize: "12.5px" }}
+                onClick={() => handleAddQuestion("file", "File Upload", "file")}
               >
-                <span className="bg-indigo-100 text-indigo-700 p-1 rounded-sm"><Plus size={13} /></span> File Upload Field
+                <span className="p-1 bg-teal-50 text-teal-650 rounded-md d-inline-flex"><Paperclip size={11} /></span>
+                File Upload
               </Button>
               <Button 
-                variant="outline-primary" 
+                variant="light" 
                 size="sm" 
-                className="text-start d-flex align-items-center gap-2 py-2 border-slate-200 text-indigo-700 hover:bg-indigo-50/50 rounded-lg transition-all"
-                onClick={() => handleAddQuestion("signature", "Employee's Signature")}
+                className="text-start d-flex align-items-center gap-2 py-2 border-0 bg-slate-50 text-slate-700 hover:bg-slate-100 rounded-xl transition-all"
+                style={{ fontSize: "12.5px" }}
+                onClick={() => handleAddQuestion("signature", "Signature Pad")}
               >
-                <span className="bg-indigo-100 text-indigo-700 p-1 rounded-sm"><Plus size={13} /></span> Signature Pad Field
+                <span className="p-1 bg-purple-50 text-purple-650 rounded-md d-inline-flex"><CheckSquare size={11} /></span>
+                Signature Pad
               </Button>
             </div>
 
             {/* Custom fields mappings */}
             {customFields.length > 0 && (
               <div className="d-flex flex-column gap-2">
-                <span className="small text-muted font-bold tracking-wider uppercase mb-1">Unmapped Custom Fields</span>
+                <span className="small text-muted font-bold tracking-wider uppercase mb-1" style={{ fontSize: "9px" }}>Unmapped Custom Fields</span>
                 {customFields
                   .filter(cf => !questions.some(q => q.mapping === `custom_field_${cf.id}`))
                   .map(cf => (
                     <Button 
                       key={cf.id}
-                      variant="outline-secondary" 
+                      variant="light" 
                       size="sm" 
-                      className="text-start d-flex align-items-center justify-content-between py-2 border-dashed rounded-lg"
+                      className="text-start d-flex align-items-center justify-content-between py-2 px-3 border-0 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all"
                       onClick={() => handleAddQuestion(cf.type === 'number' ? 'number' : cf.type === 'date' ? 'date' : 'text', cf.name, `custom_field_${cf.id}`)}
                     >
-                      <span className="text-slate-600 text-xs truncate font-medium">{cf.name} ({cf.type})</span>
-                      <span className="text-indigo-600"><Plus size={12} /></span>
+                      <span className="text-slate-600 text-xs truncate font-medium">{cf.name}</span>
+                      <span className="badge bg-white text-slate-400 border px-1.5 py-0.5 text-[9px] uppercase tracking-wider font-semibold">{cf.type}</span>
                     </Button>
                   ))}
                 {customFields.filter(cf => !questions.some(q => q.mapping === `custom_field_${cf.id}`)).length === 0 && (
-                  <span className="text-muted small italic">All custom fields mapped!</span>
+                  <span className="text-slate-400 small italic text-xs">All custom fields mapped!</span>
                 )}
               </div>
             )}
           </Col>
         </Row>
 
-        {/* Live Simulator Dialog */}
+        {/* Live Simulator Modal */}
         {showPreviewModal && (
           <Modal show={showPreviewModal} onHide={() => setShowPreviewModal(false)} size="md" centered>
             <Modal.Header closeButton className="border-bottom-0 pb-0">
-              <Modal.Title className="fw-bold small text-muted">LIVE PREVIEW SIMULATOR</Modal.Title>
+              <Modal.Title className="fw-bold small text-slate-500 uppercase tracking-wider" style={{ fontSize: "11px" }}>Simulator Preview</Modal.Title>
             </Modal.Header>
-            <BootstrapForm onSubmit={handlePreviewSubmit}>
+            <BootstrapForm onSubmit={(e) => { e.preventDefault(); alert("Form simulated successfully!"); }}>
               <Modal.Body className="pt-2">
-                <div className="rounded-lg shadow-sm border overflow-hidden mb-3">
-                  <div style={{ height: "100px", backgroundImage: `url(${headerImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}></div>
+                <div className="rounded-xl overflow-hidden mb-3 border border-slate-100">
+                  {headerImageUrl && <div style={{ height: "100px", backgroundImage: `url(${headerImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}></div>}
                   <div className="p-3 bg-white">
-                    <h4 className="fw-bold text-slate-800">{formName}</h4>
+                    <h4 className="fw-bold text-slate-800" style={{ fontSize: "18px" }}>{formName}</h4>
                     <p className="text-muted small mb-0">{formDesc}</p>
                   </div>
                 </div>
@@ -608,13 +658,13 @@ const FormView = ({ boardId }) => {
                   if (!evaluateCondition(q, previewAnswers)) return null;
                   return (
                     <BootstrapForm.Group key={q.id} className="mb-3">
-                      <BootstrapForm.Label className="small fw-semibold">{q.label} {q.required && <span className="text-danger">*</span>}</BootstrapForm.Label>
+                      <BootstrapForm.Label className="small fw-semibold text-slate-700">{q.label} {q.required && <span className="text-danger">*</span>}</BootstrapForm.Label>
                       {q.type === "textarea" ? (
-                        <BootstrapForm.Control as="textarea" rows={3} placeholder="Paragraph text..." required={q.required} />
+                        <BootstrapForm.Control as="textarea" rows={3} placeholder="Paragraph response..." required={q.required} />
                       ) : q.type === "date" ? (
                         <BootstrapForm.Control type="date" required={q.required} />
                       ) : q.type === "number" ? (
-                        <BootstrapForm.Control type="number" placeholder="Enter value..." required={q.required} />
+                        <BootstrapForm.Control type="number" placeholder="Enter number..." required={q.required} />
                       ) : q.type === "file" ? (
                         <BootstrapForm.Control type="file" required={q.required} />
                       ) : q.type === "signature" ? (
@@ -628,14 +678,13 @@ const FormView = ({ boardId }) => {
                   );
                 })}
               </Modal.Body>
-              <Modal.Footer>
-                <Button variant="light" onClick={() => setShowPreviewModal(false)}>Close Simulator</Button>
-                <Button variant="primary" type="submit">Verify & Submit</Button>
+              <Modal.Footer className="border-top-0">
+                <Button variant="light" size="sm" onClick={() => setShowPreviewModal(false)} className="rounded-lg">Close</Button>
+                <Button variant="primary" size="sm" type="submit" className="bg-slate-900 border-0 rounded-lg">Submit Form</Button>
               </Modal.Footer>
             </BootstrapForm>
           </Modal>
         )}
-
       </div>
     );
   }

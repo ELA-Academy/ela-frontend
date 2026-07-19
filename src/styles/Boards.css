@@ -95,7 +95,7 @@ th.zbot-sticky-col-right, th.zbot-sticky-table-col-right-1, th.zbot-sticky-table
 .zbot-proper-table .workspace-table th.zbot-sticky-col-right,
 .zbot-proper-table .workspace-table th.zbot-sticky-table-col-right-1,
 .zbot-proper-table .workspace-table th.zbot-sticky-table-col-right-2 {
-  background-color: #ffffff !important;
+  background-color: #fafbfd !important;
   z-index: 20 !important;
 }
 
@@ -1743,6 +1743,23 @@ th.zbot-sticky-col-right, th.zbot-sticky-table-col-right-1, th.zbot-sticky-table
 }
 .workspace-table-container::-webkit-scrollbar {
   display: none !important;
+}
+
+/* Show thin scrollbar on standalone table view so users see they can scroll */
+.zbot-proper-table.workspace-table-container {
+  scrollbar-width: thin !important;
+  scrollbar-color: #cbd5e1 transparent !important;
+}
+.zbot-proper-table.workspace-table-container::-webkit-scrollbar {
+  display: block !important;
+  height: 6px !important;
+}
+.zbot-proper-table.workspace-table-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+.zbot-proper-table.workspace-table-container::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .group-container {

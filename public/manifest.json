@@ -1,0 +1,21 @@
+{
+  "short_name": "ELA Academy",
+  "name": "ELA Academy Management System",
+  "icons": [
+    {
+      "src": "/images/ELA-logo.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/images/ELA-logo.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#ffffff",
+  "theme_color": "#673de6",
+  "display": "standalone",
+  "orientation": "portrait"
+}

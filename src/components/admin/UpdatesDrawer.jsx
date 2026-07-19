@@ -69,6 +69,66 @@ import "../../styles/Boards.css";
 
 import { useAuth } from "../../context/AuthContext";
 
+const DrawerCustomFieldTextInput = ({ initialValue, type, onSave, className, placeholder }) => {
+  const [val, setVal] = useState(initialValue || "");
+
+  useEffect(() => {
+    setVal(initialValue || "");
+  }, [initialValue]);
+
+  const handleBlur = () => {
+    if (val !== initialValue) {
+      onSave(val);
+    }
+  };
+
+  return (
+    <input
+      type={type}
+      className={className}
+      value={val}
+      onChange={(e) => setVal(e.target.value)}
+      onBlur={handleBlur}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.target.blur();
+        }
+      }}
+      placeholder={placeholder}
+    />
+  );
+};
+
+const DrawerCustomFieldNumberInput = ({ initialValue, onSave, className, placeholder }) => {
+  const [val, setVal] = useState(initialValue !== undefined && initialValue !== null ? initialValue : "");
+
+  useEffect(() => {
+    setVal(initialValue !== undefined && initialValue !== null ? initialValue : "");
+  }, [initialValue]);
+
+  const handleBlur = () => {
+    if (val !== initialValue) {
+      onSave(val !== "" ? Number(val) : "");
+    }
+  };
+
+  return (
+    <input
+      type="number"
+      className={className}
+      value={val}
+      onChange={(e) => setVal(e.target.value)}
+      onBlur={handleBlur}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.target.blur();
+        }
+      }}
+      placeholder={placeholder}
+    />
+  );
+};
+
 const UpdatesDrawer = ({
   taskId,
   task,
@@ -255,11 +315,11 @@ const UpdatesDrawer = ({
       case "website":
       case "text_area":
         return (
-          <input
+          <DrawerCustomFieldTextInput
             type={field.type === "email" ? "email" : "text"}
             className="form-control form-control-sm text-xs bg-light border-0"
-            value={value || ""}
-            onChange={(e) => onChange(e.target.value)}
+            initialValue={value}
+            onSave={onChange}
             placeholder="-"
           />
         );
@@ -267,11 +327,10 @@ const UpdatesDrawer = ({
       case "currency":
       case "money":
         return (
-          <input
-            type="number"
+          <DrawerCustomFieldNumberInput
             className="form-control form-control-sm text-xs bg-light border-0"
-            value={value || ""}
-            onChange={(e) => onChange(e.target.value ? Number(e.target.value) : "")}
+            initialValue={value}
+            onSave={onChange}
             placeholder="-"
           />
         );
@@ -2570,20 +2629,19 @@ const UpdatesDrawer = ({
                     <span className="cu-adv-label">{f.name}</span>
                     <div style={{ flex: 1 }}>
                       {f.type === "text" && (
-                        <input
+                        <DrawerCustomFieldTextInput
                           type="text"
                           className="cu-adv-input"
-                          value={customFieldValues[f.id] || ""}
-                          onChange={(e) => handleCustomFieldChange(f.id, e.target.value)}
+                          initialValue={customFieldValues[f.id]}
+                          onSave={(newVal) => handleCustomFieldChange(f.id, newVal)}
                           placeholder={`Enter ${f.name}...`}
                         />
                       )}
                       {f.type === "number" && (
-                        <input
-                          type="number"
+                        <DrawerCustomFieldNumberInput
                           className="cu-adv-input"
-                          value={customFieldValues[f.id] || ""}
-                          onChange={(e) => handleCustomFieldChange(f.id, e.target.value ? Number(e.target.value) : "")}
+                          initialValue={customFieldValues[f.id]}
+                          onSave={(newVal) => handleCustomFieldChange(f.id, newVal)}
                           placeholder="0"
                         />
                       )}
@@ -2637,11 +2695,10 @@ const UpdatesDrawer = ({
                       {f.type === "currency" && (
                         <div className="d-flex align-items-center gap-1 w-100">
                           <span className="text-muted small">{f.config?.currencySymbol || "$"}</span>
-                          <input
-                            type="number"
+                          <DrawerCustomFieldNumberInput
                             className="cu-adv-input"
-                            value={customFieldValues[f.id] || ""}
-                            onChange={(e) => handleCustomFieldChange(f.id, e.target.value ? Number(e.target.value) : "")}
+                            initialValue={customFieldValues[f.id]}
+                            onSave={(newVal) => handleCustomFieldChange(f.id, newVal)}
                             placeholder="0.00"
                           />
                         </div>

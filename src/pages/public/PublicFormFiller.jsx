@@ -12,6 +12,7 @@ const PublicFormFiller = () => {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [currentStep, setCurrentStep] = useState(0); // 0 = welcome page, 1 = questions page
 
   // Signature modal state
   const [showSigModal, setShowSigModal] = useState(false);
@@ -46,6 +47,8 @@ const PublicFormFiller = () => {
         setError("");
         const res = await axios.get(`${apiBaseUrl}/api/board-extensions/public/forms/${formId}`);
         setFormConfig(res.data);
+        const hasWelcome = res.data?.form_structure?.some(q => q.type === "welcome");
+        setCurrentStep(hasWelcome ? 0 : 1);
       } catch (err) {
         console.error("Failed to load form:", err);
         setError("This form does not exist, has been deleted, or is currently unavailable.");
@@ -252,6 +255,10 @@ const PublicFormFiller = () => {
   }
 
   if (success) {
+    const thankyou = formConfig?.form_structure?.find(q => q.type === "thankyou");
+    const thankyouTitle = thankyou?.label || "Thank you!";
+    const thankyouDesc = thankyou?.description || "Your response has been submitted successfully.";
+
     return (
       <div className="d-flex align-items-center justify-content-center min-vh-100 bg-slate-50">
         <Container style={{ maxWidth: "500px" }}>
@@ -260,13 +267,15 @@ const PublicFormFiller = () => {
               <div className="d-inline-flex p-3 bg-success-subtle text-success rounded-circle mb-3">
                 <ClipboardCheck size={32} />
               </div>
-              <h4 className="fw-bold text-slate-800 mb-2">Thank you!</h4>
-              <p className="text-muted small mb-4">Your response has been submitted successfully.</p>
+              <h4 className="fw-bold text-slate-800 mb-2">{thankyouTitle}</h4>
+              <p className="text-muted small mb-4">{thankyouDesc}</p>
               <Button 
                 variant="primary" 
                 onClick={() => {
                   setAnswers({});
                   setSuccess(false);
+                  const hasWelcome = formConfig?.form_structure?.some(q => q.type === "welcome");
+                  setCurrentStep(hasWelcome ? 0 : 1);
                 }}
                 className="w-100 fw-bold rounded-3"
               >
@@ -278,6 +287,9 @@ const PublicFormFiller = () => {
       </div>
     );
   }
+
+  const welcomePage = formConfig.form_structure?.find(q => q.type === "welcome");
+  const formQuestions = formConfig.form_structure?.filter(q => q.type !== "welcome" && q.type !== "thankyou") || [];
 
   return (
     <div className="min-vh-100 bg-slate-50 py-5">
@@ -307,162 +319,182 @@ const PublicFormFiller = () => {
           }}
         >
           <Card.Body>
-            <div className="mb-4 pb-3 border-bottom">
-              <h2 className="fw-bold text-slate-900 mb-2">{formConfig.name}</h2>
-              {formConfig.description && (
-                <p className="text-muted small mb-0">{formConfig.description}</p>
-              )}
-            </div>
+            {currentStep === 0 && welcomePage ? (
+              <div className="text-center py-4">
+                <h2 className="fw-bold text-slate-900 mb-3">{welcomePage.label || formConfig.name}</h2>
+                <p className="text-muted small mb-4">{welcomePage.description || formConfig.description || "Please click the button below to start filling out the form."}</p>
+                <Button 
+                  variant="primary" 
+                  onClick={() => setCurrentStep(1)}
+                  className="w-100 py-2.5 fw-bold rounded-lg shadow-md border-0 transition-all"
+                  style={{ 
+                    backgroundColor: "#4f46e5", 
+                    color: "#ffffff" 
+                  }}
+                >
+                  Start Form
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="mb-4 pb-3 border-bottom">
+                  <h2 className="fw-bold text-slate-900 mb-2">{formConfig.name}</h2>
+                  {formConfig.description && (
+                    <p className="text-muted small mb-0">{formConfig.description}</p>
+                  )}
+                </div>
 
-            <Form onSubmit={handleSubmit}>
-              {formConfig.form_structure?.map((q) => {
-                if (!evaluateCondition(q, answers)) return null;
-                const signatureImage = answers[q.id];
+                <Form onSubmit={handleSubmit}>
+                  {formQuestions.map((q) => {
+                    if (!evaluateCondition(q, answers)) return null;
+                    const signatureImage = answers[q.id];
 
-                return (
-                  <Form.Group key={q.id} className="mb-4">
-                    <Form.Label className="fw-semibold text-slate-700 small mb-2 d-flex align-items-center justify-content-between">
-                      <span>{q.label} {q.required && <span className="text-danger">*</span>}</span>
-                    </Form.Label>
-                    
-                    {q.type === "textarea" ? (
-                      <Form.Control
-                        as="textarea"
-                        rows={4}
-                        placeholder="Write your response here..."
-                        value={answers[q.id] || ""}
-                        onChange={(e) => handleInputChange(q.id, e.target.value)}
-                        required={q.required}
-                        className="border-slate-200 rounded-lg focus:border-indigo-500 focus:ring-indigo-500"
-                      />
-                    ) : q.type === "date" ? (
-                      <Form.Control
-                        type="date"
-                        value={answers[q.id] || ""}
-                        onChange={(e) => handleInputChange(q.id, e.target.value)}
-                        required={q.required}
-                        className="border-slate-200 rounded-lg focus:border-indigo-500"
-                      />
-                    ) : q.type === "number" ? (
-                      <Form.Control
-                        type="number"
-                        placeholder="Enter a numeric value..."
-                        value={answers[q.id] || ""}
-                        onChange={(e) => handleInputChange(q.id, e.target.value)}
-                        required={q.required}
-                        className="border-slate-200 rounded-lg focus:border-indigo-500"
-                      />
-                    ) : q.type === "file" ? (
-                      <div>
-                        <Form.Control
-                          type="file"
-                          onChange={async (e) => {
-                            const file = e.target.files[0];
-                            if (!file) return;
-                            const formData = new FormData();
-                            formData.append("file", file);
-                            try {
-                              const uploadRes = await axios.post(`${apiBaseUrl}/api/board-extensions/public/forms/upload`, formData, {
-                                headers: { "Content-Type": "multipart/form-data" }
-                              });
-                              handleInputChange(q.id, {
-                                filename: uploadRes.data.filename,
-                                file_url: uploadRes.data.file_url
-                              });
-                            } catch (err) {
-                              console.error("File upload failed", err);
-                              alert("Failed to upload file. Please try again.");
-                            }
-                          }}
-                          required={q.required && !answers[q.id]}
-                          className="border-slate-200 rounded-lg focus:border-indigo-500"
-                        />
-                        {answers[q.id] && (
-                          <div className="text-success small mt-1">
-                            ✓ {answers[q.id].filename} uploaded
+                    return (
+                      <Form.Group key={q.id} className="mb-4">
+                        <Form.Label className="fw-semibold text-slate-700 small mb-2 d-flex align-items-center justify-content-between">
+                          <span>{q.label} {q.required && <span className="text-danger">*</span>}</span>
+                        </Form.Label>
+                        
+                        {q.type === "textarea" ? (
+                          <Form.Control
+                            as="textarea"
+                            rows={4}
+                            placeholder="Write your response here..."
+                            value={answers[q.id] || ""}
+                            onChange={(e) => handleInputChange(q.id, e.target.value)}
+                            required={q.required}
+                            className="border-slate-200 rounded-lg focus:border-indigo-500 focus:ring-indigo-500"
+                          />
+                        ) : q.type === "date" ? (
+                          <Form.Control
+                            type="date"
+                            value={answers[q.id] || ""}
+                            onChange={(e) => handleInputChange(q.id, e.target.value)}
+                            required={q.required}
+                            className="border-slate-200 rounded-lg focus:border-indigo-500"
+                          />
+                        ) : q.type === "number" ? (
+                          <Form.Control
+                            type="number"
+                            placeholder="Enter a numeric value..."
+                            value={answers[q.id] || ""}
+                            onChange={(e) => handleInputChange(q.id, e.target.value)}
+                            required={q.required}
+                            className="border-slate-200 rounded-lg focus:border-indigo-500"
+                          />
+                        ) : q.type === "file" ? (
+                          <div>
+                            <Form.Control
+                              type="file"
+                              onChange={async (e) => {
+                                const file = e.target.files[0];
+                                if (!file) return;
+                                const formData = new FormData();
+                                formData.append("file", file);
+                                try {
+                                  const uploadRes = await axios.post(`${apiBaseUrl}/api/board-extensions/public/forms/upload`, formData, {
+                                    headers: { "Content-Type": "multipart/form-data" }
+                                  });
+                                  handleInputChange(q.id, {
+                                    filename: uploadRes.data.filename,
+                                    file_url: uploadRes.data.file_url
+                                  });
+                                } catch (err) {
+                                  console.error("File upload failed", err);
+                                  alert("Failed to upload file. Please try again.");
+                                }
+                              }}
+                              required={q.required && !answers[q.id]}
+                              className="border-slate-200 rounded-lg focus:border-indigo-500"
+                            />
+                            {answers[q.id] && (
+                              <div className="text-success small mt-1">
+                                ✓ {answers[q.id].filename} uploaded
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    ) : q.type === "signature" ? (
-                      <div>
-                        {signatureImage ? (
-                          <div className="position-relative border border-slate-200 rounded-lg p-3 bg-white d-flex align-items-center justify-content-center shadow-sm">
-                            <img src={getFullUrl(signatureImage)} alt="Signature" style={{ maxHeight: "80px", maxWidth: "100%", objectFit: "contain" }} />
-                            <div className="position-absolute top-0 end-0 p-2">
-                              <Button 
-                                variant="outline-danger" 
-                                size="sm" 
-                                className="p-1 px-2 d-flex align-items-center gap-1 border-0" 
-                                onClick={() => handleInputChange(q.id, null)}
+                        ) : q.type === "signature" ? (
+                          <div>
+                            {signatureImage ? (
+                              <div className="position-relative border border-slate-200 rounded-lg p-3 bg-white d-flex align-items-center justify-content-center shadow-sm">
+                                <img src={getFullUrl(signatureImage)} alt="Signature" style={{ maxHeight: "80px", maxWidth: "100%", objectFit: "contain" }} />
+                                <div className="position-absolute top-0 end-0 p-2">
+                                  <Button 
+                                    variant="outline-danger" 
+                                    size="sm" 
+                                    className="p-1 px-2 d-flex align-items-center gap-1 border-0" 
+                                    onClick={() => handleInputChange(q.id, null)}
+                                  >
+                                    <Trash2 size={13} /> Reset
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div 
+                                onClick={() => handleOpenSignatureModal(q.id)}
+                                className="border rounded-lg p-4 text-center cursor-pointer bg-slate-50 hover:bg-slate-100 hover:border-indigo-300 transition-all shadow-sm border-dashed"
+                                style={{ 
+                                  borderStyle: "dashed", 
+                                  borderColor: "#cbd5e1",
+                                  minHeight: "80px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center"
+                                }}
                               >
-                                <Trash2 size={13} /> Reset
-                              </Button>
-                            </div>
+                                <span 
+                                  className="text-slate-400 italic" 
+                                  style={{ 
+                                    fontFamily: "'Caveat', cursive", 
+                                    fontSize: "24px" 
+                                  }}
+                                >
+                                  Sign here
+                                </span>
+                              </div>
+                            )}
+                            <input
+                              type="hidden"
+                              value={signatureImage || ""}
+                              required={q.required}
+                            />
                           </div>
                         ) : (
-                          <div 
-                            onClick={() => handleOpenSignatureModal(q.id)}
-                            className="border rounded-lg p-4 text-center cursor-pointer bg-slate-50 hover:bg-slate-100 hover:border-indigo-300 transition-all shadow-sm border-dashed"
-                            style={{ 
-                              borderStyle: "dashed", 
-                              borderColor: "#cbd5e1",
-                              minHeight: "80px",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center"
-                            }}
-                          >
-                            <span 
-                              className="text-slate-400 italic" 
-                              style={{ 
-                                fontFamily: "'Caveat', cursive", 
-                                fontSize: "24px" 
-                              }}
-                            >
-                              Sign here
-                            </span>
-                          </div>
+                          <Form.Control
+                            type="text"
+                            placeholder="Type your answer..."
+                            value={answers[q.id] || ""}
+                            onChange={(e) => handleInputChange(q.id, e.target.value)}
+                            required={q.required}
+                            className="border-slate-200 rounded-lg focus:border-indigo-500"
+                          />
                         )}
-                        <input
-                          type="hidden"
-                          value={signatureImage || ""}
-                          required={q.required}
-                        />
-                      </div>
-                    ) : (
-                      <Form.Control
-                        type="text"
-                        placeholder="Type your answer..."
-                        value={answers[q.id] || ""}
-                        onChange={(e) => handleInputChange(q.id, e.target.value)}
-                        required={q.required}
-                        className="border-slate-200 rounded-lg focus:border-indigo-500"
-                      />
-                    )}
-                  </Form.Group>
-                );
-              })}
+                      </Form.Group>
+                    );
+                  })}
 
-              {error && (
-                <div className="alert alert-danger text-xs py-2 px-3 rounded-3 mb-4">
-                  {error}
-                </div>
-              )}
+                  {error && (
+                    <div className="alert alert-danger text-xs py-2 px-3 rounded-3 mb-4">
+                      {error}
+                    </div>
+                  )}
 
-              <Button 
-                variant="primary" 
-                type="submit" 
-                disabled={submitting}
-                className="w-100 py-2.5 fw-bold rounded-lg mt-3 shadow-md border-0 transition-all"
-                style={{ 
-                  backgroundColor: "#4f46e5", 
-                  color: "#ffffff" 
-                }}
-              >
-                {submitting ? <Spinner animation="border" size="sm" className="me-2" /> : null}
-                Submit Response
-              </Button>
-            </Form>
+                  <Button 
+                    variant="primary" 
+                    type="submit" 
+                    disabled={submitting}
+                    className="w-100 py-2.5 fw-bold rounded-lg mt-3 shadow-md border-0 transition-all"
+                    style={{ 
+                      backgroundColor: "#4f46e5", 
+                      color: "#ffffff" 
+                    }}
+                  >
+                    {submitting ? <Spinner animation="border" size="sm" className="me-2" /> : null}
+                    Submit Response
+                  </Button>
+                </Form>
+              </>
+            )}
           </Card.Body>
         </Card>
       </Container>

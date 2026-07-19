@@ -1,3 +1,95 @@
+const CACHE_NAME = "ela-academy-cache-v1";
+const ASSETS_TO_CACHE = [
+  "/",
+  "/index.html",
+  "/vite.svg",
+  "/images/ELA-logo.png"
+];
+
+// Install Event
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      console.log("Caching shell assets");
+      return cache.addAll(ASSETS_TO_CACHE);
+    })
+  );
+  self.skipWaiting();
+});
+
+// Activate Event
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
+          }
+        })
+      );
+    })
+  );
+  self.clients.claim();
+});
+
+// Fetch Event
+self.addEventListener("fetch", (event) => {
+  const requestUrl = new URL(event.request.url);
+
+  // If it's a backend API request or websocket, bypass cache
+  if (
+    requestUrl.pathname.startsWith("/api") || 
+    requestUrl.pathname.startsWith("/socket.io") || 
+    event.request.method !== "GET"
+  ) {
+    return;
+  }
+
+  event.respondWith(
+    caches.match(event.request).then((cachedResponse) => {
+      if (cachedResponse) {
+        // Fetch in the background to update the cache (Stale-While-Revalidate)
+        fetch(event.request)
+          .then((networkResponse) => {
+            if (networkResponse.status === 200) {
+              caches.open(CACHE_NAME).then((cache) => {
+                cache.put(event.request, networkResponse);
+              });
+            }
+          })
+          .catch(() => {
+            // Ignore network errors in background update
+          });
+        return cachedResponse;
+      }
+
+      return fetch(event.request)
+        .then((networkResponse) => {
+          if (
+            !networkResponse || 
+            networkResponse.status !== 200 || 
+            networkResponse.type !== "basic"
+          ) {
+            return networkResponse;
+          }
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+          return networkResponse;
+        })
+        .catch(() => {
+          // If offline and requesting page/document, return cached index
+          if (event.request.mode === "navigate") {
+            return caches.match("/");
+          }
+        });
+    })
+  );
+});
+
+// Push notification handlers
 self.addEventListener("push", (event) => {
   const data = event.data.json();
   const options = {

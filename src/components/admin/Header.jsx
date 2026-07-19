@@ -16,7 +16,8 @@ import {
   Folder,
   Briefcase,
   Users,
-  CheckSquare
+  CheckSquare,
+  Calendar
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useTimer } from "../../context/TimerContext";
@@ -94,6 +95,40 @@ const Header = () => {
   const [logBillable, setLogBillable] = useState(false);
   const [manualMinutes, setManualMinutes] = useState("");
 
+  // Dynamic upcoming reminder parsed from unread reminder notifications
+  const upcomingReminder = React.useMemo(() => {
+    const reminderNotifs = (notifications || []).filter(
+      (n) => n.category === "reminder" && !n.is_read
+    );
+    if (reminderNotifs.length === 0) return null;
+
+    // Sort by created_at descending (most recent first)
+    const sorted = [...reminderNotifs].sort(
+      (a, b) => new Date(b.created_at) - new Date(a.created_at)
+    );
+
+    const activeReminder = sorted[0];
+    const msg = activeReminder.message || "";
+
+    let clean = msg;
+    if (clean.startsWith("Reminder: ")) {
+      clean = clean.substring("Reminder: ".length);
+    }
+    if (clean.startsWith("'") && clean.includes("'", 1)) {
+      const secondQuoteIdx = clean.indexOf("'", 1);
+      const title = clean.substring(1, secondQuoteIdx);
+      let rest = clean.substring(secondQuoteIdx + 1).trim();
+      rest = rest.replace("starts in", "in")
+                 .replace("minutes", "m")
+                 .replace("minute", "m")
+                 .replace("hours", "h")
+                 .replace("hour", "h")
+                 .replace("!", "");
+      return { title, timeText: rest };
+    }
+    return { title: clean, timeText: "" };
+  }, [notifications]);
+
   // Handle outside clicks for search dropdown
   useEffect(() => {
     const handleOutsideClick = (e) => {
@@ -163,8 +198,18 @@ const Header = () => {
     <header className="hostinger-topbar h-20 bg-white flex items-center justify-between px-8 border-b border-slate-100 sticky top-0 z-40">
       
       {/* Brand logo */}
-      <div className="hostinger-brand-mark">
-        <img src="/images/ELA-logo.png" alt="ELA Academy" className="hostinger-logo-image" />
+      <div className="hostinger-brand-mark flex items-center gap-3">
+        <img src="/images/ELA-logo.png" alt="ELA Academy" className="hostinger-logo-image h-8" />
+        {upcomingReminder && (
+          <>
+            <div className="h-4 w-[1px] bg-slate-200" />
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-50 text-slate-650 rounded-full border border-slate-100 text-[11px] font-medium leading-none shadow-sm">
+              <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+              <span className="text-slate-800 font-semibold">{upcomingReminder.title}</span>
+              <span className="text-slate-500">{upcomingReminder.timeText}</span>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Global Search Input Box with overlay */}
