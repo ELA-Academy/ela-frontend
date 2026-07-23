@@ -363,6 +363,180 @@ const BoardDetailPage = () => {
   // Money configuration state
   const [currencyCode, setCurrencyCode] = useState("USD");
 
+  // Hidden Columns State
+  const [hiddenColumns, setHiddenColumns] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`hidden_columns_${boardId}`);
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return [];
+  });
+
+  const [deletingFieldId, setDeletingFieldId] = useState(null);
+
+  useEffect(() => {
+    if (boardId) {
+      try {
+        const stored = localStorage.getItem(`hidden_columns_${boardId}`);
+        if (stored) {
+          setHiddenColumns(JSON.parse(stored));
+        } else {
+          setHiddenColumns([]);
+        }
+      } catch (e) {
+        setHiddenColumns([]);
+      }
+    }
+  }, [boardId]);
+
+  const toggleHideColumn = (colKey) => {
+    const keyStr = String(colKey);
+    setHiddenColumns((prev) => {
+      const isHidden = prev.includes(keyStr);
+      const updated = isHidden ? prev.filter((c) => c !== keyStr) : [...prev, keyStr];
+      if (boardId) {
+        localStorage.setItem(`hidden_columns_${boardId}`, JSON.stringify(updated));
+      }
+      toast.info(isHidden ? `Column shown` : `Column hidden`);
+      return updated;
+    });
+  };
+
+  const isColHidden = (key) => hiddenColumns.includes(String(key));
+
+  // List View Drag & Drop State
+  const [draggedTaskId, setDraggedTaskId] = useState(null);
+  const [dragOverTaskId, setDragOverTaskId] = useState(null);
+  const [dragOverPos, setDragOverPos] = useState("below");
+  const [dragOverStatusGroup, setDragOverStatusGroup] = useState(null);
+
+  const handleListRowDragStart = (e, task) => {
+    e.dataTransfer.setData("text/plain", String(task.id));
+    e.dataTransfer.effectAllowed = "move";
+    setDraggedTaskId(task.id);
+  };
+
+  const handleListRowDragOver = (e, targetTask) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (!targetTask || draggedTaskId === targetTask.id) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    const pos = e.clientY < midY ? "above" : "below";
+    setDragOverTaskId(targetTask.id);
+    setDragOverPos(pos);
+    setDragOverStatusGroup(targetTask.status);
+  };
+
+  const handleListRowDragLeave = (e, targetTask) => {
+    if (dragOverTaskId === targetTask.id) {
+      setDragOverTaskId(null);
+    }
+  };
+
+  const handleListRowDrop = async (e, targetTask, targetStatus) => {
+    e.preventDefault();
+    const taskIdStr = e.dataTransfer.getData("text/plain") || draggedTaskId;
+    setDraggedTaskId(null);
+    setDragOverTaskId(null);
+    setDragOverStatusGroup(null);
+
+    if (!taskIdStr) return;
+    const sourceTaskId = Number(taskIdStr);
+
+    const sourceTask = allTasks.find((t) => t.id === sourceTaskId);
+    if (!sourceTask) return;
+
+    const statusChanged = sourceTask.status !== targetStatus;
+
+    setBoard((prev) => {
+      if (!prev || !prev.groups) return prev;
+      return {
+        ...prev,
+        groups: prev.groups.map((group) => {
+          let tasks = [...(group.tasks || [])];
+          const itemIdx = tasks.findIndex((t) => t.id === sourceTaskId);
+          if (itemIdx === -1) return group;
+
+          const [movedItem] = tasks.splice(itemIdx, 1);
+          movedItem.status = targetStatus;
+
+          if (targetTask) {
+            let targetIdx = tasks.findIndex((t) => t.id === targetTask.id);
+            if (targetIdx !== -1) {
+              if (dragOverPos === "below") targetIdx += 1;
+              tasks.splice(targetIdx, 0, movedItem);
+            } else {
+              tasks.push(movedItem);
+            }
+          } else {
+            tasks.push(movedItem);
+          }
+
+          tasks = tasks.map((t, idx) => ({ ...t, position: idx }));
+          return { ...group, tasks };
+        }),
+      };
+    });
+
+    if (statusChanged) {
+      try {
+        await updateTask(sourceTaskId, { status: targetStatus });
+      } catch (err) {
+        toast.error("Failed to update status on drag and drop.");
+        fetchWorkspace(false);
+      }
+    }
+  };
+
+  const handleStatusSectionDragOver = (e, statusVal) => {
+    e.preventDefault();
+    setDragOverStatusGroup(statusVal);
+  };
+
+  const handleStatusSectionDrop = async (e, statusVal) => {
+    e.preventDefault();
+    const taskIdStr = e.dataTransfer.getData("text/plain") || draggedTaskId;
+    setDraggedTaskId(null);
+    setDragOverTaskId(null);
+    setDragOverStatusGroup(null);
+
+    if (!taskIdStr) return;
+    const sourceTaskId = Number(taskIdStr);
+    const sourceTask = allTasks.find((t) => t.id === sourceTaskId);
+    if (!sourceTask || sourceTask.status === statusVal) return;
+
+    patchTaskInState(sourceTaskId, (t) => ({ ...t, status: statusVal }));
+    try {
+      await updateTask(sourceTaskId, { status: statusVal });
+    } catch (err) {
+      toast.error("Failed to update status.");
+      fetchWorkspace(false);
+    }
+  };
+
+  const CLICKUP_PALETTE_COLORS = [
+    "#a855f7", "#818cf8", "#38bdf8", "#2dd4bf", "#4ade80", "#facc15", "#fb923c",
+    "#6366f1", "#2563eb", "#0ea5e9", "#0d9488", "#16a34a", "#eab308", "#ea580c",
+    "#f43f5e", "#ec4899", "#d946ef", "#d97706", "#78716c", "#94a3b8", "#ef4444",
+    "#be185d", "#8b5cf6", "#7c2d12", "#1e293b", "#64748b"
+  ];
+
+  const getClickUpOptionStyle = (colorHex) => {
+    if (!colorHex) return { backgroundColor: "#f1f5f9", color: "#334155", borderColor: "#cbd5e1" };
+    let hex = colorHex.replace("#", "");
+    if (hex.length === 3) hex = hex.split("").map((c) => c + c).join("");
+    const r = parseInt(hex.substring(0, 2), 16) || 100;
+    const g = parseInt(hex.substring(2, 4), 16) || 100;
+    const b = parseInt(hex.substring(4, 6), 16) || 100;
+    return {
+      backgroundColor: `rgba(${r}, ${g}, ${b}, 0.16)`,
+      color: colorHex,
+      borderColor: `rgba(${r}, ${g}, ${b}, 0.35)`
+    };
+  };
+
   const fetchWorkspaceFields = async () => {
     try {
       setLoadingWorkspaceFields(true);
@@ -1321,6 +1495,24 @@ const BoardDetailPage = () => {
     }
   };
 
+  const getTaskAssignees = (task) => {
+    if (!task) return [];
+    if (Array.isArray(task.assignees) && task.assignees.length > 0) {
+      return task.assignees;
+    }
+    if (task.assignee_id) {
+      return [{
+        id: task.assignee_id,
+        role: task.assignee_role,
+        name: task.assignee_name,
+        email: task.assignee_email,
+      }];
+    }
+    return [];
+  };
+
+  const getAssigneeKey = (assignee) => (assignee ? `${assignee.role}_${assignee.id}` : "");
+
   // Filtered & Sorted Tasks
   const filteredTasks = useMemo(() => {
     let result = allTasks.filter((task) => !task.parent_task_id);
@@ -1547,23 +1739,6 @@ const BoardDetailPage = () => {
       navigate(`${location.pathname}?${nextParams.toString()}`, { replace: true });
     }
   }, [location.search, board, allTasks]);
-
-  const getTaskAssignees = (task) => {
-    if (Array.isArray(task.assignees) && task.assignees.length > 0) {
-      return task.assignees;
-    }
-    if (task.assignee_id) {
-      return [{
-        id: task.assignee_id,
-        role: task.assignee_role,
-        name: task.assignee_name,
-        email: task.assignee_email,
-      }];
-    }
-    return [];
-  };
-
-  const getAssigneeKey = (assignee) => `${assignee.role}_${assignee.id}`;
 
   const getIncompleteSubtasks = (task) =>
     (task.subtasks || []).filter((subtask) => subtask.status !== "Done");
@@ -3164,7 +3339,11 @@ const BoardDetailPage = () => {
                 </div>
               )}
 
-              <div className="status-group-section mb-1">
+              <div 
+                className={`status-group-section mb-1 ${dragOverStatusGroup === statusVal ? "drag-over-group" : ""}`}
+                onDragOver={(e) => handleStatusSectionDragOver(e, statusVal)}
+                onDrop={(e) => handleStatusSectionDrop(e, statusVal)}
+              >
                 {/* Status Header */}
                 <div className="status-group-header d-flex align-items-center">
                   <div className="d-flex align-items-center gap-2">
@@ -3300,11 +3479,11 @@ const BoardDetailPage = () => {
                           </th>
                           <th style={{ width: "3%" }} className="zbot-sticky-col-2"></th>
                           {renderStandardFieldHeader("title", "Name", { width: "32%", minWidth: "350px" }, "zbot-sticky-col-3")}
-                          {renderStandardFieldHeader("assignee", "Assignee", { width: "12%", minWidth: "120px" })}
-                          {renderStandardFieldHeader("due_date", "Due date", { width: "10%", minWidth: "110px" })}
-                          {renderStandardFieldHeader("priority", "Priority", { width: "8%", minWidth: "90px" })}
-                          {renderStandardFieldHeader("status", "Status", { width: "10%", minWidth: "120px" })}
-                          {boardCustomFields.map(field => renderCustomFieldHeader(field))}
+                          {!isColHidden("assignee") && renderStandardFieldHeader("assignee", "Assignee", { width: "12%", minWidth: "120px" })}
+                          {!isColHidden("due_date") && renderStandardFieldHeader("due_date", "Due date", { width: "10%", minWidth: "110px" })}
+                          {!isColHidden("priority") && renderStandardFieldHeader("priority", "Priority", { width: "8%", minWidth: "90px" })}
+                          {!isColHidden("status") && renderStandardFieldHeader("status", "Status", { width: "10%", minWidth: "120px" })}
+                          {boardCustomFields.filter(f => !isColHidden(f.id)).map(field => renderCustomFieldHeader(field))}
                           <th style={{ width: "5%", minWidth: "80px" }}>Comments</th>
                           <th style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }} className="zbot-sticky-col-right">
                             <button
@@ -3325,8 +3504,13 @@ const BoardDetailPage = () => {
                           return (
                             <React.Fragment key={task.id}>
                             <tr 
-                              className={`workspace-row ${task.due_date && task.status !== "Done" && new Date(`${task.due_date}T23:59:59`) < new Date() ? "is-overdue" : ""}`}
+                              className={`workspace-row ${task.due_date && task.status !== "Done" && new Date(`${task.due_date}T23:59:59`) < new Date() ? "is-overdue" : ""} ${draggedTaskId === task.id ? "is-dragging" : ""} ${dragOverTaskId === task.id ? `drag-over-${dragOverPos}` : ""}`}
                               onDoubleClick={() => handleOpenUpdatesDrawer(task)}
+                              draggable
+                              onDragStart={(e) => handleListRowDragStart(e, task)}
+                              onDragOver={(e) => handleListRowDragOver(e, task)}
+                              onDragLeave={(e) => handleListRowDragLeave(e, task)}
+                              onDrop={(e) => handleListRowDrop(e, task, statusVal)}
                             >
                               <td style={{ textAlign: "center", verticalAlign: "middle" }} className="zbot-sticky-col-1">
                                 <input
@@ -3428,11 +3612,11 @@ const BoardDetailPage = () => {
                                   </button>
                                 </div>
                               </td>
-                              <td style={{ minWidth: "120px" }}>{renderAssigneeCell(task)}</td>
-                              <td style={{ minWidth: "110px" }}>{renderDateCell(task, "due_date")}</td>
-                              <td style={{ minWidth: "90px" }}>{renderPriorityDropdown(task)}</td>
-                              <td style={{ minWidth: "120px" }}>{renderStatusDropdown(task)}</td>
-                              {boardCustomFields.map(field => (
+                              {!isColHidden("assignee") && <td style={{ minWidth: "120px" }}>{renderAssigneeCell(task)}</td>}
+                              {!isColHidden("due_date") && <td style={{ minWidth: "110px" }}>{renderDateCell(task, "due_date")}</td>}
+                              {!isColHidden("priority") && <td style={{ minWidth: "90px" }}>{renderPriorityDropdown(task)}</td>}
+                              {!isColHidden("status") && <td style={{ minWidth: "120px" }}>{renderStatusDropdown(task)}</td>}
+                              {boardCustomFields.filter(f => !isColHidden(f.id)).map(field => (
                                 <td key={field.id} style={{ width: "140px", minWidth: "140px", maxWidth: "180px" }} className="text-truncate">
                                   {renderCustomFieldCell(task, field)}
                                 </td>
@@ -3552,11 +3736,11 @@ const BoardDetailPage = () => {
                                       </button>
                                     </div>
                                   </td>
-                                  <td style={{ minWidth: "120px" }}>{renderAssigneeCell(subtaskFull)}</td>
-                                  <td style={{ minWidth: "110px" }}>{renderDateCell(subtaskFull, "due_date")}</td>
-                                  <td style={{ minWidth: "90px" }}>{renderPriorityDropdown(subtaskFull)}</td>
-                                  <td style={{ minWidth: "120px" }}>{renderStatusDropdown(subtaskFull)}</td>
-                                  {boardCustomFields.map(field => (
+                                  {!isColHidden("assignee") && <td style={{ minWidth: "120px" }}>{renderAssigneeCell(subtaskFull)}</td>}
+                                  {!isColHidden("due_date") && <td style={{ minWidth: "110px" }}>{renderDateCell(subtaskFull, "due_date")}</td>}
+                                  {!isColHidden("priority") && <td style={{ minWidth: "90px" }}>{renderPriorityDropdown(subtaskFull)}</td>}
+                                  {!isColHidden("status") && <td style={{ minWidth: "120px" }}>{renderStatusDropdown(subtaskFull)}</td>}
+                                  {boardCustomFields.filter(f => !isColHidden(f.id)).map(field => (
                                     <td key={field.id} style={{ width: "140px", minWidth: "140px" }}></td>
                                   ))}
                                   <td className="text-center position-relative" style={{ minWidth: "80px" }}>
@@ -5256,24 +5440,63 @@ const BoardDetailPage = () => {
         );
       case "dropdown": {
         const options = field.config?.options || [];
+        const optionColors = field.config?.optionColors || {};
+        const currentVal = value || "";
+        const optColor = optionColors[currentVal] || "#64748b";
+        const pillStyle = getClickUpOptionStyle(optColor);
+
         return (
-          <Form.Select
-            size="sm"
-            className="border-0 bg-transparent py-0 px-1 cursor-pointer font-medium"
-            style={{ fontSize: "12px", minWidth: "80px" }}
-            value={value}
-            onChange={(e) => handleUpdateValue(e.target.value)}
-          >
-            <option value="">-</option>
-            {options.map((opt, idx) => (
-              <option key={idx} value={opt}>{opt}</option>
-            ))}
-          </Form.Select>
+          <Dropdown align="end" className="w-100">
+            <Dropdown.Toggle as="div" className="cursor-pointer d-flex align-items-center w-100">
+              {currentVal ? (
+                <span className="clickup-dropdown-pill" style={pillStyle}>
+                  {currentVal}
+                  <ChevronDown size={10} className="ms-1" />
+                </span>
+              ) : (
+                <span className="text-slate-300 px-1 font-medium cursor-pointer">-</span>
+              )}
+            </Dropdown.Toggle>
+            <Dropdown.Menu className="shadow-lg border-0 rounded-3 p-2" style={{ fontSize: "12px", minWidth: "180px", zIndex: 1060 }} popperConfig={{ strategy: "fixed" }}>
+              <div className="px-1 pb-1.5 mb-1 border-bottom">
+                <input
+                  type="text"
+                  className="form-control form-control-sm text-xs border-slate-200"
+                  placeholder="Search or add options..."
+                  value={dropdownSearchQuery}
+                  onChange={(e) => setDropdownSearchQuery(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+              <Dropdown.Item onClick={() => handleUpdateValue("")} className="text-slate-400 py-1 font-medium" style={{ fontSize: "12px" }}>
+                - (Clear)
+              </Dropdown.Item>
+              {options
+                .filter((opt) => opt.toLowerCase().includes((dropdownSearchQuery || "").toLowerCase()))
+                .map((opt, idx) => {
+                  const color = optionColors[opt] || "#64748b";
+                  const optStyle = getClickUpOptionStyle(color);
+                  return (
+                    <Dropdown.Item
+                      key={idx}
+                      onClick={() => handleUpdateValue(opt)}
+                      className="py-1 px-1 my-0.5 rounded border-0 bg-transparent"
+                    >
+                      <div className="clickup-dropdown-option-item" style={optStyle}>
+                        <span className="text-slate-400 font-bold" style={{ fontSize: "10px" }}>::</span>
+                        <span>{opt}</span>
+                      </div>
+                    </Dropdown.Item>
+                  );
+                })}
+            </Dropdown.Menu>
+          </Dropdown>
         );
       }
       case "multi_select":
       case "labels": {
         const options = field.config?.options || [];
+        const optionColors = field.config?.optionColors || {};
         const selected = Array.isArray(value) ? value : (value ? [value] : []);
         
         const toggleOption = (opt) => {
@@ -5289,24 +5512,54 @@ const BoardDetailPage = () => {
         return (
           <Dropdown align="end" className="w-100">
             <Dropdown.Toggle as="div" className="cursor-pointer d-flex flex-wrap gap-1 align-items-center w-100 min-h-[24px]">
-              {selected.length === 0 ? <span className="text-slate-300">-</span> : (
-                selected.map((opt, i) => (
-                  <Badge key={i} bg="light" className="text-dark border" style={{ fontSize: "10px" }}>{opt}</Badge>
-                ))
+              {selected.length === 0 ? <span className="text-slate-300 px-1 font-medium">-</span> : (
+                selected.map((opt, i) => {
+                  const color = optionColors[opt] || "#64748b";
+                  const optStyle = getClickUpOptionStyle(color);
+                  return (
+                    <span key={i} className="clickup-dropdown-pill" style={optStyle}>
+                      {opt}
+                    </span>
+                  );
+                })
               )}
             </Dropdown.Toggle>
-            <Dropdown.Menu className="shadow-sm border rounded-3 p-2" style={{ fontSize: "12px" }}>
-              {options.map((opt, idx) => (
-                <Form.Check
-                  key={idx}
-                  type="checkbox"
-                  label={opt}
-                  id={`field-${field.id}-opt-${idx}`}
-                  checked={selected.includes(opt)}
-                  onChange={() => toggleOption(opt)}
-                  className="mb-1"
+            <Dropdown.Menu className="shadow-lg border-0 rounded-3 p-2" style={{ fontSize: "12px", minWidth: "180px", zIndex: 1060 }} popperConfig={{ strategy: "fixed" }}>
+              <div className="px-1 pb-1.5 mb-1 border-bottom">
+                <input
+                  type="text"
+                  className="form-control form-control-sm text-xs border-slate-200"
+                  placeholder="Search options..."
+                  value={dropdownSearchQuery}
+                  onChange={(e) => setDropdownSearchQuery(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
                 />
-              ))}
+              </div>
+              {options
+                .filter((opt) => opt.toLowerCase().includes((dropdownSearchQuery || "").toLowerCase()))
+                .map((opt, idx) => {
+                  const color = optionColors[opt] || "#64748b";
+                  const optStyle = getClickUpOptionStyle(color);
+                  const isChecked = selected.includes(opt);
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => toggleOption(opt)}
+                      className="d-flex align-items-center justify-content-between py-1 px-1 my-0.5 rounded cursor-pointer hover:bg-slate-50"
+                    >
+                      <div className="clickup-dropdown-option-item flex-grow-1 me-2" style={optStyle}>
+                        <span className="text-slate-400 font-bold" style={{ fontSize: "10px" }}>::</span>
+                        <span>{opt}</span>
+                      </div>
+                      <Form.Check
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {}}
+                        className="mb-0 cursor-pointer"
+                      />
+                    </div>
+                  );
+                })}
             </Dropdown.Menu>
           </Dropdown>
         );
@@ -5622,10 +5875,36 @@ const BoardDetailPage = () => {
                 <div className="d-flex flex-column gap-2 mb-2">
                   {fieldOptionsList.map((opt, idx) => (
                     <div key={idx} className="d-flex align-items-center gap-2">
-                      <span
-                        className="rounded-circle d-inline-block"
-                        style={{ backgroundColor: opt.color, width: "10px", height: "10px", flexShrink: 0 }}
-                      />
+                      <OverlayTrigger
+                        trigger="click"
+                        rootClose
+                        placement="bottom"
+                        overlay={
+                          <Popover id={`opt-color-popover-${idx}`} className="shadow-lg border-0 p-2" style={{ zIndex: 2300 }}>
+                            <Popover.Body className="p-1">
+                              <div className="text-xs font-bold text-slate-500 mb-1 px-1">Option Color</div>
+                              <div className="clickup-color-swatch-grid">
+                                {CLICKUP_PALETTE_COLORS.map((c) => (
+                                  <span
+                                    key={c}
+                                    className={`clickup-color-swatch ${opt.color === c ? "active" : ""}`}
+                                    style={{ backgroundColor: c }}
+                                    onClick={() => {
+                                      setFieldOptionsList(prev => prev.map((item, i) => i === idx ? { ...item, color: c } : item));
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                            </Popover.Body>
+                          </Popover>
+                        }
+                      >
+                        <span
+                          className="clickup-color-picker-btn"
+                          style={{ backgroundColor: opt.color || "#64748b" }}
+                          title="Click to change option color"
+                        />
+                      </OverlayTrigger>
                       <Form.Control
                         type="text"
                         value={opt.label}
@@ -5879,6 +6158,7 @@ const BoardDetailPage = () => {
   };
 
   const renderStandardFieldHeader = (fieldKey, fieldName, style = {}, className = "") => {
+    if (isColHidden(fieldKey)) return null;
     return (
       <th 
         key={fieldKey} 
@@ -5914,6 +6194,7 @@ const BoardDetailPage = () => {
   };
 
   const renderCustomFieldHeader = (field) => {
+    if (isColHidden(field.id)) return null;
     return (
       <th 
         key={field.id} 
@@ -6278,21 +6559,91 @@ const BoardDetailPage = () => {
                 refreshWorkspace();
                 fetchWorkspace(true);
               }} 
-              className="workspace-inline-tool-btn" 
+              className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center justify-content-center p-1.5 text-slate-600" 
               title="Refresh Feed"
               disabled={loading}
+              style={{ minWidth: "30px", height: "28px", borderRadius: "6px" }}
             >
               <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
             </button>
 
-            <button 
-              type="button" 
-              className="workspace-inline-tool-btn" 
-              onClick={() => toast.info("Column visibility is managed per view.")} 
-              title="Customize Columns"
-            >
-              <Columns size={12} />
-            </button>
+            <Dropdown className="d-inline-block ms-1">
+              <Dropdown.Toggle 
+                as="button" 
+                className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1.5 px-2.5 py-1 text-slate-700" 
+                title="Customize Columns"
+                style={{ height: "28px", borderRadius: "6px" }}
+              >
+                <Columns size={12} />
+                <span className="font-semibold text-xs">Columns</span>
+              </Dropdown.Toggle>
+              <Dropdown.Menu className="shadow-lg border-0 py-2 px-1" style={{ minWidth: "210px", zIndex: 1060 }} popperConfig={{ strategy: "fixed" }}>
+                <div className="px-2 pb-1.5 mb-1 border-bottom text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Show / Hide Fields
+                </div>
+                <div className="d-flex flex-column gap-1 max-h-[260px] overflow-y-auto px-1">
+                  <Form.Check
+                    type="checkbox"
+                    id="col-toggle-assignee"
+                    label="Assignee"
+                    checked={!isColHidden("assignee")}
+                    onChange={() => toggleHideColumn("assignee")}
+                    className="text-xs font-medium cursor-pointer"
+                  />
+                  <Form.Check
+                    type="checkbox"
+                    id="col-toggle-due_date"
+                    label="Due date"
+                    checked={!isColHidden("due_date")}
+                    onChange={() => toggleHideColumn("due_date")}
+                    className="text-xs font-medium cursor-pointer"
+                  />
+                  <Form.Check
+                    type="checkbox"
+                    id="col-toggle-priority"
+                    label="Priority"
+                    checked={!isColHidden("priority")}
+                    onChange={() => toggleHideColumn("priority")}
+                    className="text-xs font-medium cursor-pointer"
+                  />
+                  <Form.Check
+                    type="checkbox"
+                    id="col-toggle-status"
+                    label="Status"
+                    checked={!isColHidden("status")}
+                    onChange={() => toggleHideColumn("status")}
+                    className="text-xs font-medium cursor-pointer"
+                  />
+                  {boardCustomFields.length > 0 && <Dropdown.Divider className="my-1" />}
+                  {boardCustomFields.map((field) => (
+                    <Form.Check
+                      key={field.id}
+                      type="checkbox"
+                      id={`col-toggle-custom-${field.id}`}
+                      label={field.name}
+                      checked={!isColHidden(field.id)}
+                      onChange={() => toggleHideColumn(field.id)}
+                      className="text-xs font-medium cursor-pointer"
+                    />
+                  ))}
+                </div>
+                {hiddenColumns.length > 0 && (
+                  <>
+                    <Dropdown.Divider className="my-1" />
+                    <Dropdown.Item
+                      onClick={() => {
+                        setHiddenColumns([]);
+                        if (boardId) localStorage.removeItem(`hidden_columns_${boardId}`);
+                        toast.success("All columns shown!");
+                      }}
+                      className="text-xs text-primary font-bold py-1"
+                    >
+                      Reset / Show all columns
+                    </Dropdown.Item>
+                  </>
+                )}
+              </Dropdown.Menu>
+            </Dropdown>
 
             {/* Quick Filters */}
             <div className="d-flex align-items-center gap-1 border-start ps-2 ms-1">
@@ -7546,10 +7897,12 @@ const BoardDetailPage = () => {
             <button type="button" className="btn btn-xs btn-light border px-3 py-1" style={{ fontSize: "12px" }} onClick={() => setManagerDeletingFieldId(null)}>Cancel</button>
             <button 
               type="button" 
-              className="btn btn-xs btn-danger text-white px-3 py-1" 
+              className="btn btn-xs btn-danger text-white px-3 py-1 d-inline-flex align-items-center gap-1" 
               style={{ fontSize: "12px" }}
+              disabled={deletingFieldId === managerDeletingFieldId}
               onClick={async () => {
                 try {
+                  setDeletingFieldId(managerDeletingFieldId);
                   await api.delete(`/board-extensions/custom-fields/${managerDeletingFieldId}`);
                   toast.success("Custom field deleted successfully.");
                   setManagerDeletingFieldId(null);
@@ -7558,10 +7911,19 @@ const BoardDetailPage = () => {
                 } catch (err) {
                   console.error(err);
                   toast.error("Failed to delete custom field.");
+                } finally {
+                  setDeletingFieldId(null);
                 }
               }}
             >
-              Delete
+              {deletingFieldId === managerDeletingFieldId ? (
+                <>
+                  <Spinner animation="border" size="sm" style={{ width: "12px", height: "12px" }} />
+                  <span>Deleting...</span>
+                </>
+              ) : (
+                "Delete"
+              )}
             </button>
           </div>
         </Modal.Body>

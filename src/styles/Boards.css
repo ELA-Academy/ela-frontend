@@ -4331,18 +4331,195 @@ th.zbot-sticky-col-right, th.zbot-sticky-table-col-right-1, th.zbot-sticky-table
   background-color: #f1f5f9 !important;
 }
 
-/* Hide visual scrollbars for all popovers, dropdowns, and autocomplete listings while keeping them scrollable */
+/* Sleek Dark Scrollbar for Popovers, Dropdowns, Context Menus, and Autocomplete listings */
 .dropdown-menu,
 .popover,
+.popover-body,
 .board-dropdown-menu,
-.autocomplete-dropdown {
-  scrollbar-width: none !important; /* Firefox */
-  -ms-overflow-style: none !important; /* IE and Edge */
+.task-context-menu,
+.autocomplete-dropdown,
+.clickup-popover {
+  max-height: 380px !important;
+  overflow-y: auto !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: #1e293b #f1f5f9 !important;
 }
 
 .dropdown-menu::-webkit-scrollbar,
 .popover::-webkit-scrollbar,
+.popover-body::-webkit-scrollbar,
 .board-dropdown-menu::-webkit-scrollbar,
-.autocomplete-dropdown::-webkit-scrollbar {
-  display: none !important; /* Chrome, Safari and Opera */
+.task-context-menu::-webkit-scrollbar,
+.autocomplete-dropdown::-webkit-scrollbar,
+.clickup-popover::-webkit-scrollbar {
+  display: block !important;
+  width: 6px !important;
+  height: 6px !important;
 }
+
+.dropdown-menu::-webkit-scrollbar-track,
+.popover::-webkit-scrollbar-track,
+.popover-body::-webkit-scrollbar-track,
+.board-dropdown-menu::-webkit-scrollbar-track,
+.task-context-menu::-webkit-scrollbar-track,
+.autocomplete-dropdown::-webkit-scrollbar-track,
+.clickup-popover::-webkit-scrollbar-track {
+  background: #f1f5f9 !important;
+  border-radius: 4px !important;
+}
+
+.dropdown-menu::-webkit-scrollbar-thumb,
+.popover::-webkit-scrollbar-thumb,
+.popover-body::-webkit-scrollbar-thumb,
+.board-dropdown-menu::-webkit-scrollbar-thumb,
+.task-context-menu::-webkit-scrollbar-thumb,
+.autocomplete-dropdown::-webkit-scrollbar-thumb,
+.clickup-popover::-webkit-scrollbar-thumb {
+  background: #1e293b !important;
+  border-radius: 4px !important;
+}
+
+.dropdown-menu::-webkit-scrollbar-thumb:hover,
+.popover::-webkit-scrollbar-thumb:hover,
+.popover-body::-webkit-scrollbar-thumb:hover,
+.board-dropdown-menu::-webkit-scrollbar-thumb:hover,
+.task-context-menu::-webkit-scrollbar-thumb:hover,
+.autocomplete-dropdown::-webkit-scrollbar-thumb:hover,
+.clickup-popover::-webkit-scrollbar-thumb:hover {
+  background: #0f172a !important;
+}
+
+/* Light Subtle Horizontal Scrollbar for List View Tables */
+.workspace-table-container {
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  max-width: 100% !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: #cbd5e1 #f8fafc !important;
+  padding-bottom: 8px !important;
+}
+
+.workspace-table-container::-webkit-scrollbar {
+  height: 6px !important;
+  width: 6px !important;
+}
+
+.workspace-table-container::-webkit-scrollbar-track {
+  background: #f8fafc !important;
+  border-radius: 4px !important;
+}
+
+.workspace-table-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1 !important;
+  border-radius: 4px !important;
+}
+
+.workspace-table-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8 !important;
+}
+
+/* Drag and Drop styling in List View */
+.workspace-row[draggable="true"] {
+  cursor: grab;
+}
+.workspace-row[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.workspace-row.is-dragging {
+  opacity: 0.35 !important;
+  background-color: #f1f5f9 !important;
+}
+
+.workspace-row.drag-over-above {
+  border-top: 2.5px solid #3b82f6 !important;
+}
+
+.workspace-row.drag-over-below {
+  border-bottom: 2.5px solid #3b82f6 !important;
+}
+
+.status-group-section.drag-over-group {
+  background-color: rgba(59, 130, 246, 0.05) !important;
+  border: 1.5px dashed #3b82f6 !important;
+  border-radius: 8px;
+}
+
+/* ClickUp Color-Coded Dropdown Pills */
+.clickup-dropdown-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  line-height: 1.2;
+  transition: filter 0.15s ease, transform 0.1s ease;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.clickup-dropdown-pill:hover {
+  filter: brightness(0.96);
+}
+
+.clickup-dropdown-option-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.clickup-dropdown-option-item:hover {
+  filter: brightness(0.95);
+}
+
+/* Color picker swatch button in field creator */
+.clickup-color-picker-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px #cbd5e1;
+  cursor: pointer;
+  display: inline-block;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.clickup-color-picker-btn:hover {
+  transform: scale(1.15);
+}
+
+/* ClickUp Color Grid in Popover */
+.clickup-color-swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  width: 210px;
+  padding: 4px;
+}
+
+.clickup-color-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px #e2e8f0;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+
+.clickup-color-swatch:hover,
+.clickup-color-swatch.active {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 2px #0f172a;
+}
+

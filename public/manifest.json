@@ -1,21 +1,25 @@
 {
   "short_name": "ELA Academy",
   "name": "ELA Academy Management System",
+  "description": "ELA Academy Desktop Management System",
   "icons": [
     {
-      "src": "/images/ELA-logo.png",
+      "src": "/images/icon-192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any maskable"
     },
     {
-      "src": "/images/ELA-logo.png",
+      "src": "/images/icon-512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ],
   "start_url": "/",
+  "scope": "/",
   "background_color": "#ffffff",
   "theme_color": "#673de6",
   "display": "standalone",
-  "orientation": "portrait"
+  "orientation": "any"
 }

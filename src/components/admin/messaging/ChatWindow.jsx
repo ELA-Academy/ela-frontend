@@ -998,6 +998,31 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
   const activeTasks = tasks.filter((t) => t.status !== "Done" && (!t.due_date || new Date(`${t.due_date}T23:59:59`) >= new Date()));
   const completedTasks = tasks.filter((t) => t.status === "Done");
 
+  const [showRenameChannelModal, setShowRenameChannelModal] = useState(false);
+  const [renameChannelText, setRenameChannelText] = useState("");
+  const [renamingChannel, setRenamingChannel] = useState(false);
+
+  const handleRenameChannel = async (e) => {
+    e.preventDefault();
+    if (!renameChannelText.trim()) return;
+    try {
+      setRenamingChannel(true);
+      await api.put(`/messaging/channels/${conversationId}`, { name: renameChannelText.trim() });
+      toast.success("Channel renamed successfully!");
+      setShowRenameChannelModal(false);
+      if (setConversations) {
+        setConversations((prev) =>
+          prev.map((c) => (c.id === conversationId ? { ...c, title: renameChannelText.trim(), name: renameChannelText.trim() } : c))
+        );
+      }
+    } catch (err) {
+      console.error("Failed to rename channel", err);
+      toast.error("Failed to rename channel.");
+    } finally {
+      setRenamingChannel(false);
+    }
+  };
+
   return (
     <div className="zbot-chat-layout">
       {/* Zbot Header Panel with Tabs */}
@@ -1006,8 +1031,21 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
           <div className="zbot-header-avatar">
             {chatInitial}
           </div>
-          <div className="zbot-header-info">
-            <h5>{chatTitle}</h5>
+          <div className="zbot-header-info d-flex align-items-center gap-1.5">
+            <h5 className="mb-0">{chatTitle}</h5>
+            {!isDirect && (
+              <button
+                type="button"
+                className="btn btn-link p-0 text-slate-400 hover:text-slate-700 ms-1 border-0 bg-transparent"
+                onClick={() => {
+                  setRenameChannelText(chatTitle);
+                  setShowRenameChannelModal(true);
+                }}
+                title="Edit Channel Name"
+              >
+                <Pencil size={13} />
+              </button>
+            )}
             {isDirect && (
               <span className={`zbot-header-status-dot ${isOnline ? "online" : "offline"}`} />
             )}
@@ -1890,6 +1928,37 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
         confirmText="Delete"
         loading={deletingMsg}
       />
+
+      <Modal show={showRenameChannelModal} onHide={() => setShowRenameChannelModal(false)} centered size="sm">
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title className="fs-6 font-bold">Rename Channel</Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleRenameChannel}>
+          <Modal.Body className="py-2">
+            <Form.Group>
+              <Form.Label className="small font-semibold text-slate-700">Channel Name</Form.Label>
+              <Form.Control
+                type="text"
+                size="sm"
+                value={renameChannelText}
+                onChange={(e) => setRenameChannelText(e.target.value)}
+                placeholder="Enter channel name..."
+                required
+                autoFocus
+              />
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer className="border-0 pt-0">
+            <Button variant="outline-secondary" size="sm" onClick={() => setShowRenameChannelModal(false)}>
+              Cancel
+            </Button>
+            <Button variant="dark" size="sm" type="submit" disabled={renamingChannel}>
+              {renamingChannel && <Spinner size="sm" animation="border" className="me-1" style={{ width: "12px", height: "12px" }} />}
+              Save Name
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
     </div>
   );
 

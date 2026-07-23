@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Button, Form, Spinner, Alert, Dropdown, OverlayTrigger, Popover, Modal } from "react-bootstrap";
 import { HandThumbsUp, HandThumbsUpFill, Reply, Send, X, Trash, Paperclip, Eye, EyeSlash, Gear, Bookmark, BookmarkFill, ThreeDots, Person } from "react-bootstrap-icons";
+import { useAuth } from "../../context/AuthContext";
 import {
   CalendarDays,
   Check,
@@ -67,7 +68,21 @@ import { ListSkeleton } from "../Skeleton";
 import { useTimer } from "../../context/TimerContext";
 import "../../styles/Boards.css";
 
-import { useAuth } from "../../context/AuthContext";
+const formatDescriptionHtml = (html) => {
+  if (!html || typeof html !== "string") return "";
+  try {
+    return html.replace(/(href="|src="|href='|src=')?(\/static\/uploads\/[^\s<"']+|https?:\/\/[^\s<"']+)/gi, (match, attr, url) => {
+      if (attr) return match;
+      const fname = url.split('/').pop() || 'View File';
+      const isImg = /\.(png|jpe?g|gif|svg|webp)($|\?)/i.test(url) || url.toLowerCase().includes('signature');
+      const linkTag = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #673de6; font-weight: 600; text-decoration: underline;">${fname} 🔗</a>`;
+      const imgTag = isImg ? `<br/><a href="${url}" target="_blank" rel="noopener noreferrer" style="display: inline-block; margin-top: 6px;"><img src="${url}" alt="Attachment" style="max-height: 120px; max-width: 280px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px; background-color: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.1);" /></a>` : '';
+      return `${linkTag}${imgTag}`;
+    });
+  } catch (err) {
+    return String(html || "");
+  }
+};
 
 const DrawerCustomFieldTextInput = ({ initialValue, type, onSave, className, placeholder }) => {
   const [val, setVal] = useState(initialValue || "");
@@ -915,7 +930,7 @@ const UpdatesDrawer = ({
   const [dueDate, setDueDate] = useState(task.due_date || "");
   const [category, setCategory] = useState(task.category || "");
   const [tagsInput, setTagsInput] = useState(task.tags || "");
-  const [descriptionHtml, setDescriptionHtml] = useState(task.description_html || "");
+  const [descriptionHtml, setDescriptionHtml] = useState(task.description_html || task.notes || "");
   const [initialDescriptionHtml, setInitialDescriptionHtml] = useState("");
   const [editingDesc, setEditingDesc] = useState(false);
   const [savingDesc, setSavingDesc] = useState(false);
@@ -964,6 +979,7 @@ const UpdatesDrawer = ({
   const [dependencyTaskId, setDependencyTaskId] = useState(task.dependency_task_id || "");
   const [recurringSettings, setRecurringSettings] = useState(task.recurring_settings || "");
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const [hideEmptyFields, setHideEmptyFields] = useState(false);
 
   // Editor states
   const [content, setContent] = useState("");
@@ -1215,7 +1231,7 @@ const UpdatesDrawer = ({
     setDueDate(task.due_date || "");
     setCategory(task.category || "");
     setTagsInput(task.tags || "");
-    setDescriptionHtml(task.description_html || "");
+    setDescriptionHtml(task.description_html || task.notes || "");
     setChecklist(task.checklist || []);
     setWatchers(task.watchers || []);
     setAttachments(task.attachments || []);
@@ -1450,7 +1466,7 @@ const UpdatesDrawer = ({
     (w) => w.id === currentUserKey?.id && w.role === currentUserKey?.role
   );
 
-  const getAssigneeKey = (assignee) => `${assignee.role}_${assignee.id}`;
+  const getAssigneeKey = (assignee) => (assignee ? `${assignee.role || 'staff'}_${assignee.id}` : "");
 
   const assigneeOptions = mentionOptions
     .filter((option) => option.type === "staff" || option.type === "superadmin")
@@ -2579,181 +2595,8 @@ const UpdatesDrawer = ({
                 </div>
               )}
 
-              {/* Hidden advanced fields */}
-              <div className="cu-advanced-fields">
-                <div className="cu-adv-row">
-                  <span className="cu-adv-label">Category</span>
-                  <input
-                    id="cu-category-input"
-                    type="text"
-                    placeholder="e.g. Admissions"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    onBlur={saveCategory}
-                    className="cu-adv-input"
-                  />
-                </div>
-                <div className="cu-adv-row">
-                  <span className="cu-adv-label">Tags</span>
-                  <input
-                    id="cu-tags-input"
-                    type="text"
-                    placeholder="urgent, operations"
-                    value={tagsInput}
-                    onChange={(e) => setTagsInput(e.target.value)}
-                    onBlur={saveTags}
-                    className="cu-adv-input"
-                  />
-                </div>
-                <div className="cu-adv-row">
-                  <span className="cu-adv-label">Depends On</span>
-                  <Form.Select id="cu-depends-select" size="sm" value={dependencyTaskId} onChange={handleDependencyChange} className="cu-adv-select">
-                    <option value="">None</option>
-                    {allTasks.filter(t => t.id !== taskId).map(t => (
-                      <option key={t.id} value={t.id}>{t.title}</option>
-                    ))}
-                  </Form.Select>
-                </div>
-                <div className="cu-adv-row">
-                  <span className="cu-adv-label">Recurring</span>
-                  <Form.Select size="sm" value={recurringSettings} onChange={handleRecurringSettingsChange} className="cu-adv-select">
-                    <option value="">No Recurrence</option>
-                    <option value="Daily">Daily</option>
-                    <option value="Weekly">Weekly</option>
-                    <option value="Monthly">Monthly</option>
-                  </Form.Select>
-                </div>
-                {/* Custom Fields (Dynamically loaded) */}
-                {customFields.map((f) => (
-                  <div key={f.id} className="cu-adv-row">
-                    <span className="cu-adv-label">{f.name}</span>
-                    <div style={{ flex: 1 }}>
-                      {f.type === "text" && (
-                        <DrawerCustomFieldTextInput
-                          type="text"
-                          className="cu-adv-input"
-                          initialValue={customFieldValues[f.id]}
-                          onSave={(newVal) => handleCustomFieldChange(f.id, newVal)}
-                          placeholder={`Enter ${f.name}...`}
-                        />
-                      )}
-                      {f.type === "number" && (
-                        <DrawerCustomFieldNumberInput
-                          className="cu-adv-input"
-                          initialValue={customFieldValues[f.id]}
-                          onSave={(newVal) => handleCustomFieldChange(f.id, newVal)}
-                          placeholder="0"
-                        />
-                      )}
-                      {f.type === "date" && (
-                        <input
-                          type="date"
-                          className="cu-adv-input"
-                          value={customFieldValues[f.id] || ""}
-                          onChange={(e) => handleCustomFieldChange(f.id, e.target.value)}
-                        />
-                      )}
-                      {f.type === "dropdown" && (
-                        <Form.Select
-                          size="sm"
-                          className="cu-adv-select"
-                          value={customFieldValues[f.id] || ""}
-                          onChange={(e) => handleCustomFieldChange(f.id, e.target.value)}
-                        >
-                          <option value="">Select...</option>
-                          {f.config?.options?.map((opt, i) => (
-                            <option key={i} value={opt}>{opt}</option>
-                          ))}
-                        </Form.Select>
-                      )}
-                      {f.type === "multi_select" && (
-                        <Dropdown>
-                          <Dropdown.Toggle variant="light" size="sm" className="w-100 text-start bg-white border d-flex justify-content-between align-items-center" style={{ fontSize: "12px", padding: "4px 8px" }}>
-                            <span className="text-truncate">{Array.isArray(customFieldValues[f.id]) && customFieldValues[f.id].length > 0 ? customFieldValues[f.id].join(", ") : "Select options..."}</span>
-                          </Dropdown.Toggle>
-                          <Dropdown.Menu className="p-2" style={{ maxHeight: "200px", overflowY: "auto" }}>
-                            {f.config?.options?.map((opt, i) => {
-                              const selected = Array.isArray(customFieldValues[f.id]) && customFieldValues[f.id].includes(opt);
-                              return (
-                                <Form.Check
-                                  key={i}
-                                  type="checkbox"
-                                  label={opt}
-                                  checked={selected}
-                                  onChange={() => {
-                                    const currentList = Array.isArray(customFieldValues[f.id]) ? customFieldValues[f.id] : [];
-                                    const nextList = selected ? currentList.filter(o => o !== opt) : [...currentList, opt];
-                                    handleCustomFieldChange(f.id, nextList);
-                                  }}
-                                  className="small my-1"
-                                />
-                              );
-                            })}
-                          </Dropdown.Menu>
-                        </Dropdown>
-                      )}
-                      {f.type === "currency" && (
-                        <div className="d-flex align-items-center gap-1 w-100">
-                          <span className="text-muted small">{f.config?.currencySymbol || "$"}</span>
-                          <DrawerCustomFieldNumberInput
-                            className="cu-adv-input"
-                            initialValue={customFieldValues[f.id]}
-                            onSave={(newVal) => handleCustomFieldChange(f.id, newVal)}
-                            placeholder="0.00"
-                          />
-                        </div>
-                      )}
-                      {f.type === "rating" && (
-                        <div className="d-flex align-items-center gap-1">
-                          {[1, 2, 3, 4, 5].map((star) => {
-                            const active = (customFieldValues[f.id] || 0) >= star;
-                            return (
-                              <span
-                                key={star}
-                                onClick={() => handleCustomFieldChange(f.id, star)}
-                                style={{ color: active ? "#ffc107" : "#e4e5e9", fontSize: "16px", cursor: "pointer" }}
-                              >
-                                ★
-                              </span>
-                            );
-                          })}
-                          {(customFieldValues[f.id] || 0) > 0 && (
-                            <Button variant="link" size="sm" className="p-0 text-danger ms-2" onClick={() => handleCustomFieldChange(f.id, 0)} style={{ fontSize: "10px", textDecoration: "none" }}>Clear</Button>
-                          )}
-                        </div>
-                      )}
-                      {f.type === "formula" && (
-                        <Badge bg="secondary" className="py-2 px-3 fw-bold" style={{ fontSize: "11px" }}>
-                          {(() => {
-                            try {
-                              let resolved = f.config?.formula || "";
-                              resolved = resolved.replace("{time_estimate}", task.time_estimate_minutes || 0);
-                              customFields.forEach(cf => {
-                                const val = customFieldValues[cf.id] !== undefined ? customFieldValues[cf.id] : 0;
-                                resolved = resolved.replace(`{${cf.name}}`, typeof val === 'number' ? val : 0);
-                              });
-                              const result = new Function(`return ${resolved}`)();
-                              return typeof result === 'number' && !isNaN(result) ? result : 0;
-                            } catch {
-                              return "Error";
-                            }
-                          })()}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                ))}
-
-                <div className="cu-adv-row cu-adv-actions">
-                  <span className="text-muted small">Reuse configurations:</span>
-                  <Button variant="outline-primary" size="sm" onClick={handleSaveAsTemplate} disabled={savingTemplate} className="cu-template-btn">
-                    {savingTemplate ? <Spinner size="sm" animation="border" /> : <><Save size={12} className="me-1" /> Save as Template</>}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Description (Zbot style - inline editable) */}
-              <div className="cu-description-area" onClick={() => {
+              {/* Description (ClickUp style - inline editable) */}
+              <div className="cu-description-area my-3" onClick={() => {
                 if (!editingDesc) {
                   setInitialDescriptionHtml(descriptionHtml);
                   setEditingDesc(true);
@@ -2797,14 +2640,14 @@ const UpdatesDrawer = ({
                     </div>
                     {descriptionHtml ? (
                       <div
-                        className="small p-2.5 rounded bg-light border border-slate-100"
-                        style={{ whiteSpace: "pre-wrap" }}
+                        className="small p-3 rounded bg-light border border-slate-100"
+                        style={{ whiteSpace: "pre-wrap", minHeight: "60px" }}
                         dangerouslySetInnerHTML={{
-                          __html: DOMPurify.sanitize(descriptionHtml)
+                          __html: DOMPurify.sanitize(formatDescriptionHtml(descriptionHtml), { ADD_ATTR: ['target'] })
                         }}
                       />
                     ) : (
-                      <span className="cu-desc-placeholder p-2.5 d-block border border-dashed rounded text-center bg-light">
+                      <span className="cu-desc-placeholder p-3 d-block border border-dashed rounded text-center bg-light text-slate-400">
                         <Sparkles size={13} className="text-primary me-1" /> Add description, or write with AI
                       </span>
                     )}
@@ -2812,12 +2655,12 @@ const UpdatesDrawer = ({
                 )}
               </div>
 
-              {/* Custom Fields Section (Zbot style) */}
+              {/* Custom Fields Section (ClickUp style matching Images 2 & 3) */}
               <div className="cu-collapsible-section cu-custom-fields-section border-top pt-3 mt-3">
                 <div className="d-flex align-items-center justify-content-between mb-3">
                   <div className="d-flex align-items-center gap-1.5">
                     <span className="cu-section-icon"><ChevronDown size={14} /></span>
-                    <span className="cu-section-title fw-bold text-slate-800">Custom Fields</span>
+                    <span className="cu-section-title fw-bold text-slate-800">Fields</span>
                   </div>
                   <Dropdown popperConfig={{ strategy: "fixed" }}>
                     <Dropdown.Toggle as="button" className="btn btn-link text-slate-500 p-0 text-decoration-none d-flex align-items-center gap-1 font-semibold border-0 bg-transparent" style={{ fontSize: "11px" }}>
@@ -2840,27 +2683,56 @@ const UpdatesDrawer = ({
                       No custom fields configured. Click "Add Field" to start!
                     </div>
                   ) : (
-                    boardCustomFields.map((field) => {
-                      const val = customFieldValues[field.id] ?? "";
-                      
+                    (() => {
+                      const emptyCount = boardCustomFields.filter(f => {
+                        const val = customFieldValues[f.id];
+                        return val === undefined || val === null || val === "" || (Array.isArray(val) && val.length === 0);
+                      }).length;
+
+                      const visibleFields = hideEmptyFields
+                        ? boardCustomFields.filter(f => {
+                            const val = customFieldValues[f.id];
+                            return val !== undefined && val !== null && val !== "" && (!Array.isArray(val) || val.length > 0);
+                          })
+                        : boardCustomFields;
+
                       return (
-                        <div key={field.id} className="cu-custom-field-row d-flex align-items-center justify-content-between">
-                          <span className="text-slate-600 font-medium d-flex align-items-center gap-2" style={{ fontSize: "12.5px", width: "160px" }}>
-                            {getFieldIcon(field.type)}
-                            <span className="text-truncate" style={{ maxWidth: "110px" }} title={field.name}>{field.name}</span>
-                            <Gear
-                              size={12}
-                              className="text-slate-400 hover:text-slate-600 cursor-pointer ms-auto"
-                              onClick={() => handleStartEditField(field)}
-                              style={{ flexShrink: 0 }}
-                            />
-                          </span>
-                          <div className="flex-grow-1 ms-3">
-                            {renderCustomFieldCell(field, val, (newVal) => handleCustomFieldChange(field.id, newVal))}
-                          </div>
-                        </div>
+                        <>
+                          {visibleFields.map((field) => {
+                            const val = customFieldValues[field.id] ?? "";
+                            return (
+                              <div key={field.id} className="cu-custom-field-row d-flex align-items-center justify-content-between">
+                                <span className="text-slate-600 font-medium d-flex align-items-center gap-2" style={{ fontSize: "12.5px", width: "160px" }}>
+                                  {getFieldIcon(field.type)}
+                                  <span className="text-truncate" style={{ maxWidth: "110px" }} title={field.name}>{field.name}</span>
+                                  <Gear
+                                    size={12}
+                                    className="text-slate-400 hover:text-slate-600 cursor-pointer ms-auto"
+                                    onClick={() => handleStartEditField(field)}
+                                    style={{ flexShrink: 0 }}
+                                  />
+                                </span>
+                                <div className="flex-grow-1 ms-3">
+                                  {renderCustomFieldCell(field, val, (newVal) => handleCustomFieldChange(field.id, newVal))}
+                                </div>
+                              </div>
+                            );
+                          })}
+
+                          {emptyCount > 0 && (
+                            <button
+                              type="button"
+                              className="btn btn-link text-slate-400 hover:text-slate-600 p-0 text-decoration-none border-0 bg-transparent text-xs d-flex align-items-center gap-1 mt-1"
+                              onClick={() => setHideEmptyFields(!hideEmptyFields)}
+                              style={{ fontSize: "11.5px" }}
+                            >
+                              <ChevronDown size={12} style={{ transform: hideEmptyFields ? "rotate(-90deg)" : "none", transition: "transform 0.15s" }} />
+                              <span>{hideEmptyFields ? `Show ${emptyCount} empty fields` : `Hide ${emptyCount} empty fields`}</span>
+                            </button>
+                          )}
+                        </>
                       );
-                    })
+                    })()
                   )}
                 </div>
               </div>
@@ -3668,6 +3540,45 @@ const UpdatesDrawer = ({
 };
 
 
-export default UpdatesDrawer;
+class UpdatesDrawerErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("UpdatesDrawer Error Boundary caught an error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <>
+          <div className="updates-drawer-overlay" onClick={this.props.onClose}></div>
+          <div className="updates-drawer p-4 text-center d-flex flex-column align-items-center justify-content-center">
+            <div className="text-danger mb-2" style={{ fontSize: "28px" }}>⚠️</div>
+            <h6 className="fw-bold text-slate-900 mb-1">Unable to display task details</h6>
+            <p className="text-muted text-xs mb-3">An unexpected rendering error occurred inside this task drawer.</p>
+            <div className="d-flex justify-content-center gap-2">
+              <Button variant="outline-secondary" size="sm" onClick={() => this.setState({ hasError: false })}>
+                Retry
+              </Button>
+              <Button variant="dark" size="sm" onClick={this.props.onClose}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </>
+      );
+    }
+    return <UpdatesDrawer {...this.props} />;
+  }
+}
+
+export default UpdatesDrawerErrorBoundary;
 
 

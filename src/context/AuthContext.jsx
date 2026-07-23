@@ -45,7 +45,7 @@ export const AuthProvider = ({ children }) => {
       if (!isAuthenticated) return;
       
       activeSocket = io(socketUrl, {
-        transports: ["polling", "websocket"],
+        transports: ["websocket", "polling"],
         withCredentials: true
       });
 

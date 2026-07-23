@@ -1,9 +1,11 @@
-const CACHE_NAME = "ela-academy-cache-v1";
+const CACHE_NAME = "ela-academy-cache-v2";
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
   "/vite.svg",
-  "/images/ELA-logo.png"
+  "/images/ELA-logo.png",
+  "/images/icon-192.png",
+  "/images/icon-512.png"
 ];
 
 // Install Event
