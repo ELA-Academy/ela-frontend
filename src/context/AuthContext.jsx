@@ -14,6 +14,7 @@ import {
 } from "../services/notificationService";
 import { getActiveTasksCount } from "../services/taskService";
 import { getUnreadMessagesCount } from "../services/messagingService";
+import { playNotificationChime } from "../utils/soundService";
 
 const AuthContext = createContext(null);
 
@@ -45,7 +46,7 @@ export const AuthProvider = ({ children }) => {
       if (!isAuthenticated) return;
       
       activeSocket = io(socketUrl, {
-        transports: ["polling", "websocket"],
+        transports: ["websocket", "polling"],
         withCredentials: true
       });
 
@@ -58,31 +59,8 @@ export const AuthProvider = ({ children }) => {
       activeSocket.on("new_inapp_notification", (notif) => {
         console.log("Real-time notification received:", notif);
         
-        // Play premium double chime using Web Audio API
-        try {
-          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          if (audioCtx.state === "suspended") {
-            audioCtx.resume();
-          }
-          const playTone = (time, pitch) => {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = "sine";
-            osc.frequency.setValueAtTime(pitch, time);
-            gain.gain.setValueAtTime(0, time);
-            gain.gain.linearRampToValueAtTime(0.3, time + 0.05);
-            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.8);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start(time);
-            osc.stop(time + 0.8);
-          };
-          const now = audioCtx.currentTime;
-          playTone(now, 880);
-          playTone(now + 0.12, 1318.51);
-        } catch (err) {
-          console.log("Audio play blocked/failed:", err);
-        }
+        // Play premium double chime using unlocked sound service
+        playNotificationChime();
 
         // Trigger visual vibration
         setVibrateBell(true);

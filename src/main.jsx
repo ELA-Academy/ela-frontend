@@ -11,16 +11,18 @@ createRoot(document.getElementById("root")).render(
   </StrictMode>
 );
 
-// Register service worker for PWA support
+// Unregister any active service worker to prevent localhost Vite HMR conflicts
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("/service-worker.js")
-      .then((reg) => {
-        console.log("Service Worker registered successfully with scope: ", reg.scope);
-      })
-      .catch((err) => {
-        console.error("Service Worker registration failed: ", err);
-      });
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (let registration of registrations) {
+      registration.unregister();
+    }
   });
+  if ("caches" in window) {
+    caches.keys().then((names) => {
+      for (let name of names) {
+        caches.delete(name);
+      }
+    });
+  }
 }

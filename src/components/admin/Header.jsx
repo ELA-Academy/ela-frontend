@@ -17,7 +17,10 @@ import {
   Briefcase,
   Users,
   CheckSquare,
-  Calendar
+  Calendar,
+  Download,
+  Smartphone,
+  Laptop
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useTimer } from "../../context/TimerContext";
@@ -94,6 +97,60 @@ const Header = () => {
   const [logDescription, setLogDescription] = useState("");
   const [logBillable, setLogBillable] = useState(false);
   const [manualMinutes, setManualMinutes] = useState("");
+
+  // PWA Install Prompt State
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isAppInstalled, setIsAppInstalled] = useState(false);
+  const [showPwaModal, setShowPwaModal] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    const handleAppInstalled = () => {
+      setIsAppInstalled(true);
+      setDeferredPrompt(null);
+      try {
+        localStorage.setItem("pwa_installed", "true");
+      } catch (err) {}
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
+
+    const isStandalone = 
+      window.matchMedia("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true ||
+      document.referrer.startsWith("android-app://") ||
+      localStorage.getItem("pwa_installed") === "true";
+
+    if (isStandalone) {
+      setIsAppInstalled(true);
+    }
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstallPwa = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      if (choice?.outcome === "accepted") {
+        setIsAppInstalled(true);
+        try {
+          localStorage.setItem("pwa_installed", "true");
+        } catch (e) {}
+      }
+      setDeferredPrompt(null);
+    } else {
+      setShowPwaModal(true);
+    }
+  };
 
   // Dynamic upcoming reminder parsed from unread reminder notifications
   const upcomingReminder = React.useMemo(() => {
@@ -436,6 +493,8 @@ const Header = () => {
           </div>
         )}
 
+
+
         {/* Bell notification button triggers Offcanvas */}
         <div
           className="hostinger-round-action relative cursor-pointer text-slate-600 hover:text-slate-900 transition-colors"
@@ -724,6 +783,37 @@ const Header = () => {
           >
             Save Time Log
           </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Desktop PWA Installation Instructions Modal */}
+      <Modal show={showPwaModal} onHide={() => setShowPwaModal(false)} centered size="md">
+        <Modal.Header closeButton className="border-b border-slate-100 p-4">
+          <Modal.Title className="font-bold text-base text-slate-950 flex items-center gap-2">
+            <Download className="w-5 h-5 text-indigo-600" />
+            <span>Install ELA Academy Desktop App</span>
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4 text-slate-700">
+          <p className="text-xs text-slate-600 mb-3">
+            Install ELA Academy as a standalone desktop app on Windows or macOS for fast one-click access directly from your desktop or taskbar!
+          </p>
+
+          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100 flex gap-3 items-start">
+            <Laptop className="w-6 h-6 text-indigo-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <h6 className="font-bold text-xs text-slate-900 mb-1">Desktop Browser Quick Install</h6>
+              <p className="text-[12px] text-slate-600 mb-2 leading-relaxed">
+                Look at the right side of your browser's address bar (URL bar) and click the <strong>Install</strong> icon ⊕, or open your browser menu (⋮) and select <strong>"Install ELA Academy App"</strong>.
+              </p>
+              <div className="bg-white p-2 rounded-lg border text-[11px] font-mono text-slate-500">
+                Tip: Chrome / Edge will prompt "Install app?" to launch ELA Academy as a standalone window.
+              </div>
+            </div>
+          </div>
+        </Modal.Body>
+        <Modal.Footer className="border-t border-slate-100 p-3 bg-slate-50/50">
+          <Button variant="dark" size="sm" onClick={() => setShowPwaModal(false)}>Got It</Button>
         </Modal.Footer>
       </Modal>
 
