@@ -10,7 +10,7 @@ import {
   Plus,
   Trash,
 } from "react-bootstrap-icons";
-import { FileText, LayoutList, Kanban, Flag, User, Calendar, BookOpen, Folder, Repeat, GitFork, Link, MoreHorizontal, Copy, Star, Edit3, Bell, ArrowRight, PlusSquare, Layers, ClipboardCopy, Zap, Clock, Mail, Archive, Trash2, MessageSquare, Search, AlignLeft, Table, PieChart, Image, Activity, Share2, Users, MapPin, Pin, Settings, Lock, Filter, RefreshCw, Columns, ChevronDown, Send, MousePointer, Type, PenTool, StickyNote, Eraser, Square, Target, Paperclip, Hash, Globe, DollarSign, CheckSquare, PlusCircle, ArrowLeft, ListPlus, Tag, Sparkles, Phone, Upload } from "lucide-react";
+import { FileText, LayoutList, Kanban, Flag, User, Calendar, BookOpen, Folder, Repeat, GitFork, Link, MoreHorizontal, Copy, Star, Edit3, Bell, ArrowRight, PlusSquare, Layers, ClipboardCopy, Zap, Clock, Mail, Archive, Trash2, MessageSquare, Search, AlignLeft, Table, PieChart, Image, Activity, Share2, Users, MapPin, Pin, Settings, Lock, Filter, RefreshCw, Columns, ChevronDown, Send, MousePointer, Type, PenTool, StickyNote, Eraser, Square, Target, Paperclip, Hash, Globe, DollarSign, CheckSquare, PlusCircle, ArrowLeft, ListPlus, Tag, Sparkles, Phone, Upload, Check } from "lucide-react";
 import { toast } from "react-toastify";
 import { format, parseISO } from "date-fns";
 
@@ -174,6 +174,52 @@ const CustomFieldNumberInput = ({ initialValue, onSave, placeholder }) => {
         }
       }}
       placeholder={placeholder || "-"}
+    />
+  );
+};
+
+const formatCurrencyVal = (v) => {
+  if (v === undefined || v === null || v === "") return "";
+  const str = String(v).trim();
+  if (str.startsWith("$")) return str;
+  const cleanStr = str.replace(/[^0-9.]/g, "");
+  if (!cleanStr) return "";
+  const num = parseFloat(cleanStr);
+  if (isNaN(num)) return "";
+  return "$" + num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+};
+
+const CustomFieldCurrencyInput = ({ initialValue, onSave, placeholder }) => {
+  const [val, setVal] = useState(() => formatCurrencyVal(initialValue));
+  const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    setVal(formatCurrencyVal(initialValue));
+  }, [initialValue]);
+
+  const handleBlur = () => {
+    setIsEditing(false);
+    const formatted = formatCurrencyVal(val);
+    setVal(formatted);
+    if (formatted !== formatCurrencyVal(initialValue)) {
+      onSave(formatted);
+    }
+  };
+
+  return (
+    <input
+      type="text"
+      className="cell-editable-text w-100 font-medium"
+      value={isEditing ? val : (val || "")}
+      onFocus={() => setIsEditing(true)}
+      onChange={(e) => setVal(e.target.value)}
+      onBlur={handleBlur}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.target.blur();
+        }
+      }}
+      placeholder={placeholder || "$0.00"}
     />
   );
 };
@@ -403,6 +449,197 @@ const BoardDetailPage = () => {
   };
 
   const isColHidden = (key) => hiddenColumns.includes(String(key));
+
+  // Column Calculations State
+  const [columnCalculations, setColumnCalculations] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`col_calcs_${boardId}`);
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return {};
+  });
+
+  const handleSetCalculation = (fieldId, calcType) => {
+    setColumnCalculations((prev) => {
+      const updated = { ...prev, [fieldId]: calcType };
+      if (boardId) {
+        localStorage.setItem(`col_calcs_${boardId}`, JSON.stringify(updated));
+      }
+      return updated;
+    });
+  };
+
+  const renderColumnCalculationCell = (field, tasksInGroup) => {
+    const fieldId = typeof field === "object" ? field.id : String(field);
+    const fieldName = typeof field === "object" ? (field.name || "") : String(field);
+    const fieldType = typeof field === "object" ? (field.type || "") : "";
+    const calcType = columnCalculations[fieldId] || "none";
+
+    const getNumericValues = () => {
+      const vals = [];
+      tasksInGroup.forEach((t) => {
+        let raw = undefined;
+        if (typeof field === "object") {
+          raw = t.custom_field_values?.[field.id] ?? t.custom_field_values?.[String(field.id)];
+          if (raw === undefined || raw === null || raw === "") {
+            if (fieldName && t[fieldName] !== undefined) raw = t[fieldName];
+          }
+        } else {
+          raw = t[field] ?? t.custom_field_values?.[field] ?? t.custom_field_values?.[String(field)];
+        }
+
+        if (raw !== undefined && raw !== null && raw !== "") {
+          const str = String(raw).replace(/[^0-9.-]/g, "");
+          if (str && str !== "-") {
+            const n = parseFloat(str);
+            if (!isNaN(n)) {
+              vals.push(n);
+            }
+          }
+        }
+      });
+      return vals;
+    };
+
+    const isCurrency =
+      fieldType === "currency" ||
+      fieldType === "money" ||
+      fieldName.includes("$") ||
+      fieldName.toLowerCase().includes("usd") ||
+      fieldName.toLowerCase().includes("dollar") ||
+      fieldName.toLowerCase().includes("budget") ||
+      fieldName.toLowerCase().includes("paid") ||
+      fieldName.toLowerCase().includes("cost") ||
+      fieldName.toLowerCase().includes("price") ||
+      fieldName.toLowerCase().includes("fee") ||
+      fieldName.toLowerCase().includes("amount");
+
+    const isNumericField =
+      isCurrency ||
+      fieldType === "number" ||
+      fieldName.toLowerCase().includes("number") ||
+      fieldName.toLowerCase().includes("count") ||
+      fieldName.toLowerCase().includes("students") ||
+      fieldName.toLowerCase().includes("days") ||
+      fieldName.toLowerCase().includes("hours") ||
+      fieldName.toLowerCase().includes("quantity") ||
+      fieldName.toLowerCase().includes("score") ||
+      fieldName.toLowerCase().includes("points");
+
+    const formatNumResult = (val) => {
+      if (val === null || val === undefined || isNaN(val)) return "-";
+      if (isCurrency) {
+        return "$" + val.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+      }
+      return val % 1 === 0 ? val.toLocaleString("en-US") : val.toFixed(2);
+    };
+
+    let displayResult = null;
+    const nums = getNumericValues();
+
+    if (calcType === "sum") {
+      const sum = nums.reduce((acc, v) => acc + v, 0);
+      displayResult = `Sum: ${formatNumResult(sum)}`;
+    } else if (calcType === "avg") {
+      const avg = nums.length > 0 ? nums.reduce((acc, v) => acc + v, 0) / nums.length : 0;
+      displayResult = `Avg: ${formatNumResult(avg)}`;
+    } else if (calcType === "min") {
+      const min = nums.length > 0 ? Math.min(...nums) : 0;
+      displayResult = `Min: ${formatNumResult(min)}`;
+    } else if (calcType === "max") {
+      const max = nums.length > 0 ? Math.max(...nums) : 0;
+      displayResult = `Max: ${formatNumResult(max)}`;
+    } else if (calcType === "count") {
+      displayResult = `Count: ${nums.length}`;
+    }
+
+    return (
+      <Dropdown align="end" className="d-inline-block">
+        <Dropdown.Toggle
+          as="button"
+          className={`btn btn-link text-decoration-none p-0 border-0 shadow-none d-flex align-items-center gap-1 cursor-pointer group-footer-calc-btn ${calcType !== "none" ? "has-calc" : ""}`}
+          style={{ fontSize: "11.5px", fontWeight: calcType !== "none" ? "700" : "500" }}
+        >
+          {calcType !== "none" ? (
+            <span className="bg-white border text-slate-800 px-1.5 py-0.5 rounded shadow-sm d-flex align-items-center gap-1" style={{ fontSize: "11px" }}>
+              {displayResult}
+              <ChevronDown size={10} className="text-slate-400 ms-0.5" />
+            </span>
+          ) : (
+            <span className="text-slate-400 hover-text-slate-700 d-flex align-items-center gap-1 py-0.5 px-1" style={{ fontSize: "11px" }}>
+              Calculate <ChevronDown size={10} className="ms-0.5" />
+            </span>
+          )}
+        </Dropdown.Toggle>
+        <Dropdown.Menu
+          className="shadow-lg border-0 py-2 px-1 bg-white"
+          style={{
+            minWidth: "165px",
+            zIndex: 99999,
+            backgroundColor: "#ffffff",
+            background: "#ffffff",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.22)",
+            opacity: 1
+          }}
+          popperConfig={{ strategy: "fixed" }}
+        >
+          <div className="px-2 pb-1 mb-1 border-bottom text-xs font-bold text-slate-400 uppercase tracking-wider" style={{ fontSize: "10px" }}>
+            CALCULATE
+          </div>
+          {isNumericField && (
+            <>
+              <Dropdown.Item
+                onClick={() => handleSetCalculation(fieldId, "sum")}
+                className={`text-xs py-1.5 px-2.5 d-flex align-items-center justify-content-between rounded mb-0.5 ${calcType === "sum" ? "fw-bold text-primary bg-primary-subtle" : ""}`}
+              >
+                <span>∑ Sum</span>
+                {calcType === "sum" && <Check size={12} />}
+              </Dropdown.Item>
+              <Dropdown.Item
+                onClick={() => handleSetCalculation(fieldId, "avg")}
+                className={`text-xs py-1.5 px-2.5 d-flex align-items-center justify-content-between rounded mb-0.5 ${calcType === "avg" ? "fw-bold text-primary bg-primary-subtle" : ""}`}
+              >
+                <span>x̄ Average</span>
+                {calcType === "avg" && <Check size={12} />}
+              </Dropdown.Item>
+              <Dropdown.Item
+                onClick={() => handleSetCalculation(fieldId, "min")}
+                className={`text-xs py-1.5 px-2.5 d-flex align-items-center justify-content-between rounded mb-0.5 ${calcType === "min" ? "fw-bold text-primary bg-primary-subtle" : ""}`}
+              >
+                <span>↓ Min</span>
+                {calcType === "min" && <Check size={12} />}
+              </Dropdown.Item>
+              <Dropdown.Item
+                onClick={() => handleSetCalculation(fieldId, "max")}
+                className={`text-xs py-1.5 px-2.5 d-flex align-items-center justify-content-between rounded mb-0.5 ${calcType === "max" ? "fw-bold text-primary bg-primary-subtle" : ""}`}
+              >
+                <span>↑ Max</span>
+                {calcType === "max" && <Check size={12} />}
+              </Dropdown.Item>
+            </>
+          )}
+          <Dropdown.Item
+            onClick={() => handleSetCalculation(fieldId, "count")}
+            className={`text-xs py-1.5 px-2.5 d-flex align-items-center justify-content-between rounded ${calcType === "count" ? "fw-bold text-primary bg-primary-subtle" : ""}`}
+          >
+            <span>123 Count</span>
+            {calcType === "count" && <Check size={12} />}
+          </Dropdown.Item>
+          {calcType !== "none" && (
+            <>
+              <Dropdown.Divider className="my-1" />
+              <Dropdown.Item
+                onClick={() => handleSetCalculation(fieldId, "none")}
+                className="text-xs text-muted py-1 px-2.5 rounded"
+              >
+                None (Clear)
+              </Dropdown.Item>
+            </>
+          )}
+        </Dropdown.Menu>
+      </Dropdown>
+    );
+  };
 
   // List View Drag & Drop State
   const [draggedTaskId, setDraggedTaskId] = useState(null);
@@ -3934,10 +4171,12 @@ const BoardDetailPage = () => {
                           );
                         })}
 
-                      {/* Inline Add Task Builder Row */}
+                      {/* ClickUp-style Add Task & Column Calculation Footer Row */}
                       {defaultGroupId && (
-                        <tr>
-                          <td colSpan="8" className="py-1">
+                        <tr className="workspace-group-tfoot workspace-add-task-row">
+                          <td className="zbot-sticky-col-1" />
+                          <td className="zbot-sticky-col-2" />
+                          <td className="zbot-sticky-col-3" style={{ minWidth: "350px" }}>
                             {inlineTaskBuilders[statusKey]?.active ? (
                               <div className="zbot-inline-builder-row">
                                 <span className="task-complete-dot me-1" style={{ borderColor: "#8c9baf", cursor: "default" }} />
@@ -4087,6 +4326,33 @@ const BoardDetailPage = () => {
                               </div>
                             )}
                           </td>
+                          {!isColHidden("assignee") && (
+                            <td style={{ minWidth: "120px" }} className="px-2 py-1 align-middle">
+                              {renderColumnCalculationCell("assignee", statusTasks)}
+                            </td>
+                          )}
+                          {!isColHidden("due_date") && (
+                            <td style={{ minWidth: "110px" }} className="px-2 py-1 align-middle">
+                              {renderColumnCalculationCell("due_date", statusTasks)}
+                            </td>
+                          )}
+                          {!isColHidden("priority") && (
+                            <td style={{ minWidth: "90px" }} className="px-2 py-1 align-middle">
+                              {renderColumnCalculationCell("priority", statusTasks)}
+                            </td>
+                          )}
+                          {!isColHidden("status") && (
+                            <td style={{ minWidth: "120px" }} className="px-2 py-1 align-middle">
+                              {renderColumnCalculationCell("status", statusTasks)}
+                            </td>
+                          )}
+                          {boardCustomFields.filter(f => !isColHidden(f.id)).map(field => (
+                            <td key={`calc_${field.id}`} style={{ width: "140px", minWidth: "140px", maxWidth: "180px" }} className="px-2 py-1 align-middle">
+                              {renderColumnCalculationCell(field, statusTasks)}
+                            </td>
+                          ))}
+                          <td style={{ minWidth: "80px" }} />
+                          <td style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }} className="zbot-sticky-col-right" />
                         </tr>
                       )}
                     </tbody>
@@ -5404,8 +5670,21 @@ const BoardDetailPage = () => {
           />
         );
       case "number":
-      case "currency":
-      case "money":
+        if (field.name?.includes("$") || field.name?.toLowerCase().includes("usd") || field.name?.toLowerCase().includes("dollar") || field.name?.toLowerCase().includes("budget")) {
+          return (
+            <CustomFieldCurrencyInput
+              initialValue={value}
+              onSave={(newVal) => {
+                patchTaskInState(task.id, (t) => {
+                  const updated = { ...(t.custom_field_values || {}), [field.id]: newVal };
+                  return { ...t, custom_field_values: updated };
+                });
+                handleUpdateValue(newVal);
+              }}
+              placeholder="$0.00"
+            />
+          );
+        }
         return (
           <CustomFieldNumberInput
             initialValue={value}
@@ -5417,6 +5696,21 @@ const BoardDetailPage = () => {
               handleUpdateValue(newVal);
             }}
             placeholder="-"
+          />
+        );
+      case "currency":
+      case "money":
+        return (
+          <CustomFieldCurrencyInput
+            initialValue={value}
+            onSave={(newVal) => {
+              patchTaskInState(task.id, (t) => {
+                const updated = { ...(t.custom_field_values || {}), [field.id]: newVal };
+                return { ...t, custom_field_values: updated };
+              });
+              handleUpdateValue(newVal);
+            }}
+            placeholder="$0.00"
           />
         );
       case "checkbox":

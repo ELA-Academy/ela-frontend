@@ -1,4 +1,19 @@
-/* === Boards Workspace CSS Style === */
+/* Group Footer Column Calculations - Hidden until bottom line is hovered */
+.workspace-add-task-row .group-footer-calc-btn,
+.workspace-group-tfoot .group-footer-calc-btn {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  transition: opacity 0.15s ease-in-out, visibility 0.15s ease-in-out;
+}
+.workspace-add-task-row:hover .group-footer-calc-btn,
+.workspace-group-tfoot:hover .group-footer-calc-btn,
+tr.workspace-add-task-row:hover .group-footer-calc-btn,
+.group-footer-calc-btn.has-calc,
+.group-footer-calc-btn.show,
+.group-footer-calc-btn:focus-within {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
 
 /* Zbot Sticky Columns for List View (3 sticky columns) */
 .zbot-sticky-col-1 {

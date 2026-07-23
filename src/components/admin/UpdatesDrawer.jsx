@@ -144,6 +144,52 @@ const DrawerCustomFieldNumberInput = ({ initialValue, onSave, className, placeho
   );
 };
 
+const formatCurrencyVal = (v) => {
+  if (v === undefined || v === null || v === "") return "";
+  const str = String(v).trim();
+  if (str.startsWith("$")) return str;
+  const cleanStr = str.replace(/[^0-9.]/g, "");
+  if (!cleanStr) return "";
+  const num = parseFloat(cleanStr);
+  if (isNaN(num)) return "";
+  return "$" + num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+};
+
+const DrawerCustomFieldCurrencyInput = ({ initialValue, onSave, className, placeholder }) => {
+  const [val, setVal] = useState(() => formatCurrencyVal(initialValue));
+  const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    setVal(formatCurrencyVal(initialValue));
+  }, [initialValue]);
+
+  const handleBlur = () => {
+    setIsEditing(false);
+    const formatted = formatCurrencyVal(val);
+    setVal(formatted);
+    if (formatted !== formatCurrencyVal(initialValue)) {
+      onSave(formatted);
+    }
+  };
+
+  return (
+    <input
+      type="text"
+      className={className}
+      value={isEditing ? val : (val || "")}
+      onFocus={() => setIsEditing(true)}
+      onChange={(e) => setVal(e.target.value)}
+      onBlur={handleBlur}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.target.blur();
+        }
+      }}
+      placeholder={placeholder || "$0.00"}
+    />
+  );
+};
+
 const UpdatesDrawer = ({
   taskId,
   task,
@@ -339,14 +385,32 @@ const UpdatesDrawer = ({
           />
         );
       case "number":
-      case "currency":
-      case "money":
+        if (field.name?.includes("$") || field.name?.toLowerCase().includes("usd") || field.name?.toLowerCase().includes("dollar") || field.name?.toLowerCase().includes("budget")) {
+          return (
+            <DrawerCustomFieldCurrencyInput
+              className="form-control form-control-sm text-xs bg-light border-0"
+              initialValue={value}
+              onSave={onChange}
+              placeholder="$0.00"
+            />
+          );
+        }
         return (
           <DrawerCustomFieldNumberInput
             className="form-control form-control-sm text-xs bg-light border-0"
             initialValue={value}
             onSave={onChange}
             placeholder="-"
+          />
+        );
+      case "currency":
+      case "money":
+        return (
+          <DrawerCustomFieldCurrencyInput
+            className="form-control form-control-sm text-xs bg-light border-0"
+            initialValue={value}
+            onSave={onChange}
+            placeholder="$0.00"
           />
         );
       case "checkbox":
@@ -597,7 +661,7 @@ const UpdatesDrawer = ({
             ) : (
               <div
                 className="update-content text-slate-700 ps-5 mb-2"
-                style={{ fontSize: "13px" }}
+                style={{ fontSize: "13px", wordBreak: "break-word", overflowWrap: "anywhere" }}
               >
                 {renderParsedContent(currentComment.content || currentComment.message)}
               </div>
@@ -2246,13 +2310,30 @@ const UpdatesDrawer = ({
 
   const renderParsedContent = (text) => {
     if (!text) return "";
-    const parts = text.split(/(@[a-zA-Z0-9\s]+ Department|@[a-zA-Z0-9\s\-_]+)/g);
+    const parts = text.split(/(@[a-zA-Z0-9\s]+ Department|@[a-zA-Z0-9\s\-_]+|https?:\/\/[^\s<]+|www\.[^\s<]+)/g);
     return parts.map((part, idx) => {
+      if (!part) return null;
       if (part.startsWith("@")) {
         return (
           <span key={idx} className="fw-semibold text-indigo-600 px-1 py-0.5 rounded bg-indigo-50" style={{ fontSize: "inherit" }}>
             {part}
           </span>
+        );
+      }
+      if (part.match(/^https?:\/\//i) || part.match(/^www\./i)) {
+        const href = part.match(/^www\./i) ? `https://${part}` : part;
+        return (
+          <a
+            key={idx}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-indigo-600 fw-semibold text-decoration-underline"
+            style={{ wordBreak: "break-all" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {part} 🔗
+          </a>
         );
       }
       return part;
