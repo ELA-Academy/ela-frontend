@@ -857,7 +857,7 @@ const UpdatesDrawer = ({
               disabled={savingEditField}
               style={{ borderRadius: "6px" }}
             >
-              <Trash size={14} />
+              {savingEditField ? <Spinner animation="border" size="sm" /> : <Trash size={14} />}
             </Button>
             <div className="d-flex gap-1.5">
               <Button

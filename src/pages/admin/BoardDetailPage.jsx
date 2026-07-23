@@ -5182,8 +5182,7 @@ const BoardDetailPage = () => {
   };
 
   const handleHideColumn = (fieldId) => {
-    setBoardCustomFields(prev => prev.filter(f => f.id !== fieldId));
-    toast.success("Column hidden. You can add it back from the 'Fields' side panel.");
+    toggleHideColumn(fieldId);
   };
 
   const handleDuplicateColumn = async (field) => {
@@ -6581,7 +6580,7 @@ const BoardDetailPage = () => {
                 <div className="px-2 pb-1.5 mb-1 border-bottom text-xs font-bold text-slate-500 uppercase tracking-wider">
                   Show / Hide Fields
                 </div>
-                <div className="d-flex flex-column gap-1 max-h-[260px] overflow-y-auto px-1">
+                <div className="d-flex flex-column gap-1 max-h-[260px] overflow-y-auto px-1" onClick={(e) => e.stopPropagation()}>
                   <Form.Check
                     type="checkbox"
                     id="col-toggle-assignee"
