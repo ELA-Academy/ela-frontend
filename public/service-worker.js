@@ -1,8 +1,9 @@
-const CACHE_NAME = "ela-academy-cache-v2";
+const CACHE_NAME = "ela-academy-cache-v3";
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
   "/vite.svg",
+  "/images/ela-app-logo.png",
   "/images/ELA-logo.png",
   "/images/icon-192.png",
   "/images/icon-512.png"

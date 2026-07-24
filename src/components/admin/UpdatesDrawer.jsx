@@ -1045,8 +1045,24 @@ const UpdatesDrawer = ({
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [hideEmptyFields, setHideEmptyFields] = useState(false);
 
-  // Editor states
-  const [content, setContent] = useState("");
+  // Editor states with draft persistence
+  const [content, setContent] = useState(() => {
+    try {
+      return sessionStorage.getItem(`draft_comment_${taskId}`) || "";
+    } catch {
+      return "";
+    }
+  });
+
+  useEffect(() => {
+    if (taskId) {
+      try {
+        const savedDraft = sessionStorage.getItem(`draft_comment_${taskId}`);
+        setContent(savedDraft || "");
+      } catch {}
+    }
+  }, [taskId]);
+
   const [trackedMentions, setTrackedMentions] = useState([]); // [{type, id, label}]
   const [activeReactCommentId, setActiveReactCommentId] = useState(null);
   const [showInputEmojiPicker, setShowInputEmojiPicker] = useState(false);
@@ -1268,6 +1284,14 @@ const UpdatesDrawer = ({
   const replyTextareaRef = useRef(null);
   const fileInputRef = useRef(null);
   const descEditorRef = useRef(null);
+  const titleTextareaRef = useRef(null);
+
+  useEffect(() => {
+    if (titleTextareaRef.current) {
+      titleTextareaRef.current.style.height = "auto";
+      titleTextareaRef.current.style.height = `${titleTextareaRef.current.scrollHeight}px`;
+    }
+  }, [taskTitle, task?.id, task?.title]);
 
   useEffect(() => {
     if (editingDesc && descEditorRef.current) {
@@ -1960,6 +1984,9 @@ const UpdatesDrawer = ({
   const handleTextareaChange = (e) => {
     const value = e.target.value;
     setContent(value);
+    try {
+      sessionStorage.setItem(`draft_comment_${taskId}`, value);
+    } catch {}
 
     // Parse for @ trigger
     const cursor = e.target.selectionStart;
@@ -1998,6 +2025,9 @@ const UpdatesDrawer = ({
       
       const newContent = content.slice(0, lastAtIdx) + mentionText + textAfterCursor;
       setContent(newContent);
+      try {
+        sessionStorage.setItem(`draft_comment_${taskId}`, newContent);
+      } catch {}
       
       setTrackedMentions((prev) => [
         ...prev.filter((m) => m.id !== suggestion.id || m.type !== suggestion.type),
@@ -2007,9 +2037,9 @@ const UpdatesDrawer = ({
       setShowAutocomplete(false);
       
       setTimeout(() => {
-        textareaRef.current.focus();
+        textareaRef.current?.focus();
         const newCursorPos = lastAtIdx + mentionText.length;
-        textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
+        textareaRef.current?.setSelectionRange(newCursorPos, newCursorPos);
       }, 50);
     }
   };
@@ -2053,6 +2083,9 @@ const UpdatesDrawer = ({
       
       setUpdates((prev) => [response, ...prev]);
       setContent("");
+      try {
+        sessionStorage.removeItem(`draft_comment_${taskId}`);
+      } catch {}
       setTrackedMentions([]);
     } catch (err) {
       setError("Failed to post task update discussion.");
@@ -2310,33 +2343,56 @@ const UpdatesDrawer = ({
 
   const renderParsedContent = (text) => {
     if (!text) return "";
-    const parts = text.split(/(@[a-zA-Z0-9\s]+ Department|@[a-zA-Z0-9\s\-_]+|https?:\/\/[^\s<]+|www\.[^\s<]+)/g);
-    return parts.map((part, idx) => {
-      if (!part) return null;
-      if (part.startsWith("@")) {
-        return (
-          <span key={idx} className="fw-semibold text-indigo-600 px-1 py-0.5 rounded bg-indigo-50" style={{ fontSize: "inherit" }}>
-            {part}
-          </span>
-        );
-      }
-      if (part.match(/^https?:\/\//i) || part.match(/^www\./i)) {
-        const href = part.match(/^www\./i) ? `https://${part}` : part;
-        return (
-          <a
-            key={idx}
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-indigo-600 fw-semibold text-decoration-underline"
-            style={{ wordBreak: "break-all" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {part} 🔗
-          </a>
-        );
-      }
-      return part;
+
+    const containsHtml = /<[a-z][\s\S]*>/i.test(text);
+
+    if (containsHtml) {
+      const sanitized = DOMPurify.sanitize(text, {
+        ADD_ATTR: ['target', 'style', 'rel', 'class']
+      });
+      return (
+        <span
+          dangerouslySetInnerHTML={{ __html: sanitized }}
+          style={{ display: "inline", wordBreak: "break-word" }}
+        />
+      );
+    }
+
+    const lines = String(text).split("\n");
+    return lines.map((line, lIdx) => {
+      const parts = line.split(/(@[a-zA-Z0-9\s]+ Department|@[a-zA-Z0-9\s\-_]+|https?:\/\/[^\s<]+|www\.[^\s<]+)/g);
+      return (
+        <React.Fragment key={lIdx}>
+          {lIdx > 0 && <br />}
+          {parts.map((part, idx) => {
+            if (!part) return null;
+            if (part.startsWith("@")) {
+              return (
+                <span key={idx} className="fw-semibold text-indigo-600 px-1 py-0.5 rounded bg-indigo-50" style={{ fontSize: "inherit" }}>
+                  {part}
+                </span>
+              );
+            }
+            if (part.match(/^https?:\/\//i) || part.match(/^www\./i)) {
+              const href = part.match(/^www\./i) ? `https://${part}` : part;
+              return (
+                <a
+                  key={idx}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-indigo-600 fw-semibold text-decoration-underline"
+                  style={{ wordBreak: "break-all" }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {part} 🔗
+                </a>
+              );
+            }
+            return part;
+          })}
+        </React.Fragment>
+      );
     });
   };
 
@@ -2396,38 +2452,7 @@ const UpdatesDrawer = ({
     <>
       <div className="updates-drawer-overlay" onClick={onClose}></div>
       <div className="updates-drawer">
-        <div className="drawer-header">
-          <div className="drawer-header-left">
-            {/* Breadcrumbs */}
-            {(() => {
-              const parentTask = allTasks.find(t => t.id === task.parent_task_id);
-              return (
-                <div className="cu-breadcrumbs">
-                  <span className="cu-breadcrumb-item">{boardName || "Board"}</span>
-                  <span className="cu-breadcrumb-separator">/</span>
-                  <span className="cu-breadcrumb-item">{groupName || "List"}</span>
-                  {parentTask && (
-                    <>
-                      <span className="cu-breadcrumb-separator">/</span>
-                      <span className="cu-breadcrumb-item text-muted">Subtask of: {parentTask.title}</span>
-                    </>
-                  )}
-                </div>
-              );
-            })()}
-
-            <input
-              className="drawer-title-input"
-              value={taskTitle}
-              onChange={(e) => setTaskTitle(e.target.value)}
-              onBlur={handleTitleBlur}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") e.currentTarget.blur();
-              }}
-              placeholder="Task name"
-            />
-          </div>
-
+        <div className="drawer-header" style={{ padding: "12px 24px", minHeight: "48px", display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
           <div className="drawer-header-right">
             <button
               className={`drawer-watcher-btn ${isWatcher ? "active" : ""}`}
@@ -2447,8 +2472,64 @@ const UpdatesDrawer = ({
           {error && <Alert variant="danger" dismissible onClose={() => setError("")} className="m-3">{error}</Alert>}
 
           <div className="task-detail-split">
-            {/* Left Panel: Zbot-style task details */}
+            {/* Left Panel: Task details */}
             <section className="task-detail-main">
+
+              {/* Breadcrumbs & Title area inside Left Panel */}
+              <div className="task-title-wrapper mb-3">
+                {(() => {
+                  const parentTask = allTasks.find(t => t.id === task.parent_task_id);
+                  return (
+                    <div className="cu-breadcrumbs mb-1">
+                      <span className="cu-breadcrumb-item">{boardName || "Board"}</span>
+                      <span className="cu-breadcrumb-separator">/</span>
+                      <span className="cu-breadcrumb-item">{groupName || "List"}</span>
+                      {parentTask && (
+                        <>
+                          <span className="cu-breadcrumb-separator">/</span>
+                          <span className="cu-breadcrumb-item text-muted">Subtask of: {parentTask.title}</span>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                <textarea
+                  ref={titleTextareaRef}
+                  className="drawer-title-input"
+                  value={taskTitle}
+                  onChange={(e) => {
+                    setTaskTitle(e.target.value);
+                    e.target.style.height = 'auto';
+                    e.target.style.height = `${e.target.scrollHeight}px`;
+                  }}
+                  onBlur={handleTitleBlur}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  placeholder="Task name"
+                  rows={1}
+                  style={{
+                    width: "100%",
+                    resize: "none",
+                    overflow: "hidden",
+                    wordBreak: "break-word",
+                    whiteSpace: "pre-wrap",
+                    lineHeight: "1.35",
+                    fontWeight: 750,
+                    fontSize: "1.4rem",
+                    border: "none",
+                    outline: "none",
+                    background: "transparent",
+                    color: "#0f172a",
+                    padding: "2px 0",
+                    display: "block"
+                  }}
+                />
+              </div>
 
               {/* Zbot-style compact metadata rows */}
               <div className="cu-meta-grid">
