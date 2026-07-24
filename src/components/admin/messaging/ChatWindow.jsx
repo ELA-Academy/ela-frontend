@@ -774,6 +774,19 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
     return () => document.removeEventListener("mousedown", handleGlobalClick);
   }, [activeReactMsgId]);
 
+  useEffect(() => {
+    const handleCopyEvent = (e) => {
+      const selection = window.getSelection();
+      const selectedText = selection ? selection.toString() : "";
+      if (selectedText && selectedText.trim().length > 0) {
+        e.clipboardData.setData("text/plain", selectedText);
+        e.preventDefault();
+      }
+    };
+    document.addEventListener("copy", handleCopyEvent);
+    return () => document.removeEventListener("copy", handleCopyEvent);
+  }, []);
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim() && pendingAttachments.length === 0) return;
@@ -999,20 +1012,36 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
   const completedTasks = tasks.filter((t) => t.status === "Done");
 
   const [showRenameChannelModal, setShowRenameChannelModal] = useState(false);
+  const [renameTargetConvoId, setRenameTargetConvoId] = useState(null);
   const [renameChannelText, setRenameChannelText] = useState("");
   const [renamingChannel, setRenamingChannel] = useState(false);
+
+  useEffect(() => {
+    const handleOpenRename = (e) => {
+      const targetConvo = e.detail;
+      if (targetConvo) {
+        setRenameTargetConvoId(targetConvo.id);
+        setRenameChannelText(targetConvo.title || targetConvo.name || chatTitle);
+        setShowRenameChannelModal(true);
+      }
+    };
+    window.addEventListener("open-rename-channel", handleOpenRename);
+    return () => window.removeEventListener("open-rename-channel", handleOpenRename);
+  }, [chatTitle]);
 
   const handleRenameChannel = async (e) => {
     e.preventDefault();
     if (!renameChannelText.trim()) return;
+    const targetId = renameTargetConvoId || conversationId;
     try {
       setRenamingChannel(true);
-      await api.put(`/messaging/channels/${conversationId}`, { name: renameChannelText.trim() });
+      await api.put(`/messaging/channels/${targetId}`, { name: renameChannelText.trim() });
       toast.success("Channel renamed successfully!");
       setShowRenameChannelModal(false);
+      setRenameTargetConvoId(null);
       if (setConversations) {
         setConversations((prev) =>
-          prev.map((c) => (c.id === conversationId ? { ...c, title: renameChannelText.trim(), name: renameChannelText.trim() } : c))
+          prev.map((c) => (c.id === targetId ? { ...c, title: renameChannelText.trim(), name: renameChannelText.trim() } : c))
         );
       }
     } catch (err) {
@@ -1798,13 +1827,13 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
                 <Link2 size={13} />
                 <span>Copy link</span>
               </div>
-              <span className="shortcut">C</span>
             </div>
             <div className="zbot-context-menu-item" onClick={() => handleCopyMessageText(activeMsgMenu.message)}>
               <div className="d-flex align-items-center gap-2">
                 <Copy size={13} />
                 <span>Copy message</span>
               </div>
+              <span className="shortcut">C</span>
             </div>
             
             <div className="zbot-context-menu-divider" />

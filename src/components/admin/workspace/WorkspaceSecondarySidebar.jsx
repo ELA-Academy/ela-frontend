@@ -476,6 +476,13 @@ const WorkspaceSecondarySidebar = ({
       const conversation = data;
       return (
         <div className="clickup-menu">
+          <div className="clickup-menu-item" onClick={() => {
+            setMenuConfig(null);
+            window.dispatchEvent(new CustomEvent("open-rename-channel", { detail: conversation }));
+          }}>
+            <span className="clickup-menu-icon"><Edit3 size={13} /></span>
+            <span>Edit channel name</span>
+          </div>
           <div className="clickup-menu-item" onClick={() => { setMenuConfig(null); handleMarkUnread(conversation.id); }}>
             <span className="clickup-menu-icon"><Mail size={13} /></span>
             <span>Mark as unread</span>
