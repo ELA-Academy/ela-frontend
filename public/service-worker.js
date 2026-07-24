@@ -1,4 +1,4 @@
-const CACHE_NAME = "ela-academy-cache-v3";
+const CACHE_NAME = "ela-academy-cache-v4";
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
@@ -97,8 +97,8 @@ self.addEventListener("push", (event) => {
   const data = event.data.json();
   const options = {
     body: data.body,
-    icon: "/images/ELA-logo.png",
-    badge: "/images/ELA-logo.png",
+    icon: "/images/ela-app-logo.png",
+    badge: "/images/ela-app-logo.png",
     data: {
       url: data.url, // The full URL sent from the backend
     },
