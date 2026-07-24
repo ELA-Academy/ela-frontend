@@ -81,6 +81,7 @@ const ALL_AVAILABLE_VIEWS = [
   { type: "files", label: "Files", icon: Folder, desc: "File folder storage" },
   { type: "docs", label: "Doc", icon: FileText, desc: "Wiki pages" },
   { type: "form", label: "Form", icon: ClipboardCopy, desc: "Survey sheets" },
+  { type: "import_spreadsheet", label: "Import Spreadsheet", icon: Upload, desc: "Excel / CSV importer" },
   { type: "timesheets", label: "Timesheets", icon: Clock, desc: "Time tracking log" },
   { type: "custom_fields", label: "Custom Fields", icon: Layers, desc: "Field manager" },
   { type: "milestones", label: "Milestones", icon: Target, desc: "Project milestones" },
@@ -104,6 +105,7 @@ const getViewIcon = (type) => {
     case "files": return Folder;
     case "docs": return BookOpen;
     case "form": return ClipboardCopy;
+    case "import_spreadsheet": return Upload;
     case "timesheets": return Clock;
     case "custom_fields": return Layers;
     case "milestones": return Target;
@@ -753,14 +755,14 @@ const BoardDetailPage = () => {
     }
   };
 
-  const CLICKUP_PALETTE_COLORS = [
+  const WORKSPACE_PALETTE_COLORS = [
     "#a855f7", "#818cf8", "#38bdf8", "#2dd4bf", "#4ade80", "#facc15", "#fb923c",
     "#6366f1", "#2563eb", "#0ea5e9", "#0d9488", "#16a34a", "#eab308", "#ea580c",
     "#f43f5e", "#ec4899", "#d946ef", "#d97706", "#78716c", "#94a3b8", "#ef4444",
     "#be185d", "#8b5cf6", "#7c2d12", "#1e293b", "#64748b"
   ];
 
-  const getClickUpOptionStyle = (colorHex) => {
+  const getWorkspaceOptionStyle = (colorHex) => {
     if (!colorHex) return { backgroundColor: "#f1f5f9", color: "#334155", borderColor: "#cbd5e1" };
     let hex = colorHex.replace("#", "");
     if (hex.length === 3) hex = hex.split("").map((c) => c + c).join("");
@@ -1271,6 +1273,10 @@ const BoardDetailPage = () => {
   };
 
   const handleAddNewView = (viewType) => {
+    if (viewType === "import_spreadsheet") {
+      setShowSpreadsheetImportModal(true);
+      return;
+    }
     const template = ALL_AVAILABLE_VIEWS.find(v => v.type === viewType);
     if (!template) return;
     const newKey = `${viewType}_${Date.now()}`;
@@ -4171,7 +4177,7 @@ const BoardDetailPage = () => {
                           );
                         })}
 
-                      {/* ClickUp-style Add Task & Column Calculation Footer Row */}
+                      {/* Inline Add Task & Column Calculation Footer Row */}
                       {defaultGroupId && (
                         <tr className="workspace-group-tfoot workspace-add-task-row">
                           <td className="zbot-sticky-col-1" />
@@ -4364,9 +4370,9 @@ const BoardDetailPage = () => {
         );
       })}
 
-        {/* ClickUp-style inline new status creator */}
+        {/* Workspace inline new status creator */}
         {showInlineStatusCreator ? (
-          <div className="clickup-inline-status-builder">
+          <div className="workspace-inline-status-builder">
             <OverlayTrigger
               trigger="click"
               placement="bottom"
@@ -4374,7 +4380,7 @@ const BoardDetailPage = () => {
               overlay={
                 <Popover id="inline-status-color-picker" className="border-0 shadow-sm rounded-3" style={{ minWidth: "auto" }}>
                   <Popover.Body className="p-2">
-                    <div className="clickup-color-picker-row">
+                    <div className="workspace-color-picker-row">
                       {BOARD_COLORS.map((c) => (
                         <button
                           key={c}
@@ -4432,7 +4438,7 @@ const BoardDetailPage = () => {
         ) : (
           <button
             type="button"
-            className="clickup-new-status-btn"
+            className="workspace-new-status-btn"
             onClick={() => {
               setShowInlineStatusCreator(true);
               setInlineStatusName("");
@@ -5736,13 +5742,13 @@ const BoardDetailPage = () => {
         const optionColors = field.config?.optionColors || {};
         const currentVal = value || "";
         const optColor = optionColors[currentVal] || "#64748b";
-        const pillStyle = getClickUpOptionStyle(optColor);
+        const pillStyle = getWorkspaceOptionStyle(optColor);
 
         return (
           <Dropdown align="end" className="w-100">
             <Dropdown.Toggle as="div" className="cursor-pointer d-flex align-items-center w-100">
               {currentVal ? (
-                <span className="clickup-dropdown-pill" style={pillStyle}>
+                <span className="workspace-dropdown-pill" style={pillStyle}>
                   {currentVal}
                   <ChevronDown size={10} className="ms-1" />
                 </span>
@@ -5768,14 +5774,14 @@ const BoardDetailPage = () => {
                 .filter((opt) => opt.toLowerCase().includes((dropdownSearchQuery || "").toLowerCase()))
                 .map((opt, idx) => {
                   const color = optionColors[opt] || "#64748b";
-                  const optStyle = getClickUpOptionStyle(color);
+                  const optStyle = getWorkspaceOptionStyle(color);
                   return (
                     <Dropdown.Item
                       key={idx}
                       onClick={() => handleUpdateValue(opt)}
                       className="py-1 px-1 my-0.5 rounded border-0 bg-transparent"
                     >
-                      <div className="clickup-dropdown-option-item" style={optStyle}>
+                      <div className="workspace-dropdown-option-item" style={optStyle}>
                         <span className="text-slate-400 font-bold" style={{ fontSize: "10px" }}>::</span>
                         <span>{opt}</span>
                       </div>
@@ -5808,9 +5814,9 @@ const BoardDetailPage = () => {
               {selected.length === 0 ? <span className="text-slate-300 px-1 font-medium">-</span> : (
                 selected.map((opt, i) => {
                   const color = optionColors[opt] || "#64748b";
-                  const optStyle = getClickUpOptionStyle(color);
+                  const optStyle = getWorkspaceOptionStyle(color);
                   return (
-                    <span key={i} className="clickup-dropdown-pill" style={optStyle}>
+                    <span key={i} className="workspace-dropdown-pill" style={optStyle}>
                       {opt}
                     </span>
                   );
@@ -5832,7 +5838,7 @@ const BoardDetailPage = () => {
                 .filter((opt) => opt.toLowerCase().includes((dropdownSearchQuery || "").toLowerCase()))
                 .map((opt, idx) => {
                   const color = optionColors[opt] || "#64748b";
-                  const optStyle = getClickUpOptionStyle(color);
+                  const optStyle = getWorkspaceOptionStyle(color);
                   const isChecked = selected.includes(opt);
                   return (
                     <div
@@ -5840,7 +5846,7 @@ const BoardDetailPage = () => {
                       onClick={() => toggleOption(opt)}
                       className="d-flex align-items-center justify-content-between py-1 px-1 my-0.5 rounded cursor-pointer hover:bg-slate-50"
                     >
-                      <div className="clickup-dropdown-option-item flex-grow-1 me-2" style={optStyle}>
+                      <div className="workspace-dropdown-option-item flex-grow-1 me-2" style={optStyle}>
                         <span className="text-slate-400 font-bold" style={{ fontSize: "10px" }}>::</span>
                         <span>{opt}</span>
                       </div>
@@ -6176,11 +6182,11 @@ const BoardDetailPage = () => {
                           <Popover id={`opt-color-popover-${idx}`} className="shadow-lg border-0 p-2" style={{ zIndex: 2300 }}>
                             <Popover.Body className="p-1">
                               <div className="text-xs font-bold text-slate-500 mb-1 px-1">Option Color</div>
-                              <div className="clickup-color-swatch-grid">
-                                {CLICKUP_PALETTE_COLORS.map((c) => (
+                              <div className="workspace-color-swatch-grid">
+                                {WORKSPACE_PALETTE_COLORS.map((c) => (
                                   <span
                                     key={c}
-                                    className={`clickup-color-swatch ${opt.color === c ? "active" : ""}`}
+                                    className={`workspace-color-swatch ${opt.color === c ? "active" : ""}`}
                                     style={{ backgroundColor: c }}
                                     onClick={() => {
                                       setFieldOptionsList(prev => prev.map((item, i) => i === idx ? { ...item, color: c } : item));
@@ -6742,6 +6748,7 @@ const BoardDetailPage = () => {
                     docs: { bg: "#2563eb", text: "#ffffff", label: "Doc", desc: "Wiki" },
                     board: { bg: "#4f46e5", text: "#ffffff", label: "Board", desc: "Kanban" },
                     form: { bg: "#7c3aed", text: "#ffffff", label: "Form", desc: "Survey" },
+                    import_spreadsheet: { bg: "#059669", text: "#ffffff", label: "Import", desc: "Spreadsheet" },
                     dashboard: { bg: "#db2777", text: "#ffffff", label: "Dashboard", desc: "Report" },
                     table: { bg: "#16a34a", text: "#ffffff", label: "Table", desc: "" },
                     timeline: { bg: "#ea580c", text: "#ffffff", label: "Timeline", desc: "" },

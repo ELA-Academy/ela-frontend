@@ -1,4 +1,44 @@
 /* Group Footer Column Calculations - Hidden until bottom line is hovered */
+.modal-95w {
+  max-width: 95vw !important;
+  width: 95vw !important;
+}
+
+.modal-vh-90 {
+  height: 90vh !important;
+  max-height: 90vh !important;
+}
+
+.modal-vh-90 .modal-content {
+  height: 90vh !important;
+  max-height: 90vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  border-radius: 16px !important;
+  border: none !important;
+  overflow: hidden !important;
+}
+
+.drawer-title-input {
+  width: 100% !important;
+  resize: none !important;
+  overflow: hidden !important;
+  word-break: break-word !important;
+  white-space: pre-wrap !important;
+  line-height: 1.35 !important;
+  font-weight: 750 !important;
+  font-size: 1.35rem !important;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  color: #0f172a !important;
+  padding: 2px 0 !important;
+  display: block !important;
+  min-height: 36px !important;
+  box-sizing: border-box !important;
+}
+
+.workspace-add-task-row .group-footer-calc-btn,
 .workspace-add-task-row .group-footer-calc-btn,
 .workspace-group-tfoot .group-footer-calc-btn {
   opacity: 0 !important;

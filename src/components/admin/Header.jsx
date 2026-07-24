@@ -23,6 +23,7 @@ import {
   Laptop
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import UpdateNotifier from "../common/UpdateNotifier";
 import { useTimer } from "../../context/TimerContext";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../../utils/api";
@@ -494,6 +495,9 @@ const Header = () => {
         )}
 
 
+
+        {/* Auto Update Notification Button */}
+        <UpdateNotifier />
 
         {/* Bell notification button triggers Offcanvas */}
         <div
