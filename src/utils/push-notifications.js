@@ -16,8 +16,6 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 export async function subscribeUser() {
-  // --- THIS IS THE FIX ---
-  // If we've already run this logic, or if push is not supported, stop.
   if (
     isSubscribed ||
     !("serviceWorker" in navigator) ||
@@ -28,21 +26,27 @@ export async function subscribeUser() {
     }
     return;
   }
-  // --- END OF FIX ---
 
   try {
     const registration = await navigator.serviceWorker.register(
       "/service-worker.js"
     );
 
-    // Wait until the service worker is fully active and ready. This is crucial.
+    // Wait until the service worker is fully active and ready.
     await navigator.serviceWorker.ready;
 
     const existingSubscription =
       await registration.pushManager.getSubscription();
     if (existingSubscription) {
-      console.log("User is already subscribed.");
-      isSubscribed = true; // Mark as subscribed and stop.
+      // Re-post to server to ensure backend always has the latest subscription.
+      // This handles cases where the server DB was reset or subscription was lost.
+      try {
+        await api.post("/push/subscribe", existingSubscription);
+      } catch (e) {
+        console.warn("Failed to re-sync push subscription with server:", e);
+      }
+      console.log("User push subscription synced with server.");
+      isSubscribed = true;
       return;
     }
 
@@ -62,8 +66,8 @@ export async function subscribeUser() {
     });
 
     await api.post("/push/subscribe", subscription);
-    console.log("User subscribed successfully.");
-    isSubscribed = true; // Mark as subscribed to prevent re-running.
+    console.log("User subscribed to push notifications successfully.");
+    isSubscribed = true;
   } catch (error) {
     console.error("Failed to subscribe the user: ", error);
   }

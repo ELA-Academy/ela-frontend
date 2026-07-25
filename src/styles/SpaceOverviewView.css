@@ -1,0 +1,71 @@
+/* Space Overview Styling */
+
+.space-overview-container {
+  padding: 8px 4px;
+}
+
+.overview-title {
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+}
+
+/* Calculation Cards Grid */
+.overview-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.overview-stat-card {
+  transition: all 0.2s ease-in-out;
+  min-height: 180px;
+}
+
+.overview-stat-card:hover {
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Hover Action Icons on Top Right of Card */
+.overview-stat-card .card-hover-actions {
+  top: 12px;
+  right: 12px;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.15s ease-in-out;
+  z-index: 10;
+}
+
+.overview-stat-card:hover .card-hover-actions {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Metric Display Big Number */
+.metric-display-container {
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+}
+
+.metric-big-number {
+  letter-spacing: -0.03em;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+/* Built-in Bottom Cards */
+.overview-builtin-card {
+  transition: border-color 0.2s ease;
+}
+
+.bookmark-item-row,
+.doc-item-row,
+.recent-item-row {
+  transition: background-color 0.15s ease;
+}
+
+.truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
