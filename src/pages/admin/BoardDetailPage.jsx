@@ -26,6 +26,7 @@ import CalendarView from "../../components/admin/workspace/CalendarView";
 import GanttView from "../../components/admin/workspace/GanttView";
 import DocsView from "../../components/admin/workspace/DocsView";
 import DashboardView from "../../components/admin/workspace/DashboardView";
+import SpaceOverviewView from "../../components/admin/workspace/SpaceOverviewView";
 import CustomFieldsView from "../../components/admin/workspace/CustomFieldsView";
 import FilesView from "../../components/admin/workspace/FilesView";
 import FormView from "../../components/admin/workspace/FormView";
@@ -1324,6 +1325,25 @@ const BoardDetailPage = () => {
   useEffect(() => {
     fetchWorkspace(true);
   }, [fetchWorkspace]);
+
+  // Sync activeView with URL search params (e.g., ?tab=docs&docId=6)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tabParam = params.get("tab") || params.get("view");
+    if (tabParam) {
+      if (tabParam === "docs" || tabParam === "doc") {
+        setActiveView("docs");
+      } else if (tabParam === "overview") {
+        setActiveView("overview");
+      } else if (tabParam === "list") {
+        setActiveView("list");
+      } else if (tabParam === "board") {
+        setActiveView("board");
+      } else {
+        setActiveView(tabParam);
+      }
+    }
+  }, [location.search]);
 
   useEffect(() => {
     if (currentViewType === "activity") {
@@ -3489,13 +3509,24 @@ const BoardDetailPage = () => {
     );
   };
 
-  const renderOverviewView = () => (
-    <DashboardView
-      board={board}
-      assignees={assignees}
-      onTaskClick={handleTaskClickFromView}
-    />
-  );
+  const renderOverviewView = () => {
+    if (!board?.parent_id) {
+      return (
+        <SpaceOverviewView
+          board={board}
+          boards={boards}
+          assignees={assignees}
+        />
+      );
+    }
+    return (
+      <DashboardView
+        board={board}
+        assignees={assignees}
+        onTaskClick={handleTaskClickFromView}
+      />
+    );
+  };
 
   const renderListView = () => {
     const defaultGroupId = board.groups?.[0]?.id;
