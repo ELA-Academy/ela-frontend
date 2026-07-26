@@ -100,10 +100,10 @@ const UpdateNotifier = () => {
         boxShadow: "0 4px 12px rgba(99, 102, 241, 0.35)",
         zIndex: 1050,
       }}
-      title="A new frontend update has been deployed. Click to restart!"
+      title="New changes deployed. Click to update!"
     >
       {reloading && <RefreshCw size={13} className="spin-icon" />}
-      <span>{reloading ? "Restarting..." : "Restart to Update ➔"}</span>
+      <span>{reloading ? "Updating..." : "New changes deployed ➔"}</span>
     </button>
   );
 };

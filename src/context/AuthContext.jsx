@@ -121,6 +121,40 @@ export const AuthProvider = ({ children }) => {
     }
   }, [isAuthenticated]);
 
+  // Synchronize Desktop PWA App Badge & Browser Tab Title
+  useEffect(() => {
+    if (!isAuthenticated) {
+      if ("clearAppBadge" in navigator) {
+        navigator.clearAppBadge().catch(() => {});
+      }
+      return;
+    }
+
+    const unreadNotifCount = notifications.filter((n) => !n.is_read).length;
+    const totalUnread = unreadNotifCount + unreadMessages;
+
+    // 1. Desktop PWA / Taskbar App Badging API
+    if ("setAppBadge" in navigator) {
+      if (totalUnread > 0) {
+        navigator.setAppBadge(totalUnread).catch((err) => {
+          console.log("Desktop PWA App Badge error:", err);
+        });
+      } else if ("clearAppBadge" in navigator) {
+        navigator.clearAppBadge().catch((err) => {
+          console.log("Desktop PWA App Badge clear error:", err);
+        });
+      }
+    }
+
+    // 2. Browser Tab Title Badge
+    const baseTitle = "ELA Academy Management System";
+    if (totalUnread > 0) {
+      document.title = `(${totalUnread > 99 ? "99+" : totalUnread}) ${baseTitle}`;
+    } else {
+      document.title = baseTitle;
+    }
+  }, [isAuthenticated, notifications, unreadMessages]);
+
   const markAllNotificationsAsRead = async () => {
     try {
       await markAllAsRead();
