@@ -100,10 +100,17 @@ self.addEventListener("push", (event) => {
     icon: "/images/ela-app-logo.png",
     badge: "/images/ela-app-logo.png",
     data: {
-      url: data.url, // The full URL sent from the backend
+      url: data.url,
     },
   };
-  event.waitUntil(self.registration.showNotification(data.title, options));
+
+  const badgePromise = ("setAppBadge" in navigator)
+    ? navigator.setAppBadge(data.unread_count || 1).catch(() => {})
+    : Promise.resolve();
+
+  const notifPromise = self.registration.showNotification(data.title, options);
+
+  event.waitUntil(Promise.all([badgePromise, notifPromise]));
 });
 
 self.addEventListener("notificationclick", (event) => {

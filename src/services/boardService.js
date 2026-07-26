@@ -243,8 +243,12 @@ export const unarchiveBoard = async (boardId) => {
   return response.data;
 };
 
-export const bulkMoveTasks = async (taskIds, targetGroupId) => {
-  const response = await api.post("/boards/tasks/bulk-move", { task_ids: taskIds, target_group_id: targetGroupId });
+export const bulkMoveTasks = async (taskIds, targetGroupId, targetStatus = null) => {
+  const response = await api.post("/boards/tasks/bulk-move", {
+    task_ids: taskIds,
+    target_group_id: targetGroupId,
+    target_status: targetStatus
+  });
   return response.data;
 };
 

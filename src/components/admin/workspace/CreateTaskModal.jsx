@@ -21,19 +21,32 @@ import { useAuth } from "../../../context/AuthContext";
 import SleekAssigneeSelector from "../SleekAssigneeSelector";
 import { toast } from "react-toastify";
 
-// Custom forwardRef component for react-datepicker
-const CustomDateInput = React.forwardRef(({ value, onClick }, ref) => (
+// Custom forwardRef components for react-datepicker
+const CustomStartDateInput = React.forwardRef(({ value, onClick }, ref) => (
   <button
     type="button"
     ref={ref}
     onClick={onClick}
     className="attribute-pill clickable-pill border-0 d-flex align-items-center gap-1"
   >
-    <CalendarCheck size={14} />
-    <span>{value || "+ Due date"}</span>
+    <CalendarCheck size={14} className="text-info" />
+    <span>{value ? `Start: ${value}` : "+ Start date"}</span>
   </button>
 ));
-CustomDateInput.displayName = "CustomDateInput";
+CustomStartDateInput.displayName = "CustomStartDateInput";
+
+const CustomDueDateInput = React.forwardRef(({ value, onClick }, ref) => (
+  <button
+    type="button"
+    ref={ref}
+    onClick={onClick}
+    className="attribute-pill clickable-pill border-0 d-flex align-items-center gap-1"
+  >
+    <CalendarCheck size={14} className="text-warning" />
+    <span>{value ? `Due: ${value}` : "+ Due date"}</span>
+  </button>
+));
+CustomDueDateInput.displayName = "CustomDueDateInput";
 
 const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initialBoardId, initialGroupId }) => {
   const { user } = useAuth();
@@ -44,6 +57,7 @@ const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initial
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState("Not Started");
   const [priority, setPriority] = useState("Normal");
+  const [startDate, setStartDate] = useState(null);
   const [dueDate, setDueDate] = useState(null);
   const [selectedAssignees, setSelectedAssignees] = useState([]);
   const [assigneeSearchQuery, setAssigneeSearchQuery] = useState("");
@@ -229,6 +243,7 @@ const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initial
         notes,
         status,
         priority,
+        start_date: startDate ? startDate.toISOString().split("T")[0] : null,
         due_date: dueDate ? dueDate.toISOString().split("T")[0] : null,
         mentions: activeMentions.map((m) => ({ type: m.type, id: m.id }))
       };
@@ -243,6 +258,7 @@ const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initial
       setNotes("");
       setStatus("Not Started");
       setPriority("Normal");
+      setStartDate(null);
       setDueDate(null);
       setSelectedAssignees([]);
       setTags([]);
@@ -453,13 +469,23 @@ const CreateTaskModal = ({ show, onHide, boards, members, onTaskCreated, initial
               </Dropdown.Menu>
             </Dropdown>
 
+            {/* Start Date picker */}
+            <div className="position-relative">
+              <DatePicker
+                selected={startDate}
+                onChange={(date) => setStartDate(date)}
+                placeholderText="+ Start date"
+                customInput={<CustomStartDateInput />}
+              />
+            </div>
+
             {/* Due Date picker */}
             <div className="position-relative">
               <DatePicker
                 selected={dueDate}
                 onChange={(date) => setDueDate(date)}
                 placeholderText="+ Due date"
-                customInput={<CustomDateInput />}
+                customInput={<CustomDueDateInput />}
               />
             </div>
 
