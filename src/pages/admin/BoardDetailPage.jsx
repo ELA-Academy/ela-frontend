@@ -354,6 +354,8 @@ const BoardDetailPage = () => {
   const [destFolderId, setDestFolderId] = useState("");
   const [destListId, setDestListId] = useState("");
   const [destGroupId, setDestGroupId] = useState("");
+  const [destStatus, setDestStatus] = useState("");
+  const [customStatusInput, setCustomStatusInput] = useState("");
   const [destGroups, setDestGroups] = useState([]);
   const [loadingDestGroups, setLoadingDestGroups] = useState(false);
 
@@ -897,8 +899,10 @@ const BoardDetailPage = () => {
         }
       }
 
+      const statusToSet = destStatus === "NEW_CUSTOM" ? customStatusInput.trim() : (destStatus || null);
+
       const taskIds = moveTargetTasks.map(t => t.id);
-      await bulkMoveTasks(taskIds, Number(finalGroupId));
+      await bulkMoveTasks(taskIds, Number(finalGroupId), statusToSet);
       
       setBoard((prev) => ({
         ...prev,
@@ -910,7 +914,10 @@ const BoardDetailPage = () => {
       
       setSelectedTaskIds([]);
       setShowMoveModal(false);
+      setDestStatus("");
+      setCustomStatusInput("");
       toast.success(`Successfully moved ${taskIds.length} task(s)!`);
+      fetchWorkspace(false);
     } catch (err) {
       console.error(err);
       toast.error("Failed to move tasks.");
@@ -2745,19 +2752,19 @@ const BoardDetailPage = () => {
           </span>
           {task.start_date && (
             <span className="d-flex align-items-center gap-1 text-muted mb-1" style={{ fontSize: "11px" }}>
-              <Calendar size={11} className="text-slate-400" /> Start: {new Date(task.start_date).toLocaleDateString()}
+              <Calendar size={11} className="text-info" /> Start: {format(parseISO(task.start_date.substring(0, 10)), "MMM d, yyyy")}
             </span>
           )}
           {task.due_date && (
             <span
               className={`d-flex align-items-center gap-1 ${
-                task.status !== "Done" && new Date(`${task.due_date}T23:59:59`) < new Date()
+                task.status !== "Done" && new Date(`${task.due_date.substring(0, 10)}T23:59:59`) < new Date()
                   ? "text-danger fw-bold"
                   : "text-muted"
               } mb-1`}
               style={{ fontSize: "11px" }}
             >
-              <Calendar size={11} className={task.status !== "Done" && new Date(`${task.due_date}T23:59:59`) < new Date() ? "text-danger" : "text-slate-400"} /> Due: {new Date(task.due_date).toLocaleDateString()}
+              <Calendar size={11} className={task.status !== "Done" && new Date(`${task.due_date.substring(0, 10)}T23:59:59`) < new Date() ? "text-danger" : "text-slate-400"} /> Due: {format(parseISO(task.due_date.substring(0, 10)), "MMM d, yyyy")}
             </span>
           )}
         </div>
@@ -3754,6 +3761,7 @@ const BoardDetailPage = () => {
                           <th style={{ width: "3%" }} className="zbot-sticky-col-2"></th>
                           {renderStandardFieldHeader("title", "Name", { width: "32%", minWidth: "350px" }, "zbot-sticky-col-3")}
                           {!isColHidden("assignee") && renderStandardFieldHeader("assignee", "Assignee", { width: "12%", minWidth: "120px" })}
+                          {!isColHidden("start_date") && renderStandardFieldHeader("start_date", "Start date", { width: "10%", minWidth: "110px" })}
                           {!isColHidden("due_date") && renderStandardFieldHeader("due_date", "Due date", { width: "10%", minWidth: "110px" })}
                           {!isColHidden("priority") && renderStandardFieldHeader("priority", "Priority", { width: "8%", minWidth: "90px" })}
                           {!isColHidden("status") && renderStandardFieldHeader("status", "Status", { width: "10%", minWidth: "120px" })}
@@ -3887,6 +3895,7 @@ const BoardDetailPage = () => {
                                 </div>
                               </td>
                               {!isColHidden("assignee") && <td style={{ minWidth: "120px" }}>{renderAssigneeCell(task)}</td>}
+                              {!isColHidden("start_date") && <td style={{ minWidth: "110px" }}>{renderDateCell(task, "start_date")}</td>}
                               {!isColHidden("due_date") && <td style={{ minWidth: "110px" }}>{renderDateCell(task, "due_date")}</td>}
                               {!isColHidden("priority") && <td style={{ minWidth: "90px" }}>{renderPriorityDropdown(task)}</td>}
                               {!isColHidden("status") && <td style={{ minWidth: "120px" }}>{renderStatusDropdown(task)}</td>}
@@ -6923,6 +6932,14 @@ const BoardDetailPage = () => {
                   />
                   <Form.Check
                     type="checkbox"
+                    id="col-toggle-start_date"
+                    label="Start date"
+                    checked={!isColHidden("start_date")}
+                    onChange={() => toggleHideColumn("start_date")}
+                    className="text-xs font-medium cursor-pointer"
+                  />
+                  <Form.Check
+                    type="checkbox"
                     id="col-toggle-due_date"
                     label="Due date"
                     checked={!isColHidden("due_date")}
@@ -7597,7 +7614,7 @@ const BoardDetailPage = () => {
               >
                 <option value="">-- Select Space --</option>
                 {boards.filter(b => b.parent_id === null && !b.is_folder && !b.is_personal).map(s => (
-                  <option key={s.id} value={s.id}>{s.icon} {s.name}</option>
+                  <option key={`space_${s.id}`} value={s.id}>{s.icon} {s.name}</option>
                 ))}
               </Form.Select>
             </Form.Group>
@@ -7612,7 +7629,7 @@ const BoardDetailPage = () => {
                 >
                   <option value="">-- No Folder (Direct List) --</option>
                   {boards.filter(b => b.parent_id === Number(destSpaceId) && b.is_folder).map(f => (
-                    <option key={f.id} value={f.id}>📁 {f.name}</option>
+                    <option key={`folder_${f.id}`} value={f.id}>📁 {f.name}</option>
                   ))}
                 </Form.Select>
               </Form.Group>
@@ -7634,32 +7651,63 @@ const BoardDetailPage = () => {
                     ? boards.filter(b => b.parent_id === Number(destFolderId) && !b.is_folder)
                     : boards.filter(b => b.parent_id === Number(destSpaceId) && !b.is_folder)
                   ).map(l => (
-                    <option key={l.id} value={l.id}>{l.icon || "📋"} {l.name}</option>
+                    <option key={`list_${l.id}`} value={l.id}>{l.icon || "📋"} {l.name}</option>
                   ))}
                 </Form.Select>
               </Form.Group>
             )}
 
             {destListId && (
-              <Form.Group>
-                <Form.Label className="fw-bold text-slate-700 text-xs uppercase mb-1">
-                  Destination Status / Group {loadingDestGroups && <Spinner animation="border" size="sm" className="ms-2" />}
-                </Form.Label>
-                <Form.Select 
-                  value={destGroupId} 
-                  onChange={(e) => setDestGroupId(e.target.value)}
-                  style={{ fontSize: "13px" }}
-                  disabled={loadingDestGroups || destListId === "CREATE_DEFAULT"}
-                >
-                  {destListId === "CREATE_DEFAULT" ? (
-                    <option value="CREATE_DEFAULT_GROUP">Default Group ("List")</option>
-                  ) : (
-                    destGroups.map(g => (
-                      <option key={g.id} value={g.id}>{g.name}</option>
-                    ))
-                  )}
-                </Form.Select>
-              </Form.Group>
+              <>
+                <Form.Group>
+                  <Form.Label className="fw-bold text-slate-700 text-xs uppercase mb-1">
+                    Destination Group / Column {loadingDestGroups && <Spinner animation="border" size="sm" className="ms-2" />}
+                  </Form.Label>
+                  <Form.Select 
+                    value={destGroupId} 
+                    onChange={(e) => setDestGroupId(e.target.value)}
+                    style={{ fontSize: "13px" }}
+                    disabled={loadingDestGroups || destListId === "CREATE_DEFAULT"}
+                  >
+                    {destListId === "CREATE_DEFAULT" ? (
+                      <option value="CREATE_DEFAULT_GROUP">Default Group ("List")</option>
+                    ) : (
+                      destGroups.map((g, idx) => (
+                        <option key={`group_${g.id}_${idx}`} value={g.id}>{g.name}</option>
+                      ))
+                    )}
+                  </Form.Select>
+                </Form.Group>
+
+                <Form.Group>
+                  <Form.Label className="fw-bold text-slate-700 text-xs uppercase mb-1">
+                    Target Status (Optional)
+                  </Form.Label>
+                  <Form.Select 
+                    value={destStatus} 
+                    onChange={(e) => setDestStatus(e.target.value)}
+                    style={{ fontSize: "13px" }}
+                  >
+                    <option value="">-- Keep Current Status (Auto-create group on target if missing) --</option>
+                    {destGroups.map((g, idx) => (
+                      <option key={`status_${g.id}_${idx}`} value={g.name}>{g.name}</option>
+                    ))}
+                    <option value="NEW_CUSTOM">+ Create new custom status in destination...</option>
+                  </Form.Select>
+                </Form.Group>
+
+                {destStatus === "NEW_CUSTOM" && (
+                  <Form.Group>
+                    <Form.Control
+                      type="text"
+                      placeholder="Type custom status name (e.g. Offboarding)..."
+                      value={customStatusInput}
+                      onChange={(e) => setCustomStatusInput(e.target.value)}
+                      style={{ fontSize: "13px" }}
+                    />
+                  </Form.Group>
+                )}
+              </>
             )}
           </div>
         </Modal.Body>
