@@ -2064,6 +2064,9 @@ const UpdatesDrawer = ({
     }
   };
 
+  const [commentSendMode, setCommentSendMode] = useState("comment"); // 'comment' or 'email'
+  const [showSendModeDropdown, setShowSendModeDropdown] = useState(false);
+
   const handlePostUpdate = async (e) => {
     e.preventDefault();
     if (!content.trim() || posting) return;
@@ -2078,7 +2081,8 @@ const UpdatesDrawer = ({
       
       const response = await createTaskUpdate(taskId, {
         content: content.trim(),
-        mentions: activeMentions.map((m) => ({ type: m.type, id: m.id }))
+        mentions: activeMentions.map((m) => ({ type: m.type, id: m.id })),
+        send_via_email: commentSendMode === "email"
       });
       
       setUpdates((prev) => [response, ...prev]);
@@ -3654,17 +3658,75 @@ const UpdatesDrawer = ({
                         <button type="button" className="btn btn-link p-1 text-slate-400 hover:text-slate-600 bg-transparent border-0" title="Voice comment" onClick={() => toast.info("Voice comment feature requires audio permission.")}>
                           <Mic size={14} />
                         </button>
+
+                        {/* Comment vs Email Mode Dropdown */}
+                        <div className="position-relative d-inline-block">
+                          <button
+                            type="button"
+                            className="btn btn-light btn-sm d-flex align-items-center gap-1 border-0 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-pill px-2 py-1"
+                            style={{ fontSize: "12px", fontWeight: "500" }}
+                            onClick={() => setShowSendModeDropdown(!showSendModeDropdown)}
+                          >
+                            {commentSendMode === "email" ? (
+                              <>
+                                <Mail size={13} className="text-primary" />
+                                <span>Email</span>
+                              </>
+                            ) : (
+                              <>
+                                <FileText size={13} className="text-slate-600" />
+                                <span>Comment</span>
+                              </>
+                            )}
+                            <ChevronDown size={12} className="text-slate-400 ms-1" />
+                          </button>
+
+                          {showSendModeDropdown && (
+                            <div 
+                              className="position-absolute bg-white border border-slate-200 rounded-3 shadow-lg p-1" 
+                              style={{ zIndex: 10000, bottom: "34px", right: "0", minWidth: "140px" }}
+                            >
+                              <button
+                                type="button"
+                                className={`w-100 text-start btn btn-sm border-0 d-flex align-items-center justify-content-between p-2 rounded ${commentSendMode === "comment" ? "bg-slate-100 font-semibold" : "hover:bg-slate-50"}`}
+                                style={{ fontSize: "13px" }}
+                                onClick={() => { setCommentSendMode("comment"); setShowSendModeDropdown(false); }}
+                              >
+                                <div className="d-flex align-items-center gap-2">
+                                  <FileText size={14} className="text-slate-600" />
+                                  <span>Comment</span>
+                                </div>
+                                {commentSendMode === "comment" && <Check size={14} className="text-primary" />}
+                              </button>
+                              <button
+                                type="button"
+                                className={`w-100 text-start btn btn-sm border-0 d-flex align-items-center justify-content-between p-2 rounded ${commentSendMode === "email" ? "bg-slate-100 font-semibold" : "hover:bg-slate-50"}`}
+                                style={{ fontSize: "13px" }}
+                                onClick={() => { setCommentSendMode("email"); setShowSendModeDropdown(false); }}
+                              >
+                                <div className="d-flex align-items-center gap-2">
+                                  <Mail size={14} className="text-primary" />
+                                  <span>Email</span>
+                                </div>
+                                {commentSendMode === "email" && <Check size={14} className="text-primary" />}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
                         <Button
                           variant="dark"
                           size="sm"
                           className="rounded-circle p-0 d-flex align-items-center justify-content-center text-white"
-                          style={{ width: "26px", height: "26px", backgroundColor: "#1e1e24", border: "none" }}
+                          style={{ width: "28px", height: "28px", backgroundColor: commentSendMode === "email" ? "#2563eb" : "#1e1e24", border: "none" }}
                           onClick={handlePostUpdate}
                           disabled={!content.trim() || posting}
-                          title="Send Comment"
+                          title={commentSendMode === "email" ? "Send Email" : "Send Comment"}
                         >
                           {posting ? (
                             <Spinner size="sm" animation="border" style={{ width: "12px", height: "12px" }} />
+                          ) : commentSendMode === "email" ? (
+                            <Mail size={13} className="text-white" />
                           ) : (
                             <Send size={12} className="text-white" />
                           )}
