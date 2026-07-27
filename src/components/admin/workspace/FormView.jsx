@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Table, Button, Spinner, Row, Col, Card, Badge, Form as BootstrapForm, Modal, Dropdown } from "react-bootstrap";
-import { Plus, Trash2, Clipboard, Eye, Copy, ArrowLeft, ArrowUp, ArrowDown, Image as ImageIcon, Sparkles, Check, CheckSquare, Settings, Type, AlignJustify, Calendar, Paperclip, Hash } from "lucide-react";
+import { Plus, Trash2, Clipboard, Eye, Copy, ArrowLeft, ArrowUp, ArrowDown, Image as ImageIcon, Sparkles, Check, CheckSquare, Settings, Type, AlignJustify, Calendar, Paperclip, Hash, Mail } from "lucide-react";
 import api from "../../../utils/api";
 import { showSuccess, showError } from "../../../utils/notificationService";
 
