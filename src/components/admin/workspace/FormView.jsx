@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Table, Button, Spinner, Row, Col, Card, Badge, Form as BootstrapForm, Modal, Dropdown } from "react-bootstrap";
-import { Plus, Trash2, Clipboard, Eye, Copy, ArrowLeft, ArrowUp, ArrowDown, Image as ImageIcon, Sparkles, Check, CheckSquare, Settings, Type, AlignJustify, Calendar, Paperclip, Hash } from "lucide-react";
+import { Plus, Trash2, Clipboard, Eye, Copy, ArrowLeft, ArrowUp, ArrowDown, Image as ImageIcon, Sparkles, Check, CheckSquare, Settings, Type, AlignJustify, Calendar, Paperclip, Hash, Mail } from "lucide-react";
 import api from "../../../utils/api";
 import { showSuccess, showError } from "../../../utils/notificationService";
 
@@ -559,6 +559,16 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
               >
                 <span className="p-1 bg-indigo-50 text-indigo-650 rounded-md d-inline-flex"><Type size={11} /></span>
                 Short Text
+              </Button>
+              <Button 
+                variant="light" 
+                size="sm" 
+                className="text-start d-flex align-items-center gap-2 py-2 border-0 bg-slate-50 text-slate-700 hover:bg-slate-100 rounded-xl transition-all"
+                style={{ fontSize: "12.5px" }}
+                onClick={() => handleAddQuestion("email", "Email Address", "submitter_email")}
+              >
+                <span className="p-1 bg-emerald-50 text-emerald-650 rounded-md d-inline-flex"><Mail size={11} /></span>
+                Email Address
               </Button>
               <Button 
                 variant="light" 

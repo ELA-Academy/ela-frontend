@@ -365,6 +365,15 @@ const PublicFormFiller = () => {
                             required={q.required}
                             className="border-slate-200 rounded-lg focus:border-indigo-500 focus:ring-indigo-500"
                           />
+                        ) : q.type === "email" ? (
+                          <Form.Control
+                            type="email"
+                            placeholder="name@example.com"
+                            value={answers[q.id] || ""}
+                            onChange={(e) => handleInputChange(q.id, e.target.value)}
+                            required={q.required}
+                            className="border-slate-200 rounded-lg focus:border-indigo-500"
+                          />
                         ) : q.type === "date" ? (
                           <Form.Control
                             type="date"
