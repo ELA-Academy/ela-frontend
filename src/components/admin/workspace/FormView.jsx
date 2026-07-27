@@ -565,6 +565,16 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
                 size="sm" 
                 className="text-start d-flex align-items-center gap-2 py-2 border-0 bg-slate-50 text-slate-700 hover:bg-slate-100 rounded-xl transition-all"
                 style={{ fontSize: "12.5px" }}
+                onClick={() => handleAddQuestion("email", "Email Address", "submitter_email")}
+              >
+                <span className="p-1 bg-emerald-50 text-emerald-650 rounded-md d-inline-flex"><Mail size={11} /></span>
+                Email Address
+              </Button>
+              <Button 
+                variant="light" 
+                size="sm" 
+                className="text-start d-flex align-items-center gap-2 py-2 border-0 bg-slate-50 text-slate-700 hover:bg-slate-100 rounded-xl transition-all"
+                style={{ fontSize: "12.5px" }}
                 onClick={() => handleAddQuestion("textarea", "Paragraph / Notes", "notes")}
               >
                 <span className="p-1 bg-blue-50 text-blue-650 rounded-md d-inline-flex"><AlignJustify size={11} /></span>

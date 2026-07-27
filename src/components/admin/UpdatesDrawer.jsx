@@ -213,6 +213,20 @@ const UpdatesDrawer = ({
   const [customAlert, setCustomAlert] = useState({ show: false, message: "", type: "success" });
   const [activeThreadComment, setActiveThreadComment] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null);
+  const [commentSendMode, setCommentSendMode] = useState("comment"); // 'comment' or 'email'
+  const [showSendModeDropdown, setShowSendModeDropdown] = useState(false);
+  const [toEmail, setToEmail] = useState("");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [replyToUser, setReplyToUser] = useState(null);
+
+  useEffect(() => {
+    if (task) {
+      if (task.submitter_email) {
+        setToEmail(task.submitter_email);
+      }
+      setEmailSubject(`Re: ${task.title || 'Form Submission'}`);
+    }
+  }, [task]);
 
   const showToast = (message, type = "success") => {
     setCustomAlert({ show: true, message, type });
@@ -687,30 +701,47 @@ const UpdatesDrawer = ({
                       </span>
                     </div>
 
-                    {/* Actions: Edit, Delete */}
-                    {editingReplyId !== reply.id && (user?.role === 'superadmin' || reply.sender_email === user?.email) && (
-                      <div className="d-flex align-items-center gap-1.5">
-                        <button
-                          type="button"
-                          className="btn btn-link text-slate-400 hover:text-slate-600 p-0 border-0"
-                          onClick={() => handleStartEditReply(reply)}
-                          title="Edit reply"
-                          style={{ textDecoration: "none" }}
-                        >
-                          <Pencil size={11} />
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-link text-slate-400 hover:text-danger p-0 border-0"
-                          onClick={() => handleDeleteReply(reply.id, currentComment.id)}
-                          title="Delete reply"
-                          style={{ textDecoration: "none" }}
-                        >
-                          <Trash size={11} />
-                        </button>
-                      </div>
-                    )}
+                    {/* Actions: Reply, Edit, Delete */}
+                    <div className="d-flex align-items-center gap-2">
+                      <button
+                        type="button"
+                        className="btn btn-link text-slate-400 hover:text-indigo-600 p-0 border-0 d-flex align-items-center gap-1"
+                        onClick={() => setReplyToUser(reply.sender_name)}
+                        title={`Reply to ${reply.sender_name}`}
+                        style={{ textDecoration: "none", fontSize: "10.5px" }}
+                      >
+                        <Reply size={11} /> Reply
+                      </button>
+                      {editingReplyId !== reply.id && (user?.role === 'superadmin' || reply.sender_email === user?.email) && (
+                        <>
+                          <button
+                            type="button"
+                            className="btn btn-link text-slate-400 hover:text-slate-600 p-0 border-0"
+                            onClick={() => handleStartEditReply(reply)}
+                            title="Edit reply"
+                            style={{ textDecoration: "none" }}
+                          >
+                            <Pencil size={11} />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-link text-slate-400 hover:text-danger p-0 border-0"
+                            onClick={() => handleDeleteReply(reply.id, currentComment.id)}
+                            title="Delete reply"
+                            style={{ textDecoration: "none" }}
+                          >
+                            <Trash size={11} />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
+
+                  {reply.reply_to_name && (
+                    <div className="text-muted mb-1 font-medium" style={{ fontSize: "10.5px" }}>
+                      Replying to <span className="text-indigo-600 font-semibold">@{reply.reply_to_name}</span>
+                    </div>
+                  )}
 
                   {editingReplyId === reply.id ? (
                     <div className="mb-2 mt-1">
@@ -760,6 +791,19 @@ const UpdatesDrawer = ({
 
         {/* Reply Input Wrapper */}
         <div className="reply-input-wrapper mt-auto border-top pt-2">
+          {replyToUser && (
+            <div className="d-flex align-items-center justify-content-between bg-indigo-50 border border-indigo-200 text-indigo-700 px-2.5 py-1 rounded-2 mb-2" style={{ fontSize: "11px" }}>
+              <span>Replying to <strong className="text-indigo-800">@{replyToUser}</strong></span>
+              <button 
+                type="button" 
+                className="btn btn-link p-0 text-indigo-700 border-0 d-flex align-items-center"
+                onClick={() => setReplyToUser(null)}
+                title="Cancel reply context"
+              >
+                <X size={13} />
+              </button>
+            </div>
+          )}
           <div className="cu-comment-editor border rounded-3 p-2 bg-white position-relative" style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
             <textarea
               ref={replyTextareaRef}
@@ -2064,9 +2108,6 @@ const UpdatesDrawer = ({
     }
   };
 
-  const [commentSendMode, setCommentSendMode] = useState("comment"); // 'comment' or 'email'
-  const [showSendModeDropdown, setShowSendModeDropdown] = useState(false);
-
   const handlePostUpdate = async (e) => {
     e.preventDefault();
     if (!content.trim() || posting) return;
@@ -2082,7 +2123,9 @@ const UpdatesDrawer = ({
       const response = await createTaskUpdate(taskId, {
         content: content.trim(),
         mentions: activeMentions.map((m) => ({ type: m.type, id: m.id })),
-        send_via_email: commentSendMode === "email"
+        send_via_email: commentSendMode === "email",
+        to_email: commentSendMode === "email" ? toEmail : undefined,
+        subject: commentSendMode === "email" ? emailSubject : undefined
       });
       
       setUpdates((prev) => [response, ...prev]);
@@ -2175,7 +2218,8 @@ const UpdatesDrawer = ({
       const activeMentions = (replyMentions[updateId] || []).filter(m => text.includes(`@${m.label}`));
       const replyData = await createReply(updateId, {
         content: text.trim(),
-        mentions: activeMentions.map(m => ({ type: m.type, id: m.id }))
+        mentions: activeMentions.map(m => ({ type: m.type, id: m.id })),
+        reply_to_name: replyToUser ? replyToUser : undefined
       });
       
       setUpdates((prev) =>
@@ -2189,6 +2233,7 @@ const UpdatesDrawer = ({
       
       setReplyInputs((prev) => ({ ...prev, [updateId]: "" }));
       setReplyMentions((prev) => ({ ...prev, [updateId]: [] }));
+      setReplyToUser(null);
     } catch (err) {
       console.error("Failed to post reply.", err);
       showToast("Failed to post reply.", "danger");
@@ -3586,16 +3631,54 @@ const UpdatesDrawer = ({
               {/* Sticky bottom editor */}
               {!activeThreadComment && (
                 <div className="activity-feed-editor">
-                  <div className="cu-comment-editor border rounded-3 p-2 bg-white position-relative" style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
+                  <div className="cu-comment-editor border rounded-3 p-3 bg-white position-relative shadow-sm">
+                    {commentSendMode === "email" && (
+                      <div className="email-composer-header mb-2">
+                        {/* From Row */}
+                        <div className="d-flex align-items-center gap-2 mb-1.5 pb-1 border-bottom" style={{ fontSize: "12.5px" }}>
+                          <span className="text-muted fw-semibold" style={{ width: "55px" }}>From</span>
+                          <span className="badge bg-slate-800 text-white rounded-pill px-2.5 py-1 font-mono" style={{ fontSize: "11px" }}>
+                            {user?.email || "itdept@ela-academy.org"}
+                          </span>
+                        </div>
+
+                        {/* To Row */}
+                        <div className="d-flex align-items-center gap-2 mb-1.5 pb-1 border-bottom" style={{ fontSize: "12.5px" }}>
+                          <span className="text-muted fw-semibold" style={{ width: "55px" }}>To</span>
+                          <input
+                            type="text"
+                            className="form-control form-control-sm border-0 bg-transparent px-0 text-slate-800 fw-medium shadow-none"
+                            placeholder="Recipient email address..."
+                            style={{ fontSize: "12.5px" }}
+                            value={toEmail}
+                            onChange={(e) => setToEmail(e.target.value)}
+                          />
+                        </div>
+
+                        {/* Subject Row */}
+                        <div className="d-flex align-items-center gap-2 mb-2 pb-1 border-bottom" style={{ fontSize: "12.5px" }}>
+                          <span className="text-muted fw-semibold" style={{ width: "55px" }}>Subject</span>
+                          <input
+                            type="text"
+                            className="form-control form-control-sm border-0 bg-transparent px-0 text-slate-800 fw-medium shadow-none"
+                            placeholder="Email subject..."
+                            style={{ fontSize: "12.5px" }}
+                            value={emailSubject}
+                            onChange={(e) => setEmailSubject(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    )}
+
                     <textarea
                       ref={textareaRef}
                       className="cu-comment-textarea border-0 w-100 bg-transparent text-slate-800"
                       style={{ outline: "none", fontSize: "13px", resize: "none" }}
-                      placeholder="Write a comment..."
+                      placeholder={commentSendMode === "email" ? "Type your email message..." : "Write a comment..."}
                       value={content}
                       onChange={handleTextareaChange}
                       onKeyDown={handleKeyDown}
-                      rows={2}
+                      rows={commentSendMode === "email" ? 3 : 2}
                     />
 
                     {showAutocomplete && autocompleteSuggestions.length > 0 && (
