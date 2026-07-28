@@ -15,6 +15,8 @@ import { getMyProfile, changePassword, updateProfile } from "../../services/prof
 import { showSuccess, showError } from "../../utils/notificationService";
 import api from "../../utils/api";
 
+import { useTheme } from "../../context/ThemeContext";
+
 const ProfilePage = () => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -52,6 +54,11 @@ const ProfilePage = () => {
             <Tab eventKey="details" title="Profile Details">
               {profile && <ProfileDetails profile={profile} onProfileUpdated={(updated) => setProfile(prev => ({ ...prev, ...updated }))} />}
             </Tab>
+            {/*
+            <Tab eventKey="appearance" title="Appearance & Theme">
+              <ThemePreferencesForm />
+            </Tab>
+            */}
             <Tab eventKey="security" title="Security">
               <ChangePasswordForm />
             </Tab>
@@ -62,6 +69,48 @@ const ProfilePage = () => {
         </Card.Body>
       </Card>
     </Container>
+  );
+};
+
+const ThemePreferencesForm = () => {
+  const { theme, setTheme, isDark } = useTheme();
+
+  return (
+    <div className="py-2 text-dark">
+      <h5 className="fw-bold mb-1 text-slate-800">Appearance & Theme</h5>
+      <p className="text-muted small mb-4">Choose your preferred interface theme for the entire app.</p>
+
+      <Row className="g-3" style={{ maxWidth: "600px" }}>
+        <Col md={6}>
+          <div
+            className={`border rounded-3 p-4 text-center cursor-pointer transition-all ${
+              !isDark ? "border-primary bg-primary-subtle shadow-sm" : "border-slate-300 bg-white"
+            }`}
+            onClick={() => setTheme("light")}
+            style={{ borderWidth: !isDark ? "2px" : "1px", borderRadius: "12px" }}
+          >
+            <div style={{ fontSize: "2.5rem", marginBottom: "8px" }}>☀️</div>
+            <div className="fw-bold text-slate-900 fs-6">Light Mode</div>
+            <div className="text-muted small mt-1">Clean, bright interface</div>
+            {!isDark && <span className="badge bg-primary mt-3 px-3 py-1">Active Theme</span>}
+          </div>
+        </Col>
+        <Col md={6}>
+          <div
+            className={`border rounded-3 p-4 text-center cursor-pointer transition-all ${
+              isDark ? "border-primary bg-primary-subtle shadow-sm" : "border-slate-300 bg-white"
+            }`}
+            onClick={() => setTheme("dark")}
+            style={{ borderWidth: isDark ? "2px" : "1px", borderRadius: "12px" }}
+          >
+            <div style={{ fontSize: "2.5rem", marginBottom: "8px" }}>🌙</div>
+            <div className="fw-bold text-slate-900 fs-6">Dark Mode</div>
+            <div className="text-muted small mt-1">Sleek, low-light interface</div>
+            {isDark && <span className="badge bg-primary mt-3 px-3 py-1">Active Theme</span>}
+          </div>
+        </Col>
+      </Row>
+    </div>
   );
 };
 

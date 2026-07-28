@@ -4578,3 +4578,193 @@ th.zbot-sticky-col-right, th.zbot-sticky-table-col-right-1, th.zbot-sticky-table
   box-shadow: 0 0 0 2px #0f172a;
 }
 
+/* ==========================================================================
+   BOARDS.CSS DARK MODE OVERRIDES (High-Specificity !important Rules)
+   ========================================================================== */
+
+[data-theme="dark"] .drawer-title-input {
+  color: #ffffff !important;
+  background: transparent !important;
+}
+
+[data-theme="dark"] .zbot-sticky-col-1,
+[data-theme="dark"] .zbot-sticky-col-2,
+[data-theme="dark"] .zbot-sticky-col-3,
+[data-theme="dark"] .zbot-sticky-table-col-1,
+[data-theme="dark"] .zbot-sticky-table-col-2,
+[data-theme="dark"] .zbot-sticky-col-right,
+[data-theme="dark"] .zbot-sticky-table-col-right-1,
+[data-theme="dark"] .zbot-sticky-table-col-right-2 {
+  background-color: #121215 !important;
+  color: #f4f4f5 !important;
+  border-color: #27272a !important;
+}
+
+[data-theme="dark"] th.zbot-sticky-col-1,
+[data-theme="dark"] th.zbot-sticky-col-2,
+[data-theme="dark"] th.zbot-sticky-col-3,
+[data-theme="dark"] th.zbot-sticky-table-col-1,
+[data-theme="dark"] th.zbot-sticky-table-col-2,
+[data-theme="dark"] th.zbot-sticky-col-right,
+[data-theme="dark"] th.zbot-sticky-table-col-right-1,
+[data-theme="dark"] th.zbot-sticky-table-col-right-2,
+[data-theme="dark"] .workspace-list-view .workspace-table th.zbot-sticky-col-1,
+[data-theme="dark"] .workspace-list-view .workspace-table th.zbot-sticky-col-2,
+[data-theme="dark"] .workspace-list-view .workspace-table th.zbot-sticky-col-3,
+[data-theme="dark"] .workspace-list-view .workspace-table th.zbot-sticky-col-right,
+[data-theme="dark"] .workspace-list-view .workspace-table th.zbot-sticky-table-col-1,
+[data-theme="dark"] .workspace-list-view .workspace-table th.zbot-sticky-table-col-2,
+[data-theme="dark"] .workspace-list-view .workspace-table th.zbot-sticky-table-col-right-1,
+[data-theme="dark"] .workspace-list-view .workspace-table th.zbot-sticky-table-col-right-2,
+[data-theme="dark"] .zbot-proper-table .workspace-table th.zbot-sticky-col-1,
+[data-theme="dark"] .zbot-proper-table .workspace-table th.zbot-sticky-col-2,
+[data-theme="dark"] .zbot-proper-table .workspace-table th.zbot-sticky-col-3,
+[data-theme="dark"] .zbot-proper-table .workspace-table th.zbot-sticky-table-col-1,
+[data-theme="dark"] .zbot-proper-table .workspace-table th.zbot-sticky-table-col-2,
+[data-theme="dark"] .zbot-proper-table .workspace-table th.zbot-sticky-col-right,
+[data-theme="dark"] .zbot-proper-table .workspace-table th.zbot-sticky-table-col-right-1,
+[data-theme="dark"] .zbot-proper-table .workspace-table th.zbot-sticky-table-col-right-2 {
+  background-color: #18181b !important;
+  color: #ffffff !important;
+  border-color: #27272a !important;
+}
+
+[data-theme="dark"] .workspace-row:hover .zbot-sticky-col-1,
+[data-theme="dark"] .workspace-row:hover .zbot-sticky-col-2,
+[data-theme="dark"] .workspace-row:hover .zbot-sticky-col-3,
+[data-theme="dark"] .workspace-row:hover .zbot-sticky-table-col-1,
+[data-theme="dark"] .workspace-row:hover .zbot-sticky-table-col-2,
+[data-theme="dark"] .workspace-row:hover .zbot-sticky-col-right,
+[data-theme="dark"] .workspace-row:hover .zbot-sticky-table-col-right-1,
+[data-theme="dark"] .workspace-row:hover .zbot-sticky-table-col-right-2 {
+  background-color: #202024 !important;
+}
+
+[data-theme="dark"] .workspace-row.is-overdue .zbot-sticky-col-1,
+[data-theme="dark"] .workspace-row.is-overdue .zbot-sticky-col-2,
+[data-theme="dark"] .workspace-row.is-overdue .zbot-sticky-col-3,
+[data-theme="dark"] .workspace-row.is-overdue .zbot-sticky-table-col-1,
+[data-theme="dark"] .workspace-row.is-overdue .zbot-sticky-table-col-2,
+[data-theme="dark"] .workspace-row.is-overdue .zbot-sticky-col-right,
+[data-theme="dark"] .workspace-row.is-overdue .zbot-sticky-table-col-right-1,
+[data-theme="dark"] .workspace-row.is-overdue .zbot-sticky-table-col-right-2 {
+  background-color: #3b1d24 !important;
+  color: #fca5a5 !important;
+}
+
+[data-theme="dark"] .updates-drawer {
+  background-color: #121215 !important;
+  color: #ffffff !important;
+  border-color: #27272a !important;
+}
+
+[data-theme="dark"] .drawer-header,
+[data-theme="dark"] .drawer-tabs {
+  background-color: #121215 !important;
+  border-color: #27272a !important;
+}
+
+[data-theme="dark"] .drawer-body {
+  background-color: #09090b !important;
+}
+
+[data-theme="dark"] .task-detail-main,
+[data-theme="dark"] .cu-meta-grid,
+[data-theme="dark"] .cu-subtasks-card,
+[data-theme="dark"] .cu-attachments-card,
+[data-theme="dark"] .cu-collapsible-section,
+[data-theme="dark"] .cu-section-header,
+[data-theme="dark"] .cu-checklist-items,
+[data-theme="dark"] .cu-attachment-list,
+[data-theme="dark"] .cu-watcher-list,
+[data-theme="dark"] .cu-add-item-row,
+[data-theme="dark"] .cu-time-log-form,
+[data-theme="dark"] .cu-section-block,
+[data-theme="dark"] .cu-advanced-fields,
+[data-theme="dark"] .cu-description-area {
+  background-color: #121215 !important;
+  color: #ffffff !important;
+  border-color: #27272a !important;
+}
+
+[data-theme="dark"] .task-detail-activity {
+  background-color: #09090b !important;
+  border-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .cu-comment-editor {
+  background-color: #18181b !important;
+  border-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .cu-comment-editor textarea {
+  background-color: transparent !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .cu-assignee-pill,
+[data-theme="dark"] .cu-priority-badge,
+[data-theme="dark"] .cu-date-field,
+[data-theme="dark"] .cu-adv-input,
+[data-theme="dark"] .cu-adv-select,
+[data-theme="dark"] .cu-subtask-row {
+  background-color: #18181b !important;
+  color: #ffffff !important;
+  border-color: #27272a !important;
+}
+
+[data-theme="dark"] .cu-date-input,
+[data-theme="dark"] .cu-subtask-title,
+[data-theme="dark"] .cu-section-title,
+[data-theme="dark"] .cu-meta-label,
+[data-theme="dark"] .cu-meta-value {
+  color: #ffffff !important;
+}
+
+/* Custom Fields Offcanvas Drawer Dark Mode */
+[data-theme="dark"] .custom-fields-offcanvas,
+[data-theme="dark"] .custom-fields-offcanvas .offcanvas-header,
+[data-theme="dark"] .custom-fields-offcanvas .offcanvas-body,
+[data-theme="dark"] .custom-fields-list-scroll {
+  background-color: #121215 !important;
+  color: #ffffff !important;
+  border-color: #27272a !important;
+}
+
+[data-theme="dark"] .custom-field-item-btn {
+  color: #e4e4e7 !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+[data-theme="dark"] .custom-field-item-btn:hover {
+  background: #27272a !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .custom-field-item-btn svg {
+  color: #a1a1aa !important;
+}
+
+[data-theme="dark"] .custom-fields-section-title {
+  color: #a1a1aa !important;
+}
+
+/* Table Task Names & Values High-Contrast Override */
+[data-theme="dark"] .cell-editable-text,
+[data-theme="dark"] input.cell-editable-text,
+[data-theme="dark"] .workspace-table td,
+[data-theme="dark"] .workspace-table td *,
+[data-theme="dark"] .cell-editable-text * {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+[data-theme="dark"] .workspace-table th,
+[data-theme="dark"] .workspace-table th * {
+  color: #e4e4e7 !important;
+}
+
+

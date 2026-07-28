@@ -20,9 +20,12 @@ import {
   Calendar,
   Download,
   Smartphone,
-  Laptop
+  Laptop,
+  Sun,
+  Moon
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
 import UpdateNotifier from "../common/UpdateNotifier";
 import { useTimer } from "../../context/TimerContext";
 import { useNavigate, Link } from "react-router-dom";
@@ -59,6 +62,7 @@ const formatTime = (totalSeconds) => {
 const Header = () => {
   const { user, unreadCount, notifications, markAllNotificationsAsRead, markNotificationAsRead, vibrateBell } =
     useAuth();
+  const { theme, toggleTheme, isDark } = useTheme();
   const navigate = useNavigate();
 
   // Timer Context
@@ -495,6 +499,17 @@ const Header = () => {
         )}
 
 
+
+        {/* Theme Toggle Button (Commented out for future release)
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="hostinger-round-action relative cursor-pointer text-slate-600 hover:text-slate-900 transition-colors p-2 rounded-full border-0 bg-transparent flex items-center justify-center"
+          title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+        >
+          {isDark ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-slate-600" />}
+        </button>
+        */}
 
         {/* Auto Update Notification Button */}
         <UpdateNotifier />
