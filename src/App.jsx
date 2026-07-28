@@ -9,6 +9,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { AuthProvider } from "./context/AuthContext";
 import { TimerProvider } from "./context/TimerContext";
+import { ThemeProvider } from "./context/ThemeContext";
 
 import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
@@ -57,8 +58,9 @@ import WorkspaceLayout from "./components/admin/workspace/WorkspaceLayout";
 
 function App() {
   return (
-    <AuthProvider>
-      <TimerProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <TimerProvider>
         <ToastContainer
           position="top-right"
           autoClose={5000}
@@ -157,6 +159,7 @@ function App() {
         </Router>
       </TimerProvider>
     </AuthProvider>
+  </ThemeProvider>
   );
 }
 

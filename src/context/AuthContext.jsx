@@ -206,6 +206,15 @@ export const AuthProvider = ({ children }) => {
     loadUserFromToken();
   }, [loadUserFromToken]);
 
+  const getDeviceId = () => {
+    let devId = localStorage.getItem("zbot_device_id");
+    if (!devId) {
+      devId = "device_" + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+      localStorage.setItem("zbot_device_id", devId);
+    }
+    return devId;
+  };
+
   const loginUser = async (loginFunction, credentials) => {
     const response = await loginFunction(credentials);
     if (response.data && response.data.otp_required) {
@@ -217,23 +226,30 @@ export const AuthProvider = ({ children }) => {
     return { success: true };
   };
 
-  const staffLogin = async (email, password) => {
+  const staffLogin = async (email, password, rememberDevice = true) => {
+    const device_id = getDeviceId();
     return loginUser((creds) => api.post("/auth/login", creds), {
       email,
       password,
+      device_id,
+      remember_device: rememberDevice
     });
   };
 
-  const superAdminLogin = async (email, password) => {
+  const superAdminLogin = async (email, password, rememberDevice = true) => {
+    const device_id = getDeviceId();
     return loginUser((creds) => api.post("/superadmin/login", creds), {
       email,
       password,
+      device_id,
+      remember_device: rememberDevice
     });
   };
 
-  const verifyOtpLogin = async (email, otp, role) => {
+  const verifyOtpLogin = async (email, otp, role, rememberDevice = true) => {
+    const device_id = getDeviceId();
     const endpoint = role === "superadmin" ? "/superadmin/verify-login-otp" : "/auth/verify-login-otp";
-    const response = await api.post(endpoint, { email, otp });
+    const response = await api.post(endpoint, { email, otp, device_id, remember_device: rememberDevice });
     const { access_token } = response.data;
     localStorage.setItem("authToken", access_token);
     await loadUserFromToken();

@@ -1,16 +1,21 @@
 import React, { useState } from "react";
-import { Search, UserPlus } from "lucide-react";
+import { Search, UserPlus, Building2, Users } from "lucide-react";
 
 export default function SleekAssigneeSelector({
   selectedAssignees = [],
   members = [],
+  departments = [],
   currentUser = null,
   onToggleAssignee,
   onInviteEmail
 }) {
   const [search, setSearch] = useState("");
 
-  const getAssigneeKey = (m) => m.email || String(m.id || m._id);
+  const getAssigneeKey = (m) => {
+    if (!m) return "";
+    if (m.role === 'department') return `dept_${m.id || m._id}`;
+    return m.email ? `${m.role || 'user'}_${m.email}` : `${m.role || 'user'}_${m.id || m._id}`;
+  };
 
   // Normalize selectedAssignees to array
   let selectedList = [];
@@ -23,17 +28,28 @@ export default function SleekAssigneeSelector({
   }
   const selectedKeys = new Set(selectedList.map(getAssigneeKey));
 
-  // Filter members based on search query
-  const filteredMembers = (members || []).filter((m) => {
+  // Build departments list items
+  const departmentItems = (departments || []).map((d) => ({
+    id: d.id,
+    name: d.name,
+    role: 'department',
+    is_department: true
+  }));
+
+  // Combine members and departments for filtering
+  const allAvailableItems = [...(members || []), ...departmentItems];
+
+  const filteredItems = allAvailableItems.filter((m) => {
     if (!m) return false;
     const nameMatch = m.name?.toLowerCase().includes(search.toLowerCase());
     const emailMatch = m.email?.toLowerCase().includes(search.toLowerCase());
     return nameMatch || emailMatch;
   });
 
-  // Group members into assigned (Assignees) vs unassigned (People)
-  const assignedList = filteredMembers.filter((m) => selectedKeys.has(getAssigneeKey(m)));
-  const unassignedList = filteredMembers.filter((m) => !selectedKeys.has(getAssigneeKey(m)));
+  // Group members into assigned vs unassigned (Departments vs People)
+  const assignedList = filteredItems.filter((m) => selectedKeys.has(getAssigneeKey(m)));
+  const unassignedDepartments = filteredItems.filter((m) => m.role === 'department' && !selectedKeys.has(getAssigneeKey(m)));
+  const unassignedPeople = filteredItems.filter((m) => m.role !== 'department' && !selectedKeys.has(getAssigneeKey(m)));
 
   const getAvatarInitials = (name = "") => {
     if (!name) return "";
@@ -71,7 +87,7 @@ export default function SleekAssigneeSelector({
           type="text"
           className="form-control sleek-search-input py-1.5 text-dark"
           style={{ paddingLeft: "30px", fontSize: "12px", borderRadius: "6px", border: "1px solid #cbd5e1" }}
-          placeholder="Search or enter email..."
+          placeholder="Search people or department..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           autoFocus
@@ -79,25 +95,30 @@ export default function SleekAssigneeSelector({
       </div>
 
       {/* Scrollable list */}
-      <div className="sleek-scrollable-list px-2 pb-2" style={{ maxHeight: "250px", overflowY: "auto" }}>
+      <div className="sleek-scrollable-list px-2 pb-2" style={{ maxHeight: "280px", overflowY: "auto" }}>
         
         {/* Assignees Header and List */}
         {assignedList.length > 0 && (
           <div className="sleek-group-section mb-2">
             <div className="sleek-group-header py-1 text-slate-400 fw-bold text-uppercase" style={{ fontSize: "10px", letterSpacing: "0.5px" }}>
-              Assignees
+              Assigned ({assignedList.length})
             </div>
             <div className="d-flex flex-column gap-1">
               {assignedList.map((m) => {
-                const isMe = currentUser && String(m.id || m._id) === String(currentUser.id || currentUser._id);
-                const initials = getAvatarInitials(m.name);
+                const isDept = m.role === 'department';
+                const isMe = currentUser && String(m.id || m._id) === String(currentUser.id || currentUser._id) && !isDept;
+                const initials = isDept ? "DEP" : getAvatarInitials(m.name);
                 return (
                   <div
                     key={getAssigneeKey(m)}
                     className="sleek-assignee-item d-flex align-items-center gap-2 px-2 py-1.5 rounded cursor-pointer"
                     onClick={() => onToggleAssignee(m)}
                   >
-                    {isMe ? (
+                    {isDept ? (
+                      <div className="sleek-avatar d-flex align-items-center justify-content-center text-white fw-bold" style={{ width: "24px", height: "24px", borderRadius: "6px", backgroundColor: "#673de6", fontSize: "10px" }}>
+                        <Building2 size={12} />
+                      </div>
+                    ) : isMe ? (
                       <div className="sleek-avatar me-avatar d-flex align-items-center justify-content-center fw-bold" style={{ width: "24px", height: "24px", borderRadius: "50%", border: "2px solid #6366f1", color: "#6366f1", fontSize: "10px" }}>
                         {initials}
                       </div>
@@ -107,7 +128,7 @@ export default function SleekAssigneeSelector({
                       </div>
                     )}
                     <span className="sleek-item-name fw-semibold text-slate-800" style={{ fontSize: "12px" }}>
-                      {isMe ? "Me" : m.name}
+                      {isMe ? "Me" : m.name} {isDept ? "(Department)" : ""}
                     </span>
                   </div>
                 );
@@ -116,14 +137,39 @@ export default function SleekAssigneeSelector({
           </div>
         )}
 
+        {/* Departments Section */}
+        {unassignedDepartments.length > 0 && (
+          <div className="sleek-group-section mb-2">
+            <div className="sleek-group-header py-1 text-purple-600 fw-bold text-uppercase d-flex align-items-center gap-1" style={{ fontSize: "10px", letterSpacing: "0.5px" }}>
+              <Building2 size={11} /> Departments
+            </div>
+            <div className="d-flex flex-column gap-1">
+              {unassignedDepartments.map((d) => (
+                <div
+                  key={getAssigneeKey(d)}
+                  className="sleek-assignee-item d-flex align-items-center gap-2 px-2 py-1.5 rounded cursor-pointer"
+                  onClick={() => onToggleAssignee(d)}
+                >
+                  <div className="sleek-avatar d-flex align-items-center justify-content-center text-purple-700 bg-purple-50 border border-purple-200 rounded" style={{ width: "24px", height: "24px" }}>
+                    <Users size={12} />
+                  </div>
+                  <span className="sleek-item-name text-slate-800 fw-medium" style={{ fontSize: "12px" }}>
+                    {d.name} <span className="text-muted small" style={{ fontSize: "10px" }}>(Whole Dept)</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* People Header and List */}
-        {unassignedList.length > 0 && (
+        {unassignedPeople.length > 0 && (
           <div className="sleek-group-section mb-2">
             <div className="sleek-group-header py-1 text-slate-400 fw-bold text-uppercase" style={{ fontSize: "10px", letterSpacing: "0.5px" }}>
               People
             </div>
             <div className="d-flex flex-column gap-1">
-              {unassignedList.map((m) => {
+              {unassignedPeople.map((m) => {
                 const isMe = currentUser && String(m.id || m._id) === String(currentUser.id || currentUser._id);
                 const initials = getAvatarInitials(m.name);
                 return (

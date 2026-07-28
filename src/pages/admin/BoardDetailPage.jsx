@@ -506,6 +506,8 @@ const BoardDetailPage = () => {
       return vals;
     };
 
+    const nums = getNumericValues();
+
     const isCurrency =
       fieldType === "currency" ||
       fieldType === "money" ||
@@ -522,14 +524,23 @@ const BoardDetailPage = () => {
     const isNumericField =
       isCurrency ||
       fieldType === "number" ||
+      fieldType === "numeric" ||
+      fieldType === "currency" ||
+      fieldType === "money" ||
+      fieldType === "float" ||
+      fieldType === "int" ||
       fieldName.toLowerCase().includes("number") ||
+      fieldName.toLowerCase().includes("num") ||
       fieldName.toLowerCase().includes("count") ||
-      fieldName.toLowerCase().includes("students") ||
-      fieldName.toLowerCase().includes("days") ||
-      fieldName.toLowerCase().includes("hours") ||
+      fieldName.toLowerCase().includes("student") ||
+      fieldName.toLowerCase().includes("day") ||
+      fieldName.toLowerCase().includes("hour") ||
       fieldName.toLowerCase().includes("quantity") ||
+      fieldName.toLowerCase().includes("qty") ||
       fieldName.toLowerCase().includes("score") ||
-      fieldName.toLowerCase().includes("points");
+      fieldName.toLowerCase().includes("test") ||
+      fieldName.toLowerCase().includes("point") ||
+      nums.length > 0;
 
     const formatNumResult = (val) => {
       if (val === null || val === undefined || isNaN(val)) return "-";
@@ -540,7 +551,6 @@ const BoardDetailPage = () => {
     };
 
     let displayResult = null;
-    const nums = getNumericValues();
 
     if (calcType === "sum") {
       const sum = nums.reduce((acc, v) => acc + v, 0);
@@ -3854,7 +3864,7 @@ const BoardDetailPage = () => {
                                   {subtaskCount > 0 && (
                                     <span 
                                       className="d-inline-flex align-items-center gap-1 text-slate-400 border border-slate-200 rounded px-1.5 py-0.5 hover:bg-slate-100" 
-                                      style={{ fontSize: "10px", backgroundColor: "#f8fafc", cursor: "pointer", height: "18px" }}
+                                      style={{ fontSize: "10px", cursor: "pointer", height: "18px" }}
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         setCollapsedTasks((prev) => ({
@@ -4375,6 +4385,11 @@ const BoardDetailPage = () => {
                           {!isColHidden("assignee") && (
                             <td style={{ minWidth: "120px" }} className="px-2 py-1 align-middle">
                               {renderColumnCalculationCell("assignee", statusTasks)}
+                            </td>
+                          )}
+                          {!isColHidden("start_date") && (
+                            <td style={{ minWidth: "110px" }} className="px-2 py-1 align-middle">
+                              {renderColumnCalculationCell("start_date", statusTasks)}
                             </td>
                           )}
                           {!isColHidden("due_date") && (

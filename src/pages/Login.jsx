@@ -18,6 +18,7 @@ const Login = () => {
   const [otpRequired, setOtpRequired] = useState(false);
   const [otp, setOtp] = useState("");
   const [role, setRole] = useState("staff");
+  const [rememberDevice, setRememberDevice] = useState(true);
   
   // Forgot Password states
   const [forgotPassword, setForgotPassword] = useState(false);
@@ -43,7 +44,7 @@ const Login = () => {
     setError("");
     setSubmitting(true);
     try {
-      const res = await staffLogin(email, password);
+      const res = await staffLogin(email, password, rememberDevice);
       if (res && res.otp_required) {
         setOtpRequired(true);
         setRole(res.role || "staff");
@@ -67,7 +68,7 @@ const Login = () => {
     setError("");
     setSubmitting(true);
     try {
-      await verifyOtpLogin(email, otp, role);
+      await verifyOtpLogin(email, otp, role, rememberDevice);
       navigate("/admin");
     } catch (err) {
       setError(
@@ -113,6 +114,19 @@ const Login = () => {
                     placeholder="Enter 6-digit code"
                     maxLength="6"
                   />
+                </div>
+
+                <div className="form-group d-flex align-items-center gap-2 mb-3" style={{ fontSize: "0.85rem", color: "#475569" }}>
+                  <input
+                    type="checkbox"
+                    id="rememberDeviceOtp"
+                    checked={rememberDevice}
+                    onChange={(e) => setRememberDevice(e.target.checked)}
+                    style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                  />
+                  <label htmlFor="rememberDeviceOtp" style={{ cursor: "pointer", margin: 0, fontWeight: 500 }}>
+                    Remember this device for 30 days
+                  </label>
                 </div>
                 
                 <button type="submit" className="btn-primary-full" disabled={submitting}>
@@ -253,7 +267,20 @@ const Login = () => {
                   </div>
                 </div>
                 
-                <div style={{ textAlign: "right", marginBottom: "20px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.85rem", color: "#475569" }}>
+                    <input
+                      type="checkbox"
+                      id="rememberDeviceLogin"
+                      checked={rememberDevice}
+                      onChange={(e) => setRememberDevice(e.target.checked)}
+                      style={{ width: "15px", height: "15px", cursor: "pointer" }}
+                    />
+                    <label htmlFor="rememberDeviceLogin" style={{ cursor: "pointer", margin: 0, fontWeight: 500 }}>
+                      Remember device (30 days)
+                    </label>
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => {

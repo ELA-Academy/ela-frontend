@@ -251,7 +251,7 @@ const DashboardOverview = () => {
   ].filter((card) => card.visible);
 
   return (
-    <div className="p-6 bg-[#fafafa] min-h-screen space-y-6">
+    <div className="p-6 min-h-screen space-y-6">
       <div className="dashboard-hero-panel">
         <div>
           <div className="dashboard-hero-breadcrumb">Team Space / Overview /</div>

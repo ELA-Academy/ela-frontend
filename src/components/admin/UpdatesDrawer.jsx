@@ -1609,6 +1609,14 @@ const UpdatesDrawer = ({
       email: option.searchStr?.split(" ").find((part) => part.includes("@")) || ""
     }));
 
+  const departmentOptions = mentionOptions
+    .filter((option) => option.type === "department")
+    .map((option) => ({
+      id: option.id,
+      name: option.label,
+      role: "department"
+    }));
+
   const handleTitleBlur = async () => {
     const nextTitle = taskTitle.trim();
     if (!nextTitle || nextTitle === task.title) {
@@ -2640,6 +2648,7 @@ const UpdatesDrawer = ({
                           <SleekAssigneeSelector
                             selectedAssignees={taskAssignees}
                             members={assigneeOptions}
+                            departments={departmentOptions}
                             currentUser={user}
                             onToggleAssignee={handleAssigneeToggle}
                             onInviteEmail={(email) => toast.info(email ? `Invitation email sent to ${email}!` : "Invitation email sent!")}
