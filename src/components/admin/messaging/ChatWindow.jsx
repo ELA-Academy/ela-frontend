@@ -42,6 +42,7 @@ import {
 import api from "../../../utils/api";
 import { toast } from "react-toastify";
 import { useWorkspace } from "../workspace/WorkspaceLayout";
+import EmojiPickerPopover from "../../common/EmojiPickerPopover";
 
 // A global, persistent in-memory cache to store conversation histories
 const globalMessageCache = {};
@@ -115,6 +116,24 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
   });
   const [error, setError] = useState("");
   const [activeReactMsgId, setActiveReactMsgId] = useState(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  const handleInsertEmoji = (emojiChar) => {
+    const textarea = textAreaRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart || 0;
+      const end = textarea.selectionEnd || 0;
+      const text = newMessage;
+      const updated = text.substring(0, start) + emojiChar + text.substring(end);
+      setNewMessage(updated);
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + emojiChar.length, start + emojiChar.length);
+      }, 50);
+    } else {
+      setNewMessage(prev => prev + emojiChar);
+    }
+  };
   
   // File Upload State
   const [uploading, setUploading] = useState(false);
@@ -1178,18 +1197,14 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
 
                             {/* Emoji Selector Overlay */}
                             {activeReactMsgId === msg.id && (
-                              <div className="position-absolute bg-white border border-slate-200 rounded-lg shadow-lg p-2 d-flex gap-1" style={{ zIndex: 100, bottom: "28px", right: "0" }}>
-                                {["👍", "✅", "🔥", "❤️", "😊", "🎉", "😮", "😢"].map(emoji => (
-                                  <button 
-                                    key={emoji}
-                                    className="btn btn-sm btn-light p-1 border-0 hover:bg-slate-100 rounded"
-                                    style={{ fontSize: "16px", cursor: "pointer" }}
-                                    onClick={() => handleReactToMessage(msg.id, emoji)}
-                                  >
-                                    {emoji}
-                                  </button>
-                                ))}
-                              </div>
+                              <EmojiPickerPopover
+                                onSelectEmoji={(emojiChar) => {
+                                  handleReactToMessage(msg.id, emojiChar);
+                                  setActiveReactMsgId(null);
+                                }}
+                                onClose={() => setActiveReactMsgId(null)}
+                                style={{ right: "0", bottom: "100%", marginBottom: "4px" }}
+                              />
                             )}
                           </div>
 
@@ -1482,10 +1497,26 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
                   className="zbot-textarea"
                 />
 
+                {showEmojiPicker && (
+                  <EmojiPickerPopover
+                    onSelectEmoji={handleInsertEmoji}
+                    onClose={() => setShowEmojiPicker(false)}
+                    style={{ left: "10px", bottom: "100%", marginBottom: "8px" }}
+                  />
+                )}
+
                 <div className="zbot-toolbar-container">
-                  <div className="zbot-toolbar-left">
+                  <div className="zbot-toolbar-left d-flex align-items-center gap-1">
                     <button type="button" className="toolbar-btn plus-btn" title="Add attachment" onClick={handlePaperclipClick}>
                       <Plus size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className={`toolbar-btn emoji-btn ${showEmojiPicker ? "text-indigo-600 bg-slate-100" : ""}`}
+                      title="Add Emoji"
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    >
+                      <Smile size={15} />
                     </button>
                     <button type="button" className="toolbar-btn mention-btn" title="Mention member" onClick={handleMentionBtnClick}>
                       <AtSign size={14} />

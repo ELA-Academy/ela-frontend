@@ -12,6 +12,7 @@ import { format, parseISO } from "date-fns";
 import { toast } from "react-toastify";
 import api from "../../../utils/api";
 import { useAuth } from "../../../context/AuthContext";
+import EmojiPickerPopover from "../../common/EmojiPickerPopover";
 import "../../../styles/InlineCommentPanel.css";
 
 const InlineCommentPanel = ({ task, isOpen, onClose, assignees = [], onCommentAdded }) => {
@@ -21,6 +22,24 @@ const InlineCommentPanel = ({ task, isOpen, onClose, assignees = [], onCommentAd
   const [newComment, setNewComment] = useState("");
   const [posting, setPosting] = useState(false);
   const [activeReactCommentId, setActiveReactCommentId] = useState(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  const handleInsertEmoji = (emojiChar) => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart || 0;
+      const end = textarea.selectionEnd || 0;
+      const text = newComment;
+      const updated = text.substring(0, start) + emojiChar + text.substring(end);
+      setNewComment(updated);
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + emojiChar.length, start + emojiChar.length);
+      }, 50);
+    } else {
+      setNewComment(prev => prev + emojiChar);
+    }
+  };
   
   // Threading / Replies states
   const [replyInputs, setReplyInputs] = useState({});
@@ -597,13 +616,27 @@ const InlineCommentPanel = ({ task, isOpen, onClose, assignees = [], onCommentAd
             </div>
           )}
 
-          <div className="inline-comment-toolbar">
-            <div className="inline-comment-tools">
+          <div className="inline-comment-toolbar position-relative">
+            {showEmojiPicker && (
+              <EmojiPickerPopover
+                onSelectEmoji={handleInsertEmoji}
+                onClose={() => setShowEmojiPicker(false)}
+                style={{ bottom: "100%", left: "0", marginBottom: "8px" }}
+              />
+            )}
+
+            <div className="inline-comment-tools d-flex align-items-center gap-2">
               <Paperclip 
                 size={16} 
                 className="inline-comment-tool-btn"
                 onClick={() => fileInputRef.current?.click()}
                 title="Attach Files"
+              />
+              <Smile
+                size={16}
+                className={`inline-comment-tool-btn ${showEmojiPicker ? "text-indigo-600 font-bold" : ""}`}
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                title="Add Emoji"
               />
               {uploading && <Spinner animation="border" size="sm" style={{ width: "12px", height: "12px", color: "#94a3b8" }} />}
               

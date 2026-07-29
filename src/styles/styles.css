@@ -1360,3 +1360,33 @@ body.dark-mode {
 [data-theme="dark"] .dark-mode-toggle-track {
   border: 1px solid #3f3f46;
 }
+
+/* 37. ClickUp-Style Emoji Picker Popover Dark Mode Overrides */
+[data-theme="dark"] .zbot-emoji-picker-popover {
+  background-color: #18181b !important;
+  color: #f4f4f5 !important;
+  border-color: #27272a !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8) !important;
+}
+
+[data-theme="dark"] .zbot-emoji-picker-popover .bg-slate-50\/70,
+[data-theme="dark"] .zbot-emoji-picker-popover .bg-slate-50\/90 {
+  background-color: #121215 !important;
+  border-color: #27272a !important;
+}
+
+[data-theme="dark"] .zbot-emoji-picker-popover input {
+  background-color: #1e1e22 !important;
+  color: #ffffff !important;
+  border-color: #3f3f46 !important;
+}
+
+[data-theme="dark"] .emoji-grid-btn:hover {
+  background-color: #27272a !important;
+}
+
+[data-theme="dark"] .zbot-emoji-picker-popover .bg-white {
+  background-color: #27272a !important;
+  color: #6366f1 !important;
+}
+

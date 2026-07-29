@@ -4883,5 +4883,38 @@ th.zbot-sticky-col-right, th.zbot-sticky-table-col-right-1, th.zbot-sticky-table
   background-color: #27272a !important;
 }
 
+/* Task Modal Activity & Comment Pane Dark Mode Overrides */
+[data-theme="dark"] .task-detail-activity,
+[data-theme="dark"] .task-detail-activity-unified,
+[data-theme="dark"] .activity-feed-scroll {
+  background-color: #121215 !important;
+  color: #f4f4f5 !important;
+  border-color: #27272a !important;
+}
+
+[data-theme="dark"] .activity-feed-header,
+[data-theme="dark"] .activity-feed-editor {
+  background-color: #18181b !important;
+  color: #ffffff !important;
+  border-color: #27272a !important;
+}
+
+[data-theme="dark"] .activity-feed-header h5,
+[data-theme="dark"] .activity-feed-header span,
+[data-theme="dark"] .activity-feed-header div {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .activity-feed-history-item {
+  background-color: #18181b !important;
+  border-left-color: #3f3f46 !important;
+  color: #e4e4e7 !important;
+}
+
+[data-theme="dark"] .activity-feed-history-item strong {
+  color: #ffffff !important;
+}
+
+
 
 
