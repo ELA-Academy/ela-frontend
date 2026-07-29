@@ -382,6 +382,45 @@ const UpdatesDrawer = ({
     }
   };
 
+  // Helper to normalize custom field values based on field type
+  // Handles the case where a field type was changed after data was imported
+  const normalizeFieldValue = (field, value) => {
+    if (value === undefined || value === null) return value;
+    if (field.type === 'multi_select' || field.type === 'labels') {
+      if (Array.isArray(value)) return value;
+      if (typeof value === 'string' && value.trim()) {
+        // If the string contains commas, split into multiple values
+        if (value.includes(',')) {
+          return value.split(',').map(v => v.trim()).filter(Boolean);
+        }
+        return [value];
+      }
+      return [];
+    }
+    if (field.type === 'dropdown') {
+      if (Array.isArray(value)) return value[0] || '';
+      return value;
+    }
+    if (field.type === 'checkbox') {
+      if (typeof value === 'string') {
+        return value.toLowerCase() === 'true' || value === '1' || value.toLowerCase() === 'yes';
+      }
+      return !!value;
+    }
+    if (field.type === 'number' || field.type === 'rating') {
+      if (typeof value === 'string') {
+        const num = parseFloat(value.replace(/[^0-9.-]/g, ''));
+        return isNaN(num) ? '' : num;
+      }
+      return value;
+    }
+    // For text, date, etc., ensure it's a string
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      try { return JSON.stringify(value); } catch { return String(value); }
+    }
+    return value;
+  };
+
   const renderCustomFieldCell = (field, value, onChange) => {
     switch (field.type) {
       case "text":
@@ -2905,13 +2944,13 @@ const UpdatesDrawer = ({
                   ) : (
                     (() => {
                       const emptyCount = boardCustomFields.filter(f => {
-                        const val = customFieldValues[f.id];
+                        const val = normalizeFieldValue(f, customFieldValues[f.id]);
                         return val === undefined || val === null || val === "" || (Array.isArray(val) && val.length === 0);
                       }).length;
 
                       const visibleFields = hideEmptyFields
                         ? boardCustomFields.filter(f => {
-                            const val = customFieldValues[f.id];
+                            const val = normalizeFieldValue(f, customFieldValues[f.id]);
                             return val !== undefined && val !== null && val !== "" && (!Array.isArray(val) || val.length > 0);
                           })
                         : boardCustomFields;
@@ -2919,7 +2958,7 @@ const UpdatesDrawer = ({
                       return (
                         <>
                           {visibleFields.map((field) => {
-                            const val = customFieldValues[field.id] ?? "";
+                            const val = normalizeFieldValue(field, customFieldValues[field.id] ?? "");
                             return (
                               <div key={field.id} className="cu-custom-field-row d-flex align-items-center justify-content-between">
                                 <span className="text-slate-600 font-medium d-flex align-items-center gap-2" style={{ fontSize: "12.5px", width: "160px" }}>
@@ -2933,7 +2972,14 @@ const UpdatesDrawer = ({
                                   />
                                 </span>
                                 <div className="flex-grow-1 ms-3">
-                                  {renderCustomFieldCell(field, val, (newVal) => handleCustomFieldChange(field.id, newVal))}
+                                  {(() => {
+                                    try {
+                                      return renderCustomFieldCell(field, val, (newVal) => handleCustomFieldChange(field.id, newVal));
+                                    } catch (e) {
+                                      console.error(`Error rendering custom field '${field.name}':`, e);
+                                      return <span className="text-muted text-xs">-</span>;
+                                    }
+                                  })()}
                                 </div>
                               </div>
                             );

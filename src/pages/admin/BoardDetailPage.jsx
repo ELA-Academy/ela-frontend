@@ -10,7 +10,7 @@ import {
   Plus,
   Trash,
 } from "react-bootstrap-icons";
-import { FileText, LayoutList, Kanban, Flag, User, Calendar, BookOpen, Folder, Repeat, GitFork, Link, MoreHorizontal, Copy, Star, Edit3, Bell, ArrowRight, PlusSquare, Layers, ClipboardCopy, Zap, Clock, Mail, Archive, Trash2, MessageSquare, Search, AlignLeft, Table, PieChart, Image, Activity, Share2, Users, MapPin, Pin, Settings, Lock, Filter, RefreshCw, Columns, ChevronDown, Send, MousePointer, Type, PenTool, StickyNote, Eraser, Square, Target, Paperclip, Hash, Globe, DollarSign, CheckSquare, PlusCircle, ArrowLeft, ListPlus, Tag, Sparkles, Phone, Upload, Check } from "lucide-react";
+import { FileText, LayoutList, Kanban, Flag, User, Calendar, BookOpen, Folder, Repeat, GitFork, Link, MoreHorizontal, Copy, Star, Edit3, Bell, ArrowRight, PlusSquare, Layers, ClipboardCopy, Zap, Clock, Mail, Archive, Trash2, MessageSquare, Search, AlignLeft, Table, PieChart, Image, Activity, Share2, Users, MapPin, Pin, Settings, Lock, Filter, RefreshCw, Columns, ChevronDown, ChevronLeft, ChevronRight, Send, MousePointer, Type, PenTool, StickyNote, Eraser, Square, Target, Paperclip, Hash, Globe, DollarSign, CheckSquare, PlusCircle, ArrowLeft, ListPlus, Tag, Sparkles, Phone, Upload, Check } from "lucide-react";
 import { toast } from "react-toastify";
 import { format, parseISO } from "date-fns";
 
@@ -303,6 +303,8 @@ const BoardDetailPage = () => {
   const [error, setError] = useState("");
   const [assigneeSearchQuery, setAssigneeSearchQuery] = useState("");
   const [activeView, setActiveView] = useState("list");
+  const [tablePage, setTablePage] = useState(1);
+  const TABLE_PAGE_SIZE = 15;
   const [collapsedStatuses, setCollapsedStatuses] = useState({});
   const [activeTaskId, setActiveTaskId] = useState(null);
   const [activeCommentTaskId, setActiveCommentTaskId] = useState(null);
@@ -1844,9 +1846,12 @@ const BoardDetailPage = () => {
       if (valA === undefined || valA === null) valA = "";
       if (valB === undefined || valB === null) valB = "";
 
+      // Normalize values for sorting - arrays (multi_select) get joined
+      if (Array.isArray(valA)) valA = valA.join(', ');
+      if (Array.isArray(valB)) valB = valB.join(', ');
       if (typeof valA === "string") {
         valA = valA.toLowerCase();
-        valB = valB.toLowerCase();
+        valB = typeof valB === "string" ? valB.toLowerCase() : String(valB).toLowerCase();
       }
 
       if (valA < valB) return sortOrder === "asc" ? -1 : 1;
@@ -4508,6 +4513,12 @@ const BoardDetailPage = () => {
   };
 
   const renderTableView = () => {
+    const totalTasks = filteredTasks.length;
+    const totalPages = Math.max(1, Math.ceil(totalTasks / TABLE_PAGE_SIZE));
+    const currentPage = Math.min(tablePage, totalPages);
+    const startIndex = (currentPage - 1) * TABLE_PAGE_SIZE;
+    const paginatedTasks = filteredTasks.slice(startIndex, startIndex + TABLE_PAGE_SIZE);
+
     return (
       <div className="workspace-table-container zbot-proper-table bg-white rounded-3 shadow-sm border p-2">
         <table className="workspace-table" style={{ minWidth: boardCustomFields.length > 0 ? `${800 + boardCustomFields.length * 150}px` : "100%" }}>
@@ -4534,7 +4545,7 @@ const BoardDetailPage = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredTasks.map((task) => {
+            {paginatedTasks.map((task) => {
               const statusMeta = STATUS_META[task.status] || STATUS_META["Not Started"];
               return (
                 <React.Fragment key={task.id}>
@@ -4904,7 +4915,91 @@ const BoardDetailPage = () => {
               </tr>
             )}
           </tbody>
+          <tfoot>
+            <tr className="workspace-group-tfoot workspace-table-calc-row border-top">
+              <td style={{ width: "3%" }}></td>
+              <td style={{ minWidth: "350px" }} className="px-2 py-1 align-middle text-muted text-xs font-semibold">
+                {filteredTasks.length} tasks total
+              </td>
+              {!isColHidden("assignee") && (
+                <td style={{ minWidth: "120px" }} className="px-2 py-1 align-middle">
+                  {renderColumnCalculationCell("assignee", filteredTasks)}
+                </td>
+              )}
+              {!isColHidden("status") && (
+                <td style={{ minWidth: "120px" }} className="px-2 py-1 align-middle">
+                  {renderColumnCalculationCell("status", filteredTasks)}
+                </td>
+              )}
+              {!isColHidden("due_date") && (
+                <td style={{ minWidth: "110px" }} className="px-2 py-1 align-middle">
+                  {renderColumnCalculationCell("due_date", filteredTasks)}
+                </td>
+              )}
+              {!isColHidden("priority") && (
+                <td style={{ minWidth: "90px" }} className="px-2 py-1 align-middle">
+                  {renderColumnCalculationCell("priority", filteredTasks)}
+                </td>
+              )}
+              {boardCustomFields.filter(f => !isColHidden(f.id)).map(field => (
+                <td key={`table_calc_${field.id}`} style={{ width: "140px", minWidth: "140px", maxWidth: "180px" }} className="px-2 py-1 align-middle">
+                  {renderColumnCalculationCell(field, filteredTasks)}
+                </td>
+              ))}
+              <td style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }} />
+              <td style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }} />
+            </tr>
+          </tfoot>
         </table>
+
+        {/* Table View Pagination Bar (15 rows / page) */}
+        <div className="d-flex align-items-center justify-content-between px-3 py-2 border-top bg-light-subtle workspace-pagination-bar rounded-bottom-3">
+          <div className="text-xs text-muted font-medium">
+            Showing <span className="fw-semibold text-slate-700">{totalTasks > 0 ? startIndex + 1 : 0}</span>–<span className="fw-semibold text-slate-700">{Math.min(startIndex + TABLE_PAGE_SIZE, totalTasks)}</span> of <span className="fw-semibold text-slate-700">{totalTasks}</span> tasks
+          </div>
+          
+          <div className="d-flex align-items-center gap-2">
+            <span className="text-xs text-muted me-2">Page {currentPage} of {totalPages}</span>
+            <div className="btn-group btn-group-sm">
+              <button
+                type="button"
+                className="btn btn-outline-secondary btn-sm px-2 py-1 d-flex align-items-center gap-1"
+                disabled={currentPage <= 1}
+                onClick={() => setTablePage(p => Math.max(1, p - 1))}
+              >
+                <ChevronLeft size={14} /> Previous
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                .map((p, idx, arr) => {
+                  const prevP = arr[idx - 1];
+                  const showEllipsis = prevP && p - prevP > 1;
+                  return (
+                    <React.Fragment key={p}>
+                      {showEllipsis && <span className="btn btn-sm btn-outline-secondary disabled px-2 py-1">...</span>}
+                      <button
+                        type="button"
+                        className={`btn btn-sm px-2.5 py-1 ${currentPage === p ? "btn-primary font-bold" : "btn-outline-secondary"}`}
+                        onClick={() => setTablePage(p)}
+                      >
+                        {p}
+                      </button>
+                    </React.Fragment>
+                  );
+                })}
+
+              <button
+                type="button"
+                className="btn btn-outline-secondary btn-sm px-2 py-1 d-flex align-items-center gap-1"
+                disabled={currentPage >= totalPages}
+                onClick={() => setTablePage(p => Math.min(totalPages, p + 1))}
+              >
+                Next <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   };
@@ -5689,8 +5784,48 @@ const BoardDetailPage = () => {
     }
   };
 
+  // Helper to normalize custom field values based on field type
+  // Handles the case where a field type was changed after data was imported
+  const normalizeFieldValue = (field, value) => {
+    if (value === undefined || value === null || value === '') return value;
+    if (field.type === 'multi_select' || field.type === 'labels') {
+      if (Array.isArray(value)) return value;
+      if (typeof value === 'string' && value.trim()) {
+        // If the string contains commas, split into multiple values
+        if (value.includes(',')) {
+          return value.split(',').map(v => v.trim()).filter(Boolean);
+        }
+        return [value];
+      }
+      return [];
+    }
+    if (field.type === 'dropdown') {
+      if (Array.isArray(value)) return value[0] || '';
+      return value;
+    }
+    if (field.type === 'checkbox') {
+      if (typeof value === 'string') {
+        return value.toLowerCase() === 'true' || value === '1' || value.toLowerCase() === 'yes';
+      }
+      return !!value;
+    }
+    if (field.type === 'number' || field.type === 'rating') {
+      if (typeof value === 'string') {
+        const num = parseFloat(value.replace(/[^0-9.-]/g, ''));
+        return isNaN(num) ? '' : num;
+      }
+      return value;
+    }
+    // For text, date, etc., ensure it's a string
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      try { return JSON.stringify(value); } catch { return String(value); }
+    }
+    return value;
+  };
+
   const renderCustomFieldCell = (task, field) => {
-    const value = task.custom_field_values?.[field.id] ?? "";
+    const rawValue = task.custom_field_values?.[field.id] ?? "";
+    const value = normalizeFieldValue(field, rawValue);
     
     const handleUpdateValue = async (newVal) => {
       // Optimistic state update

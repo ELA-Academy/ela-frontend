@@ -578,6 +578,44 @@ const Header = () => {
               <span>Settings</span>
             </Dropdown.Item>
             
+            <Dropdown.Item
+              as="div"
+              className="flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer"
+              onClick={(e) => { e.stopPropagation(); toggleTheme(); }}
+              style={{ userSelect: "none" }}
+            >
+              <div className="flex items-center gap-2">
+                <Moon className="w-4 h-4 text-slate-400" />
+                <span>Dark mode</span>
+              </div>
+              <div
+                className={`dark-mode-toggle-track ${isDark ? "active" : ""}`}
+                style={{
+                  width: "36px",
+                  height: "20px",
+                  borderRadius: "12px",
+                  backgroundColor: isDark ? "#6366f1" : "#d1d5db",
+                  position: "relative",
+                  transition: "background-color 0.2s ease",
+                  flexShrink: 0
+                }}
+              >
+                <div
+                  style={{
+                    width: "16px",
+                    height: "16px",
+                    borderRadius: "50%",
+                    backgroundColor: "#ffffff",
+                    position: "absolute",
+                    top: "2px",
+                    left: isDark ? "18px" : "2px",
+                    transition: "left 0.2s ease",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.2)"
+                  }}
+                />
+              </div>
+            </Dropdown.Item>
+
             <Dropdown.Divider className="border-slate-50" />
             
             <Dropdown.Item onClick={handleLogout} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-rose-600 hover:bg-rose-50 hover:text-rose-700 font-semibold transition-colors">
