@@ -834,3 +834,153 @@
   background-color: #f1f5f9;
 }
 
+/* ==========================================================================
+   MESSAGING DARK MODE SYSTEM OVERRIDES
+   ========================================================================== */
+
+[data-theme="dark"] .workspace-message-panel,
+[data-theme="dark"] .zbot-chat-layout,
+[data-theme="dark"] .zbot-chat-header,
+[data-theme="dark"] .zbot-chat-messages,
+[data-theme="dark"] .zbot-chat-footer,
+[data-theme="dark"] .conversation-sidebar,
+[data-theme="dark"] .chat-window-area {
+  background-color: #0c0c0e !important;
+  color: #f4f4f5 !important;
+  border-color: #27272a !important;
+}
+
+[data-theme="dark"] .zbot-header-info h5,
+[data-theme="dark"] .zbot-intro-section h3,
+[data-theme="dark"] .zbot-message-sender,
+[data-theme="dark"] .zbot-intro-card strong,
+[data-theme="dark"] .zbot-intro-btn {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .zbot-header-tab {
+  color: #a1a1aa !important;
+}
+
+[data-theme="dark"] .zbot-header-tab:hover,
+[data-theme="dark"] .zbot-header-tab.active {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .zbot-intro-section {
+  border-bottom-color: #27272a !important;
+}
+
+[data-theme="dark"] .zbot-intro-btn {
+  background-color: #18181b !important;
+  border-color: #27272a !important;
+}
+
+[data-theme="dark"] .zbot-intro-btn:hover {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .zbot-intro-card.pink-card {
+  background-color: #2a1820 !important;
+  border-color: #4a1d2e !important;
+  color: #f4f4f5 !important;
+}
+
+[data-theme="dark"] .zbot-intro-card.green-card {
+  background-color: #14281e !important;
+  border-color: #1b4d32 !important;
+  color: #f4f4f5 !important;
+}
+
+[data-theme="dark"] .pink-icon {
+  background-color: #3d1b28 !important;
+  color: #f43f5e !important;
+}
+
+[data-theme="dark"] .green-icon {
+  background-color: #1b3d2b !important;
+  color: #10b981 !important;
+}
+
+[data-theme="dark"] .zbot-message-row:hover {
+  background-color: #18181b !important;
+}
+
+[data-theme="dark"] .zbot-message-avatar {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+  border-color: #3f3f46 !important;
+}
+
+[data-theme="dark"] .zbot-message-content {
+  color: #e4e4e7 !important;
+}
+
+[data-theme="dark"] .zbot-chat-footer {
+  background-color: #121215 !important;
+  border-top-color: #27272a !important;
+}
+
+[data-theme="dark"] .zbot-input-card {
+  background-color: #18181b !important;
+  border-color: #27272a !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="dark"] .zbot-textarea {
+  color: #ffffff !important;
+  caret-color: #a1a1aa !important;
+}
+
+[data-theme="dark"] .zbot-toolbar-container {
+  border-top-color: #27272a !important;
+}
+
+[data-theme="dark"] .toolbar-btn {
+  color: #a1a1aa !important;
+}
+
+[data-theme="dark"] .toolbar-btn:hover {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .zbot-message-hover-actions,
+[data-theme="dark"] .zbot-message-context-menu,
+[data-theme="dark"] .zbot-mentions-dropdown,
+[data-theme="dark"] .zbot-context-submenu {
+  background-color: #1e1e22 !important;
+  border-color: #27272a !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7) !important;
+}
+
+[data-theme="dark"] .zbot-context-menu-item,
+[data-theme="dark"] .zbot-context-submenu-item,
+[data-theme="dark"] .zbot-mention-item {
+  color: #e4e4e7 !important;
+}
+
+[data-theme="dark"] .zbot-context-menu-item:hover,
+[data-theme="dark"] .zbot-context-submenu-item:hover,
+[data-theme="dark"] .zbot-mention-item:hover,
+[data-theme="dark"] .zbot-mention-item.selected {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .zbot-quoted-message-preview,
+[data-theme="dark"] .zbot-reply-preview-bar {
+  background-color: #1e1e24 !important;
+  border-left-color: #6366f1 !important;
+  color: #e4e4e7 !important;
+}
+
+[data-theme="dark"] .workspace-announcements-panel {
+  background-color: #121215 !important;
+  color: #ffffff !important;
+  border-color: #27272a !important;
+}
+
+

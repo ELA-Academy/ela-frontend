@@ -39,6 +39,7 @@ import {
   ListPlus,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import EmojiPickerPopover from "../common/EmojiPickerPopover";
 import {
   getTaskUpdates,
   createTaskUpdate,
@@ -3632,18 +3633,14 @@ const UpdatesDrawer = ({
                                         <Smile size={14} />
                                       </button>
                                       {activeReactCommentId === item.id && (
-                                        <div className="position-absolute bg-white border border-slate-200 rounded-lg shadow-lg p-2 d-flex gap-1" style={{ zIndex: 100, bottom: "24px", left: "0" }}>
-                                          {["👍", "✅", "🔥", "❤️", "😊", "🎉", "😮", "😢"].map(emoji => (
-                                            <button 
-                                              key={emoji}
-                                              className="btn btn-sm btn-light p-1 border-0 hover:bg-slate-100 rounded"
-                                              style={{ fontSize: "16px", cursor: "pointer" }}
-                                              onClick={() => handleReactToComment(item.id, emoji)}
-                                            >
-                                              {emoji}
-                                            </button>
-                                          ))}
-                                        </div>
+                                        <EmojiPickerPopover
+                                          onSelectEmoji={(emojiChar) => {
+                                            handleReactToComment(item.id, emojiChar);
+                                            setActiveReactCommentId(null);
+                                          }}
+                                          onClose={() => setActiveReactCommentId(null)}
+                                          style={{ bottom: "100%", left: "0", marginBottom: "4px" }}
+                                        />
                                       )}
                                     </div>
                                   </div>
@@ -3773,18 +3770,14 @@ const UpdatesDrawer = ({
                             <Smile size={14} />
                           </button>
                           {showInputEmojiPicker && (
-                            <div className="position-absolute bg-white border border-slate-200 rounded-lg shadow-lg p-2 d-flex gap-1" style={{ zIndex: 100, bottom: "30px", left: "0" }}>
-                              {["👍", "✅", "🔥", "❤️", "😊", "🎉", "😮", "😢"].map(emoji => (
-                                <button 
-                                  key={emoji}
-                                  className="btn btn-sm btn-light p-1 border-0 hover:bg-slate-100 rounded"
-                                  style={{ fontSize: "16px", cursor: "pointer" }}
-                                  onClick={() => handleInsertInputEmoji(emoji)}
-                                >
-                                  {emoji}
-                                </button>
-                              ))}
-                            </div>
+                            <EmojiPickerPopover
+                              onSelectEmoji={(emojiChar) => {
+                                handleInsertInputEmoji(emojiChar);
+                                setShowInputEmojiPicker(false);
+                              }}
+                              onClose={() => setShowInputEmojiPicker(false)}
+                              style={{ bottom: "100%", left: "0", marginBottom: "8px" }}
+                            />
                           )}
                         </div>
                         <button type="button" className="btn btn-link p-1 text-slate-400 hover:text-slate-600 bg-transparent border-0" title="Video comment" onClick={() => toast.info("Video comments not supported on this device.")}>
