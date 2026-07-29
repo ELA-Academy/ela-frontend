@@ -707,3 +707,656 @@ body.dark-mode {
   color: #f4f4f5 !important;
 }
 
+/* ========================================================================
+   DARK MODE — EXTENDED COMPREHENSIVE OVERRIDES
+   ======================================================================== */
+
+/* 11. Form Controls & Inputs */
+[data-theme="dark"] .form-control,
+[data-theme="dark"] .form-select,
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="email"],
+[data-theme="dark"] input[type="password"],
+[data-theme="dark"] input[type="number"],
+[data-theme="dark"] input[type="date"],
+[data-theme="dark"] input[type="search"],
+[data-theme="dark"] input[type="url"],
+[data-theme="dark"] input[type="tel"],
+[data-theme="dark"] textarea,
+[data-theme="dark"] .cell-editable-text {
+  background-color: #1e1e22 !important;
+  color: #f4f4f5 !important;
+  border-color: #3f3f46 !important;
+  caret-color: #a1a1aa;
+}
+
+[data-theme="dark"] .form-control:focus,
+[data-theme="dark"] .form-select:focus,
+[data-theme="dark"] input:focus,
+[data-theme="dark"] textarea:focus {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+}
+
+[data-theme="dark"] .form-control::placeholder,
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: #71717a !important;
+}
+
+[data-theme="dark"] .form-check-input {
+  background-color: #27272a !important;
+  border-color: #52525b !important;
+}
+
+[data-theme="dark"] .form-check-input:checked {
+  background-color: #6366f1 !important;
+  border-color: #6366f1 !important;
+}
+
+[data-theme="dark"] .form-switch .form-check-input {
+  background-color: #3f3f46 !important;
+  border-color: #52525b !important;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23a1a1aa'/%3e%3c/svg%3e") !important;
+}
+
+[data-theme="dark"] .form-switch .form-check-input:checked {
+  background-color: #6366f1 !important;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23ffffff'/%3e%3c/svg%3e") !important;
+}
+
+/* 12. Modals — Full Coverage */
+[data-theme="dark"] .modal-content {
+  background-color: #18181b !important;
+  color: #f4f4f5 !important;
+  border: 1px solid #27272a !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7) !important;
+}
+
+[data-theme="dark"] .modal-header {
+  background-color: #18181b !important;
+  border-bottom-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .modal-header .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%) !important;
+}
+
+[data-theme="dark"] .modal-body {
+  background-color: #18181b !important;
+  color: #e4e4e7 !important;
+}
+
+[data-theme="dark"] .modal-footer {
+  background-color: #18181b !important;
+  border-top-color: #27272a !important;
+}
+
+[data-theme="dark"] .modal-title,
+[data-theme="dark"] .modal-header h5,
+[data-theme="dark"] .modal-header h4,
+[data-theme="dark"] .modal-header .fs-6 {
+  color: #ffffff !important;
+}
+
+/* 13. Offcanvas full coverage */
+[data-theme="dark"] .offcanvas {
+  background-color: #18181b !important;
+  color: #f4f4f5 !important;
+  border-color: #27272a !important;
+}
+
+[data-theme="dark"] .offcanvas-header {
+  border-bottom-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .offcanvas-header .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%) !important;
+}
+
+[data-theme="dark"] .offcanvas-body {
+  background-color: #18181b !important;
+  color: #e4e4e7 !important;
+}
+
+/* 14. Dropdown Menus */
+[data-theme="dark"] .dropdown-menu {
+  background-color: #1e1e22 !important;
+  border: 1px solid #27272a !important;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6) !important;
+  color: #e4e4e7 !important;
+}
+
+[data-theme="dark"] .dropdown-item {
+  color: #e4e4e7 !important;
+}
+
+[data-theme="dark"] .dropdown-item:hover,
+[data-theme="dark"] .dropdown-item:focus {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .dropdown-item.active,
+[data-theme="dark"] .dropdown-item:active {
+  background-color: #3f3f46 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .dropdown-divider {
+  border-color: #27272a !important;
+}
+
+/* 15. Buttons */
+[data-theme="dark"] .btn-light {
+  background-color: #27272a !important;
+  color: #e4e4e7 !important;
+  border-color: #3f3f46 !important;
+}
+
+[data-theme="dark"] .btn-light:hover {
+  background-color: #3f3f46 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .btn-white {
+  background-color: #27272a !important;
+  color: #e4e4e7 !important;
+  border-color: #3f3f46 !important;
+}
+
+[data-theme="dark"] .btn-outline-secondary {
+  border-color: #3f3f46 !important;
+  color: #e4e4e7 !important;
+}
+
+[data-theme="dark"] .btn-outline-secondary:hover {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .btn-outline-light {
+  border-color: #3f3f46 !important;
+  color: #d4d4d8 !important;
+}
+
+/* 16. Badges */
+[data-theme="dark"] .badge.bg-light {
+  background-color: #27272a !important;
+  color: #e4e4e7 !important;
+  border-color: #3f3f46 !important;
+}
+
+[data-theme="dark"] .badge.text-dark {
+  color: #e4e4e7 !important;
+}
+
+/* 17. Alerts */
+[data-theme="dark"] .alert {
+  border-color: #27272a !important;
+}
+
+[data-theme="dark"] .alert-info {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  color: #93c5fd !important;
+}
+
+[data-theme="dark"] .alert-warning {
+  background-color: rgba(245, 158, 11, 0.1) !important;
+  color: #fcd34d !important;
+}
+
+[data-theme="dark"] .alert-danger {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+  color: #fca5a5 !important;
+}
+
+/* 18. Tabs & Nav */
+[data-theme="dark"] .nav-tabs {
+  border-bottom-color: #27272a !important;
+}
+
+[data-theme="dark"] .nav-tabs .nav-link {
+  color: #a1a1aa !important;
+}
+
+[data-theme="dark"] .nav-tabs .nav-link.active {
+  background-color: #18181b !important;
+  color: #ffffff !important;
+  border-color: #27272a #27272a #18181b !important;
+}
+
+[data-theme="dark"] .nav-link {
+  color: #a1a1aa !important;
+}
+
+[data-theme="dark"] .nav-link:hover {
+  color: #ffffff !important;
+}
+
+/* 19. Scrollbar Styling */
+[data-theme="dark"] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: #121215;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background-color: #3f3f46;
+  border-radius: 4px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background-color: #52525b;
+}
+
+/* 20. Toast / Toastify */
+[data-theme="dark"] .Toastify__toast {
+  background-color: #1e1e22 !important;
+  color: #f4f4f5 !important;
+  border: 1px solid #27272a !important;
+}
+
+/* 21. List groups */
+[data-theme="dark"] .list-group-item {
+  background-color: #18181b !important;
+  color: #e4e4e7 !important;
+  border-color: #27272a !important;
+}
+
+/* 22. Accordion */
+[data-theme="dark"] .accordion-item {
+  background-color: #18181b !important;
+  border-color: #27272a !important;
+  color: #e4e4e7 !important;
+}
+
+[data-theme="dark"] .accordion-button {
+  background-color: #18181b !important;
+  color: #e4e4e7 !important;
+}
+
+[data-theme="dark"] .accordion-button::after {
+  filter: invert(1) !important;
+}
+
+/* 23. Profile Dropdown dark mode */
+[data-theme="dark"] .hostinger-profile-avatar {
+  background-color: #3f3f46 !important;
+  color: #ffffff !important;
+}
+
+/* 24. Border utilities */
+[data-theme="dark"] .border,
+[data-theme="dark"] .border-bottom,
+[data-theme="dark"] .border-top,
+[data-theme="dark"] .border-start,
+[data-theme="dark"] .border-end {
+  border-color: #27272a !important;
+}
+
+[data-theme="dark"] .border-dashed {
+  border-color: #3f3f46 !important;
+}
+
+/* 25. Placeholder / empty states */
+[data-theme="dark"] .text-muted {
+  color: #a1a1aa !important;
+}
+
+/* 26. Hover backgrounds */
+[data-theme="dark"] .hover\:bg-slate-50:hover,
+[data-theme="dark"] .hover\:bg-slate-100:hover,
+[data-theme="dark"] [class*="hover:bg-slate"]:hover {
+  background-color: #27272a !important;
+}
+
+/* 27. Close buttons */
+[data-theme="dark"] .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%) !important;
+}
+
+/* 28. Progress bars */
+[data-theme="dark"] .progress {
+  background-color: #27272a !important;
+}
+
+/* 29. Breadcrumbs */
+[data-theme="dark"] .breadcrumb-item a,
+[data-theme="dark"] .breadcrumb-item.active {
+  color: #a1a1aa !important;
+}
+
+/* 30. Select2 / React-Select remaining */
+[data-theme="dark"] [class*="-singleValue"],
+[data-theme="dark"] [class*="-placeholder"],
+[data-theme="dark"] [class*="-input"] input {
+  color: #f4f4f5 !important;
+}
+
+/* 31. Popover */
+[data-theme="dark"] .popover {
+  background-color: #1e1e22 !important;
+  border-color: #27272a !important;
+}
+
+[data-theme="dark"] .popover-body {
+  color: #e4e4e7 !important;
+}
+
+[data-theme="dark"] .popover-header {
+  background-color: #18181b !important;
+  color: #ffffff !important;
+  border-color: #27272a !important;
+}
+
+/* 32. Tooltip */
+[data-theme="dark"] .tooltip-inner {
+  background-color: #27272a !important;
+  color: #e4e4e7 !important;
+  border-color: #3f3f46 !important;
+}
+
+[data-theme="dark"] .btn-outline-secondary {
+  border-color: #3f3f46 !important;
+  color: #e4e4e7 !important;
+}
+
+[data-theme="dark"] .btn-outline-secondary:hover {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .btn-outline-light {
+  border-color: #3f3f46 !important;
+  color: #d4d4d8 !important;
+}
+
+/* 16. Badges */
+[data-theme="dark"] .badge.bg-light {
+  background-color: #27272a !important;
+  color: #e4e4e7 !important;
+  border-color: #3f3f46 !important;
+}
+
+[data-theme="dark"] .badge.text-dark {
+  color: #e4e4e7 !important;
+}
+
+/* 17. Alerts */
+[data-theme="dark"] .alert {
+  border-color: #27272a !important;
+}
+
+[data-theme="dark"] .alert-info {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  color: #93c5fd !important;
+}
+
+[data-theme="dark"] .alert-warning {
+  background-color: rgba(245, 158, 11, 0.1) !important;
+  color: #fcd34d !important;
+}
+
+[data-theme="dark"] .alert-danger {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+  color: #fca5a5 !important;
+}
+
+/* 18. Tabs & Nav */
+[data-theme="dark"] .nav-tabs {
+  border-bottom-color: #27272a !important;
+}
+
+[data-theme="dark"] .nav-tabs .nav-link {
+  color: #a1a1aa !important;
+}
+
+[data-theme="dark"] .nav-tabs .nav-link.active {
+  background-color: #18181b !important;
+  color: #ffffff !important;
+  border-color: #27272a #27272a #18181b !important;
+}
+
+[data-theme="dark"] .nav-link {
+  color: #a1a1aa !important;
+}
+
+[data-theme="dark"] .nav-link:hover {
+  color: #ffffff !important;
+}
+
+/* 19. Scrollbar Styling */
+[data-theme="dark"] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: #121215;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background-color: #3f3f46;
+  border-radius: 4px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background-color: #52525b;
+}
+
+/* 20. Toast / Toastify */
+[data-theme="dark"] .Toastify__toast {
+  background-color: #1e1e22 !important;
+  color: #f4f4f5 !important;
+  border: 1px solid #27272a !important;
+}
+
+/* 21. List groups */
+[data-theme="dark"] .list-group-item {
+  background-color: #18181b !important;
+  color: #e4e4e7 !important;
+  border-color: #27272a !important;
+}
+
+/* 22. Accordion */
+[data-theme="dark"] .accordion-item {
+  background-color: #18181b !important;
+  border-color: #27272a !important;
+  color: #e4e4e7 !important;
+}
+
+[data-theme="dark"] .accordion-button {
+  background-color: #18181b !important;
+  color: #e4e4e7 !important;
+}
+
+[data-theme="dark"] .accordion-button::after {
+  filter: invert(1) !important;
+}
+
+/* 23. Profile Dropdown dark mode */
+[data-theme="dark"] .hostinger-profile-avatar {
+  background-color: #3f3f46 !important;
+  color: #ffffff !important;
+}
+
+/* 24. Border utilities */
+[data-theme="dark"] .border,
+[data-theme="dark"] .border-bottom,
+[data-theme="dark"] .border-top,
+[data-theme="dark"] .border-start,
+[data-theme="dark"] .border-end {
+  border-color: #27272a !important;
+}
+
+[data-theme="dark"] .border-dashed {
+  border-color: #3f3f46 !important;
+}
+
+/* 25. Placeholder / empty states */
+[data-theme="dark"] .text-muted {
+  color: #a1a1aa !important;
+}
+
+/* 26. Hover backgrounds */
+[data-theme="dark"] .hover\:bg-slate-50:hover,
+[data-theme="dark"] .hover\:bg-slate-100:hover,
+[data-theme="dark"] [class*="hover:bg-slate"]:hover {
+  background-color: #27272a !important;
+}
+
+/* 27. Close buttons */
+[data-theme="dark"] .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%) !important;
+}
+
+/* 28. Progress bars */
+[data-theme="dark"] .progress {
+  background-color: #27272a !important;
+}
+
+/* 29. Breadcrumbs */
+[data-theme="dark"] .breadcrumb-item a,
+[data-theme="dark"] .breadcrumb-item.active {
+  color: #a1a1aa !important;
+}
+
+/* 30. Select2 / React-Select remaining */
+[data-theme="dark"] [class*="-singleValue"],
+[data-theme="dark"] [class*="-placeholder"],
+[data-theme="dark"] [class*="-input"] input {
+  color: #f4f4f5 !important;
+}
+
+/* 31. Popover */
+[data-theme="dark"] .popover {
+  background-color: #1e1e22 !important;
+  border-color: #27272a !important;
+}
+
+[data-theme="dark"] .popover-body {
+  color: #e4e4e7 !important;
+}
+
+[data-theme="dark"] .popover-header {
+  background-color: #18181b !important;
+  color: #ffffff !important;
+  border-color: #27272a !important;
+}
+
+/* 32. Tooltip */
+[data-theme="dark"] .tooltip-inner {
+  background-color: #3f3f46 !important;
+  color: #ffffff !important;
+}
+
+/* 33. Page titles and breadcrumbs */
+[data-theme="dark"] .page-title,
+[data-theme="dark"] .page-header h1,
+[data-theme="dark"] .content-area h1,
+[data-theme="dark"] .content-area h2,
+[data-theme="dark"] .content-area h3 {
+  color: #ffffff !important;
+}
+
+/* 34. Global Text & Color Visibility Fix (Ensure high contrast) */
+[data-theme="dark"] .text-slate-900,
+[data-theme="dark"] .text-slate-800,
+[data-theme="dark"] .text-slate-700,
+[data-theme="dark"] .text-gray-900,
+[data-theme="dark"] .text-gray-800,
+[data-theme="dark"] .text-gray-700,
+[data-theme="dark"] .text-neutral-900,
+[data-theme="dark"] .text-neutral-800 {
+  color: #f4f4f5 !important;
+}
+
+[data-theme="dark"] .text-slate-600,
+[data-theme="dark"] .text-slate-500,
+[data-theme="dark"] .text-gray-600,
+[data-theme="dark"] .text-gray-500,
+[data-theme="dark"] .text-neutral-600,
+[data-theme="dark"] .text-neutral-500 {
+  color: #e4e4e7 !important;
+}
+
+[data-theme="dark"] .text-slate-400,
+[data-theme="dark"] .text-gray-400,
+[data-theme="dark"] .text-neutral-400,
+[data-theme="dark"] .text-muted {
+  color: #a1a1aa !important;
+}
+
+/* 35. Complete Modal Universal Dark Theme Coverage */
+[data-theme="dark"] .modal-backdrop {
+  background-color: #000000 !important;
+  opacity: 0.75 !important;
+}
+
+[data-theme="dark"] .modal-content,
+[data-theme="dark"] .modal-content * {
+  border-color: #27272a;
+}
+
+[data-theme="dark"] .modal-content {
+  background-color: #18181b !important;
+  color: #f4f4f5 !important;
+}
+
+[data-theme="dark"] .modal-header,
+[data-theme="dark"] .modal-footer,
+[data-theme="dark"] .modal-body {
+  background-color: #18181b !important;
+  color: #f4f4f5 !important;
+}
+
+[data-theme="dark"] .modal-title,
+[data-theme="dark"] .modal-header h1,
+[data-theme="dark"] .modal-header h2,
+[data-theme="dark"] .modal-header h3,
+[data-theme="dark"] .modal-header h4,
+[data-theme="dark"] .modal-header h5,
+[data-theme="dark"] .modal-header h6 {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .modal-content input,
+[data-theme="dark"] .modal-content select,
+[data-theme="dark"] .modal-content textarea {
+  background-color: #121215 !important;
+  color: #ffffff !important;
+  border-color: #3f3f46 !important;
+}
+
+[data-theme="dark"] .modal-content label {
+  color: #e4e4e7 !important;
+}
+
+/* 36. Offcanvas & Header Profile Dropdown in Dark Mode */
+[data-theme="dark"] .dropdown-menu {
+  background-color: #18181b !important;
+  border: 1px solid #27272a !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+}
+
+[data-theme="dark"] .dropdown-menu .dropdown-item {
+  color: #e4e4e7 !important;
+}
+
+[data-theme="dark"] .dropdown-menu .dropdown-item:hover,
+[data-theme="dark"] .dropdown-menu .dropdown-item:focus {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .dark-mode-toggle-track {
+  border: 1px solid #3f3f46;
+}

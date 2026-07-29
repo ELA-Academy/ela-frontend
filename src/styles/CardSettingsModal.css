@@ -274,3 +274,58 @@
 .data-table tbody tr:hover td {
   background-color: #f8fafc;
 }
+
+/* Dark Mode Overrides */
+[data-theme="dark"] .modal-dialog.card-settings-modal .modal-content,
+[data-theme="dark"] .content-panel,
+[data-theme="dark"] .preview-panel {
+  background-color: #18181b !important;
+  color: #f4f4f5 !important;
+  border-color: #27272a !important;
+}
+
+[data-theme="dark"] .preview-panel {
+  background-color: #121215 !important;
+  border-right-color: #27272a !important;
+}
+
+[data-theme="dark"] .preview-card {
+  background-color: #18181b !important;
+  border-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .card-value-preview,
+[data-theme="dark"] .card-name-preview,
+[data-theme="dark"] .data-title,
+[data-theme="dark"] .data-total,
+[data-theme="dark"] .content-header,
+[data-theme="dark"] .data-table {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .data-total {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .modal-tabs .nav-link {
+  color: #a1a1aa !important;
+}
+
+[data-theme="dark"] .modal-tabs .nav-link.active {
+  color: #818cf8 !important;
+  border-color: #818cf8 !important;
+}
+
+[data-theme="dark"] .settings-footer,
+[data-theme="dark"] .content-header,
+[data-theme="dark"] .data-table thead th,
+[data-theme="dark"] .data-table tbody td {
+  border-color: #27272a !important;
+}
+
+[data-theme="dark"] .card-name-input {
+  color: #ffffff !important;
+}
+

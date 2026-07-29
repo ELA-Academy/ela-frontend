@@ -4767,4 +4767,121 @@ th.zbot-sticky-col-right, th.zbot-sticky-table-col-right-1, th.zbot-sticky-table
   color: #e4e4e7 !important;
 }
 
+/* Board View Navigation Bar & Tabs Dark Mode Overrides */
+[data-theme="dark"] .workspace-viewbar,
+[data-theme="dark"] .workspace-board-subnav,
+[data-theme="dark"] .workspace-filter-bar,
+[data-theme="dark"] .monday-view-header {
+  background-color: #121215 !important;
+  border-color: #27272a !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="dark"] .workspace-tab {
+  background-color: transparent !important;
+  color: #a1a1aa !important;
+  border-color: transparent !important;
+}
+
+[data-theme="dark"] .workspace-tab:hover {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .workspace-tab.active {
+  background-color: #18181b !important;
+  color: #ffffff !important;
+  border-color: #3f3f46 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5) !important;
+}
+
+[data-theme="dark"] .workspace-tab.active span {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+[data-theme="dark"] .workspace-icon-action {
+  background-color: #18181b !important;
+  color: #e4e4e7 !important;
+  border-color: #27272a !important;
+}
+
+[data-theme="dark"] .workspace-icon-action:hover {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+/* Column Calculation Cells & Hover Buttons Dark Mode Overrides */
+[data-theme="dark"] .group-footer-calc-btn,
+[data-theme="dark"] .workspace-table-calc-row {
+  color: #a1a1aa !important;
+}
+
+[data-theme="dark"] .group-footer-calc-btn .bg-white {
+  background-color: #1e1e22 !important;
+  color: #ffffff !important;
+  border-color: #3f3f46 !important;
+}
+
+[data-theme="dark"] .group-footer-calc-btn span {
+  color: #e4e4e7 !important;
+}
+
+[data-theme="dark"] .group-footer-calc-btn:hover span {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .workspace-table-calc-row td {
+  background-color: #121215 !important;
+  border-color: #27272a !important;
+  color: #a1a1aa !important;
+}
+
+/* Table Pagination Controls Bar Dark Mode Overrides */
+[data-theme="dark"] .workspace-pagination-bar {
+  background-color: #121215 !important;
+  border-color: #27272a !important;
+  color: #e4e4e7 !important;
+}
+
+[data-theme="dark"] .workspace-pagination-bar .text-slate-700,
+[data-theme="dark"] .workspace-pagination-bar span {
+  color: #f4f4f5 !important;
+}
+
+[data-theme="dark"] .workspace-pagination-bar .btn-outline-secondary {
+  background-color: #18181b !important;
+  border-color: #27272a !important;
+  color: #e4e4e7 !important;
+}
+
+[data-theme="dark"] .workspace-pagination-bar .btn-outline-secondary:hover:not(:disabled) {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .workspace-pagination-bar .btn-outline-secondary:disabled {
+  background-color: #121215 !important;
+  border-color: #27272a !important;
+  color: #52525b !important;
+}
+
+[data-theme="dark"] .workspace-pagination-bar .btn-primary {
+  background-color: #6366f1 !important;
+  border-color: #6366f1 !important;
+  color: #ffffff !important;
+}
+
+/* Fix for Add Task link row in Table View */
+[data-theme="dark"] .zbot-add-task-link {
+  color: #a1a1aa !important;
+}
+
+[data-theme="dark"] .zbot-add-task-link:hover {
+  color: #ffffff !important;
+  background-color: #27272a !important;
+}
+
+
 
