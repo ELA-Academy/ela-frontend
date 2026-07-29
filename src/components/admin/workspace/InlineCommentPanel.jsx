@@ -12,7 +12,7 @@ import { format, parseISO } from "date-fns";
 import { toast } from "react-toastify";
 import api from "../../../utils/api";
 import { useAuth } from "../../../context/AuthContext";
-import EmojiPickerPopover from "../common/EmojiPickerPopover";
+import EmojiPickerPopover from "../../common/EmojiPickerPopover";
 import "../../../styles/InlineCommentPanel.css";
 
 const InlineCommentPanel = ({ task, isOpen, onClose, assignees = [], onCommentAdded }) => {
