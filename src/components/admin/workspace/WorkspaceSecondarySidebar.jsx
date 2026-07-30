@@ -1,8 +1,8 @@
 import React, { useState, useRef, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { unfollowChannel, markConversationUnread, toggleFavoriteConversation } from "../../../services/messagingService";
-import { Dropdown, Overlay, Modal, Form, Button } from "react-bootstrap";
+import { unfollowChannel, markConversationUnread, toggleFavoriteConversation, deleteChannel } from "../../../services/messagingService";
+import { Dropdown, Overlay, Modal, Form, Button, Spinner } from "react-bootstrap";
 import { saveBoardAsTemplate, archiveBoard, unarchiveBoard } from "../../../services/boardService";
 import { getPersonalBoard } from "../../../services/taskService";
 import {
@@ -217,6 +217,33 @@ const WorkspaceSecondarySidebar = ({
     } catch (err) {
       console.error("Failed to unfollow channel:", err);
       toast.error("Failed to unfollow channel.");
+    }
+  };
+
+  const [deleteChannelTarget, setDeleteChannelTarget] = useState(null);
+  const [isDeletingChannel, setIsDeletingChannel] = useState(false);
+
+  const handleDeleteChannel = (convoId, name) => {
+    setDeleteChannelTarget({ id: convoId, name: name || 'Channel' });
+  };
+
+  const confirmDeleteChannel = async () => {
+    if (!deleteChannelTarget) return;
+    try {
+      setIsDeletingChannel(true);
+      await deleteChannel(deleteChannelTarget.id);
+      setClosedDmIds((prev) => [...prev, deleteChannelTarget.id]);
+      toast.success(`Channel "${deleteChannelTarget.name}" deleted successfully.`);
+      if (activeConversationId === deleteChannelTarget.id) {
+        navigate("/admin/messaging");
+      }
+      if (onRefreshWorkspace) onRefreshWorkspace();
+      setDeleteChannelTarget(null);
+    } catch (err) {
+      console.error("Failed to delete channel:", err);
+      toast.error("Failed to delete channel.");
+    } finally {
+      setIsDeletingChannel(false);
     }
   };
 
@@ -512,6 +539,10 @@ const WorkspaceSecondarySidebar = ({
           <div className="clickup-menu-item text-danger" onClick={() => { setMenuConfig(null); handleUnfollowChannel(conversation.id); }}>
             <span className="clickup-menu-icon"><BellOff size={13} /></span>
             <span>Unfollow</span>
+          </div>
+          <div className="clickup-menu-item text-danger font-semibold" onClick={() => { setMenuConfig(null); handleDeleteChannel(conversation.id, conversation.title); }}>
+            <span className="clickup-menu-icon"><Trash2 size={13} /></span>
+            <span>Delete Channel</span>
           </div>
         </div>
       );
@@ -1327,6 +1358,54 @@ const WorkspaceSecondarySidebar = ({
         <Modal.Footer className="border-0 pt-0">
           <Button variant="dark" onClick={() => setShowAutomationModal(false)} className="px-4 py-1.5" style={{ fontSize: "12.5px" }}>
             Done
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Delete Channel Confirmation Modal */}
+      <Modal
+        show={!!deleteChannelTarget}
+        onHide={() => !isDeletingChannel && setDeleteChannelTarget(null)}
+        centered
+        size="sm"
+      >
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title className="fs-6 fw-bold text-danger d-flex align-items-center gap-2">
+            <Trash2 size={18} />
+            <span>Delete Channel</span>
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="py-2">
+          <p className="text-slate-600 mb-0" style={{ fontSize: "13px" }}>
+            Are you sure you want to delete channel <strong>#{deleteChannelTarget?.name || 'Channel'}</strong>? All messages and history in this channel will be permanently removed.
+          </p>
+        </Modal.Body>
+        <Modal.Footer className="border-0 pt-0 gap-2">
+          <Button
+            variant="outline-secondary"
+            size="sm"
+            onClick={() => setDeleteChannelTarget(null)}
+            disabled={isDeletingChannel}
+            style={{ fontSize: "12.5px" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={confirmDeleteChannel}
+            disabled={isDeletingChannel}
+            className="d-flex align-items-center gap-1"
+            style={{ fontSize: "12.5px" }}
+          >
+            {isDeletingChannel ? (
+              <>
+                <Spinner size="sm" animation="border" style={{ width: "12px", height: "12px" }} />
+                <span>Deleting...</span>
+              </>
+            ) : (
+              <span>Delete Channel</span>
+            )}
           </Button>
         </Modal.Footer>
       </Modal>

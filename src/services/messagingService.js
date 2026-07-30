@@ -127,3 +127,14 @@ export const toggleFavoriteConversation = async (conversationId) => {
     throw error;
   }
 };
+
+// Delete a channel
+export const deleteChannel = async (channelId) => {
+  try {
+    const response = await api.delete(`/messaging/channels/${channelId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting channel:", error);
+    throw error;
+  }
+};
