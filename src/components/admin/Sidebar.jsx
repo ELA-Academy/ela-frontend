@@ -36,10 +36,15 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
     { path: "/admin/administration", icon: BriefcaseBusiness, label: "Administration", route: "/admin/administration" }
   ];
 
+  const isITUser = user?.role === "superadmin" || (
+    user?.role === "staff" && Array.isArray(user?.departmentNames) &&
+    user.departmentNames.some(name => /\b(it|information technology|info tech|tech)\b/i.test(name.trim()))
+  );
+
   const managementLinks = [
     { path: "/admin/students", icon: GraduationCap, label: "Students", role: ["superadmin", "staff"] },
     { path: "/admin/super-admins", icon: ShieldCheck, label: "Super Admins", role: ["superadmin"] },
-    { path: "/admin/staff", icon: Users, label: "Manage Staff", role: ["superadmin"] },
+    { path: "/admin/staff", icon: Users, label: "Manage Staff", allowIT: true, role: ["superadmin"] },
     { path: "/admin/departments", icon: Building2, label: "Departments", role: ["superadmin"] },
     { path: "/admin/activity-feed", icon: Activity, label: "Activity Feed", role: ["superadmin"] }
   ];
@@ -67,7 +72,9 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
 
   // Management Links
   managementLinks.forEach((link) => {
-    if (link.role.includes(user?.role)) {
+    if (link.allowIT && isITUser) {
+      activeLinks.push(link);
+    } else if (link.role.includes(user?.role)) {
       activeLinks.push(link);
     }
   });
