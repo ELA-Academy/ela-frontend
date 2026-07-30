@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Form, Alert, Spinner, Card, Modal, Button } from "react-bootstrap";
 import { SendFill } from "react-bootstrap-icons";
-import { getMessages, sendMessage } from "../../../services/messagingService";
+import { getMessages, sendMessage, deleteChannel } from "../../../services/messagingService";
 import { useAuth } from "../../../context/AuthContext";
 import useAutosizeTextArea from "../../../hooks/useAutosizeTextArea";
 import { format, parseISO, isToday, isYesterday } from "date-fns";
@@ -222,6 +222,24 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
   const [msgIdToDelete, setMsgIdToDelete] = useState(null);
   const [deletingMsg, setDeletingMsg] = useState(false);
   const [replyingToMessage, setReplyingToMessage] = useState(null);
+
+  const [showDeleteChannelModal, setShowDeleteChannelModal] = useState(false);
+  const [deletingChannel, setDeletingChannel] = useState(false);
+
+  const handleConfirmDeleteChannel = async () => {
+    try {
+      setDeletingChannel(true);
+      await deleteChannel(conversationId);
+      toast.success("Channel deleted successfully.");
+      setShowDeleteChannelModal(false);
+      window.location.href = "/admin/messaging";
+    } catch (err) {
+      console.error("Failed to delete channel", err);
+      toast.error("Failed to delete channel.");
+    } finally {
+      setDeletingChannel(false);
+    }
+  };
 
   // Keyboard Shortcuts for hovered message
   useEffect(() => {
@@ -1082,17 +1100,27 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
           <div className="zbot-header-info d-flex align-items-center gap-1.5">
             <h5 className="mb-0">{chatTitle}</h5>
             {!isDirect && (
-              <button
-                type="button"
-                className="btn btn-link p-0 text-slate-400 hover:text-slate-700 ms-1 border-0 bg-transparent"
-                onClick={() => {
-                  setRenameChannelText(chatTitle);
-                  setShowRenameChannelModal(true);
-                }}
-                title="Edit Channel Name"
-              >
-                <Pencil size={13} />
-              </button>
+              <div className="d-flex align-items-center gap-1 ms-1">
+                <button
+                  type="button"
+                  className="btn btn-link p-0 text-slate-400 hover:text-slate-700 border-0 bg-transparent"
+                  onClick={() => {
+                    setRenameChannelText(chatTitle);
+                    setShowRenameChannelModal(true);
+                  }}
+                  title="Edit Channel Name"
+                >
+                  <Pencil size={13} />
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-link p-0 text-slate-400 hover:text-rose-600 border-0 bg-transparent"
+                  onClick={() => setShowDeleteChannelModal(true)}
+                  title="Delete Channel"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
             )}
             {isDirect && (
               <span className={`zbot-header-status-dot ${isOnline ? "online" : "offline"}`} />
@@ -2018,6 +2046,54 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
             </Button>
           </Modal.Footer>
         </Form>
+      </Modal>
+
+      {/* Delete Channel Modal */}
+      <Modal
+        show={showDeleteChannelModal}
+        onHide={() => !deletingChannel && setShowDeleteChannelModal(false)}
+        centered
+        size="sm"
+      >
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title className="fs-6 font-bold text-danger d-flex align-items-center gap-2">
+            <Trash2 size={18} />
+            <span>Delete Channel</span>
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="py-2">
+          <p className="text-slate-600 mb-0" style={{ fontSize: "13px" }}>
+            Are you sure you want to delete channel <strong>#{chatTitle}</strong>? All messages in this channel will be permanently removed.
+          </p>
+        </Modal.Body>
+        <Modal.Footer className="border-0 pt-0 gap-2">
+          <Button
+            variant="outline-secondary"
+            size="sm"
+            onClick={() => setShowDeleteChannelModal(false)}
+            disabled={deletingChannel}
+            style={{ fontSize: "12.5px" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={handleConfirmDeleteChannel}
+            disabled={deletingChannel}
+            className="d-flex align-items-center gap-1"
+            style={{ fontSize: "12.5px" }}
+          >
+            {deletingChannel ? (
+              <>
+                <Spinner size="sm" animation="border" style={{ width: "12px", height: "12px" }} />
+                <span>Deleting...</span>
+              </>
+            ) : (
+              <span>Delete Channel</span>
+            )}
+          </Button>
+        </Modal.Footer>
       </Modal>
     </div>
   );

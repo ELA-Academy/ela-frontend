@@ -217,6 +217,7 @@ const UpdatesDrawer = ({
   const [commentSendMode, setCommentSendMode] = useState("comment"); // 'comment' or 'email'
   const [showSendModeDropdown, setShowSendModeDropdown] = useState(false);
   const [toEmail, setToEmail] = useState("");
+  const [ccEmail, setCcEmail] = useState("");
   const [emailSubject, setEmailSubject] = useState("");
   const [replyToUser, setReplyToUser] = useState(null);
 
@@ -2173,6 +2174,7 @@ const UpdatesDrawer = ({
         mentions: activeMentions.map((m) => ({ type: m.type, id: m.id })),
         send_via_email: commentSendMode === "email",
         to_email: commentSendMode === "email" ? toEmail : undefined,
+        cc_email: commentSendMode === "email" ? ccEmail : undefined,
         subject: commentSendMode === "email" ? emailSubject : undefined
       });
       
@@ -3704,6 +3706,19 @@ const UpdatesDrawer = ({
                             style={{ fontSize: "12.5px" }}
                             value={toEmail}
                             onChange={(e) => setToEmail(e.target.value)}
+                          />
+                        </div>
+
+                        {/* CC Row */}
+                        <div className="d-flex align-items-center gap-2 mb-1.5 pb-1 border-bottom" style={{ fontSize: "12.5px" }}>
+                          <span className="text-muted fw-semibold" style={{ width: "55px" }}>CC</span>
+                          <input
+                            type="text"
+                            className="form-control form-control-sm border-0 bg-transparent px-0 text-slate-800 fw-medium shadow-none"
+                            placeholder="CC email addresses (comma separated)..."
+                            style={{ fontSize: "12.5px" }}
+                            value={ccEmail}
+                            onChange={(e) => setCcEmail(e.target.value)}
                           />
                         </div>
 
