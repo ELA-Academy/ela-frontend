@@ -22,6 +22,7 @@ import ManageStaff from "./pages/admin/ManageStaff";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SuperAdminRoute from "./components/SuperAdminRoute";
+import AdminOrITRoute from "./components/AdminOrITRoute";
 import Logout from "./components/Logout";
 import AdmissionForm from "./pages/public/AdmissionForm";
 import AdmissionsDashboard from "./pages/admin/admissions/AdmissionsDashboard";
@@ -91,8 +92,10 @@ function App() {
                 <Route element={<SuperAdminRoute />}>
                   <Route path="super-admins" element={<ManageSuperAdmins />} />
                   <Route path="departments" element={<ManageDepartments />} />
-                  <Route path="staff" element={<ManageStaff />} />
                   <Route path="activity-feed" element={<ActivityFeedPage />} />
+                </Route>
+                <Route element={<AdminOrITRoute />}>
+                  <Route path="staff" element={<ManageStaff />} />
                 </Route>
                 <Route path="students" element={<AllStudentsPage />} />
                 <Route
