@@ -747,10 +747,10 @@ const WorkspaceSecondarySidebar = ({
         >
           <Link
             to={`/admin/boards/${list.id}`}
-            className="d-flex align-items-center gap-2 min-width-0 flex-grow-1 text-decoration-none"
-            style={{ paddingLeft: "4px" }}
+            className="d-flex align-items-center gap-2 flex-grow-1 text-decoration-none"
+            style={{ paddingLeft: "4px", minWidth: 0, overflow: "hidden" }}
           >
-            <span className="text-slate-400">
+            <span className="text-slate-400" style={{ flexShrink: 0 }}>
               {list.is_private ? <Lock size={13} className="text-rose-500" /> : <Hash size={13} />}
             </span>
             <span
@@ -776,7 +776,8 @@ const WorkspaceSecondarySidebar = ({
                   backgroundColor: "#e2e8f0", 
                   padding: "1px 6.5px", 
                   borderRadius: "999px",
-                  lineHeight: "1.3"
+                  lineHeight: "1.3",
+                  flexShrink: 0
                 }}
               >
                 {list.tasks_count}
@@ -784,9 +785,10 @@ const WorkspaceSecondarySidebar = ({
             )}
           </Link>
 
-          <div className="workspace-tree-actions">
+          <div className="workspace-tree-actions" style={{ flexShrink: 0 }}>
             <button
               className="workspace-tree-action-btn"
+              title="Options"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
