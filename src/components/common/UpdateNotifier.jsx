@@ -100,10 +100,10 @@ const UpdateNotifier = () => {
         boxShadow: "0 4px 12px rgba(99, 102, 241, 0.35)",
         zIndex: 1050,
       }}
-      title="New changes deployed. Click to update!"
+      title="A new update is available. Click to restart and apply changes."
     >
       {reloading && <RefreshCw size={13} className="spin-icon" />}
-      <span>{reloading ? "Updating..." : "New changes deployed ➔"}</span>
+      <span>{reloading ? "Restarting..." : "Update available — Restart ↻"}</span>
     </button>
   );
 };
