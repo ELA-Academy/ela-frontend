@@ -814,11 +814,17 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
   useEffect(() => {
     const handleCopyEvent = (e) => {
       const selection = window.getSelection();
-      const selectedText = selection ? selection.toString() : "";
-      if (selectedText && selectedText.trim().length > 0) {
-        e.clipboardData.setData("text/plain", selectedText);
-        e.preventDefault();
-      }
+      if (!selection || selection.rangeCount === 0) return;
+      const selectedText = selection.toString();
+      if (!selectedText || selectedText.trim().length === 0) return;
+
+      // Only intercept copy events originating from inside the chat messages area
+      const anchorNode = selection.anchorNode;
+      const chatContainer = anchorNode?.parentElement?.closest?.(".zbot-messages-list");
+      if (!chatContainer) return;
+
+      e.clipboardData.setData("text/plain", selectedText);
+      e.preventDefault();
     };
     document.addEventListener("copy", handleCopyEvent);
     return () => document.removeEventListener("copy", handleCopyEvent);
