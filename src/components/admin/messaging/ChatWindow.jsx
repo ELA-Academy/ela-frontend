@@ -251,6 +251,10 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
       ) {
         return;
       }
+      // Don't intercept if user has text selected (they likely want to Ctrl+C copy text)
+      const selection = window.getSelection();
+      if (selection && selection.toString().trim().length > 0) return;
+
       if (!hoveredMessageId) return;
 
       const msg = messages.find((m) => m.id === hoveredMessageId);
@@ -258,13 +262,13 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
 
       const isMe = isMyMessage(msg);
 
-      if ((e.key === "e" || e.key === "E") && isMe) {
+      if ((e.key === "e" || e.key === "E") && !e.ctrlKey && !e.metaKey && isMe) {
         e.preventDefault();
         handleStartEdit(msg);
-      } else if (e.key === "u" || e.key === "U") {
+      } else if ((e.key === "u" || e.key === "U") && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         handleMarkUnread();
-      } else if (e.key === "c" || e.key === "C") {
+      } else if ((e.key === "c" || e.key === "C") && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         handleCopyLink(msg);
       } else if (e.key === "Delete") {
@@ -814,11 +818,17 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
   useEffect(() => {
     const handleCopyEvent = (e) => {
       const selection = window.getSelection();
-      const selectedText = selection ? selection.toString() : "";
-      if (selectedText && selectedText.trim().length > 0) {
-        e.clipboardData.setData("text/plain", selectedText);
-        e.preventDefault();
-      }
+      if (!selection || selection.rangeCount === 0) return;
+      const selectedText = selection.toString();
+      if (!selectedText || selectedText.trim().length === 0) return;
+
+      // Only intercept copy events originating from inside the chat messages area
+      const anchorNode = selection.anchorNode;
+      const chatContainer = anchorNode?.parentElement?.closest?.(".zbot-messages-list");
+      if (!chatContainer) return;
+
+      e.clipboardData.setData("text/plain", selectedText);
+      e.preventDefault();
     };
     document.addEventListener("copy", handleCopyEvent);
     return () => document.removeEventListener("copy", handleCopyEvent);
