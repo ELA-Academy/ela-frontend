@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { createLead } from "../../services/admissionsService";
+import React, { useState, useEffect } from "react";
+import { createLead, getCaptchaChallenge } from "../../services/admissionsService";
 import { useNavigate, Link } from "react-router-dom";
 import { Alert, Spinner } from "react-bootstrap";
 import "../../styles/MultiStepForm.css";
@@ -40,6 +40,30 @@ const AdmissionForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
+  // Captcha State
+  const [captchaChallenge, setCaptchaChallenge] = useState(null);
+  const [captchaAnswer, setCaptchaAnswer] = useState("");
+  const [loadingCaptcha, setLoadingCaptcha] = useState(false);
+
+  const loadCaptcha = async () => {
+    try {
+      setLoadingCaptcha(true);
+      setCaptchaAnswer("");
+      const res = await getCaptchaChallenge();
+      setCaptchaChallenge(res);
+    } catch (e) {
+      console.error("Failed to load captcha challenge:", e);
+    } finally {
+      setLoadingCaptcha(false);
+    }
+  };
+
+  useEffect(() => {
+    if (step === 4) {
+      loadCaptcha();
+    }
+  }, [step]);
+
   const handleNext = () => setStep((prev) => prev + 1);
   const handleBack = () => setStep((prev) => prev - 1);
 
@@ -47,13 +71,18 @@ const AdmissionForm = () => {
     setIsLoading(true);
     setError("");
     try {
-      await createLead(formData);
+      await createLead({
+        ...formData,
+        captcha_token: captchaChallenge?.token,
+        captcha_answer: captchaAnswer
+      });
       setSuccess(
         "Your application has been submitted successfully! Redirecting to homepage..."
       );
       setTimeout(() => navigate("/"), 5000);
     } catch (err) {
-      setError("Failed to submit application. Please review your information.");
+      setError(err.response?.data?.error || "Failed to submit application. Please review your information.");
+      loadCaptcha();
       setStep(4);
     } finally {
       setIsLoading(false);
@@ -114,6 +143,13 @@ const AdmissionForm = () => {
     <div className="apply-page-container">
       {/* Desktop Left Sidebar */}
       <aside className="apply-sidebar">
+        <a 
+          href="https://www.elaaschool.org/"
+          className="d-inline-flex align-items-center gap-1.5 mb-4 text-decoration-none fw-bold text-xs"
+          style={{ fontFamily: "'Inter', sans-serif", color: "#475569" }}
+        >
+          ← Back to School Website
+        </a>
         <div className="sidebar-logo-container">
           <img 
             src="/images/ela-app-logo.png" 
@@ -144,7 +180,14 @@ const AdmissionForm = () => {
       {/* Mobile Top Header */}
       <header className="mobile-apply-header">
         <div className="mobile-logo-bar">
-          <div className="mobile-logo-group">
+          <a 
+            href="https://www.elaaschool.org/"
+            className="text-sky-600 text-xs fw-bold text-decoration-none"
+            style={{ marginRight: "auto" }}
+          >
+            ← Website
+          </a>
+          <div className="mobile-logo-group" style={{ marginRight: "auto" }}>
             <img 
               src="/images/ela-app-logo.png" 
               alt="ELA Academy Logo" 
@@ -187,6 +230,37 @@ const AdmissionForm = () => {
             {step === 4 && <ReviewStep formData={formData} error={error} />}
           </div>
 
+          {/* Verification Challenge for Anti-Spam in Step 4 */}
+          {step === 4 && captchaChallenge && (
+            <div className="bg-slate-50 border rounded-3 p-3.5 mb-4 mt-3" style={{ fontFamily: "'Inter', sans-serif" }}>
+              <label className="text-xs fw-bold text-slate-600 mb-2 d-flex justify-content-between align-items-center">
+                <span>Verification Challenge (Anti-Spam)</span>
+                <button 
+                  type="button" 
+                  className="btn btn-link text-xs p-0 text-sky-600 hover:text-sky-800 text-decoration-none font-semibold" 
+                  onClick={loadCaptcha} 
+                  disabled={loadingCaptcha}
+                >
+                  ↻ Refresh
+                </button>
+              </label>
+              <div className="input-group">
+                <span className="input-group-text bg-light font-bold text-slate-700 text-sm px-3" style={{ minWidth: "150px", textAlign: "center" }}>
+                  {loadingCaptcha ? "Loading..." : captchaChallenge.question}
+                </span>
+                <input
+                  required
+                  type="number"
+                  value={captchaAnswer}
+                  onChange={(e) => setCaptchaAnswer(e.target.value)}
+                  placeholder="Your answer"
+                  className="form-control text-sm"
+                  style={{ height: "42px" }}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Action Footer Navigation */}
           <div className="apply-actions">
             <button 
@@ -211,7 +285,7 @@ const AdmissionForm = () => {
                 type="button"
                 onClick={handleSubmit}
                 className="apply-btn primary d-flex align-items-center gap-2"
-                disabled={isLoading}
+                disabled={isLoading || !captchaAnswer.trim()}
               >
                 {isLoading && <Spinner size="sm" animation="border" />}
                 {isLoading ? "Submitting..." : "Submit Application"}
