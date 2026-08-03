@@ -26,6 +26,7 @@ import SuperAdminRoute from "./components/SuperAdminRoute";
 import AdminOrITRoute from "./components/AdminOrITRoute";
 import Logout from "./components/Logout";
 import AdmissionForm from "./pages/public/AdmissionForm";
+import LiveLookInForm from "./pages/public/LiveLookInForm";
 import AdmissionsDashboard from "./pages/admin/admissions/AdmissionsDashboard";
 import LeadsListPage from "./pages/admin/admissions/LeadsListPage";
 import LeadDetailPage from "./pages/admin/admissions/LeadDetailPage";
@@ -88,6 +89,7 @@ function App() {
             <Route path="/superadmin" element={<SuperAdminSetup />} />
             <Route path="/logout" element={<Logout />} />
             <Route path="/admissions/apply" element={<AdmissionForm />} />
+            <Route path="/admissions/live-look-in" element={<LiveLookInForm />} />
             <Route path="/enrollment/:token" element={<PublicEnrollmentForm />} />
             <Route path="/public/forms/:formId" element={<PublicFormFiller />} />
             <Route path="/setup-password" element={<SetupPassword />} />

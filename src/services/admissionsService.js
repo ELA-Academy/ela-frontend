@@ -23,6 +23,30 @@ export const createLead = async (leadData) => {
   }
 };
 
+export const submitLiveLookIn = async (formData, boardId = null) => {
+  try {
+    const url = `/admissions/live-look-in${boardId ? `?board_id=${boardId}` : ""}`;
+    const response = await api.post(url, formData);
+    return response.data;
+  } catch (error) {
+    console.error(
+      "Error submitting Live Look-in:",
+      error.response?.data || error.message
+    );
+    throw error;
+  }
+};
+
+export const getCaptchaChallenge = async () => {
+  try {
+    const response = await api.get("/admissions/captcha-challenge");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching captcha challenge:", error);
+    throw error;
+  }
+};
+
 export const getAllLeads = async () => {
   try {
     const response = await api.get("/admissions/leads");
