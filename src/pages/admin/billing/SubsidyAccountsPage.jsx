@@ -81,7 +81,7 @@ const SubsidyAccountsPage = () => {
               <tr key={sub.id}>
                 <td>
                   <Link
-                    to={`/admin/billing/subsidies/${sub.id}`}
+                    to={`/admin/accounting/subsidies/${sub.id}`}
                     className="fw-bold"
                   >
                     {sub.name}

@@ -1880,7 +1880,7 @@ const BoardDetailPage = () => {
 
     if (groupBy === "status") {
       return STATUS_OPTIONS.map((status) => {
-        const tasks = filteredTasks.filter((t) => t.status === status);
+        const tasks = filteredTasks.filter((t) => String(t.status).toLowerCase() === String(status).toLowerCase());
         return {
           id: status,
           name: STATUS_META[status]?.label || status,
@@ -1981,7 +1981,7 @@ const BoardDetailPage = () => {
   }, [kanbanGrouping, board, assignees]);
 
   const getSwimlaneTasks = useCallback((swimlaneId, status) => {
-    let tasks = filteredTasks.filter(t => t.status === status);
+    let tasks = filteredTasks.filter(t => String(t.status).toLowerCase() === String(status).toLowerCase());
 
     if (kanbanGrouping === "priority") {
       tasks = tasks.filter(t => t.priority === swimlaneId);
@@ -2044,7 +2044,7 @@ const BoardDetailPage = () => {
   const tasksByStatus = useMemo(
     () =>
       STATUS_OPTIONS.reduce((accumulator, status) => {
-        accumulator[status] = allTasks.filter((task) => task.status === status);
+        accumulator[status] = allTasks.filter((task) => String(task.status).toLowerCase() === String(status).toLowerCase());
         return accumulator;
       }, {}),
     [allTasks]
@@ -3555,7 +3555,7 @@ const BoardDetailPage = () => {
     return (
       <div className="workspace-list-view">
         {STATUS_OPTIONS.map((statusVal) => {
-          const statusTasks = filteredTasks.filter((t) => t.status === statusVal);
+          const statusTasks = filteredTasks.filter((t) => String(t.status).toLowerCase() === String(statusVal).toLowerCase());
           const statusMeta = STATUS_META[statusVal];
           const statusKey = defaultGroupId ? `${defaultGroupId}_${statusVal}` : `status_${statusVal}`;
           const isStatusCollapsed = collapsedStatuses[statusKey];
@@ -5788,6 +5788,16 @@ const BoardDetailPage = () => {
   // Handles the case where a field type was changed after data was imported
   const normalizeFieldValue = (field, value) => {
     if (value === undefined || value === null || value === '') return value;
+
+    // Ensure value is a string for string/date/dropdown/currency types
+    if (['text', 'text_area', 'email', 'phone', 'website', 'date', 'currency', 'money', 'dropdown'].includes(field.type)) {
+      if (typeof value === 'object') {
+        try { value = JSON.stringify(value); } catch { value = String(value); }
+      } else {
+        value = String(value);
+      }
+    }
+
     if (field.type === 'multi_select' || field.type === 'labels') {
       if (Array.isArray(value)) return value;
       if (typeof value === 'string' && value.trim()) {
@@ -5923,7 +5933,7 @@ const BoardDetailPage = () => {
           <input
             type="date"
             className="cell-editable-text w-100 px-1"
-            value={value ? value.split("T")[0] : ""}
+            value={value ? String(value).split("T")[0] : ""}
             onChange={(e) => handleUpdateValue(e.target.value)}
           />
         );

@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from "react";
 import PageHeader from "../../../components/admin/PageHeader";
-import TaskList from "../../../components/admin/TaskList";
 import StatCard from "../../../components/admin/StatCard";
 import { getAdministrationOverview } from "../../../services/administrationService";
-import { getMyTasks } from "../../../services/taskService";
 import { Spinner, Alert } from "react-bootstrap";
 import {
   UserCheck,
@@ -14,7 +12,6 @@ import {
 
 const AdministrationDashboard = () => {
   const [stats, setStats] = useState(null);
-  const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -23,13 +20,8 @@ const AdministrationDashboard = () => {
       try {
         setLoading(true);
         setError("");
-        const [overviewData, tasksData] = await Promise.all([
-          getAdministrationOverview(),
-          getMyTasks(),
-        ]);
-
+        const overviewData = await getAdministrationOverview();
         setStats(overviewData);
-        setTasks(tasksData);
       } catch (err) {
         setError(
           "Failed to fetch administration data. Please try again later."
@@ -82,7 +74,6 @@ const AdministrationDashboard = () => {
           />
         </div>
       )}
-      <TaskList tasks={tasks} title="My Administration Tasks" />
     </div>
   );
 };

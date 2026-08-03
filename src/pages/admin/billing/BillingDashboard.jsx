@@ -73,7 +73,7 @@ const BillingDashboard = () => {
               <tr key={acc.student_id}>
                 <td>
                   <Link
-                    to={`/admin/billing/accounts/${acc.student_id}`}
+                    to={`/admin/accounting/accounts/${acc.student_id}`}
                     className="fw-bold"
                   >
                     {acc.student_name}

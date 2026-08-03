@@ -9,9 +9,13 @@ import { Card } from "react-bootstrap";
  * @param {string|number} props.value - The main value to display.
  * @param {string} props.colorTheme - The color theme (e.g., 'primary', 'success', 'info', 'warning').
  */
-const StatCard = ({ icon, title, value, colorTheme = "primary" }) => {
+const StatCard = ({ icon, title, value, colorTheme = "primary", onClick }) => {
   return (
-    <Card className="stat-card shadow-sm h-100">
+    <Card 
+      className={`stat-card shadow-sm h-100 ${onClick ? 'cursor-pointer' : ''}`} 
+      onClick={onClick}
+      style={onClick ? { cursor: "pointer" } : undefined}
+    >
       <Card.Body>
         <div className={`stat-card-icon bg-${colorTheme}-light`}>
           {React.cloneElement(icon, {

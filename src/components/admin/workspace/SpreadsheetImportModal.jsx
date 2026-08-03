@@ -203,19 +203,25 @@ const SpreadsheetImportModal = ({
 
     const mappings = {};
     const newCfMap = {};
+    const mappedStandardFields = new Set();
 
     rawHeaders.forEach((h) => {
       const lowerH = h.toLowerCase().trim();
-      if (lowerH.includes("name") || lowerH.includes("task") || lowerH.includes("title")) {
+      if ((lowerH.includes("name") || lowerH.includes("task") || lowerH.includes("title")) && !mappedStandardFields.has("title")) {
         mappings[h] = { type: "standard", field: "title" };
-      } else if (lowerH.includes("status")) {
+        mappedStandardFields.add("title");
+      } else if (lowerH.includes("status") && !mappedStandardFields.has("status")) {
         mappings[h] = { type: "standard", field: "status" };
-      } else if (lowerH.includes("due") || lowerH.includes("date")) {
+        mappedStandardFields.add("status");
+      } else if ((lowerH.includes("due_date") || lowerH === "due date" || lowerH.includes("deadline") || lowerH === "due") && !mappedStandardFields.has("due_date")) {
         mappings[h] = { type: "standard", field: "due_date" };
-      } else if (lowerH.includes("prio")) {
+        mappedStandardFields.add("due_date");
+      } else if (lowerH.includes("prio") && !mappedStandardFields.has("priority")) {
         mappings[h] = { type: "standard", field: "priority" };
-      } else if (lowerH.includes("note") || lowerH.includes("desc")) {
+        mappedStandardFields.add("priority");
+      } else if ((lowerH.includes("note") || lowerH.includes("desc")) && !mappedStandardFields.has("notes")) {
         mappings[h] = { type: "standard", field: "notes" };
+        mappedStandardFields.add("notes");
       } else {
         const matchedCf = existingCustomFields.find(cf => cf.name.toLowerCase() === lowerH);
         if (matchedCf) {
@@ -225,6 +231,10 @@ const SpreadsheetImportModal = ({
           let suggestedType = "text";
           if (lowerH.includes("price") || lowerH.includes("cost") || lowerH.includes("amount") || lowerH.includes("fee") || lowerH.includes("paid")) suggestedType = "currency";
           else if (lowerH.includes("count") || lowerH.includes("num") || lowerH.includes("qty")) suggestedType = "number";
+          else if (lowerH.includes("date") || lowerH.includes("dob") || lowerH.includes("birth")) suggestedType = "date";
+          else if (lowerH.includes("email") || lowerH.includes("mail")) suggestedType = "email";
+          else if (lowerH.includes("phone") || lowerH.includes("mobile") || lowerH.includes("tel")) suggestedType = "phone";
+          else if (lowerH.includes("web") || lowerH.includes("url") || lowerH.includes("site")) suggestedType = "website";
           newCfMap[h] = { fieldName: h, dataType: suggestedType };
         }
       }

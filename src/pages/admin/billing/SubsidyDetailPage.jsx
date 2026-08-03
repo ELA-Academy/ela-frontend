@@ -77,7 +77,7 @@ const SubsidyDetailPage = () => {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <Link
-            to="/admin/billing/subsidies"
+            to="/admin/accounting/subsidies"
             className="d-flex align-items-center text-decoration-none text-muted mb-2"
           >
             <ArrowLeft size={20} className="me-2" />
@@ -154,10 +154,10 @@ const SubsidyDetailPage = () => {
                         <Dropdown.Toggle as={CustomToggle}>
                           <ThreeDotsVertical size={20} />
                         </Dropdown.Toggle>
-                        <Dropdown.Menu>
+                        <Dropdown.Menu popperConfig={{ strategy: "fixed" }}>
                           <Dropdown.Item
                             as={Link}
-                            to={`/admin/billing/accounts/${s.student_id}`}
+                            to={`/admin/accounting/accounts/${s.student_id}`}
                           >
                             View Student Ledger
                           </Dropdown.Item>
