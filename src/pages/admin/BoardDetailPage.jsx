@@ -1880,7 +1880,7 @@ const BoardDetailPage = () => {
 
     if (groupBy === "status") {
       return STATUS_OPTIONS.map((status) => {
-        const tasks = filteredTasks.filter((t) => t.status === status);
+        const tasks = filteredTasks.filter((t) => String(t.status).toLowerCase() === String(status).toLowerCase());
         return {
           id: status,
           name: STATUS_META[status]?.label || status,
@@ -1981,7 +1981,7 @@ const BoardDetailPage = () => {
   }, [kanbanGrouping, board, assignees]);
 
   const getSwimlaneTasks = useCallback((swimlaneId, status) => {
-    let tasks = filteredTasks.filter(t => t.status === status);
+    let tasks = filteredTasks.filter(t => String(t.status).toLowerCase() === String(status).toLowerCase());
 
     if (kanbanGrouping === "priority") {
       tasks = tasks.filter(t => t.priority === swimlaneId);
@@ -2044,7 +2044,7 @@ const BoardDetailPage = () => {
   const tasksByStatus = useMemo(
     () =>
       STATUS_OPTIONS.reduce((accumulator, status) => {
-        accumulator[status] = allTasks.filter((task) => task.status === status);
+        accumulator[status] = allTasks.filter((task) => String(task.status).toLowerCase() === String(status).toLowerCase());
         return accumulator;
       }, {}),
     [allTasks]
@@ -3555,7 +3555,7 @@ const BoardDetailPage = () => {
     return (
       <div className="workspace-list-view">
         {STATUS_OPTIONS.map((statusVal) => {
-          const statusTasks = filteredTasks.filter((t) => t.status === statusVal);
+          const statusTasks = filteredTasks.filter((t) => String(t.status).toLowerCase() === String(statusVal).toLowerCase());
           const statusMeta = STATUS_META[statusVal];
           const statusKey = defaultGroupId ? `${defaultGroupId}_${statusVal}` : `status_${statusVal}`;
           const isStatusCollapsed = collapsedStatuses[statusKey];
