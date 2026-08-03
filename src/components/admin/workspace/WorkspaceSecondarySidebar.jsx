@@ -582,7 +582,7 @@ const WorkspaceSecondarySidebar = ({
 
   // Merge channels and department threads into one unified "Channels" list
   const allChannels = conversations.filter(
-    (item) => (item.conversation_type === "channel" || item.conversation_type === "department") && !closedDmIds.includes(item.id)
+    (item) => (item.conversation_type === "channel" || item.conversation_type === "department" || item.conversation_type === "private_channel") && !closedDmIds.includes(item.id)
   ).filter((conv, index, self) =>
     index === self.findIndex((c) => c.id === conv.id)
   ).sort((a, b) => new Date(b.last_message_time) - new Date(a.last_message_time));
@@ -596,13 +596,13 @@ const WorkspaceSecondarySidebar = ({
   const auditOnlyConversations = auditConversations.filter(
     (item) => !conversations.some((conversation) => conversation.id === item.id)
   );
-
+ 
   const renderConversationLink = (conversation, icon, extraClass = "") => {
     const isDirect = conversation.conversation_type === "direct";
-    const isChannel = conversation.conversation_type === "channel" || conversation.conversation_type === "department";
+    const isChannel = conversation.conversation_type === "channel" || conversation.conversation_type === "department" || conversation.conversation_type === "private_channel";
     let dmTitle = conversation.title;
     if (isDirect && dmTitle === "Yourself") {
-      dmTitle = `${user ? user.name : "Yourself"} — You`;
+      dmTitle = `${user ? user.name : "Yourself"} (You)`;
     }
 
     const initials = isDirect ? getInitials(dmTitle) : "";
@@ -1228,7 +1228,14 @@ const WorkspaceSecondarySidebar = ({
           </div>
           <div className="workspace-secondary-links">
             {allChannels.map((conversation) =>
-              renderConversationLink(conversation, <Hash size={15} />)
+              renderConversationLink(
+                conversation,
+                conversation.conversation_type === "private_channel" ? (
+                  <Lock size={15} className="text-slate-400" />
+                ) : (
+                  <Hash size={15} />
+                )
+              )
             )}
             {allChannels.length === 0 && <p className="workspace-empty-copy">No channels yet. Create one!</p>}
           </div>

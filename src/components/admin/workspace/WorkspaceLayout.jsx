@@ -520,6 +520,7 @@ const WorkspaceLayout = () => {
         onSubmit={handleCreateChannel}
         departments={departments}
         submitting={creatingChannel}
+        currentUser={user}
       />
 
       <NewConversationModal

@@ -16,6 +16,7 @@ const CreateChannelModal = ({
   onSubmit,
   departments = [],
   submitting = false,
+  currentUser = null,
 }) => {
   const [formState, setFormState] = useState(EMPTY_STATE);
   const [users, setUsers] = useState([]);
@@ -33,10 +34,15 @@ const CreateChannelModal = ({
         try {
           setLoadingUsers(true);
           const data = await getUsersForMessaging();
-          const options = data.map((user) => ({
-            value: user.id, // E.g. "staff_1" or "superadmin_2"
-            label: `${user.name} (${user.role})`,
-          }));
+          const options = data
+            .filter((u) => {
+              if (!currentUser) return true;
+              return u.email !== currentUser.email;
+            })
+            .map((user) => ({
+              value: user.id, // E.g. "staff_1" or "superadmin_2"
+              label: `${user.name} (${user.role})`,
+            }));
           setUsers(options);
         } catch (err) {
           showError("Failed to load users.");
@@ -154,7 +160,7 @@ const CreateChannelModal = ({
           <Button variant="secondary" onClick={handleClose} disabled={submitting}>
             Cancel
           </Button>
-          <Button variant="primary" type="submit" disabled={submitting || (formState.conversation_type === "private_channel" && selectedUsers.length === 0)}>
+          <Button variant="primary" type="submit" disabled={submitting}>
             {submitting ? (
               <>
                 <Spinner size="sm" animation="border" className="me-2" />
