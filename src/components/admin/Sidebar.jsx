@@ -42,11 +42,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
   );
 
   const managementLinks = [
-    { path: "/admin/students", icon: GraduationCap, label: "Students", role: ["superadmin", "staff"] },
-    { path: "/admin/super-admins", icon: ShieldCheck, label: "Super Admins", role: ["superadmin"] },
-    { path: "/admin/staff", icon: Users, label: "Manage Staff", allowIT: true, role: ["superadmin"] },
-    { path: "/admin/departments", icon: Building2, label: "Departments", role: ["superadmin"] },
-    { path: "/admin/activity-feed", icon: Activity, label: "Activity Feed", role: ["superadmin"] }
+    { path: "/admin/students", icon: GraduationCap, label: "Students", role: ["superadmin", "staff"] }
   ];
 
   const utilityLinks = [

@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
+import { useNavigate, Link } from "react-router-dom";
 import PageHeader from "../../../components/admin/PageHeader";
-import TaskList from "../../../components/admin/TaskList";
 import StatCard from "../../../components/admin/StatCard";
-import { getAllLeads } from "../../../services/admissionsService";
-import { getMyTasks } from "../../../services/taskService";
-import { Alert } from "react-bootstrap";
+import { useAdmissions } from "../../../components/admin/admissions/AdmissionsLayout";
+import { Table } from "react-bootstrap";
 import { CardSkeleton } from "../../../components/Skeleton";
 import {
   BookOpen,
@@ -14,51 +13,10 @@ import {
 } from "lucide-react";
 
 const AdmissionsDashboard = () => {
-  const [stats, setStats] = useState(null);
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const navigate = useNavigate();
+  const { leads, loading: leadsLoading } = useAdmissions();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError("");
-
-        const [leadsData, tasksData] = await Promise.all([
-          getAllLeads(),
-          getMyTasks(),
-        ]);
-
-        const total = leadsData.length;
-        const waitlisted = leadsData.filter(
-          (l) => l.status === "Waitlisted"
-        ).length;
-        const inProgress = leadsData.filter(
-          (l) =>
-            l.status === "Interested" ||
-            l.status === "Toured" ||
-            l.status === "Admitted"
-        ).length;
-        const enrolled = leadsData.filter(
-          (l) => l.status === "Enrolled"
-        ).length;
-
-        setStats({ total, waitlisted, inProgress, enrolled });
-        setTasks(tasksData);
-      } catch (err) {
-        setError(
-          "Failed to fetch admissions overview data. Please try again later."
-        );
-        console.error("Admissions dashboard fetch error:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
-
-  if (loading) {
+  if (leadsLoading) {
     return (
       <div className="p-6 space-y-6">
         <PageHeader title="Admissions Overview" />
@@ -67,7 +25,31 @@ const AdmissionsDashboard = () => {
     );
   }
 
-  if (error) return <Alert variant="danger">{error}</Alert>;
+  const total = leads.length;
+  const waitlisted = leads.filter((l) => l.status === "Waitlisted").length;
+  const inProgress = leads.filter(
+    (l) =>
+      l.status === "Interested" ||
+      l.status === "Toured" ||
+      l.status === "Admitted"
+  ).length;
+  const enrolled = leads.filter((l) => l.status === "Enrolled").length;
+
+  const stats = { total, waitlisted, inProgress, enrolled };
+
+  const getLeadName = (lead) => {
+    if (lead.students && lead.students.length > 0) {
+      return lead.students.map((s) => `${s.first_name} ${s.last_name}`).join(", ");
+    }
+    return "Unknown Student";
+  };
+
+  const getParentName = (lead) => {
+    if (lead.parents && lead.parents.length > 0) {
+      return lead.parents.map((p) => `${p.first_name} ${p.last_name}`).join(", ");
+    }
+    return "N/A";
+  };
 
   return (
     <div className="space-y-6">
@@ -80,29 +62,72 @@ const AdmissionsDashboard = () => {
             title="Total Leads"
             value={stats.total}
             colorTheme="primary"
+            onClick={() => navigate("/admin/admissions/leads")}
           />
           <StatCard
             icon={<UserPlus className="w-5 h-5 text-sky-600" />}
             title="New Leads (Waitlisted)"
             value={stats.waitlisted}
             colorTheme="info"
+            onClick={() => navigate("/admin/admissions/leads")}
           />
           <StatCard
             icon={<RefreshCw className="w-5 h-5 text-amber-600" />}
             title="In Progress"
             value={stats.inProgress}
             colorTheme="warning"
+            onClick={() => navigate("/admin/admissions/leads")}
           />
           <StatCard
             icon={<UserCheck className="w-5 h-5 text-emerald-600" />}
             title="Enrolled"
             value={stats.enrolled}
             colorTheme="success"
+            onClick={() => navigate("/admin/admissions/leads")}
           />
         </div>
       )}
 
-      <TaskList tasks={tasks} title="My Admissions Tasks" />
+      {/* New Leads Visibility Section */}
+      <div className="content-card mt-4">
+        <div className="d-flex justify-content-between align-items-center p-3 border-bottom">
+          <h3 className="h6 fw-bold mb-0 text-slate-800">Recent Applications / Leads</h3>
+          <Link to="/admin/admissions/leads" className="text-primary fw-bold text-decoration-none" style={{ fontSize: '0.85rem' }}>
+            View All Leads →
+          </Link>
+        </div>
+        <Table responsive className="modern-table mb-0">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Student Name(s)</th>
+              <th>Parent(s)</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {leads.slice(0, 5).map((lead) => (
+              <tr key={lead.id} onClick={() => navigate(`/admin/admissions/leads/${lead.secure_token}`)} style={{ cursor: "pointer" }}>
+                <td>{new Date(lead.created_at).toLocaleDateString()}</td>
+                <td className="fw-bold text-primary">{getLeadName(lead)}</td>
+                <td>{getParentName(lead)}</td>
+                <td>
+                  <span className={`status-badge status-${lead.status.toLowerCase().replace(" ", "-")}`}>
+                    {lead.status}
+                  </span>
+                </td>
+              </tr>
+            ))}
+            {leads.length === 0 && (
+              <tr>
+                <td colSpan="4" className="text-center py-4 text-muted">
+                  No leads found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </Table>
+      </div>
     </div>
   );
 };

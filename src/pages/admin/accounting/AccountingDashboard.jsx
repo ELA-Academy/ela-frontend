@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
+import { useNavigate, Link } from "react-router-dom";
 import PageHeader from "../../../components/admin/PageHeader";
-import TaskList from "../../../components/admin/TaskList";
 import StatCard from "../../../components/admin/StatCard";
-import { getAccountingOverview } from "../../../services/accountingService";
-import { getMyTasks } from "../../../services/taskService";
-import { Spinner, Alert } from "react-bootstrap";
+import { useAccounting } from "../../../components/admin/accounting/AccountingLayout";
+import { Spinner, Table } from "react-bootstrap";
 import {
   DollarSign,
   FileText,
@@ -13,41 +12,24 @@ import {
 } from "lucide-react";
 
 const AccountingDashboard = () => {
-  const [stats, setStats] = useState(null);
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const navigate = useNavigate();
+  const { overview: stats, accounts, loading: accountingLoading } = useAccounting();
 
-  useEffect(() => {
-    const fetchAccountingData = async () => {
-      try {
-        setLoading(true);
-        setError("");
-        const [overviewData, tasksData] = await Promise.all([
-          getAccountingOverview(),
-          getMyTasks(),
-        ]);
+  const formatCurrency = (amount) => {
+    if (amount === null || amount === undefined) return "$0.00";
+    return amount.toLocaleString("en-US", {
+      style: "currency",
+      currency: "USD",
+    });
+  };
 
-        setStats(overviewData);
-        setTasks(tasksData);
-      } catch (err) {
-        setError("Failed to fetch accounting data. Please try again later.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchAccountingData();
-  }, []);
-
-  if (loading) {
+  if (accountingLoading) {
     return (
       <div className="flex justify-center items-center py-20">
         <Spinner animation="border" />
       </div>
     );
   }
-
-  if (error) return <Alert variant="danger">{error}</Alert>;
 
   return (
     <div className="space-y-6">
@@ -59,28 +41,80 @@ const AccountingDashboard = () => {
             title="Total Revenue"
             value={`$${stats.total_revenue}`}
             colorTheme="success"
+            onClick={() => navigate("/admin/accounting/accounts")}
           />
           <StatCard
             icon={<FileText className="w-5 h-5 text-sky-600" />}
             title="Pending Invoices"
             value={stats.pending_invoices}
             colorTheme="info"
+            onClick={() => navigate("/admin/accounting/accounts")}
           />
           <StatCard
             icon={<History className="w-5 h-5 text-amber-600" />}
             title="Overdue Payments"
             value={stats.overdue_payments}
             colorTheme="warning"
+            onClick={() => navigate("/admin/accounting/accounts")}
           />
           <StatCard
             icon={<TrendingDown className="w-5 h-5 text-slate-900" />}
             title="Total Expenses"
             value={`$${stats.total_expenses}`}
             colorTheme="primary"
+            onClick={() => navigate("/admin/accounting/accounts")}
           />
         </div>
       )}
-      <TaskList tasks={tasks} title="My Accounting Tasks" />
+
+      {/* Recent Accounts Visibility Section */}
+      <div className="content-card mt-4">
+        <div className="d-flex justify-content-between align-items-center p-3 border-bottom">
+          <h3 className="h6 fw-bold mb-0 text-slate-800">Recent Family Accounts</h3>
+          <Link to="/admin/accounting/accounts" className="text-primary fw-bold text-decoration-none" style={{ fontSize: '0.85rem' }}>
+            View All Accounts →
+          </Link>
+        </div>
+        <Table responsive className="modern-table mb-0">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Last Invoice</th>
+              <th>Last Payment</th>
+              <th>Open Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {accounts.slice(0, 5).map((acc) => (
+              <tr key={acc.student_id} onClick={() => navigate(`/admin/accounting/accounts/${acc.student_id}`)} style={{ cursor: "pointer" }}>
+                <td className="fw-bold text-primary">{acc.student_name}</td>
+                <td>
+                  {acc.last_invoice_date
+                    ? `${formatCurrency(acc.last_invoice_amount)} on ${new Date(
+                        acc.last_invoice_date
+                      ).toLocaleDateString()}`
+                    : "N/A"}
+                </td>
+                <td>
+                  {acc.last_payment_date
+                    ? `${formatCurrency(acc.last_payment_amount)} on ${new Date(
+                        acc.last_payment_date
+                      ).toLocaleDateString()}`
+                    : "N/A"}
+                </td>
+                <td className="fw-bold text-danger">{formatCurrency(acc.open_balance)}</td>
+              </tr>
+            ))}
+            {accounts.length === 0 && (
+              <tr>
+                <td colSpan="4" className="text-center py-4 text-muted">
+                  No accounts found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </Table>
+      </div>
     </div>
   );
 };

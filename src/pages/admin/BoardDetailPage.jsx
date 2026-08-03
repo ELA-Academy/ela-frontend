@@ -5788,6 +5788,16 @@ const BoardDetailPage = () => {
   // Handles the case where a field type was changed after data was imported
   const normalizeFieldValue = (field, value) => {
     if (value === undefined || value === null || value === '') return value;
+
+    // Ensure value is a string for string/date/dropdown/currency types
+    if (['text', 'text_area', 'email', 'phone', 'website', 'date', 'currency', 'money', 'dropdown'].includes(field.type)) {
+      if (typeof value === 'object') {
+        try { value = JSON.stringify(value); } catch { value = String(value); }
+      } else {
+        value = String(value);
+      }
+    }
+
     if (field.type === 'multi_select' || field.type === 'labels') {
       if (Array.isArray(value)) return value;
       if (typeof value === 'string' && value.trim()) {
@@ -5923,7 +5933,7 @@ const BoardDetailPage = () => {
           <input
             type="date"
             className="cell-editable-text w-100 px-1"
-            value={value ? value.split("T")[0] : ""}
+            value={value ? String(value).split("T")[0] : ""}
             onChange={(e) => handleUpdateValue(e.target.value)}
           />
         );

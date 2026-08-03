@@ -1,10 +1,9 @@
 import React, { useState } from "react";
 import { createLead } from "../../services/admissionsService";
-import { useNavigate } from "react-router-dom";
-import PublicLayout from "../../components/PublicLayout";
+import { useNavigate, Link } from "react-router-dom";
+import { Alert, Spinner } from "react-bootstrap";
 import "../../styles/MultiStepForm.css";
 
-// Constants for Grade Levels
 const gradeLevels = [
   "Kindergarten",
   "1st Grade",
@@ -55,79 +54,184 @@ const AdmissionForm = () => {
       setTimeout(() => navigate("/"), 5000);
     } catch (err) {
       setError("Failed to submit application. Please review your information.");
-      setStep(5);
+      setStep(4);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const stepsList = [
+    { number: 1, title: "Student Info", desc: "Prospective student details" },
+    { number: 2, title: "Parent Info", desc: "Parent/Guardian contacts" },
+    { number: 3, title: "Waiver & Policy", desc: "School waiver agreement" },
+    { number: 4, title: "Review", desc: "Confirm information" }
+  ];
+
   if (success) {
     return (
-      <PublicLayout>
-        <div className="form-page-container">
-          <div
-            className="multistep-form"
-            style={{ textAlign: "center", padding: "50px" }}
+      <div className="apply-page-container align-items-center justify-content-center" style={{ backgroundColor: "#f8fafc" }}>
+        <div
+          className="text-center p-5 border-0 bg-white"
+          style={{ maxWidth: "480px", borderRadius: "16px", boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.05)" }}
+        >
+          <div 
+            className="d-flex align-items-center justify-content-center mx-auto mb-4"
+            style={{
+              width: "64px",
+              height: "64px",
+              borderRadius: "50%",
+              backgroundColor: "#e0f2fe",
+              color: "#0ea5e9"
+            }}
           >
-            <h2>Thank You!</h2>
-            <p>{success}</p>
+            <span style={{ fontSize: "28px", fontWeight: "bold" }}>✓</span>
           </div>
+          <h2 style={{ fontSize: "22px", fontWeight: "800", color: "#0f172a", marginBottom: "12px" }}>Application Received</h2>
+          <p style={{ color: "#64748b", fontSize: "14px", lineHeight: "1.6" }}>{success}</p>
         </div>
-      </PublicLayout>
+      </div>
     );
   }
 
+  const getStepHeadline = () => {
+    switch (step) {
+      case 1:
+        return { title: "Student Information", subtitle: "Provide prospective student details below" };
+      case 2:
+        return { title: "Parent/Guardian Details", subtitle: "Add primary guardian contact information" };
+      case 3:
+        return { title: "Policy & School Waiver", subtitle: "Review and accept school waiver terms" };
+      case 4:
+        return { title: "Review Details", subtitle: "Confirm all entered details before submitting" };
+      default:
+        return { title: "Application Form", subtitle: "" };
+    }
+  };
+
+  const currentHeadline = getStepHeadline();
+
   return (
-    <PublicLayout>
-      <div className="form-page-container">
-        <div className="multistep-form">
-          <Stepper currentStep={step} />
-          <div className="form-step-content">
+    <div className="apply-page-container">
+      {/* Desktop Left Sidebar */}
+      <aside className="apply-sidebar">
+        <div className="sidebar-logo-container">
+          <img 
+            src="/images/ela-app-logo.png" 
+            alt="ELA Academy Logo" 
+            className="sidebar-logo" 
+          />
+          <span className="sidebar-title">ELA Academy</span>
+        </div>
+
+        <div className="vertical-steps">
+          {stepsList.map((s) => (
+            <div 
+              key={s.number} 
+              className={`vertical-step ${step === s.number ? "active" : ""} ${step > s.number ? "completed" : ""}`}
+            >
+              <div className="vertical-step-badge">
+                {step > s.number ? "✓" : s.number}
+              </div>
+              <div className="vertical-step-content">
+                <span className="vertical-step-title">{s.title}</span>
+                <span className="vertical-step-desc">{s.desc}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </aside>
+
+      {/* Mobile Top Header */}
+      <header className="mobile-apply-header">
+        <div className="mobile-logo-bar">
+          <div className="mobile-logo-group">
+            <img 
+              src="/images/ela-app-logo.png" 
+              alt="ELA Academy Logo" 
+              className="mobile-logo" 
+            />
+            <span className="mobile-title">ELA Academy</span>
+          </div>
+          <span style={{ fontSize: "12px", fontWeight: "600", color: "#64748b" }}>Step {step} of 4</span>
+        </div>
+        <div className="mobile-progress-track">
+          {stepsList.map((s) => (
+            <div 
+              key={s.number} 
+              className={`mobile-progress-dot ${step === s.number ? "active" : ""} ${step > s.number ? "completed" : ""}`}
+            />
+          ))}
+        </div>
+      </header>
+
+      {/* Right Content Pane */}
+      <main className="apply-content-wrapper">
+        <div className="apply-form-container">
+          <span className="step-eyebrow">Step {step} of 4</span>
+          <h2 className="step-main-title">{currentHeadline.title}</h2>
+          <p className="step-subtitle">{currentHeadline.subtitle}</p>
+
+          <div className="apply-divider" />
+
+          {/* Steps Switch */}
+          <div style={{ flexGrow: 1 }}>
             {step === 1 && (
               <StudentInfoStep formData={formData} setFormData={setFormData} />
             )}
             {step === 2 && (
               <ParentInfoStep formData={formData} setFormData={setFormData} />
             )}
-            {step === 3 && <PickupInfoStep />}
-            {step === 4 && (
+            {step === 3 && (
               <PolicyStep formData={formData} setFormData={setFormData} />
             )}
-            {step === 5 && <ReviewStep formData={formData} error={error} />}
+            {step === 4 && <ReviewStep formData={formData} error={error} />}
           </div>
-          <NavigationButtons
-            step={step}
-            handleBack={handleBack}
-            handleNext={handleNext}
-            handleSubmit={handleSubmit}
-            isLoading={isLoading}
-            isStepValid={isStepValid(step, formData)}
-          />
+
+          {/* Action Footer Navigation */}
+          <div className="apply-actions">
+            <button 
+              type="button" 
+              onClick={handleBack} 
+              className="apply-btn" 
+              disabled={step === 1}
+            >
+              Back
+            </button>
+            {step < 4 ? (
+              <button
+                type="button"
+                onClick={handleNext}
+                className="apply-btn primary"
+                disabled={!isStepValid(step, formData)}
+              >
+                Continue
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                className="apply-btn primary d-flex align-items-center gap-2"
+                disabled={isLoading}
+              >
+                {isLoading && <Spinner size="sm" animation="border" />}
+                {isLoading ? "Submitting..." : "Submit Application"}
+              </button>
+            )}
+          </div>
+
+          {/* Minimalist single-line footer */}
+          <footer style={{ marginTop: "60px", padding: "20px 0 10px", borderTop: "1px solid #f1f5f9", textAlign: "center" }}>
+            <p style={{ margin: 0, fontSize: "12px", color: "#94a3b8", fontWeight: "500" }}>
+              &copy; {new Date().getFullYear()} ELA Academy. All Rights Reserved.
+            </p>
+          </footer>
         </div>
-      </div>
-    </PublicLayout>
+      </main>
+    </div>
   );
 };
 
-// --- Child Components for each step ---
-
-const Stepper = ({ currentStep }) => (
-  <div className="stepper-nav">
-    {["Student", "Parent", "Pickup", "Policy", "Review"].map((label, index) => (
-      <div
-        key={index}
-        className={`step ${currentStep === index + 1 ? "active" : ""} ${
-          currentStep > index + 1 ? "completed" : ""
-        }`}
-      >
-        <div className="step-number">
-          {currentStep > index + 1 ? "✓" : index + 1}
-        </div>
-        <div className="step-label">{label} Info</div>
-      </div>
-    ))}
-  </div>
-);
+// --- Step Child Components ---
 
 const StudentInfoStep = ({ formData, setFormData }) => {
   const handleStudentChange = (index, e) => {
@@ -156,13 +260,13 @@ const StudentInfoStep = ({ formData, setFormData }) => {
   };
   return (
     <div>
-      <h2>Student Information</h2>
       {formData.students.map((student, index) => (
         <div key={index} className="dynamic-entry">
           <div className="dynamic-entry-header">
             <h3>Student #{index + 1}</h3>
             {formData.students.length > 1 && (
               <button
+                type="button"
                 onClick={() => removeStudent(index)}
                 className="btn-remove-entry"
               >
@@ -207,6 +311,7 @@ const StudentInfoStep = ({ formData, setFormData }) => {
                 type="text"
                 name="city_state"
                 value={student.city_state}
+                placeholder="e.g. Austin, TX"
                 onChange={(e) => handleStudentChange(index, e)}
                 required
               />
@@ -230,7 +335,7 @@ const StudentInfoStep = ({ formData, setFormData }) => {
           </div>
         </div>
       ))}
-      <button onClick={addStudent} className="add-btn">
+      <button type="button" onClick={addStudent} className="add-btn">
         + Add Another Student
       </button>
     </div>
@@ -258,13 +363,13 @@ const ParentInfoStep = ({ formData, setFormData }) => {
   };
   return (
     <div>
-      <h2>Parent/Guardian Information</h2>
       {formData.parents.map((parent, index) => (
         <div key={index} className="dynamic-entry">
           <div className="dynamic-entry-header">
             <h3>Parent/Guardian #{index + 1}</h3>
             {formData.parents.length > 1 && (
               <button
+                type="button"
                 onClick={() => removeParent(index)}
                 className="btn-remove-entry"
               >
@@ -309,6 +414,7 @@ const ParentInfoStep = ({ formData, setFormData }) => {
                 type="tel"
                 name="phone"
                 value={parent.phone}
+                placeholder="e.g. (123) 456-7890"
                 onChange={(e) => handleParentChange(index, e)}
                 required
               />
@@ -316,29 +422,18 @@ const ParentInfoStep = ({ formData, setFormData }) => {
           </div>
         </div>
       ))}
-      <button onClick={addParent} className="add-btn">
+      <button type="button" onClick={addParent} className="add-btn">
         + Add Another Parent/Guardian
       </button>
     </div>
   );
 };
 
-const PickupInfoStep = () => (
-  <div>
-    <h2>Authorized Pickup Information</h2>
-    <p style={{ textAlign: "center", color: "#777", margin: "50px 0" }}>
-      This page is not required for the initial application. Please continue to
-      the next step.
-    </p>
-  </div>
-);
-
 const PolicyStep = ({ formData, setFormData }) => (
   <div>
-    <h2>Policy & Waiver</h2>
-    <div className="policy-container">
-      <p>
-        Thank you for your interest in Exceptional Learning and Arts Academy!
+    <div className="policy-box">
+      <p style={{ fontWeight: "700", marginBottom: "12px", color: "#0f172a" }}>
+        Welcome to ELA Academy admissions registration!
       </p>
       <p>
         The data submitted will be used solely for establishing contact to
@@ -350,7 +445,7 @@ const PolicyStep = ({ formData, setFormData }) => (
     </div>
     <div
       className="form-group"
-      style={{ flexDirection: "row", alignItems: "center", gap: "10px" }}
+      style={{ flexDirection: "row", alignItems: "center", gap: "10px", marginTop: "24px" }}
     >
       <input
         type="checkbox"
@@ -359,9 +454,10 @@ const PolicyStep = ({ formData, setFormData }) => (
         onChange={(e) =>
           setFormData({ ...formData, policy_agreed: e.target.checked })
         }
+        style={{ width: "18px", height: "18px", accentColor: "#0ea5e9", cursor: "pointer" }}
       />
-      <label htmlFor="policy_agreed" style={{ marginBottom: 0 }}>
-        I understand and accept *
+      <label htmlFor="policy_agreed" style={{ marginBottom: 0, fontSize: "14px", fontWeight: "600", color: "#334155", cursor: "pointer" }}>
+        I understand and accept the admissions agreement *
       </label>
     </div>
   </div>
@@ -369,93 +465,64 @@ const PolicyStep = ({ formData, setFormData }) => (
 
 const ReviewStep = ({ formData, error }) => (
   <div>
-    <h2>Review Your Information</h2>
-    {error && <p style={{ color: "red", textAlign: "center" }}>{error}</p>}
+    {error && (
+      <Alert variant="danger" className="mb-4">
+        {error}
+      </Alert>
+    )}
     {formData.students.map((student, index) => (
-      <div key={index} className="review-section">
-        <h3>Student #{index + 1}</h3>
-        <div className="review-grid">
+      <div key={index} className="review-box">
+        <h4>Student #{index + 1}</h4>
+        <div className="review-row">
           <strong>First Name:</strong>
           <span>{student.first_name}</span>
         </div>
-        <div className="review-grid">
+        <div className="review-row">
           <strong>Last Name:</strong>
           <span>{student.last_name}</span>
         </div>
-        <div className="review-grid">
+        <div className="review-row">
           <strong>Date of Birth:</strong>
           <span>{student.date_of_birth}</span>
         </div>
-        <div className="review-grid">
+        <div className="review-row">
           <strong>City/State:</strong>
           <span>{student.city_state}</span>
         </div>
-        <div className="review-grid">
+        <div className="review-row">
           <strong>Grade Level:</strong>
           <span>{student.grade_level}</span>
         </div>
       </div>
     ))}
     {formData.parents.map((parent, index) => (
-      <div key={index} className="review-section">
-        <h3>Parent/Guardian #{index + 1}</h3>
-        <div className="review-grid">
+      <div key={index} className="review-box">
+        <h4>Parent/Guardian #{index + 1}</h4>
+        <div className="review-row">
           <strong>First Name:</strong>
           <span>{parent.first_name}</span>
         </div>
-        <div className="review-grid">
+        <div className="review-row">
           <strong>Last Name:</strong>
           <span>{parent.last_name}</span>
         </div>
-        <div className="review-grid">
+        <div className="review-row">
           <strong>Email:</strong>
           <span>{parent.email}</span>
         </div>
-        <div className="review-grid">
+        <div className="review-row">
           <strong>Mobile Phone:</strong>
           <span>{parent.phone}</span>
         </div>
       </div>
     ))}
-    <div className="review-section">
-      <h3>Policy & Waiver</h3>
-      <div className="review-grid">
+    <div className="review-box">
+      <h4>Policy & Waiver</h4>
+      <div className="review-row">
         <strong>Agreement:</strong>
-        <span>{formData.policy_agreed ? "Yes" : "No"}</span>
+        <span>{formData.policy_agreed ? "Accepted" : "Not accepted"}</span>
       </div>
     </div>
-  </div>
-);
-
-const NavigationButtons = ({
-  step,
-  handleBack,
-  handleNext,
-  handleSubmit,
-  isLoading,
-  isStepValid,
-}) => (
-  <div className="navigation-buttons">
-    <button onClick={handleBack} className="nav-btn" disabled={step === 1}>
-      Back
-    </button>
-    {step < 5 ? (
-      <button
-        onClick={handleNext}
-        className="nav-btn primary"
-        disabled={!isStepValid}
-      >
-        Continue
-      </button>
-    ) : (
-      <button
-        onClick={handleSubmit}
-        className="nav-btn primary"
-        disabled={isLoading}
-      >
-        {isLoading ? "Submitting..." : "Submit Application"}
-      </button>
-    )}
   </div>
 );
 
@@ -475,8 +542,6 @@ const isStepValid = (step, formData) => {
         (p) => p.first_name && p.last_name && p.email && p.phone
       );
     case 3:
-      return true; // Pickup step is always skippable
-    case 4:
       return formData.policy_agreed;
     default:
       return true;

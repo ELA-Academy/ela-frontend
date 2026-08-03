@@ -10,6 +10,7 @@ import "react-toastify/dist/ReactToastify.css";
 import { AuthProvider } from "./context/AuthContext";
 import { TimerProvider } from "./context/TimerContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
@@ -57,11 +58,17 @@ import InboxPage from "./pages/admin/InboxPage";
 import DocsHubPage from "./pages/admin/DocsHubPage";
 import WorkspaceLayout from "./components/admin/workspace/WorkspaceLayout";
 
+// Department layouts — secondary sidebars
+import AdmissionsLayout from "./components/admin/admissions/AdmissionsLayout";
+import AccountingLayout from "./components/admin/accounting/AccountingLayout";
+import AdministrationLayout from "./components/admin/administration/AdministrationLayout";
+
 function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <TimerProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AuthProvider>
+          <TimerProvider>
         <ToastContainer
           position="top-right"
           autoClose={5000}
@@ -89,14 +96,10 @@ function App() {
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<DashboardOverview />} />
-                <Route element={<SuperAdminRoute />}>
-                  <Route path="super-admins" element={<ManageSuperAdmins />} />
-                  <Route path="departments" element={<ManageDepartments />} />
-                  <Route path="activity-feed" element={<ActivityFeedPage />} />
-                </Route>
-                <Route element={<AdminOrITRoute />}>
-                  <Route path="staff" element={<ManageStaff />} />
-                </Route>
+                <Route path="super-admins" element={<Navigate to="/admin/administration/super-admins" replace />} />
+                <Route path="departments" element={<Navigate to="/admin/administration/departments" replace />} />
+                <Route path="activity-feed" element={<Navigate to="/admin/administration/activity-feed" replace />} />
+                <Route path="staff" element={<Navigate to="/admin/administration/staff" replace />} />
                 <Route path="students" element={<AllStudentsPage />} />
                 <Route
                   path="students/:studentId"
@@ -115,43 +118,65 @@ function App() {
                   <Route path="inbox" element={<InboxPage />} />
                   <Route path="docs" element={<DocsHubPage />} />
                 </Route>
-                <Route path="admissions" element={<AdmissionsDashboard />} />
-                <Route path="admissions/leads" element={<LeadsListPage />} />
-                <Route
-                  path="admissions/leads/:token"
-                  element={<LeadDetailPage />}
-                />
-                <Route path="accounting" element={<AccountingDashboard />} />
-                <Route path="billing" element={<BillingDashboard />} />
-                <Route
-                  path="billing/accounts/:studentId"
-                  element={<StudentLedgerPage />}
-                />
-                <Route
-                  path="billing/recurring-plans"
-                  element={<RecurringPlansPage />}
-                />
-                <Route
-                  path="billing/subsidies"
-                  element={<SubsidyAccountsPage />}
-                />
-                <Route
-                  path="billing/subsidies/:subsidyId"
-                  element={<SubsidyDetailPage />}
-                />
+                {/* Admissions — department sidebar layout */}
+                <Route element={<AdmissionsLayout />}>
+                  <Route path="admissions" element={<AdmissionsDashboard />} />
+                  <Route path="admissions/leads" element={<LeadsListPage />} />
+                  <Route
+                    path="admissions/leads/:token"
+                    element={<LeadDetailPage />}
+                  />
+                </Route>
+
+                {/* Accounting — department sidebar layout */}
+                <Route element={<AccountingLayout />}>
+                  <Route path="accounting" element={<AccountingDashboard />} />
+                  <Route path="accounting/accounts" element={<BillingDashboard />} />
+                  <Route
+                    path="accounting/accounts/:studentId"
+                    element={<StudentLedgerPage />}
+                  />
+                  <Route
+                    path="accounting/recurring-plans"
+                    element={<RecurringPlansPage />}
+                  />
+                  <Route
+                    path="accounting/subsidies"
+                    element={<SubsidyAccountsPage />}
+                  />
+                  <Route
+                    path="accounting/subsidies/:subsidyId"
+                    element={<SubsidyDetailPage />}
+                  />
+                </Route>
+
+                {/* Legacy billing routes — redirect to accounting */}
+                <Route path="billing" element={<Navigate to="/admin/accounting/accounts" replace />} />
+                <Route path="billing/accounts/:studentId" element={<Navigate to="/admin/accounting/accounts" replace />} />
+                <Route path="billing/recurring-plans" element={<Navigate to="/admin/accounting/recurring-plans" replace />} />
+                <Route path="billing/subsidies" element={<Navigate to="/admin/accounting/subsidies" replace />} />
+
                 <Route path="enrollment" element={<EnrollmentDashboard />} />
                 <Route
                   path="enrollment/forms/:formId"
                   element={<EnrollmentFormBuilder />}
                 />
-                <Route
-                  path="administration"
-                  element={<AdministrationDashboard />}
-                />
-                <Route
-                  path="administration/message-log"
-                  element={<MessageLogPage />}
-                />
+                {/* Administration — department sidebar layout */}
+                <Route element={<AdministrationLayout />}>
+                  <Route path="administration" element={<AdministrationDashboard />} />
+                  <Route
+                    path="administration/message-log"
+                    element={<MessageLogPage />}
+                  />
+                  <Route element={<SuperAdminRoute />}>
+                    <Route path="administration/super-admins" element={<ManageSuperAdmins />} />
+                    <Route path="administration/departments" element={<ManageDepartments />} />
+                    <Route path="administration/activity-feed" element={<ActivityFeedPage />} />
+                  </Route>
+                  <Route element={<AdminOrITRoute />}>
+                    <Route path="administration/staff" element={<ManageStaff />} />
+                  </Route>
+                </Route>
                 <Route path="my-dashboard" element={<GenericDashboard />} />
                 <Route path="*" element={<NotFound />} />
               </Route>
@@ -160,9 +185,10 @@ function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Router>
-      </TimerProvider>
-    </AuthProvider>
-  </ThemeProvider>
+          </TimerProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

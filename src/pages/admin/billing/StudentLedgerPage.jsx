@@ -76,7 +76,7 @@ const StudentLedgerPage = () => {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <Link
-            to="/admin/billing"
+            to="/admin/accounting/accounts"
             className="d-flex align-items-center text-decoration-none text-muted mb-2"
           >
             <ArrowLeft size={20} className="me-2" />
@@ -175,7 +175,7 @@ const StudentLedgerPage = () => {
                         >
                           <ThreeDotsVertical size={20} />
                         </Dropdown.Toggle>
-                        <Dropdown.Menu>
+                        <Dropdown.Menu popperConfig={{ strategy: "fixed" }}>
                           <Dropdown.Item
                             onClick={() => handleShowPaymentModal(tx)}
                           >

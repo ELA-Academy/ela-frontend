@@ -226,7 +226,7 @@ const DashboardOverview = () => {
       title: "Departments",
       description: "Department ownership, routing, team allocation, and operational grouping.",
       icon: Building2,
-      to: "/admin/departments",
+      to: "/admin/administration/departments",
       badge: totalDepts,
       badgeLabel: "teams",
       metric: "Organization structure",
@@ -239,7 +239,7 @@ const DashboardOverview = () => {
       title: "Activity Feed",
       description: "Audit trail for lead updates, task changes, staff actions, and workflow history.",
       icon: Activity,
-      to: "/admin/activity-feed",
+      to: "/admin/administration/activity-feed",
       badge: overview?.recent_activities?.length || 0,
       badgeLabel: "recent",
       metric: "Live activity",
@@ -380,7 +380,7 @@ const DashboardOverview = () => {
             ) : (
               <>
                 {overview?.recent_activities?.slice(0, 5).map((act) => (
-                  <Link key={act.id} to="/admin/activity-feed" className="dashboard-list-row">
+                  <Link key={act.id} to="/admin/administration/activity-feed" className="dashboard-list-row">
                     <div className="dashboard-list-icon">
                       <Activity className="w-4 h-4" />
                     </div>

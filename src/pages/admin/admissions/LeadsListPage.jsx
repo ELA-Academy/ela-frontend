@@ -144,7 +144,7 @@ const LeadsListPage = () => {
                       <Dropdown.Toggle as={CustomToggle}>
                         <ThreeDotsVertical size={20} />
                       </Dropdown.Toggle>
-                      <Dropdown.Menu>
+                      <Dropdown.Menu popperConfig={{ strategy: "fixed" }}>
                         <Dropdown.Item
                           as={Link}
                           to={`/admin/admissions/leads/${lead.secure_token}`}
