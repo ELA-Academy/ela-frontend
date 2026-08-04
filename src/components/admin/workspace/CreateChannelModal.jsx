@@ -65,7 +65,7 @@ const CreateChannelModal = ({
     await onSubmit({
       ...formState,
       department_id:
-        formState.conversation_type === "department" && formState.department_id
+        (formState.conversation_type === "department" || formState.conversation_type === "department_public") && formState.department_id
           ? Number(formState.department_id)
           : null,
       participant_ids:
@@ -112,10 +112,11 @@ const CreateChannelModal = ({
               <option value="channel">Public Channel (visible to everyone)</option>
               <option value="private_channel">Private Channel (invite-only)</option>
               <option value="department">Department Channel (restricted to a department)</option>
+              <option value="department_public">Public Department Channel (visible to all departments)</option>
             </Form.Select>
           </Form.Group>
 
-          {formState.conversation_type === "department" && (
+          {(formState.conversation_type === "department" || formState.conversation_type === "department_public") && (
             <Form.Group className="mb-3">
               <Form.Label>Department</Form.Label>
               <Form.Select

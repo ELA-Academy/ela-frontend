@@ -207,7 +207,9 @@ const SpreadsheetImportModal = ({
 
     rawHeaders.forEach((h) => {
       const lowerH = h.toLowerCase().trim();
-      if ((lowerH.includes("name") || lowerH.includes("task") || lowerH.includes("title")) && !mappedStandardFields.has("title")) {
+      if (lowerH.startsWith("__empty")) {
+        mappings[h] = { type: "skip" };
+      } else if ((lowerH.includes("name") || lowerH.includes("task") || lowerH.includes("title")) && !mappedStandardFields.has("title")) {
         mappings[h] = { type: "standard", field: "title" };
         mappedStandardFields.add("title");
       } else if (lowerH.includes("status") && !mappedStandardFields.has("status")) {
@@ -356,7 +358,7 @@ const SpreadsheetImportModal = ({
       const payload = {
         group_id: selectedGroupId ? Number(selectedGroupId) : null,
         new_custom_fields: newCustomFieldsPayload,
-        tasks: importCompletedTasks.length > 0 ? importCompletedTasks : parsedRows.map((row) => {
+        tasks: parsedRows.map((row) => {
           const taskObj = { custom_fields: {} };
           Object.entries(columnMappings).forEach(([header, mapVal]) => {
             const val = row[header];
@@ -859,9 +861,21 @@ const SpreadsheetImportModal = ({
                             <div key={header} className="d-flex align-items-center justify-content-between p-3 bg-slate-50 rounded-3 border border-slate-200">
                               <div className="d-flex align-items-center gap-2">
                                 <Database size={15} className="text-indigo-600" />
-                                <span className="fw-bold text-slate-800 text-sm">
-                                  {mapVal.fieldName} <span className="text-slate-400 font-normal text-xs">(new)</span>
-                                </span>
+                                <Form.Control
+                                  type="text"
+                                  size="sm"
+                                  value={mapVal.fieldName || ""}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setColumnMappings((prev) => ({
+                                      ...prev,
+                                      [header]: { ...prev[header], fieldName: val }
+                                    }));
+                                  }}
+                                  className="fw-bold text-slate-800 text-xs border-slate-300"
+                                  style={{ width: "180px" }}
+                                />
+                                <span className="text-slate-400 font-normal text-xs">(new)</span>
                               </div>
 
                               <div className="d-flex align-items-center gap-2">

@@ -582,7 +582,7 @@ const WorkspaceSecondarySidebar = ({
 
   // Merge channels and department threads into one unified "Channels" list
   const allChannels = conversations.filter(
-    (item) => (item.conversation_type === "channel" || item.conversation_type === "department" || item.conversation_type === "private_channel") && !closedDmIds.includes(item.id)
+    (item) => (item.conversation_type === "channel" || item.conversation_type === "department" || item.conversation_type === "department_public" || item.conversation_type === "private_channel") && !closedDmIds.includes(item.id)
   ).filter((conv, index, self) =>
     index === self.findIndex((c) => c.id === conv.id)
   ).sort((a, b) => new Date(b.last_message_time) - new Date(a.last_message_time));
@@ -599,7 +599,7 @@ const WorkspaceSecondarySidebar = ({
  
   const renderConversationLink = (conversation, icon, extraClass = "") => {
     const isDirect = conversation.conversation_type === "direct";
-    const isChannel = conversation.conversation_type === "channel" || conversation.conversation_type === "department" || conversation.conversation_type === "private_channel";
+    const isChannel = conversation.conversation_type === "channel" || conversation.conversation_type === "department" || conversation.conversation_type === "department_public" || conversation.conversation_type === "private_channel";
     let dmTitle = conversation.title;
     if (isDirect && dmTitle === "Yourself") {
       dmTitle = `${user ? user.name : "Yourself"} (You)`;
