@@ -1111,6 +1111,17 @@ const WorkspaceSecondarySidebar = ({
             </Link>
 
             <Link
+              to="/admin/messaging"
+              className={`workspace-secondary-link ${location.pathname === "/admin/messaging" && !activeConversationId ? "active" : ""}`}
+              style={{ padding: "4px 8px" }}
+            >
+              <span className="workspace-secondary-link-icon"><Bell size={14} className="text-warning" /></span>
+              <span className="workspace-secondary-link-text">
+                <span className="workspace-secondary-link-title" style={{ fontSize: "12px", fontWeight: "500" }}>Announcements</span>
+              </span>
+            </Link>
+
+            <Link
               to="/admin/docs"
               className={`workspace-secondary-link ${location.pathname === "/admin/docs" ? "active" : ""}`}
               style={{ padding: "4px 8px" }}

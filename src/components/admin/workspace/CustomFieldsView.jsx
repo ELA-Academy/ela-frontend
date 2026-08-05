@@ -7,6 +7,7 @@ import { showSuccess, showError } from "../../../utils/notificationService";
 const FIELD_TYPES = [
   { value: "text", label: "Short Text" },
   { value: "number", label: "Number" },
+  { value: "phone", label: "Phone Number" },
   { value: "date", label: "Date" },
   { value: "dropdown", label: "Dropdown (Single Select)" },
   { value: "multi_select", label: "Multi-Select" },
