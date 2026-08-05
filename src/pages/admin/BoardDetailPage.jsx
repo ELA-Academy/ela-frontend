@@ -5856,9 +5856,35 @@ const BoardDetailPage = () => {
     };
 
     switch (field.type) {
+      case "phone":
+        return (
+          <div className="d-flex align-items-center gap-1 w-100">
+            {value && (
+              <a 
+                href={`tel:${value.replace(/[^0-9+]/g, '')}`} 
+                className="text-primary me-1"
+                title={`Call ${value}`}
+                style={{ display: "inline-flex", alignItems: "center", cursor: "pointer" }}
+              >
+                <Phone size={12} />
+              </a>
+            )}
+            <CustomFieldTextInput
+              type="text"
+              initialValue={value}
+              onSave={(newVal) => {
+                patchTaskInState(task.id, (t) => {
+                  const updated = { ...(t.custom_field_values || {}), [field.id]: newVal };
+                  return { ...t, custom_field_values: updated };
+                });
+                handleUpdateValue(newVal);
+              }}
+              placeholder="-"
+            />
+          </div>
+        );
       case "text":
       case "email":
-      case "phone":
       case "website":
       case "text_area":
         return (
