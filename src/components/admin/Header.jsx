@@ -59,7 +59,7 @@ const formatTime = (totalSeconds) => {
   ].join(':');
 };
 
-const Header = () => {
+const Header = ({ collapsed, setCollapsed }) => {
   const { user, unreadCount, notifications, markAllNotificationsAsRead, markNotificationAsRead, vibrateBell } =
     useAuth();
   const { theme, toggleTheme, isDark } = useTheme();
@@ -259,6 +259,16 @@ const Header = () => {
   return (
     <header className="hostinger-topbar h-20 bg-white flex items-center justify-between px-8 border-b border-slate-100 sticky top-0 z-40">
       
+      {/* Mobile Toggle Button */}
+      <button
+        type="button"
+        className="btn d-md-none p-1 me-2 border-0 bg-transparent text-slate-700"
+        onClick={() => setCollapsed(!collapsed)}
+        aria-label="Toggle Sidebar"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-menu"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+      </button>
+
       {/* Brand logo */}
       <div className="hostinger-brand-mark flex items-center gap-3">
         <img src="/images/ELA-logo.png" alt="ELA Academy" className="hostinger-logo-image h-8" />

@@ -7,6 +7,7 @@ import { useTimer } from "../../context/TimerContext";
 import { Play, Pause, Square } from "lucide-react";
 import { subscribeUser } from "../../utils/push-notifications";
 import "../../styles/AdminModern.css";
+import "../../styles/mobile.css";
 
 const AdminLayout = () => {
   const { user, isAuthenticated } = useAuth();
@@ -21,6 +22,27 @@ const AdminLayout = () => {
     resumeTimer,
     stopTimer
   } = useTimer();
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (window.innerWidth <= 768 && !sidebarCollapsed) {
+        const sidebarEl = document.querySelector(".sidebar");
+        const toggleBtn = document.querySelector('[aria-label="Toggle Sidebar"]');
+        if (
+          sidebarEl &&
+          !sidebarEl.contains(e.target) &&
+          (!toggleBtn || !toggleBtn.contains(e.target))
+        ) {
+          setSidebarCollapsed(true);
+        }
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [sidebarCollapsed]);
 
   useEffect(() => {
     if (isAuthenticated) {
