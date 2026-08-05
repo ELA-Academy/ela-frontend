@@ -161,13 +161,9 @@ const LiveLookInForm = () => {
             Schedule a "Live Look-in"
           </h1>
           <p className="text-sky-100 fs-5 fw-medium opacity-90 lh-base">
-            Take a free virtual or physical tour of ELA Academy and see our interactive learning environment in action.
+            Take a free virtual tour of ELA Academy and see our interactive learning environment in action.
           </p>
           <div className="d-none d-md-flex flex-column gap-3.5 mt-5">
-            <div className="d-flex align-items-center gap-3 text-sky-100">
-              <div className="bg-sky-500/20 p-2.5 rounded-circle"><User size={18} /></div>
-              <span className="text-sm font-semibold">1-on-1 Personalized Session</span>
-            </div>
             <div className="d-flex align-items-center gap-3 text-sky-100">
               <div className="bg-sky-500/20 p-2.5 rounded-circle"><Calendar size={18} /></div>
               <span className="text-sm font-semibold">Flexible Timings & Schedule</span>

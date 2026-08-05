@@ -1,0 +1,154 @@
+/* ==========================================================================
+   MOBILE & TABLET RESPONSIVE STYLES
+   This stylesheet overrides layout values for screens 768px or smaller, 
+   ensuring the desktop interface is not affected.
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  /* Hamburger and Drawer Sidebar */
+  .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: -80px !important; /* Slide out of view */
+    width: 70px !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    z-index: 1050 !important;
+    transition: left 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.15) !important;
+  }
+
+  /* Slide in active sidebar */
+  .admin-layout:not(.sidebar-collapsed) .sidebar {
+    left: 0 !important;
+  }
+
+  /* Sidebar backdrop overlay */
+  .admin-layout:not(.sidebar-collapsed)::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 1040;
+    animation: fadeInOverlay 0.2s ease-out;
+  }
+
+  @keyframes fadeInOverlay {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  /* Topbar / Header Adjustments */
+  .hostinger-topbar {
+    height: 70px !important;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+    gap: 12px !important;
+  }
+
+  /* Hide Search Container on Mobile */
+  .hostinger-topbar input[type="text"],
+  .hostinger-topbar .relative.w-full,
+  .hostinger-topbar .flex.items-center.w-\[360px\] {
+    display: none !important;
+  }
+
+  /* Adjust brand logo size */
+  .hostinger-brand-mark {
+    min-width: auto !important;
+    flex-grow: 1;
+  }
+
+  .hostinger-logo-image {
+    width: 130px !important;
+    height: 36px !important;
+    padding: 4px 8px !important;
+    border-radius: 8px !important;
+  }
+
+  /* Hide profile text details (name and role) */
+  .hostinger-topbar .flex.flex-col.text-right {
+    display: none !important;
+  }
+
+  /* Compact header buttons */
+  .hostinger-round-action {
+    width: 38px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+  }
+
+  .hostinger-profile-avatar {
+    width: 38px !important;
+    height: 38px !important;
+    font-size: 12px !important;
+  }
+
+  /* Workspace Sidebars / Columns */
+  .workspace-shell {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+  }
+
+  .workspace-secondary-sidebar {
+    width: 100% !important;
+    position: static !important;
+    height: auto !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .workspace-content-pane {
+    padding: 16px 12px !important;
+  }
+
+  /* Card Grid Columns */
+  .stats-grid,
+  .workspace-overview-grid,
+  .workspace-overview-layout,
+  .lead-grid,
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  /* Forms and Subscriptions */
+  .details-card {
+    padding: 16px !important;
+  }
+
+  .details-card p strong {
+    min-width: 100px !important;
+    font-size: 12px !important;
+  }
+
+  /* Tables Scrollability */
+  .table-container {
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modern-table {
+    min-width: 600px !important; /* Forces scroll bar instead of squeezing columns */
+  }
+
+  /* Stat Card Sizing */
+  .stat-card .card-body {
+    padding: 14px 16px !important;
+  }
+
+  .stat-card-value {
+    font-size: 1.5rem !important;
+  }
+
+  /* Floating widget adjustments */
+  div[style*="position: fixed"][style*="top: 80px"] {
+    top: 74px !important;
+    right: 12px !important;
+    scale: 0.9;
+  }
+}
