@@ -37,8 +37,10 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
   ];
 
   const isITUser = user?.role === "superadmin" || (
-    user?.role === "staff" && Array.isArray(user?.departmentNames) &&
-    user.departmentNames.some(name => /\b(it|information technology|info tech|tech)\b/i.test(name.trim()))
+    user?.role === "staff" && (
+      (Array.isArray(user?.departmentNames) && user.departmentNames.some(name => /\b(it|i\.t\.|tech|technology|information|admin|system|support)\b/i.test(name.trim()))) ||
+      (Array.isArray(user?.department_names) && user.department_names.some(name => /\b(it|i\.t\.|tech|technology|information|admin|system|support)\b/i.test(name.trim())))
+    )
   );
 
   const managementLinks = [
@@ -61,7 +63,12 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
 
   // Department Dashboards
   departmentDashboardLinks.forEach((link) => {
-    if (user?.role === "superadmin" || user?.dashboardRoutes?.includes(link.route)) {
+    const isAllowed = 
+      user?.role === "superadmin" || 
+      user?.dashboardRoutes?.includes(link.route) ||
+      (link.route === "/admin/administration" && isITUser);
+
+    if (isAllowed) {
       activeLinks.push({ ...link, role: ["superadmin", "staff"] });
     }
   });

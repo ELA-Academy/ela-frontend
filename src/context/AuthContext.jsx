@@ -182,15 +182,35 @@ export const AuthProvider = ({ children }) => {
       try {
         const decoded = jwtDecode(token);
         if (decoded.exp * 1000 > Date.now()) {
-          setUser({
+          const initialUser = {
             id: decoded.id,
             email: decoded.sub,
             name: decoded.name,
             role: decoded.role,
             departmentNames: decoded.departmentNames || [],
             dashboardRoutes: decoded.dashboardRoutes || [],
-          });
+          };
+          setUser(initialUser);
           setIsAuthenticated(true);
+
+          // Fetch fresh profile in background to sync newly assigned departments instantly
+          api.get("/profile")
+            .then((res) => {
+              if (res.data) {
+                const freshDeps = res.data.departments || [];
+                setUser({
+                  id: decoded.id,
+                  email: decoded.sub,
+                  name: res.data.name || decoded.name,
+                  role: decoded.role,
+                  departmentNames: freshDeps,
+                  dashboardRoutes: decoded.dashboardRoutes || [],
+                });
+              }
+            })
+            .catch((err) => {
+              console.error("Failed to sync fresh profile departments:", err);
+            });
         } else {
           logout();
         }
