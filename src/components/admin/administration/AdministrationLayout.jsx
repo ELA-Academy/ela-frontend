@@ -2,9 +2,11 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Outlet, NavLink, Link, useOutletContext, useLocation } from "react-router-dom";
 import { LayoutDashboard, Users, Building2, ShieldCheck, Activity, FileText } from "lucide-react";
 import { getActivityLogs } from "../../../services/activityService";
+import { useAuth } from "../../../context/AuthContext";
 import "../../../styles/WorkspaceShell.css";
 
 const AdministrationLayout = () => {
+  const { user } = useAuth();
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const location = useLocation();
@@ -106,35 +108,39 @@ const AdministrationLayout = () => {
                 </span>
               </NavLink>
 
-              <NavLink 
-                to="/admin/administration/departments"
-                className={({ isActive }) => `workspace-secondary-link ${isActive ? 'active' : ''}`}
-              >
-                <span className="workspace-secondary-link-icon"><Building2 size={15} /></span>
-                <span className="workspace-secondary-link-text">
-                  <span className="workspace-secondary-link-title">Departments</span>
-                </span>
-              </NavLink>
+              {user?.role === "superadmin" && (
+                <>
+                  <NavLink 
+                    to="/admin/administration/departments"
+                    className={({ isActive }) => `workspace-secondary-link ${isActive ? 'active' : ''}`}
+                  >
+                    <span className="workspace-secondary-link-icon"><Building2 size={15} /></span>
+                    <span className="workspace-secondary-link-text">
+                      <span className="workspace-secondary-link-title">Departments</span>
+                    </span>
+                  </NavLink>
 
-              <NavLink 
-                to="/admin/administration/super-admins"
-                className={({ isActive }) => `workspace-secondary-link ${isActive ? 'active' : ''}`}
-              >
-                <span className="workspace-secondary-link-icon"><ShieldCheck size={15} /></span>
-                <span className="workspace-secondary-link-text">
-                  <span className="workspace-secondary-link-title">Super Admins</span>
-                </span>
-              </NavLink>
+                  <NavLink 
+                    to="/admin/administration/super-admins"
+                    className={({ isActive }) => `workspace-secondary-link ${isActive ? 'active' : ''}`}
+                  >
+                    <span className="workspace-secondary-link-icon"><ShieldCheck size={15} /></span>
+                    <span className="workspace-secondary-link-text">
+                      <span className="workspace-secondary-link-title">Super Admins</span>
+                    </span>
+                  </NavLink>
 
-              <NavLink 
-                to="/admin/administration/activity-feed"
-                className={({ isActive }) => `workspace-secondary-link ${isActive ? 'active' : ''}`}
-              >
-                <span className="workspace-secondary-link-icon"><Activity size={15} /></span>
-                <span className="workspace-secondary-link-text">
-                  <span className="workspace-secondary-link-title">Activity Feed</span>
-                </span>
-              </NavLink>
+                  <NavLink 
+                    to="/admin/administration/activity-feed"
+                    className={({ isActive }) => `workspace-secondary-link ${isActive ? 'active' : ''}`}
+                  >
+                    <span className="workspace-secondary-link-icon"><Activity size={15} /></span>
+                    <span className="workspace-secondary-link-text">
+                      <span className="workspace-secondary-link-title">Activity Feed</span>
+                    </span>
+                  </NavLink>
+                </>
+              )}
 
               <NavLink 
                 to="/admin/administration/message-log"
