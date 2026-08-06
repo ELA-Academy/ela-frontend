@@ -81,7 +81,9 @@ const LiveLookInForm = () => {
       setSuccess(
         "Thank you! Your request for a Live Look-in tour has been submitted successfully. A representative will contact you shortly."
       );
-      setTimeout(() => navigate("/"), 5000);
+      setTimeout(() => {
+        window.location.href = "https://elaaschool.org/";
+      }, 5000);
     } catch (err) {
       setError(
         err.response?.data?.error || 
@@ -124,7 +126,9 @@ const LiveLookInForm = () => {
             <Button 
               variant="outline-secondary" 
               className="px-4 py-2 text-xs border-slate-200 fw-semibold rounded-3"
-              onClick={() => navigate("/")}
+              onClick={() => {
+                window.location.href = "https://elaaschool.org/";
+              }}
             >
               Go to Home Page
             </Button>
