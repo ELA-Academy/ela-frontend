@@ -146,3 +146,94 @@ export const getStudentLedger = async (studentId) => {
     throw error;
   }
 };
+
+export const getTransactions = async (params) => {
+  try {
+    const response = await api.get("/billing/transactions", { params });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching transactions:", error);
+    throw error;
+  }
+};
+
+export const getStudentStatementPdf = async (studentId, startDate, endDate) => {
+  try {
+    const response = await api.get(`/billing/accounts/${studentId}/statement`, {
+      params: { start_date: startDate, end_date: endDate },
+      responseType: "blob",
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`Error downloading statement for student ${studentId}:`, error);
+    throw error;
+  }
+};
+
+export const getPaymentReceiptPdf = async (studentId, paymentId) => {
+  try {
+    const response = await api.get(
+      `/billing/accounts/${studentId}/payments/${paymentId}/receipt`,
+      { responseType: "blob" }
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Error downloading receipt for payment ${paymentId}:`, error);
+    throw error;
+  }
+};
+
+export const refundPayment = async (studentId, paymentId, refundData) => {
+  try {
+    const response = await api.post(
+      `/billing/accounts/${studentId}/payments/${paymentId}/refund`,
+      refundData
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Error refunding payment ${paymentId}:`, error);
+    throw error;
+  }
+};
+
+export const getFinancialAuditLogs = async (studentId) => {
+  try {
+    const response = await api.get(`/billing/accounts/${studentId}/audit-logs`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching audit logs for student ${studentId}:`, error);
+    throw error;
+  }
+};
+
+export const editInvoice = async (invoiceId, invoiceData) => {
+  try {
+    const response = await api.put(`/billing/invoices/${invoiceId}`, invoiceData);
+    return response.data;
+  } catch (error) {
+    console.error(`Error editing invoice ${invoiceId}:`, error);
+    throw error;
+  }
+};
+
+export const cancelInvoice = async (invoiceId) => {
+  try {
+    const response = await api.post(`/billing/invoices/${invoiceId}/cancel`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error cancelling invoice ${invoiceId}:`, error);
+    throw error;
+  }
+};
+
+export const sendInvoice = async (invoiceId) => {
+  try {
+    const response = await api.post(`/billing/invoices/${invoiceId}/send`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error sending invoice ${invoiceId}:`, error);
+    throw error;
+  }
+};
+
+
