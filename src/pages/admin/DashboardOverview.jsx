@@ -17,7 +17,8 @@ import {
   TrendingUp,
   UserCheck,
   UserPlus,
-  Users
+  Users,
+  AlertCircle
 } from "lucide-react";
 import api from "../../utils/api";
 import { useAuth } from "../../context/AuthContext";
@@ -137,6 +138,23 @@ const DashboardOverview = () => {
     const complete = tasks.filter((task) => task.status === "Completed" || task.status === "Done").length;
     return Math.round((complete / tasks.length) * 100);
   }, [tasks]);
+
+  const statusBreakdown = useMemo(() => {
+    const todo = tasks.filter(t => t.status === "To-Do" || t.status === "Not Started" || t.status === "To Do").length;
+    const inProgress = tasks.filter(t => t.status === "In Progress" || t.status === "Active").length;
+    const done = tasks.filter(t => t.status === "Completed" || t.status === "Done").length;
+    return { todo, inProgress, done };
+  }, [tasks]);
+
+  const overdueTasks = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    return activeTasks.filter(t => {
+      if (!t.due_date) return false;
+      const due = new Date(t.due_date.split("T")[0].replace(/-/g, "/"));
+      return due < now;
+    });
+  }, [activeTasks]);
 
   const totalStaff = overview?.total_staff || 0;
   const totalDepts = overview?.total_departments || 0;
@@ -344,6 +362,63 @@ const DashboardOverview = () => {
             )}
           </div>
         )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <DashboardPanel title="Task Status Breakdown" subtitle="Distribution of all your assigned work">
+          <div className="space-y-4 py-2">
+            <div>
+              <div className="flex justify-between text-xs text-neutral-500 mb-1">
+                <span>To Do</span>
+                <span className="font-bold">{statusBreakdown.todo} task(s)</span>
+              </div>
+              <div className="h-2 bg-neutral-100 rounded-full overflow-hidden">
+                <div className="h-full bg-slate-500 rounded-full" style={{ width: `${tasks.length ? (statusBreakdown.todo / tasks.length) * 100 : 0}%` }} />
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-xs text-neutral-500 mb-1">
+                <span>In Progress</span>
+                <span className="font-bold">{statusBreakdown.inProgress} task(s)</span>
+              </div>
+              <div className="h-2 bg-neutral-100 rounded-full overflow-hidden">
+                <div className="h-full bg-amber-500 rounded-full" style={{ width: `${tasks.length ? (statusBreakdown.inProgress / tasks.length) * 100 : 0}%` }} />
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-xs text-neutral-500 mb-1">
+                <span>Completed</span>
+                <span className="font-bold">{statusBreakdown.done} task(s) ({completionRate}%)</span>
+              </div>
+              <div className="h-2 bg-neutral-100 rounded-full overflow-hidden">
+                <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${completionRate}%` }} />
+              </div>
+            </div>
+          </div>
+        </DashboardPanel>
+
+        <DashboardPanel title="Overdue Tasks" subtitle="Active tasks past their due dates">
+          <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
+            {overdueTasks.map((task) => (
+              <Link
+                key={`overdue-${task.id}`}
+                to={task.task_type === "board" && task.board_id ? `/admin/boards/${task.board_id}?task=${task.id}` : "/admin/tasks"}
+                className="dashboard-list-row border-rose-100 hover:bg-rose-50/50"
+              >
+                <div className="dashboard-list-icon text-rose-500 bg-rose-50 border border-rose-100 rounded-lg p-1">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="dashboard-list-title font-semibold text-rose-950">{task.title}</div>
+                  <div className="dashboard-list-meta text-rose-600">
+                    Overdue since: {new Date(task.due_date.split("T")[0].replace(/-/g, "/")).toLocaleDateString()}
+                  </div>
+                </div>
+              </Link>
+            ))}
+            {!overdueTasks.length && <EmptyPanelText>No overdue tasks. Keep up the good work! 🎉</EmptyPanelText>}
+          </div>
+        </DashboardPanel>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

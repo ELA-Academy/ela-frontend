@@ -2171,24 +2171,26 @@ const BoardDetailPage = () => {
   };
 
   const patchTaskInState = (taskId, updater) => {
+    const updateTaskRecursive = (task) => {
+      if (task.id === taskId) {
+        return updater(task);
+      }
+      if (task.subtasks && task.subtasks.length > 0) {
+        return {
+          ...task,
+          subtasks: task.subtasks.map(updateTaskRecursive),
+        };
+      }
+      return task;
+    };
+
     setBoard((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
         groups: prev.groups.map((group) => ({
           ...group,
-          tasks: (group.tasks || []).map((task) => {
-            if (task.id === taskId) {
-              return updater(task);
-            }
-            if (task.subtasks && task.subtasks.some((sub) => sub.id === taskId)) {
-              return {
-                ...task,
-                subtasks: task.subtasks.map((sub) => (sub.id === taskId ? updater(sub) : sub)),
-              };
-            }
-            return task;
-          }),
+          tasks: (group.tasks || []).map(updateTaskRecursive),
         })),
       };
     });
@@ -2734,7 +2736,7 @@ const BoardDetailPage = () => {
         onDragStart={(e) => handleDragStart(e, task.id)}
       >
         <div className="d-flex justify-content-between align-items-start gap-2">
-          <div className="kanban-task-title fw-bold d-flex align-items-center flex-wrap" onClick={() => handleOpenUpdatesDrawer(task)} style={{ cursor: "pointer" }}>
+          <div className="kanban-task-title fw-bold d-flex align-items-center flex-wrap" onClick={() => handleOpenUpdatesDrawer(task)} style={{ cursor: "pointer" }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleOpenUpdatesDrawer(task); } }}>
             {task.title}
             {renderTaskNotesIcon(task)}
           </div>
@@ -2898,7 +2900,7 @@ const BoardDetailPage = () => {
                 
                 return (
                   <tr key={t.id}>
-                    <td className="text-xs font-semibold text-slate-700 cursor-pointer hover:text-primary" onClick={() => handleTaskClickFromView(t.id)}>
+                    <td className="text-xs font-semibold text-slate-700 cursor-pointer hover:text-primary" onClick={() => handleTaskClickFromView(t.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleTaskClickFromView(t.id); } }}>
                       {t.title}
                     </td>
                     {Array.from({ length: 7 }).map((_, colIdx) => {
@@ -2907,6 +2909,9 @@ const BoardDetailPage = () => {
                           <td key={colIdx} colSpan={span} className="p-1">
                             <div 
                               onClick={() => handleTaskClickFromView(t.id)}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleTaskClickFromView(t.id); } }}
                               className="text-white text-[10px] fw-bold rounded-pill p-2 text-center shadow-sm cursor-pointer hover:opacity-90"
                               style={{ 
                                 backgroundColor: t.status === "Done" ? "#00b67a" : (t.priority === "Urgent" || t.priority === "High" ? "#ff59a3" : "#673de6"),
@@ -5263,7 +5268,7 @@ const BoardDetailPage = () => {
               >
                 <div className="fw-bold text-slate-500 small text-uppercase mb-2 d-flex align-items-center justify-content-between">
                   <span>Not started</span>
-                  <Plus size={14} className="cursor-pointer" onClick={() => handleAddModalStatus("Not Started")} />
+                  <button className="p-1 text-slate-400 hover:text-slate-600 bg-transparent border-0 d-inline-flex align-items-center" onClick={() => handleAddModalStatus("Not Started")} aria-label="Add Not Started Status" type="button"><Plus size={14} /></button>
                 </div>
                 <div className="d-flex flex-column gap-2">
                   {notStartedList.map((status, idx) => (
@@ -5307,7 +5312,7 @@ const BoardDetailPage = () => {
                         onChange={(e) => handleRenameModalStatus(status.id, e.target.value)}
                         className="form-control form-control-sm border-0 fw-semibold text-slate-800 p-0 shadow-none bg-transparent"
                       />
-                      <Trash size={12} className="text-slate-400 hover:text-danger cursor-pointer" onClick={() => handleDeleteModalStatus(status.id)} />
+                      <button className="p-1 text-slate-400 hover:text-danger bg-transparent border-0 d-inline-flex align-items-center" onClick={() => handleDeleteModalStatus(status.id)} aria-label="Delete status" type="button"><Trash size={12} /></button>
                     </div>
                   ))}
                   {notStartedList.length === 0 && <div className="text-center py-2 border border-dashed rounded text-muted small">Drag status here</div>}
@@ -5321,7 +5326,7 @@ const BoardDetailPage = () => {
               >
                 <div className="fw-bold text-slate-500 small text-uppercase mb-2 d-flex align-items-center justify-content-between">
                   <span>Active</span>
-                  <Plus size={14} className="cursor-pointer" onClick={() => handleAddModalStatus("Active")} />
+                  <button className="p-1 text-slate-400 hover:text-slate-600 bg-transparent border-0 d-inline-flex align-items-center" onClick={() => handleAddModalStatus("Active")} aria-label="Add Active Status" type="button"><Plus size={14} /></button>
                 </div>
                 <div className="d-flex flex-column gap-2">
                   {activeList.map((status, idx) => (
@@ -5365,7 +5370,7 @@ const BoardDetailPage = () => {
                         onChange={(e) => handleRenameModalStatus(status.id, e.target.value)}
                         className="form-control form-control-sm border-0 fw-semibold text-slate-800 p-0 shadow-none bg-transparent"
                       />
-                      <Trash size={12} className="text-slate-400 hover:text-danger cursor-pointer" onClick={() => handleDeleteModalStatus(status.id)} />
+                      <button className="p-1 text-slate-400 hover:text-danger bg-transparent border-0 d-inline-flex align-items-center" onClick={() => handleDeleteModalStatus(status.id)} aria-label="Delete status" type="button"><Trash size={12} /></button>
                     </div>
                   ))}
                   {activeList.length === 0 && <div className="text-center py-2 border border-dashed rounded text-muted small">Drag status here</div>}
@@ -5379,7 +5384,7 @@ const BoardDetailPage = () => {
               >
                 <div className="fw-bold text-slate-500 small text-uppercase mb-2 d-flex align-items-center justify-content-between">
                   <span>Done</span>
-                  <Plus size={14} className="cursor-pointer" onClick={() => handleAddModalStatus("Done")} />
+                  <button className="p-1 text-slate-400 hover:text-slate-600 bg-transparent border-0 d-inline-flex align-items-center" onClick={() => handleAddModalStatus("Done")} aria-label="Add Done Status" type="button"><Plus size={14} /></button>
                 </div>
                 <div className="d-flex flex-column gap-2">
                   {doneList.map((status, idx) => (
@@ -5423,7 +5428,7 @@ const BoardDetailPage = () => {
                         onChange={(e) => handleRenameModalStatus(status.id, e.target.value)}
                         className="form-control form-control-sm border-0 fw-semibold text-slate-800 p-0 shadow-none bg-transparent"
                       />
-                      <Trash size={12} className="text-slate-400 hover:text-danger cursor-pointer" onClick={() => handleDeleteModalStatus(status.id)} />
+                      <button className="p-1 text-slate-400 hover:text-danger bg-transparent border-0 d-inline-flex align-items-center" onClick={() => handleDeleteModalStatus(status.id)} aria-label="Delete status" type="button"><Trash size={12} /></button>
                     </div>
                   ))}
                   {doneList.length === 0 && <div className="text-center py-2 border border-dashed rounded text-muted small">Drag status here</div>}

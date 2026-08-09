@@ -15,7 +15,7 @@ const formatDueDate = (dateString) => {
   if (!dateString) {
     return <span className="text-slate-400">No due date</span>;
   }
-  const dueDate = new Date(dateString);
+  const dueDate = new Date(dateString.split("T")[0].replace(/-/g, "/"));
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   const isOverdue = dueDate < now;

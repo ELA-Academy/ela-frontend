@@ -30,7 +30,7 @@ const EditTaskModal = ({ show, handleClose, task, onTaskUpdated }) => {
         note: task.note || "",
         status: task.status || "To-Do",
         lead_status: task.lead_status || "",
-        due_date: task.due_date ? new Date(task.due_date) : null,
+        due_date: task.due_date ? new Date(task.due_date.split("T")[0].replace(/-/g, "/")) : null,
         assigned_department_ids: task.assigned_department_ids || [],
         assigned_staff_ids: task.assigned_staff_ids || [],
       });
