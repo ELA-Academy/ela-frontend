@@ -2571,7 +2571,7 @@ const UpdatesDrawer = ({
               {isWatcher ? <Eye size={18} className="text-primary" /> : <EyeSlash size={18} />}
               {watchers.length > 0 && <span className="watcher-count-pill">{watchers.length}</span>}
             </button>
-            <button className="drawer-close-btn" onClick={onClose} title="Close">
+            <button className="drawer-close-btn" onClick={onClose} aria-label="Close">
               <X size={24} />
             </button>
           </div>
@@ -3129,7 +3129,7 @@ const UpdatesDrawer = ({
                               }}
                             />
                             <span className="cu-date-display">
-                              {sub.due_date ? new Date(sub.due_date).toLocaleDateString([], { month: 'short', day: 'numeric' }) : "-"}
+                              {sub.due_date ? new Date(sub.due_date.split("T")[0].replace(/-/g, "/")).toLocaleDateString([], { month: 'short', day: 'numeric' }) : "-"}
                             </span>
                           </div>
 

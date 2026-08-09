@@ -18,6 +18,7 @@ import SuperAdminSetup from "./pages/SuperAdminSetup";
 import SetupPassword from "./pages/SetupPassword";
 import AdminLayout from "./components/admin/AdminLayout";
 import DashboardOverview from "./pages/admin/DashboardOverview";
+import SettingsPage from "./pages/admin/SettingsPage";
 import ManageDepartments from "./pages/admin/ManageDepartments";
 import ManageStaff from "./pages/admin/ManageStaff";
 import NotFound from "./pages/NotFound";
@@ -108,7 +109,7 @@ function App() {
                   element={<StudentProfilePage />}
                 />
                 <Route path="profile" element={<ProfilePage />} />
-                <Route path="settings" element={<ProfilePage />} />
+                <Route path="settings" element={<SettingsPage />} />
                 <Route path="reports" element={<ReportsPage />} />
                 <Route path="tasks" element={<AllTasksPage />} />
                 

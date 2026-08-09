@@ -16,10 +16,8 @@ import DatePicker from "react-datepicker";
 import { v4 as uuidv4 } from "uuid";
 import {
   Trash,
-  ArrowLeft,
-  StarFill,
-  ShieldShaded,
 } from "react-bootstrap-icons";
+import { X } from "lucide-react";
 import { showSuccess, showError } from "../../../utils/notificationService";
 import { getAllStudents } from "../../../services/studentService";
 import { getSubsidies } from "../../../services/subsidyService";
@@ -32,17 +30,20 @@ import {
 } from "../../../services/billingService";
 import ManagePresetsModal from "./ManagePresetsModal";
 import ManageDiscountsModal from "./ManageDiscountsModal";
-import { format, addMonths, startOfMonth, endOfMonth, setDate } from "date-fns";
+import { format, addMonths, startOfMonth, endOfMonth, setDate, addDays } from "date-fns";
 
-const formatCurrency = (amount) =>
-  (amount != null ? amount : 0).toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-  });
+const formatCurrency = (amount) => {
+  const sign = amount < 0 ? "-" : "";
+  const absVal = Math.abs(amount);
+  return `${sign}$${absVal.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+};
 
 const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
   const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false); // <-- THIS IS THE FIX (initialized to false)
+  const [loading, setLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Data stores
@@ -56,7 +57,12 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
   const [showPresetsModal, setShowPresetsModal] = useState(false);
   const [showDiscountsModal, setShowDiscountsModal] = useState(false);
 
-  // Wizard state
+  const initialEndDate = () => {
+    const today = new Date();
+    return addMonths(today, 12); // Default to 12 months duration
+  };
+
+  // Wizard state (starts directly at student selection)
   const [selectedStudentIds, setSelectedStudentIds] = useState([]);
   const [studentSearchTerm, setStudentSearchTerm] = useState("");
   const [planData, setPlanData] = useState({
@@ -64,10 +70,10 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
     plan_name: "",
     cycle: "Monthly",
     start_date: new Date(),
-    end_date: null,
+    end_date: initialEndDate(),
     invoice_generation_day: 1,
-    due_day: 1,
-    billing_cycle_for: "Previous",
+    due_day: 15,
+    billing_cycle_for: "Current",
     items_json: [
       {
         id: uuidv4(),
@@ -92,10 +98,10 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
       plan_name: "",
       cycle: "Monthly",
       start_date: new Date(),
-      end_date: null,
+      end_date: initialEndDate(),
       invoice_generation_day: 1,
-      due_day: 1,
-      billing_cycle_for: "Previous",
+      due_day: 15,
+      billing_cycle_for: "Current",
       items_json: [
         {
           id: uuidv4(),
@@ -112,7 +118,7 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
 
   const fetchInitialData = async () => {
     try {
-      setLoading(true); // Now we set loading to true only when fetching starts
+      setLoading(true);
       const [s, pt, pi, d, sub] = await Promise.all([
         getAllStudents(),
         getBillingPlans(),
@@ -187,7 +193,7 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
     const newItems = planData.items_json.map((item) => {
       if (item.id === id) {
         let updatedItem = { ...item, [field]: value };
-        if (field === "type")
+        if (field === "type") {
           updatedItem = {
             ...updatedItem,
             description: "",
@@ -196,6 +202,7 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
             percentValue: "",
             dollarValue: "",
           };
+        }
         if (field === "description" && updatedItem.type === "Preset Item") {
           const preset = presetItems.find((p) => p.description === value);
           if (preset) updatedItem.value = preset.amount;
@@ -299,20 +306,26 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
     () =>
       planData.items_json.map((item) => {
         let finalAmount = parseFloat(item.value) || 0;
+        let finalDesc = item.description;
+        
         if (item.type === "Discount") {
           finalAmount =
             item.unit === "%"
               ? -((finalAmount / 100) * subtotal)
               : -finalAmount;
+          if (!finalDesc) finalDesc = "One Flat Rate Discount";
         } else if (item.type === "Subsidy") {
           finalAmount = -finalAmount;
+          if (!finalDesc) finalDesc = "Subsidy Credit";
         } else if (item.type === "Preset Item") {
           const preset = presetItems.find(
             (p) => p.description === item.description
           );
           finalAmount = preset ? preset.amount : 0;
+        } else if (item.type === "New Item") {
+          if (!finalDesc) finalDesc = "Tuition Fee";
         }
-        return { ...item, amount: finalAmount };
+        return { ...item, description: finalDesc, amount: finalAmount };
       }),
     [planData.items_json, subtotal, presetItems]
   );
@@ -371,12 +384,14 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
       .toLowerCase()
       .includes(studentSearchTerm.toLowerCase())
   );
+  
   const getInitials = (name) =>
     name
       ?.split(" ")
       .map((n) => n[0])
       .join("")
       .toUpperCase() || "";
+
   const formatDay = (d) => {
     if (!d) return "";
     if (d > 3 && d < 21) return `${d}th`;
@@ -398,47 +413,23 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
       return (
         <div
           className="d-flex align-items-center justify-content-center"
-          style={{ minHeight: "400px" }}
+          style={{ minHeight: "360px" }}
         >
-          <Spinner />
+          <Spinner animation="border" variant="primary" />
         </div>
       );
     switch (step) {
-      case 1:
-        return (
-          <div className="d-flex flex-column align-items-center justify-content-center h-100 p-5">
-            <h4 className="mb-4">Which Plan do you want to create?</h4>
-            <Button
-              variant="outline-primary"
-              size="lg"
-              className="w-75 mb-3 p-3"
-              onClick={() => setStep(2)}
-            >
-              <div className="fw-bold">TUITION PLAN</div>
-              <small>(plan with fixed rates)</small>
-            </Button>
-            <div className="text-muted my-2">OR</div>
-            <Button
-              variant="outline-secondary"
-              size="lg"
-              className="w-75 p-3"
-              disabled
-            >
-              <div className="fw-bold">ATTENDANCE PLAN</div>
-              <small>(dynamic rates based on sign in/out)</small>
-            </Button>
-          </div>
-        );
-      case 2:
+      case 1: // Select Students
         return (
           <div>
-            <h4 className="mb-3">Select Students</h4>
+            <h4 className="mb-3 fs-6 fw-bold text-slate-800">Select Students</h4>
             <Form.Control
               type="text"
-              placeholder="Search..."
+              placeholder="Search students..."
               className="mb-3"
               value={studentSearchTerm}
               onChange={(e) => setStudentSearchTerm(e.target.value)}
+              style={{ fontSize: "0.85rem", padding: "8px 12px", borderRadius: "6px" }}
             />
             <div className="d-flex justify-content-between align-items-center mb-2">
               <Form.Check
@@ -453,16 +444,18 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
                     e.target.checked ? filteredStudents.map((s) => s.id) : []
                   )
                 }
+                className="fw-bold small text-slate-700"
+                style={{ fontSize: "0.78rem" }}
               />
-              <small className="text-muted">
+              <small className="text-muted fw-bold" style={{ fontSize: "0.72rem" }}>
                 {selectedStudentIds.length} STUDENTS SELECTED
               </small>
             </div>
-            <ListGroup style={{ maxHeight: "400px", overflowY: "auto" }}>
+            <ListGroup style={{ maxHeight: "300px", overflowY: "auto", borderRadius: "8px" }}>
               {filteredStudents.map((s) => (
                 <ListGroup.Item
                   key={s.id}
-                  className="d-flex align-items-center"
+                  className="d-flex align-items-center py-2"
                 >
                   <Form.Check
                     type="checkbox"
@@ -479,15 +472,16 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
                   />
                   <div
                     style={{
-                      backgroundColor: "#6c757d",
+                      backgroundColor: "#00ca72",
                       color: "white",
-                      width: "40px",
-                      height: "40px",
+                      width: "32px",
+                      height: "32px",
                       borderRadius: "50%",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       fontWeight: "bold",
+                      fontSize: "11px",
                     }}
                     className="me-3"
                   >
@@ -495,8 +489,8 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
                   </div>
                   <label
                     htmlFor={`student-${s.id}`}
-                    className="w-100"
-                    style={{ cursor: "pointer" }}
+                    className="w-100 m-0 fw-semibold text-slate-700"
+                    style={{ cursor: "pointer", fontSize: "0.82rem" }}
                   >
                     {s.first_name} {s.last_name}
                   </label>
@@ -505,320 +499,327 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
             </ListGroup>
           </div>
         );
-      case 3:
+      case 2: // Plan Details (Compact, matching image 2)
         return (
-          <Form>
-            <Row className="mb-3">
+          <div className="tuition-plan-form-compact">
+            <Row className="mb-2">
               <Col md={6}>
-                <Form.Label>Create New or Pick Template</Form.Label>
-                <Form.Select
-                  value={planData.templateId}
-                  onChange={handleTemplateChange}
-                >
-                  <option value="new">+ New plan</option>
-                  {planTemplates.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </Form.Select>
-              </Col>
-              <Col md={6}>
-                <Form.Label>Plan Name</Form.Label>
-                <Form.Control
-                  type="text"
-                  value={planData.plan_name}
-                  onChange={(e) =>
-                    setPlanData({ ...planData, plan_name: e.target.value })
-                  }
-                  required
-                />
-              </Col>
-            </Row>
-            <Row className="mb-3">
-              <Col>
-                <Form.Label>Plan Cycle</Form.Label>
-                <Form.Select
-                  value={planData.cycle}
-                  onChange={(e) =>
-                    setPlanData({ ...planData, cycle: e.target.value })
-                  }
-                >
-                  <option>Monthly</option>
-                </Form.Select>
-              </Col>
-              <Col>
-                <Form.Label>Plan Start</Form.Label>
-                <DatePicker
-                  selected={planData.start_date}
-                  onChange={(date) =>
-                    setPlanData({ ...planData, start_date: date })
-                  }
-                  className="form-control"
-                />
-              </Col>
-              <Col>
-                <Form.Label>Plan End (Optional)</Form.Label>
-                <DatePicker
-                  selected={planData.end_date}
-                  onChange={(date) =>
-                    setPlanData({ ...planData, end_date: date })
-                  }
-                  className="form-control"
-                  isClearable
-                  placeholderText="Select month"
-                />
-              </Col>
-            </Row>
-            <Row className="mb-3 align-items-end gx-2">
-              <Col xs="auto" className="pe-0" style={{ paddingTop: "32px" }}>
-                Generate invoice on
-              </Col>
-              <Col>
-                <Form.Select
-                  value={planData.invoice_generation_day}
-                  onChange={(e) =>
-                    setPlanData({
-                      ...planData,
-                      invoice_generation_day: parseInt(e.target.value),
-                    })
-                  }
-                >
-                  {dayOptions.map((d) => (
-                    <option key={d} value={d}>
-                      {formatDay(d)} day
-                    </option>
-                  ))}
-                </Form.Select>
-              </Col>
-              <Col xs="auto" className="pe-0">
-                , due on
-              </Col>
-              <Col>
-                <Form.Select
-                  value={planData.due_day}
-                  onChange={(e) =>
-                    setPlanData({
-                      ...planData,
-                      due_day: parseInt(e.target.value),
-                    })
-                  }
-                >
-                  {dayOptions.map((d) => (
-                    <option key={d} value={d}>
-                      {formatDay(d)} day
-                    </option>
-                  ))}
-                </Form.Select>
-              </Col>
-              <Col xs="auto" className="pe-0">
-                for
-              </Col>
-              <Col>
-                <Form.Select
-                  value={planData.billing_cycle_for}
-                  onChange={(e) =>
-                    setPlanData({
-                      ...planData,
-                      billing_cycle_for: e.target.value,
-                    })
-                  }
-                >
-                  <option value="Previous">Previous</option>
-                  <option value="Current">Current</option>
-                </Form.Select>
-              </Col>
-              <Col xs="auto" className="ps-0">
-                billing cycle.
-              </Col>
-            </Row>
-            <Alert variant="success">
-              Your first invoice will be generated on{" "}
-              <strong>{firstInvoiceInfo.genDate}</strong> due on{" "}
-              <strong>{firstInvoiceInfo.dueDate}</strong> for the period of{" "}
-              <strong>{firstInvoiceInfo.periodStart}</strong> to{" "}
-              <strong>{firstInvoiceInfo.periodEnd}</strong>.
-            </Alert>
-
-            <h5 className="mt-4">Invoice Details</h5>
-            <Row className="gx-2 text-muted small mb-1">
-              <Col md={2}>Type</Col>
-              <Col>Item Description</Col>
-              <Col md={3}>Amount</Col>
-              <Col md={1} className="text-end">
-                Total
-              </Col>
-              <Col xs="auto"></Col>
-            </Row>
-            {processedItems.map((item) => (
-              <Row key={item.id} className="mb-2 align-items-center gx-2">
-                <Col md={2}>
+                <Form.Group className="mb-2">
+                  <Form.Label className="small fw-semibold text-slate-500 mb-1" style={{ fontSize: "0.7rem", letterSpacing: "0.03em" }}>CREATE NEW OR PICK TEMPLATE</Form.Label>
                   <Form.Select
-                    value={item.type}
-                    onChange={(e) =>
-                      handleItemChange(item.id, "type", e.target.value)
-                    }
+                    value={planData.templateId}
+                    onChange={handleTemplateChange}
+                    style={{ fontSize: "0.8rem", padding: "6px 10px", borderRadius: "6px" }}
                   >
-                    <option>Preset Item</option>
-                    <option>Discount</option>
-                    <option>Subsidy</option>
-                    <option>New Item</option>
-                  </Form.Select>
-                </Col>
-                {item.type === "Discount" ? (
-                  <Col md={7} className="d-flex align-items-center">
-                    <InputGroup>
-                      <Form.Control
-                        type="number"
-                        placeholder="0"
-                        value={item.percentValue}
-                        onChange={(e) =>
-                          handleItemChange(
-                            item.id,
-                            "percentValue",
-                            e.target.value
-                          )
-                        }
-                      />
-                      <InputGroup.Text>%</InputGroup.Text>
-                    </InputGroup>
-                    <span className="mx-2">Or</span>
-                    <InputGroup>
-                      <Form.Control
-                        type="number"
-                        placeholder="0"
-                        value={item.dollarValue}
-                        onChange={(e) =>
-                          handleItemChange(
-                            item.id,
-                            "dollarValue",
-                            e.target.value
-                          )
-                        }
-                      />
-                    </InputGroup>
-                    <Form.Select
-                      className="ms-2"
-                      value={item.description}
-                      onChange={(e) =>
-                        handleItemChange(item.id, "description", e.target.value)
-                      }
-                    >
-                      <option value="">Financial Aid</option>
-                      {discounts.map((d) => (
-                        <option key={d.id} value={d.description}>
-                          {d.description}
-                        </option>
-                      ))}
-                      <option
-                        value="manage"
-                        style={{ fontStyle: "italic", color: "blue" }}
-                      >
-                        + Manage Discounts
+                    <option value="new">+ New plan</option>
+                    {planTemplates.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
                       </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-2">
+                  <Form.Label className="small fw-semibold text-slate-500 mb-1" style={{ fontSize: "0.7rem", letterSpacing: "0.03em" }}>PLAN NAME</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={planData.plan_name}
+                    onChange={(e) =>
+                      setPlanData({ ...planData, plan_name: e.target.value })
+                    }
+                    required
+                    style={{ fontSize: "0.8rem", padding: "6px 10px", borderRadius: "6px" }}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+            
+            <Row className="mb-3">
+              <Col md={4}>
+                <Form.Group className="mb-2">
+                  <Form.Label className="small fw-semibold text-slate-500 mb-1" style={{ fontSize: "0.7rem", letterSpacing: "0.03em" }}>PLAN CYCLE</Form.Label>
+                  <Form.Select
+                    value={planData.cycle}
+                    onChange={(e) => {
+                      const cycle = e.target.value;
+                      const start = new Date();
+                      let end = new Date();
+                      if (cycle === "Weekly") {
+                        end = addDays(start, 7 * 52);
+                      } else if (cycle === "Bi-Weekly") {
+                        end = addDays(start, 14 * 26);
+                      } else if (cycle === "Quarterly") {
+                        end = addMonths(start, 12);
+                      } else {
+                        end = addMonths(start, 12);
+                      }
+                      setPlanData({
+                        ...planData,
+                        cycle,
+                        start_date: start,
+                        end_date: end
+                      });
+                    }}
+                    style={{ fontSize: "0.8rem", padding: "6px 10px", borderRadius: "6px" }}
+                  >
+                    <option value="Weekly">Weekly</option>
+                    <option value="Bi-Weekly">Bi-Weekly</option>
+                    <option value="Monthly">Monthly</option>
+                    <option value="Quarterly">Quarterly</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              
+              <Col md={4}>
+                <Form.Group className="mb-2">
+                  <Form.Label className="small fw-semibold text-slate-500 mb-1" style={{ fontSize: "0.7rem", letterSpacing: "0.03em" }}>PLAN START</Form.Label>
+                  <div className="d-flex align-items-center border rounded bg-white px-2 py-1" style={{ height: "34px", borderColor: "#cbd5e1" }}>
+                    <DatePicker
+                      selected={planData.start_date}
+                      onChange={(date) =>
+                        setPlanData({ ...planData, start_date: date })
+                      }
+                      className="border-0 w-100 bg-transparent text-center"
+                      style={{ fontSize: "0.8rem", outline: "none" }}
+                    />
+                  </div>
+                </Form.Group>
+              </Col>
+              
+              <Col md={4}>
+                <Form.Group className="mb-2">
+                  <Form.Label className="small fw-semibold text-slate-500 mb-1" style={{ fontSize: "0.7rem", letterSpacing: "0.03em" }}>PLAN END (OPTIONAL)</Form.Label>
+                  <div className="d-flex align-items-center border rounded bg-white px-2 py-1" style={{ height: "34px", borderColor: "#cbd5e1" }}>
+                    <DatePicker
+                      selected={planData.end_date}
+                      onChange={(date) =>
+                        setPlanData({ ...planData, end_date: date })
+                      }
+                      className="border-0 w-100 bg-transparent text-center"
+                      isClearable
+                      placeholderText="Select end date"
+                      style={{ fontSize: "0.8rem", outline: "none" }}
+                    />
+                  </div>
+                </Form.Group>
+              </Col>
+            </Row>
+
+            {/* Inline generate options (Image 2 style) */}
+            <div className="d-flex align-items-center flex-wrap gap-1 px-3 py-2 mb-3 bg-white border rounded text-slate-700" style={{ fontSize: "0.8rem", borderColor: "#cbd5e1" }}>
+              <span>Generate invoice on</span>
+              <Form.Select
+                value={planData.invoice_generation_day}
+                onChange={(e) =>
+                  setPlanData({
+                    ...planData,
+                    invoice_generation_day: parseInt(e.target.value),
+                  })
+                }
+                style={{ width: "95px", padding: "2px 6px", fontSize: "0.8rem", border: "1px solid #cbd5e1", borderRadius: "4px" }}
+              >
+                {dayOptions.map((d) => (
+                  <option key={d} value={d}>
+                    {formatDay(d)} day
+                  </option>
+                ))}
+              </Form.Select>
+              <span>, due on</span>
+              <Form.Select
+                value={planData.due_day}
+                onChange={(e) =>
+                  setPlanData({
+                    ...planData,
+                    due_day: parseInt(e.target.value),
+                  })
+                }
+                style={{ width: "95px", padding: "2px 6px", fontSize: "0.8rem", border: "1px solid #cbd5e1", borderRadius: "4px" }}
+              >
+                {dayOptions.map((d) => (
+                  <option key={d} value={d}>
+                    {formatDay(d)} day
+                  </option>
+                ))}
+              </Form.Select>
+              <span>for</span>
+              <Form.Select
+                value={planData.billing_cycle_for}
+                onChange={(e) =>
+                  setPlanData({
+                    ...planData,
+                    billing_cycle_for: e.target.value,
+                  })
+                }
+                style={{ width: "100px", padding: "2px 6px", fontSize: "0.8rem", border: "1px solid #cbd5e1", borderRadius: "4px" }}
+              >
+                <option value="Previous">Previous</option>
+                <option value="Current">Current</option>
+              </Form.Select>
+              <span>billing cycle.</span>
+            </div>
+
+            {/* Date Alert Banner */}
+            <div className="p-2 rounded mb-3 text-start fw-medium border-0" style={{ backgroundColor: "#f0fdf4", color: "#166534", fontSize: "0.78rem", border: "1px solid #dcfce7" }}>
+              Your first invoice will be generated on <strong>{firstInvoiceInfo.genDate}</strong> due on <strong>{firstInvoiceInfo.dueDate}</strong> for the period of <strong>{firstInvoiceInfo.periodStart}</strong> to <strong>{firstInvoiceInfo.periodEnd}</strong>.
+            </div>
+
+            {/* Table Headings */}
+            <h5 className="fs-7 fw-bold text-slate-800 mb-2 text-uppercase text-start" style={{ letterSpacing: "0.03em" }}>Invoice Details</h5>
+            <div className="invoice-items-container" style={{ maxHeight: "200px", overflowY: "auto", paddingRight: "4px" }}>
+              {processedItems.map((item) => (
+                <Row key={item.id} className="mb-2 align-items-center gx-1 border rounded p-1 mx-0 bg-white" style={{ borderColor: "#cbd5e1" }}>
+                  <Col md={2}>
+                    <Form.Select
+                      value={item.type}
+                      onChange={(e) => handleItemChange(item.id, "type", e.target.value)}
+                      style={{ fontSize: "0.78rem", padding: "4px 8px", border: "1px solid #cbd5e1", borderRadius: "4px" }}
+                    >
+                      <option>Preset Item</option>
+                      <option>Discount</option>
+                      <option>Subsidy</option>
+                      <option>New Item</option>
                     </Form.Select>
                   </Col>
-                ) : (
-                  <>
-                    <Col>
-                      {item.type === "Preset Item" && (
-                        <Form.Select
-                          value={item.description}
-                          onChange={(e) =>
-                            handleItemChange(
-                              item.id,
-                              "description",
-                              e.target.value
-                            )
-                          }
-                        >
-                          <option value="">Add Invoice Description</option>
-                          {presetItems.map((p) => (
-                            <option key={p.id} value={p.description}>
-                              {p.description}
-                            </option>
-                          ))}
-                          <option
-                            value="manage"
-                            style={{ fontStyle: "italic", color: "blue" }}
-                          >
-                            + Manage Presets
-                          </option>
-                        </Form.Select>
-                      )}
-                      {item.type === "Subsidy" && (
-                        <Form.Select
-                          value={item.description}
-                          onChange={(e) =>
-                            handleItemChange(
-                              item.id,
-                              "description",
-                              e.target.value
-                            )
-                          }
-                        >
-                          <option value="">Select subsidy...</option>
-                          {subsidies.map((s) => (
-                            <option key={s.id} value={s.name}>
-                              {s.name}
-                            </option>
-                          ))}
-                        </Form.Select>
-                      )}
-                      {item.type === "New Item" && (
-                        <Form.Control
-                          type="text"
-                          value={item.description}
-                          onChange={(e) =>
-                            handleItemChange(
-                              item.id,
-                              "description",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Item description"
-                        />
-                      )}
-                    </Col>
-                    <Col md={3}>
-                      <InputGroup>
-                        <InputGroup.Text>$</InputGroup.Text>
+                  
+                  <Col md={7} className="text-start">
+                    {item.type === "Discount" ? (
+                      <div className="d-flex align-items-center gap-1">
                         <Form.Control
                           type="number"
-                          step="0.01"
-                          value={item.value}
-                          onChange={(e) =>
-                            handleItemChange(item.id, "value", e.target.value)
-                          }
-                          disabled={item.type === "Preset Item"}
+                          placeholder="0"
+                          value={item.percentValue || item.dollarValue || item.value}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (item.unit === "%") {
+                              handleItemChange(item.id, "percentValue", val);
+                            } else {
+                              handleItemChange(item.id, "dollarValue", val);
+                            }
+                          }}
+                          style={{ width: "65px", fontSize: "0.78rem", padding: "4px 6px", border: "1px solid #cbd5e1" }}
                         />
-                      </InputGroup>
-                    </Col>
-                  </>
-                )}
-                <Col md={1} className="text-end fw-bold">
-                  {formatCurrency(item.amount)}
-                </Col>
-                <Col xs="auto">
-                  <Button
-                    variant="link"
-                    className="text-danger p-0"
-                    onClick={() => removeItem(item.id)}
-                  >
-                    <Trash />
-                  </Button>
-                </Col>
-              </Row>
-            ))}
-            <Button variant="link" onClick={addItem} className="p-0">
-              ADD INVOICE ITEM
-            </Button>
-            <div className="text-end fs-4 mt-3 border-top pt-3">
-              <strong>Total: {formatCurrency(totalAmount)}</strong>
+                        <Form.Select
+                          value={item.unit}
+                          onChange={(e) => {
+                            const unit = e.target.value;
+                            // Reset values based on unit toggle
+                            if (unit === "%") {
+                              handleItemChange(item.id, "percentValue", item.value);
+                            } else {
+                              handleItemChange(item.id, "dollarValue", item.value);
+                            }
+                          }}
+                          style={{ width: "50px", fontSize: "0.78rem", padding: "4px 6px", border: "1px solid #cbd5e1" }}
+                        >
+                          <option value="%">%</option>
+                          <option value="$">$</option>
+                        </Form.Select>
+                        <span className="small text-muted" style={{ fontSize: "0.7rem" }}>Or</span>
+                        <Form.Select
+                          value={item.description}
+                          onChange={(e) => handleItemChange(item.id, "description", e.target.value)}
+                          style={{ fontSize: "0.78rem", padding: "4px 6px", border: "1px solid #cbd5e1" }}
+                          className="flex-grow-1"
+                        >
+                          <option value="">Financial Aid</option>
+                          {discounts.map((d) => (
+                            <option key={d.id} value={d.description}>
+                              {d.description}
+                            </option>
+                          ))}
+                          <option value="manage" style={{ fontStyle: "italic", color: "blue" }}>
+                            + Manage Discounts
+                          </option>
+                        </Form.Select>
+                      </div>
+                    ) : (
+                      <div className="w-100">
+                        {item.type === "Preset Item" && (
+                          <Form.Select
+                            value={item.description}
+                            onChange={(e) => handleItemChange(item.id, "description", e.target.value)}
+                            style={{ fontSize: "0.78rem", padding: "4px 8px", border: "1px solid #cbd5e1" }}
+                            className="w-100"
+                          >
+                            <option value="">Add Invoice Description</option>
+                            {presetItems.map((p) => (
+                              <option key={p.id} value={p.description}>
+                                {p.description}
+                              </option>
+                            ))}
+                            <option value="manage" style={{ fontStyle: "italic", color: "blue" }}>
+                              + Manage Presets
+                            </option>
+                          </Form.Select>
+                        )}
+                        {item.type === "Subsidy" && (
+                          <Form.Select
+                            value={item.description}
+                            onChange={(e) => handleItemChange(item.id, "description", e.target.value)}
+                            style={{ fontSize: "0.78rem", padding: "4px 8px", border: "1px solid #cbd5e1" }}
+                            className="w-100"
+                          >
+                            <option value="">Select subsidy...</option>
+                            {subsidies.map((s) => (
+                              <option key={s.id} value={s.name}>
+                                {s.name}
+                              </option>
+                            ))}
+                          </Form.Select>
+                        )}
+                        {item.type === "New Item" && (
+                          <Form.Control
+                            type="text"
+                            value={item.description}
+                            onChange={(e) => handleItemChange(item.id, "description", e.target.value)}
+                            placeholder="Item description"
+                            style={{ fontSize: "0.78rem", padding: "4px 8px", border: "1px solid #cbd5e1" }}
+                            className="w-100"
+                          />
+                        )}
+                      </div>
+                    )}
+                  </Col>
+                  
+                  <Col md={2}>
+                    <InputGroup size="sm">
+                      {item.type !== "Discount" && item.type !== "Subsidy" && <InputGroup.Text style={{ padding: "4px 6px", fontSize: "0.75rem" }}>$</InputGroup.Text>}
+                      <Form.Control
+                        type="number"
+                        step="0.01"
+                        value={item.value}
+                        onChange={(e) => handleItemChange(item.id, "value", e.target.value)}
+                        disabled={item.type === "Preset Item"}
+                        style={{ fontSize: "0.78rem", padding: "4px 8px", border: "1px solid #cbd5e1" }}
+                      />
+                    </InputGroup>
+                  </Col>
+                  
+                  <Col md={1} className="text-end fw-bold d-flex align-items-center justify-content-end gap-2">
+                    <span style={{ fontSize: "0.82rem", color: item.amount < 0 ? "#ef4444" : "#1f2937" }}>
+                      {formatCurrency(item.amount)}
+                    </span>
+                    <Button variant="link" className="text-danger p-0" onClick={() => removeItem(item.id)}>
+                      <Trash size={13} />
+                    </Button>
+                  </Col>
+                </Row>
+              ))}
             </div>
-          </Form>
+            
+            <div className="d-flex justify-content-between align-items-center mt-2 border-top pt-2">
+              <Button variant="link" onClick={addItem} className="p-0 text-decoration-none small fw-bold" style={{ fontSize: "0.8rem", color: "#00b8d4" }}>
+                + ADD INVOICE ITEM
+              </Button>
+              <div className="fs-5 fw-bold text-slate-800">
+                Total: {formatCurrency(totalAmount)}
+              </div>
+            </div>
+          </div>
         );
-      case 4:
+      case 3: // Invoice Preview
         const selectedStudents = students.filter((s) =>
           selectedStudentIds.includes(s.id)
         );
@@ -827,35 +828,39 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
           <div>
             <Row>
               <Col md={7}>
-                <h5 className="mb-3">Invoice Preview</h5>
-                <div className="invoice-preview-card">
-                  <div className="invoice-preview-header">
-                    <div className="invoice-preview-logo">
-                      <ShieldShaded size={30} />
+                <h5 className="mb-3 fs-6 fw-bold text-slate-800 text-start">Invoice Preview</h5>
+                <div className="invoice-preview-card" style={{ border: "1px solid #e2e8f0", borderRadius: "12px", padding: "20px", backgroundColor: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+                  <div className="invoice-preview-header d-flex align-items-center gap-3 mb-3 border-bottom pb-3">
+                    <div className="invoice-preview-logo border" style={{ flexShrink: 0, width: "60px", height: "60px", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", backgroundColor: "#fff" }}>
+                      <Image src="/images/ela-app-logo.png" alt="School Logo" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
                     </div>
-                    <div>
-                      <h6 className="fw-bold mb-0">
+                    <div className="text-start">
+                      <h6 className="fw-bold mb-0 text-slate-800" style={{ fontSize: "0.95rem" }}>
                         Exceptional Learning and Arts Academy
                       </h6>
-                      <p className="text-muted small mb-0">
+                      <p className="text-muted small mb-0" style={{ fontSize: "0.75rem" }}>
                         P.O. Box 29515, Jacksonville, FL, 32256
                       </p>
                     </div>
                   </div>
-                  <div className="invoice-preview-billed-to">
+                  <div className="invoice-preview-billed-to mb-3 text-slate-700 text-start" style={{ fontSize: "0.85rem" }}>
                     Billed For{" "}
-                    <Image
-                      src="/images/placeholder-avatar.png"
-                      roundedCircle
-                      width={24}
-                      height={24}
-                      className="mx-1"
-                    />
+                    <div
+                      className="d-inline-flex align-items-center justify-content-center text-white fw-bold rounded-circle mx-1"
+                      style={{
+                        width: "24px",
+                        height: "24px",
+                        backgroundColor: "#673de6",
+                        fontSize: "9px"
+                      }}
+                    >
+                      {getInitials(`${firstStudent.first_name || ""} ${firstStudent.last_name || ""}`)}
+                    </div>
                     <strong>
                       {firstStudent.first_name} {firstStudent.last_name}
                     </strong>
                   </div>
-                  <div className="invoice-preview-details">
+                  <div className="invoice-preview-details d-flex justify-content-between p-2 mb-3 rounded-2" style={{ backgroundColor: "#f8fafc", fontSize: "0.78rem", border: "1px solid #e2e8f0", color: "#64748b" }}>
                     <div>
                       <strong>DUE DATE:</strong> {firstInvoiceInfo.dueDate}
                     </div>
@@ -868,26 +873,27 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
                   <Table
                     responsive
                     borderless
-                    className="invoice-preview-items"
+                    className="invoice-preview-items m-0 text-start"
+                    style={{ fontSize: "0.82rem" }}
                   >
                     <thead>
-                      <tr>
-                        <th>DESCRIPTION</th>
-                        <th className="text-end">AMOUNT</th>
+                      <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
+                        <th style={{ color: "#64748b", fontWeight: "600", fontSize: "0.72rem", textTransform: "uppercase", paddingBottom: "8px" }}>DESCRIPTION</th>
+                        <th className="text-end" style={{ color: "#64748b", fontWeight: "600", fontSize: "0.72rem", textTransform: "uppercase", paddingBottom: "8px" }}>AMOUNT</th>
                       </tr>
                     </thead>
                     <tbody>
                       {processedItems.map((item) => (
-                        <tr key={item.id}>
-                          <td>{item.description}</td>
-                          <td className="text-end">
+                        <tr key={item.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                          <td style={{ padding: "8px 0" }}>{item.description}</td>
+                          <td className="text-end" style={{ padding: "8px 0" }}>
                             {formatCurrency(item.amount)}
                           </td>
                         </tr>
                       ))}
                       <tr className="total-row">
-                        <td>Total Amount</td>
-                        <td className="text-end">
+                        <td style={{ paddingTop: "12px", fontWeight: "700", fontSize: "0.95rem" }}>Total Amount</td>
+                        <td className="text-end text-slate-900" style={{ paddingTop: "12px", fontWeight: "800", fontSize: "1.05rem" }}>
                           {formatCurrency(totalAmount)}
                         </td>
                       </tr>
@@ -896,23 +902,28 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
                 </div>
               </Col>
               <Col md={5}>
-                <h6 className="mb-3">
+                <h6 className="mb-3 fs-6 fw-bold text-slate-800 text-start">
                   {selectedStudentIds.length} STUDENT(S) SELECTED
                 </h6>
-                <ListGroup className="selected-students-list">
+                <ListGroup className="selected-students-list text-start" style={{ maxHeight: "300px", overflowY: "auto", borderRadius: "8px" }}>
                   {selectedStudents.map((s) => (
-                    <ListGroup.Item key={s.id}>
-                      <Image
-                        src="/images/placeholder-avatar.png"
-                        roundedCircle
-                        width={32}
-                        height={32}
-                      />
+                    <ListGroup.Item key={s.id} className="d-flex align-items-center py-2">
+                      <div
+                        className="d-flex align-items-center justify-content-center text-white fw-bold rounded-circle"
+                        style={{
+                          width: "32px",
+                          height: "32px",
+                          backgroundColor: "#00ca72",
+                          fontSize: "11px"
+                        }}
+                      >
+                        {getInitials(`${s.first_name} ${s.last_name}`)}
+                      </div>
                       <div className="ms-2 me-auto">
-                        <div className="fw-bold">
+                        <div className="fw-semibold text-slate-800" style={{ fontSize: "0.85rem" }}>
                           {s.first_name} {s.last_name}
                         </div>
-                        <small className="text-muted">{s.grade_level}</small>
+                        <small className="text-muted" style={{ fontSize: "0.72rem" }}>Home Room {s.grade_level}</small>
                       </div>
                       <Button
                         variant="link"
@@ -923,7 +934,7 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
                           )
                         }
                       >
-                        <Trash />
+                        <Trash size={14} />
                       </Button>
                     </ListGroup.Item>
                   ))}
@@ -932,24 +943,11 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
             </Row>
             <Form.Check
               type="checkbox"
-              label="Send invoice to parent automatically on each billing cycle"
+              label="Send Invoice to parent automatically on each billing cycle"
               checked={sendInvoiceAutomatically}
               onChange={(e) => setSendInvoiceAutomatically(e.target.checked)}
-              className="mt-4"
+              className="mt-4 small fw-semibold text-slate-700 text-start"
             />
-            <style>{`
-                .invoice-preview-card { border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1.5rem; background-color: #fff; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); }
-                .invoice-preview-header { display: flex; align-items: center; gap: 1rem; padding-bottom: 1rem; margin-bottom: 1rem; }
-                .invoice-preview-logo { flex-shrink: 0; width: 50px; height: 50px; border-radius: 0.5rem; background-color: #eef2ff; display: flex; align-items: center; justify-content: center; color: #4f46e5; }
-                .invoice-preview-billed-to { margin-bottom: 1rem; display: flex; align-items: center; font-size: 0.9rem; }
-                .invoice-preview-details { background-color: #f8f9fc; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1.5rem; font-size: 0.8rem; color: #6b7280; border: 1px solid #e5e7eb; }
-                .invoice-preview-items { margin: 0 -1.5rem; width: calc(100% + 3rem); }
-                .invoice-preview-items th { text-align: left; color: #6b7280; font-weight: 600; padding: 0 1.5rem 0.5rem; border-bottom: 1px solid #e5e7eb; font-size: 0.75rem; text-transform: uppercase; }
-                .invoice-preview-items td { padding: 0.75rem 1.5rem; border-bottom: 1px solid #e5e7eb; }
-                .invoice-preview-items tbody tr:last-child td { border-bottom: none; }
-                .invoice-preview-items .total-row td { font-weight: 700; font-size: 1.1rem; padding-top: 1rem; border-top: 2px solid #333; }
-                .selected-students-list .list-group-item { display: flex; align-items: center; }
-              `}</style>
           </div>
         );
       default:
@@ -965,31 +963,53 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
         size="xl"
         centered
         backdrop="static"
+        dialogClassName="font-prompt"
+        style={{ fontFamily: '"Prompt", sans-serif' }}
       >
-        <Modal.Header closeButton>
-          <Modal.Title>
-            {step > 1 && (
-              <Button
-                variant="link"
-                className="p-0 me-2"
-                onClick={() => setStep(step - 1)}
-              >
-                <ArrowLeft size={24} />
-              </Button>
-            )}
-            Submit Plan - Step {step}/4
-          </Modal.Title>
+        <Modal.Header className="border-bottom py-3 position-relative d-block">
+          <div className="d-flex align-items-center justify-content-between">
+            <div className="d-flex align-items-center gap-2">
+              {step > 1 && (
+                <Button
+                  variant="link"
+                  className="p-0 me-2 text-slate-600 d-flex align-items-center text-decoration-none fw-bold"
+                  onClick={() => setStep(step - 1)}
+                  style={{ fontSize: "1.2rem" }}
+                >
+                  ←
+                </Button>
+              )}
+              <h5 className="modal-title fw-bold text-slate-800 m-0" style={{ fontSize: "1.1rem" }}>
+                Create Tuition Plan
+              </h5>
+              <span className="text-muted small ms-2 fw-semibold" style={{ fontSize: "0.8rem" }}>
+                STEP {step} / 3
+              </span>
+            </div>
+            
+            {/* Custom guaranteed close X button at the top right */}
+            <Button
+              variant="link"
+              className="text-slate-500 p-1"
+              onClick={handleClose}
+              style={{ position: "absolute", right: "20px", top: "16px" }}
+            >
+              <X size={20} />
+            </Button>
+          </div>
         </Modal.Header>
-        <Modal.Body style={{ minHeight: "500px", backgroundColor: "#f8f9fc" }}>
+        <Modal.Body style={{ minHeight: "420px", backgroundColor: "#f8fafc" }}>
           {renderStepContent()}
         </Modal.Body>
-        <Modal.Footer className="d-flex justify-content-between align-items-center">
+        <Modal.Footer className="d-flex justify-content-between align-items-center border-top py-3">
           <div>
-            {step === 3 && (
+            {step === 2 && (
               <Button
                 variant="outline-secondary"
                 onClick={handleSaveTemplate}
                 disabled={isSaving}
+                size="sm"
+                style={{ borderRadius: "8px", fontWeight: "600" }}
               >
                 {isSaving ? (
                   <Spinner as="span" size="sm" />
@@ -1000,27 +1020,37 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
             )}
           </div>
           <div>
-            {step < 4 && (
+            {step < 3 && (
               <Button
                 variant="primary"
                 onClick={() => setStep(step + 1)}
                 disabled={
-                  (step === 2 && selectedStudentIds.length === 0) ||
-                  (step === 3 && !planData.plan_name)
+                  (step === 1 && selectedStudentIds.length === 0) ||
+                  (step === 2 && !planData.plan_name)
                 }
+                size="sm"
+                style={{
+                  backgroundColor: "#00b8d4",
+                  borderColor: "#00b8d4",
+                  borderRadius: "20px",
+                  padding: "6px 24px",
+                  fontWeight: "600"
+                }}
               >
                 Continue
               </Button>
             )}
-            {step === 4 && (
+            {step === 3 && (
               <Button
                 onClick={handleCreatePlan}
                 disabled={isSaving || selectedStudentIds.length === 0}
+                size="sm"
                 style={{
-                  backgroundColor: "#0d6efd",
-                  borderColor: "#0d6efd",
-                  borderRadius: "8px",
-                  padding: "0.6rem 1.5rem",
+                  backgroundColor: "#00b8d4",
+                  borderColor: "#00b8d4",
+                  borderRadius: "20px",
+                  padding: "6px 24px",
+                  fontWeight: "600"
                 }}
               >
                 {isSaving ? <Spinner as="span" size="sm" /> : "Create Plan"}

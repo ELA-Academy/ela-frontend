@@ -63,7 +63,11 @@ const ManageStaff = () => {
   const handleShowModal = (staff = null) => {
     if (staff) {
       setIsEditing(true);
-      setCurrentStaff({ ...staff, password: "" });
+      setCurrentStaff({
+        ...staff,
+        department_ids: staff.department_ids || (staff.departments ? staff.departments.map((d) => d.id) : []),
+        password: "",
+      });
     } else {
       setIsEditing(false);
       setCurrentStaff({

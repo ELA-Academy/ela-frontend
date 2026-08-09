@@ -2572,6 +2572,44 @@ body {
     padding-left: 16px !important;
     padding-right: 16px !important;
   }
+
+  .content-area {
+    padding: 16px !important;
+  }
+  
+  .dashboard-hero-panel {
+    padding: 18px 20px !important;
+    gap: 16px !important;
+  }
+  
+  .dashboard-hero-actions {
+    width: 100% !important;
+    justify-content: stretch !important;
+    gap: 8px !important;
+  }
+  
+  .dashboard-top-action {
+    flex-grow: 1 !important;
+    justify-content: center !important;
+    font-size: 0.85rem !important;
+    padding: 0 12px !important;
+    min-height: 40px !important;
+  }
+
+  .module-card {
+    min-height: auto !important;
+    padding: 16px !important;
+  }
+
+  .summary-card {
+    padding: 16px !important;
+  }
+
+  .dashboard-list-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 /* ==========================================================================
