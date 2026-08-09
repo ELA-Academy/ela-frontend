@@ -79,7 +79,9 @@ const AdmissionForm = () => {
       setSuccess(
         "Your application has been submitted successfully! Redirecting to homepage..."
       );
-      setTimeout(() => navigate("/"), 5000);
+      setTimeout(() => {
+        window.location.href = "https://elaaschool.org/";
+      }, 5000);
     } catch (err) {
       setError(err.response?.data?.error || "Failed to submit application. Please review your information.");
       loadCaptcha();
