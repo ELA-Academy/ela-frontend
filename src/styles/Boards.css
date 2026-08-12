@@ -4936,6 +4936,34 @@ th.zbot-sticky-col-right, th.zbot-sticky-table-col-right-1, th.zbot-sticky-table
   position: relative !important;
 }
 
+/* Sticky Status Headers for List View */
+.workspace-list-view .status-group-header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 30 !important;
+  background-color: var(--content-bg, #ffffff) !important;
+  margin-top: 0 !important;
+  padding-top: 14px !important;
+  padding-bottom: 8px !important;
+  border-bottom: 1.5px solid #eef0f4 !important;
+}
+
+[data-theme="dark"] .workspace-list-view .status-group-header {
+  background-color: var(--content-bg, #09090b) !important;
+  border-bottom: 1.5px solid #1e1e24 !important;
+}
+
+/* Solid background for list view table headers when they are sticky vertically */
+.workspace-list-view .workspace-table thead th {
+  background-color: #fafbfd !important;
+}
+
+[data-theme="dark"] .workspace-list-view .workspace-table thead th {
+  background-color: #1e1e24 !important;
+}
+
+
+
 
 
 
