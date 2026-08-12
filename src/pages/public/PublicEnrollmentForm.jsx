@@ -80,7 +80,7 @@ const PublicEnrollmentForm = () => {
   };
 
   const visibleSections =
-    formData?.form_structure.sections.filter((s) => s.visible) || [];
+    (formData?.form_structure?.sections || []).filter((s) => s.visible && s.id !== "pickup_info");
   const totalSteps =
     visibleSections.length + (formData?.fee_required ? 1 : 0) + 1; // Sections + Payment (if any) + Review
   const currentSection = visibleSections[step - 1];

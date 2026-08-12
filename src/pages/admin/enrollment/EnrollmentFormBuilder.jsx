@@ -84,14 +84,14 @@ const EnrollmentFormBuilder = () => {
   const handleSaveAndExit = async () => {
     const saved = await handleSaveChanges();
     if (saved) {
-      navigate("/admin/enrollment");
+      navigate("/admin/accounting/registration");
     }
   };
 
   const handlePublishAndExit = async () => {
     const published = await handleSaveChanges("Active");
     if (published) {
-      navigate("/admin/enrollment");
+      navigate("/admin/accounting/registration");
     }
   };
 
