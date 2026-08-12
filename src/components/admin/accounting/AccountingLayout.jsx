@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useOutletContext, NavLink, Link } from "react-router-dom";
-import { LayoutDashboard, Users, RefreshCw, Landmark } from "lucide-react";
+import { LayoutDashboard, Users, RefreshCw, Landmark, ClipboardCheck } from "lucide-react";
 import { getAccountingOverview } from "../../../services/accountingService";
 import { getBillingAccounts } from "../../../services/billingService";
 import "../../../styles/WorkspaceShell.css";
@@ -117,6 +117,13 @@ const AccountingLayout = () => {
               >
                 <Landmark className="workspace-secondary-link-icon" />
                 <span className="workspace-secondary-link-title">Subsidies</span>
+              </NavLink>
+              <NavLink 
+                to="/admin/accounting/registration" 
+                className={({ isActive }) => `workspace-secondary-link ${isActive ? 'active' : ''}`}
+              >
+                <ClipboardCheck className="workspace-secondary-link-icon" />
+                <span className="workspace-secondary-link-title">Registration</span>
               </NavLink>
             </div>
           </div>

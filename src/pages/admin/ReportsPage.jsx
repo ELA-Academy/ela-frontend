@@ -1,483 +1,619 @@
 import React, { useState, useEffect } from "react";
-import { Container, Row, Col, Card, Form, Button, Table, Spinner, Tabs, Tab, Alert } from "react-bootstrap";
-import { BarChart3, Download, Printer, Filter, Calendar, Users, Briefcase, FileText } from "lucide-react";
+import { Container, Modal, Form, Button, Spinner, Badge } from "react-bootstrap";
+import { 
+  Search, Heart, ChevronDown, ChevronUp, FileSpreadsheet, 
+  FileText, Clock, Calendar, Download, RefreshCw, X
+} from "lucide-react";
 import api from "../../utils/api";
 import { showSuccess, showError } from "../../utils/notificationService";
 
 const ReportsPage = () => {
-  const [departments, setDepartments] = useState([]);
-  const [boards, setBoards] = useState([]);
-  
-  // Department Report State
-  const [selectedDept, setSelectedDept] = useState("");
-  const [deptReport, setDeptReport] = useState(null);
-  const [loadingDept, setLoadingDept] = useState(false);
-
-  // Custom Report State
-  const [customFilters, setCustomFilters] = useState({
-    board_id: "",
-    department_id: "",
-    status: "",
-    priority: "",
-    start_date: "",
-    end_date: "",
+  const [activeTab, setActiveTab] = useState("my_reports");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [expandedSections, setExpandedSections] = useState({
+    sign_in_out: false,
+    clock_in_out: false,
+    billing: true, // Default expanded matching Image 2
   });
-  const [customReport, setCustomReport] = useState(null);
-  const [loadingCustom, setLoadingCustom] = useState(false);
+
+  // Modal States
+  const [showRecentModal, setShowRecentModal] = useState(false);
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [selectedReport, setSelectedReport] = useState(null);
+
+  // Form Parameters
+  const [startDate, setStartDate] = useState("2026-06-01");
+  const [endDate, setEndDate] = useState("2026-06-30");
+  const [reportFormat, setReportFormat] = useState("XLSX");
+
+  // Dynamic Data
+  const [libraryData, setLibraryData] = useState([]);
+  const [recentReports, setRecentReports] = useState([]);
+  const [loadingLibrary, setLoadingLibrary] = useState(false);
+  const [loadingRecent, setLoadingRecent] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  // Favorites Simulation
+  const [favorites, setFavorites] = useState([
+    "student_attendance_summary",
+    "categorized_transaction_summary"
+  ]);
+
+  // Load Library metadata and Recent reports
+  const fetchLibrary = async () => {
+    setLoadingLibrary(true);
+    try {
+      const res = await api.get("/reports/library");
+      setLibraryData(res.data || []);
+    } catch (err) {
+      console.error("Failed to load reports library", err);
+    } finally {
+      setLoadingLibrary(false);
+    }
+  };
+
+  const fetchRecentReports = async () => {
+    setLoadingRecent(true);
+    try {
+      const res = await api.get("/reports/recent");
+      setRecentReports(res.data || []);
+    } catch (err) {
+      console.error("Failed to fetch recently generated reports", err);
+    } finally {
+      setLoadingRecent(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchMetadata = async () => {
-      try {
-        const [deptsRes, boardsRes] = await Promise.all([
-          api.get("/departments"),
-          api.get("/boards")
-        ]);
-        setDepartments(deptsRes.data || []);
-        setBoards(boardsRes.data || []);
-      } catch (err) {
-        console.error("Failed to load metadata", err);
-      }
-    };
-    fetchMetadata();
+    fetchLibrary();
+    fetchRecentReports();
   }, []);
 
-  // Fetch Department Report
-  const handleDeptChange = async (deptId) => {
-    setSelectedDept(deptId);
-    if (!deptId) {
-      setDeptReport(null);
-      return;
-    }
-    setLoadingDept(true);
-    try {
-      const res = await api.get(`/dashboard/reports?department_id=${deptId}`);
-      setDeptReport(res.data);
-    } catch (err) {
-      showError("Failed to generate department report.");
-    } finally {
-      setLoadingDept(false);
+  const toggleSection = (section) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  const toggleFavorite = (reportId, e) => {
+    e.stopPropagation();
+    if (favorites.includes(reportId)) {
+      setFavorites(favorites.filter(id => id !== reportId));
+    } else {
+      setFavorites([...favorites, reportId]);
     }
   };
 
-  // Fetch Custom Report
-  const handleCustomSubmit = async (e) => {
+  const handleOpenGenerate = (report) => {
+    setSelectedReport(report);
+    setShowGenerateModal(true);
+  };
+
+  const handleGenerateSubmit = async (e) => {
     e.preventDefault();
-    setLoadingCustom(true);
+    if (!selectedReport) return;
+    setGenerating(true);
     try {
-      const params = new URLSearchParams();
-      Object.entries(customFilters).forEach(([key, val]) => {
-        if (val) params.append(key, val);
-      });
-      const res = await api.get(`/dashboard/reports?${params.toString()}`);
-      setCustomReport(res.data);
-      showSuccess("Custom report generated!");
+      const payload = {
+        report_id: selectedReport.id,
+        start_date: startDate,
+        end_date: endDate,
+        format: reportFormat
+      };
+      const res = await api.post("/reports/generate", payload);
+      showSuccess(`Successfully generated report: ${selectedReport.name}`);
+      
+      // Reload history and open recent modal
+      await fetchRecentReports();
+      setShowGenerateModal(false);
+      setShowRecentModal(true);
     } catch (err) {
-      showError("Failed to generate custom report.");
+      const errMsg = err.response?.data?.error || "Failed to generate report.";
+      showError(errMsg);
     } finally {
-      setLoadingCustom(false);
+      setGenerating(false);
     }
   };
 
-  // Export to CSV (Excel compatible)
-  const handleExportCSV = (reportData, title) => {
-    if (!reportData || !reportData.tasks.length) return;
-    
-    const headers = ["Task ID", "Title", "Status", "Priority", "Due Date", "Type", "Assigned Staff", "Billable Hours"];
-    const rows = reportData.tasks.map(t => [
-      t.id,
-      `"${t.title.replace(/"/g, '""')}"`,
-      t.status,
-      t.priority,
-      t.due_date || "",
-      t.task_type,
-      `"${(t.assigned_staff || []).join(", ")}"`,
-      t.billable_hours
-    ]);
-
-    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
-      + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `${title.toLowerCase().replace(/\s+/g, "_")}_report.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const downloadReportFile = (report) => {
+    // Navigate directly to download link
+    const downloadUrl = `${api.defaults.baseURL.replace('/api', '')}${report.file_path}`;
+    window.open(downloadUrl, "_blank");
   };
 
-  // Export to PDF (Print view)
-  const handlePrintPDF = () => {
-    window.print();
+  // Static/Mock details for Tuition Express (Image 1)
+  const tuitionExpressReports = [
+    {
+      id: "ach_returns",
+      name: "ACH Returns / Credit Card Declines",
+      description: "Summary of returned ACH items and declined credit card items.",
+      lastGenerated: "06/30/2026",
+    },
+    {
+      id: "bank_activity",
+      name: "Bank Account Activity",
+      description: "Provides reporting of transactions expected to be seen in your bank.",
+      lastGenerated: "07/02/2026",
+    },
+    {
+      id: "payout_expected",
+      name: "Payout Expected Deposit",
+      description: "Gives payout expected dates for credit card transactions.",
+      lastGenerated: "07/02/2026",
+    },
+    {
+      id: "batch_details",
+      name: "Transaction Batch Details",
+      description: "Gives all ACH transactions batched by date and sent for clearance.",
+      lastGenerated: "07/02/2026",
+    },
+    {
+      id: "batch_summary",
+      name: "Transaction Batch Summary",
+      description: "Summary of processed batches with itemized totals by ACH and credit cards.",
+      lastGenerated: "06/15/2026",
+    }
+  ];
+
+  // Helper to filter reports by search term
+  const filterReports = (reports) => {
+    if (!searchQuery) return reports;
+    return reports.filter(r => 
+      r.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      r.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
   };
 
   return (
-    <Container fluid className="py-4">
-      <div className="d-flex justify-content-between align-items-center mb-4 no-print">
+    <Container fluid className="py-4 px-md-5 bg-slate-50 min-vh-100">
+      {/* Styles Injection */}
+      <style>{`
+        .reports-tab-bar {
+          border-bottom: 2px solid #E2E8F0;
+          display: flex;
+          gap: 2rem;
+          margin-bottom: 1.5rem;
+        }
+        .reports-tab-btn {
+          background: none;
+          border: none;
+          color: #64748B;
+          font-weight: 600;
+          font-size: 0.95rem;
+          padding: 0.75rem 0.25rem;
+          position: relative;
+          transition: all 0.2s;
+        }
+        .reports-tab-btn:hover {
+          color: #0F172A;
+        }
+        .reports-tab-btn.active {
+          color: #0E7490; /* Teal 700 */
+        }
+        .reports-tab-btn.active::after {
+          content: '';
+          position: absolute;
+          bottom: -2px;
+          left: 0;
+          right: 0;
+          height: 2px;
+          background-color: #0E7490;
+        }
+        .accordion-header-btn {
+          background: #FFFFFF;
+          border: 1px solid #E2E8F0;
+          border-radius: 8px;
+          color: #1E293B;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-weight: 500;
+          font-size: 1.1rem;
+          padding: 1rem 1.25rem;
+          width: 100%;
+          text-align: left;
+          transition: all 0.2s;
+        }
+        .accordion-header-btn:hover {
+          background: #F8FAFC;
+        }
+        .report-list-row {
+          background: #FFFFFF;
+          border-bottom: 1px solid #F1F5F9;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 1rem 1.5rem;
+          transition: background 0.15s;
+        }
+        .report-list-row:hover {
+          background: #F8FAFC;
+        }
+        .report-card-title {
+          color: #0E7490;
+          font-weight: 600;
+          text-decoration: none;
+          transition: color 0.15s;
+        }
+        .report-card-title:hover {
+          color: #0891B2;
+          text-decoration: underline;
+        }
+        .fav-heart-btn {
+          background: none;
+          border: none;
+          color: #CBD5E1;
+          padding: 6px;
+          border-radius: 50%;
+          transition: all 0.15s;
+        }
+        .fav-heart-btn:hover {
+          background: #F1F5F9;
+          color: #0E7490;
+        }
+        .fav-heart-btn.active {
+          color: #0E7490;
+        }
+        .search-reports-container {
+          position: relative;
+          max-width: 320px;
+        }
+        .search-reports-input {
+          border: 1px solid #E2E8F0;
+          border-radius: 6px;
+          font-size: 0.9rem;
+          padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+          width: 100%;
+        }
+        .search-reports-icon {
+          position: absolute;
+          left: 0.75rem;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #94A3B8;
+        }
+        .recently-generated-btn {
+          background: none;
+          border: none;
+          color: #0E7490;
+          display: flex;
+          align-items: center;
+          font-weight: 600;
+          font-size: 0.95rem;
+          gap: 0.5rem;
+          transition: color 0.15s;
+        }
+        .recently-generated-btn:hover {
+          color: #0891B2;
+        }
+        .recent-report-item {
+          border-bottom: 1px solid #F1F5F9;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0.75rem 1rem;
+        }
+        .file-format-badge {
+          border-radius: 4px;
+          font-weight: bold;
+          font-size: 0.75rem;
+          padding: 0.25rem 0.5rem;
+        }
+        .badge-xlsx {
+          background-color: #E2FBF0;
+          color: #10B981;
+          border: 1px solid #A7F3D0;
+        }
+        .badge-pdf {
+          background-color: #FEE2E2;
+          color: #EF4444;
+          border: 1px solid #FCA5A5;
+        }
+      `}</style>
+
+      {/* Header Panel */}
+      <div className="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3 no-print">
         <div>
-          <h1 className="fw-bold text-slate-800 d-flex align-items-center gap-2 mb-1" style={{ fontSize: "24px" }}>
-            <BarChart3 className="text-primary" size={26} /> Reports Center
-          </h1>
-          <p className="text-muted mb-0 small">Analyze department workloads, custom workspace tasks, and billable hour metrics.</p>
+          <h1 className="fw-bold text-slate-800 mb-0" style={{ fontSize: "28px" }}>Reports</h1>
+          <p className="text-muted small mb-0">Select reports to generate financial ledger, tuition, and admissions data sheets.</p>
         </div>
-        <Button variant="outline-secondary" size="sm" onClick={handlePrintPDF} className="d-flex align-items-center gap-1">
-          <Printer size={15} /> Print to PDF
-        </Button>
-      </div>
-
-      <div className="print-header d-none d-print-block mb-4">
-        <h2 className="fw-bold">ZBot Enterprise Report</h2>
-        <p className="text-muted">Generated on {new Date().toLocaleString()}</p>
-        <hr />
-      </div>
-
-      <Card className="border-0 shadow-sm rounded-4 no-print">
-        <Card.Body className="p-4">
-          <Tabs defaultActiveKey="dept" id="reports-tabs" className="mb-4">
-            {/* Department Reports Tab */}
-            <Tab eventKey="dept" title="Department Reports">
-              <Row className="mb-4">
-                <Col md={4}>
-                  <Form.Group>
-                    <Form.Label className="small fw-semibold text-slate-700">Select Department</Form.Label>
-                    <Form.Select 
-                      value={selectedDept} 
-                      onChange={(e) => handleDeptChange(e.target.value)}
-                      className="border-slate-200"
-                    >
-                      <option value="">-- Choose Department --</option>
-                      {departments.map(d => (
-                        <option key={d.id} value={d.id}>{d.name}</option>
-                      ))}
-                    </Form.Select>
-                  </Form.Group>
-                </Col>
-              </Row>
-
-              {loadingDept ? (
-                <div className="text-center py-5">
-                  <Spinner animation="border" variant="primary" />
-                </div>
-              ) : deptReport ? (
-                <div>
-                  {/* Aggregated Stats Row */}
-                  <Row className="g-3 mb-4">
-                    <Col md={3}>
-                      <Card className="bg-light border-0 rounded-3 p-3">
-                        <span className="text-muted small d-block mb-1">TOTAL DEPT TASKS</span>
-                        <h3 className="fw-bold text-slate-800 mb-0">{deptReport.summary.total_tasks}</h3>
-                      </Card>
-                    </Col>
-                    <Col md={3}>
-                      <Card className="bg-light border-0 rounded-3 p-3">
-                        <span className="text-muted small d-block mb-1">COMPLETED TASKS</span>
-                        <h3 className="fw-bold text-success mb-0">{deptReport.summary.completed_tasks}</h3>
-                      </Card>
-                    </Col>
-                    <Col md={3}>
-                      <Card className="bg-light border-0 rounded-3 p-3">
-                        <span className="text-muted small d-block mb-1">COMPLETION RATE</span>
-                        <h3 className="fw-bold text-primary mb-0">{deptReport.summary.completion_rate}%</h3>
-                      </Card>
-                    </Col>
-                    <Col md={3}>
-                      <Card className="bg-light border-0 rounded-3 p-3">
-                        <span className="text-muted small d-block mb-1">TOTAL BILLABLE HOURS</span>
-                        <h3 className="fw-bold text-slate-800 mb-0">{deptReport.summary.total_billable_hours} hrs</h3>
-                      </Card>
-                    </Col>
-                  </Row>
-
-                  {/* Actions & Tasks Table */}
-                  <div className="d-flex justify-content-between align-items-center mb-3">
-                    <h5 className="fw-bold text-slate-800 mb-0">Department Tasks List</h5>
-                    <Button 
-                      variant="outline-success" 
-                      size="sm" 
-                      onClick={() => handleExportCSV(deptReport, `${departments.find(d => String(d.id) === String(selectedDept))?.name || 'Dept'}`)}
-                      className="d-flex align-items-center gap-1"
-                    >
-                      <Download size={14} /> Export to Excel
-                    </Button>
-                  </div>
-
-                  <div className="table-responsive border rounded-3">
-                    <Table hover className="align-middle mb-0">
-                      <thead className="bg-slate-50">
-                        <tr>
-                          <th>Task ID</th>
-                          <th>Title</th>
-                          <th>Status</th>
-                          <th>Priority</th>
-                          <th>Type</th>
-                          <th>Billable Hours</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {deptReport.tasks.length === 0 ? (
-                          <tr>
-                            <td colSpan={6} className="text-center py-4 text-muted">No tasks found for this department.</td>
-                          </tr>
-                        ) : (
-                          deptReport.tasks.map(t => (
-                            <tr key={t.id}>
-                              <td className="small text-muted">{t.id}</td>
-                              <td className="fw-semibold text-slate-800">{t.title}</td>
-                              <td><span className={`badge ${t.status === 'Done' || t.status === 'Completed' ? 'bg-success' : 'bg-secondary'}`}>{t.status}</span></td>
-                              <td><span className="badge bg-light text-dark border">{t.priority}</span></td>
-                              <td className="small text-muted">{t.task_type}</td>
-                              <td>{t.billable_hours} hrs</td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </Table>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-5 text-muted bg-light rounded-3">
-                  <Users size={48} className="text-slate-300 mb-3" />
-                  <h5>No Department Selected</h5>
-                  <p className="small mb-0">Select a department above to generate workload and billable hour reports.</p>
-                </div>
+        <div className="d-flex align-items-center gap-3">
+          {/* Recently Generated History Button */}
+          <button className="recently-generated-btn" onClick={() => setShowRecentModal(true)}>
+            <div className="position-relative d-inline-block">
+              <Clock size={20} />
+              {recentReports.length > 0 && (
+                <Badge bg="danger" pill className="position-absolute top-0 start-100 translate-middle" style={{ fontSize: '0.65rem', padding: '0.25em 0.5em' }}>
+                  {recentReports.length}
+                </Badge>
               )}
-            </Tab>
-
-            {/* Custom Reports Tab */}
-            <Tab eventKey="custom" title="Custom Reports Builder">
-              <Form onSubmit={handleCustomSubmit} className="bg-light p-3 rounded-3 mb-4">
-                <Row className="g-3">
-                  <Col md={3}>
-                    <Form.Group>
-                      <Form.Label className="small fw-semibold">Workspace / Board</Form.Label>
-                      <Form.Select 
-                        value={customFilters.board_id} 
-                        onChange={(e) => setCustomFilters({ ...customFilters, board_id: e.target.value })}
-                      >
-                        <option value="">All Workspaces</option>
-                        {boards.map(b => (
-                          <option key={b.id} value={b.id}>{b.name}</option>
-                        ))}
-                      </Form.Select>
-                    </Form.Group>
-                  </Col>
-                  <Col md={3}>
-                    <Form.Group>
-                      <Form.Label className="small fw-semibold">Department</Form.Label>
-                      <Form.Select 
-                        value={customFilters.department_id} 
-                        onChange={(e) => setCustomFilters({ ...customFilters, department_id: e.target.value })}
-                      >
-                        <option value="">All Departments</option>
-                        {departments.map(d => (
-                          <option key={d.id} value={d.id}>{d.name}</option>
-                        ))}
-                      </Form.Select>
-                    </Form.Group>
-                  </Col>
-                  <Col md={2}>
-                    <Form.Group>
-                      <Form.Label className="small fw-semibold">Status</Form.Label>
-                      <Form.Select 
-                        value={customFilters.status} 
-                        onChange={(e) => setCustomFilters({ ...customFilters, status: e.target.value })}
-                      >
-                        <option value="">All Statuses</option>
-                        <option value="Not Started">Not Started</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Done">Done</option>
-                        <option value="Completed">Completed</option>
-                      </Form.Select>
-                    </Form.Group>
-                  </Col>
-                  <Col md={2}>
-                    <Form.Group>
-                      <Form.Label className="small fw-semibold">Priority</Form.Label>
-                      <Form.Select 
-                        value={customFilters.priority} 
-                        onChange={(e) => setCustomFilters({ ...customFilters, priority: e.target.value })}
-                      >
-                        <option value="">All Priorities</option>
-                        <option value="Low">Low</option>
-                        <option value="Normal">Normal</option>
-                        <option value="High">High</option>
-                        <option value="Urgent">Urgent</option>
-                      </Form.Select>
-                    </Form.Group>
-                  </Col>
-                  <Col md={2} className="d-flex align-items-end">
-                    <Button variant="primary" type="submit" className="w-100 d-flex align-items-center justify-content-center gap-1">
-                      <Filter size={15} /> Run Report
-                    </Button>
-                  </Col>
-                </Row>
-              </Form>
-
-              {loadingCustom ? (
-                <div className="text-center py-5">
-                  <Spinner animation="border" variant="primary" />
-                </div>
-              ) : customReport ? (
-                <div>
-                  {/* Aggregated Stats Row */}
-                  <Row className="g-3 mb-4">
-                    <Col md={3}>
-                      <Card className="bg-light border-0 rounded-3 p-3">
-                        <span className="text-muted small d-block mb-1">TOTAL FILTERED TASKS</span>
-                        <h3 className="fw-bold text-slate-800 mb-0">{customReport.summary.total_tasks}</h3>
-                      </Card>
-                    </Col>
-                    <Col md={3}>
-                      <Card className="bg-light border-0 rounded-3 p-3">
-                        <span className="text-muted small d-block mb-1">COMPLETED TASKS</span>
-                        <h3 className="fw-bold text-success mb-0">{customReport.summary.completed_tasks}</h3>
-                      </Card>
-                    </Col>
-                    <Col md={3}>
-                      <Card className="bg-light border-0 rounded-3 p-3">
-                        <span className="text-muted small d-block mb-1">COMPLETION RATE</span>
-                        <h3 className="fw-bold text-primary mb-0">{customReport.summary.completion_rate}%</h3>
-                      </Card>
-                    </Col>
-                    <Col md={3}>
-                      <Card className="bg-light border-0 rounded-3 p-3">
-                        <span className="text-muted small d-block mb-1">TOTAL BILLABLE HOURS</span>
-                        <h3 className="fw-bold text-slate-800 mb-0">{customReport.summary.total_billable_hours} hrs</h3>
-                      </Card>
-                    </Col>
-                  </Row>
-
-                  <div className="d-flex justify-content-between align-items-center mb-3">
-                    <h5 className="fw-bold text-slate-800 mb-0">Custom Filtered Tasks</h5>
-                    <Button 
-                      variant="outline-success" 
-                      size="sm" 
-                      onClick={() => handleExportCSV(customReport, "Custom_Filters")}
-                      className="d-flex align-items-center gap-1"
-                    >
-                      <Download size={14} /> Export to Excel
-                    </Button>
-                  </div>
-
-                  <div className="table-responsive border rounded-3">
-                    <Table hover className="align-middle mb-0">
-                      <thead className="bg-slate-50">
-                        <tr>
-                          <th>Task ID</th>
-                          <th>Title</th>
-                          <th>Status</th>
-                          <th>Priority</th>
-                          <th>Type</th>
-                          <th>Assigned Staff</th>
-                          <th>Billable Hours</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {customReport.tasks.length === 0 ? (
-                          <tr>
-                            <td colSpan={7} className="text-center py-4 text-muted">No tasks matching the selected filters.</td>
-                          </tr>
-                        ) : (
-                          customReport.tasks.map(t => (
-                            <tr key={t.id}>
-                              <td className="small text-muted">{t.id}</td>
-                              <td className="fw-semibold text-slate-800">{t.title}</td>
-                              <td><span className={`badge ${t.status === 'Done' || t.status === 'Completed' ? 'bg-success' : 'bg-secondary'}`}>{t.status}</span></td>
-                              <td><span className="badge bg-light text-dark border">{t.priority}</span></td>
-                              <td className="small text-muted">{t.task_type}</td>
-                              <td className="small text-slate-700">{t.assigned_staff?.join(", ") || "Unassigned"}</td>
-                              <td>{t.billable_hours} hrs</td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </Table>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-5 text-muted bg-light rounded-3">
-                  <FileText size={48} className="text-slate-300 mb-3" />
-                  <h5>No Custom Report Generated</h5>
-                  <p className="small mb-0">Configure filters above and click 'Run Report' to generate custom lists.</p>
-                </div>
-              )}
-            </Tab>
-          </Tabs>
-        </Card.Body>
-      </Card>
-
-      {/* Printable Report Layout (shown only in print mode) */}
-      <div className="d-none d-print-block">
-        {selectedDept && deptReport && (
-          <div>
-            <h3>Department Report: {departments.find(d => String(d.id) === String(selectedDept))?.name}</h3>
-            <div className="mb-4 mt-3">
-              <div><strong>Total Tasks:</strong> {deptReport.summary.total_tasks}</div>
-              <div><strong>Completed Tasks:</strong> {deptReport.summary.completed_tasks}</div>
-              <div><strong>Completion Rate:</strong> {deptReport.summary.completion_rate}%</div>
-              <div><strong>Total Billable Hours:</strong> {deptReport.summary.total_billable_hours} hrs</div>
             </div>
-            <Table bordered className="align-middle">
-              <thead>
-                <tr>
-                  <th>Task ID</th>
-                  <th>Title</th>
-                  <th>Status</th>
-                  <th>Priority</th>
-                  <th>Billable Hours</th>
-                </tr>
-              </thead>
-              <tbody>
-                {deptReport.tasks.map(t => (
-                  <tr key={t.id}>
-                    <td>{t.id}</td>
-                    <td>{t.title}</td>
-                    <td>{t.status}</td>
-                    <td>{t.priority}</td>
-                    <td>{t.billable_hours} hrs</td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
+            RECENTLY GENERATED
+          </button>
+          
+          <Button variant="primary" style={{ backgroundColor: '#0E7490', borderColor: '#0E7490' }} className="d-flex align-items-center gap-1">
+            CREATE REPORT
+          </Button>
+        </div>
+      </div>
+
+      {/* Filter and Search Bar */}
+      <div className="d-flex justify-content-between align-items-center mb-4 bg-white p-3 rounded-3 shadow-sm border border-slate-200 no-print">
+        <div className="search-reports-container">
+          <Search className="search-reports-icon" size={16} />
+          <input 
+            type="text" 
+            placeholder="Search all reports" 
+            className="search-reports-input"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <div className="small text-muted">
+          SHOWING {activeTab === 'my_reports' ? tuitionExpressReports.length : 'ALL'} RESULTS | Up to 10 favorites from each category will show here.
+        </div>
+      </div>
+
+      {/* Tab Bar Section */}
+      <div className="reports-tab-bar no-print">
+        <button 
+          className={`reports-tab-btn ${activeTab === 'my_reports' ? 'active' : ''}`}
+          onClick={() => setActiveTab("my_reports")}
+        >
+          My Reports
+        </button>
+        <button 
+          className={`reports-tab-btn ${activeTab === 'library' ? 'active' : ''}`}
+          onClick={() => setActiveTab("library")}
+        >
+          Reports Library
+        </button>
+        <button 
+          className={`reports-tab-btn ${activeTab === 'created_by_me' ? 'active' : ''}`}
+          onClick={() => setActiveTab("created_by_me")}
+        >
+          Created By Me
+        </button>
+      </div>
+
+      {/* Active Tab Contents */}
+      <div className="bg-white rounded-3 shadow-sm border border-slate-200 overflow-hidden no-print">
+        {/* --- TAB A: MY REPORTS (Tuition Express / PSP) --- */}
+        {activeTab === "my_reports" && (
+          <div>
+            {filterReports(tuitionExpressReports).map((report) => (
+              <div key={report.id} className="report-list-row">
+                <div style={{ flex: 1 }}>
+                  <a 
+                    href="#" 
+                    onClick={(e) => { e.preventDefault(); handleOpenGenerate(report); }} 
+                    className="report-card-title"
+                  >
+                    {report.name}
+                  </a>
+                  <div className="text-muted small mt-1">{report.description}</div>
+                </div>
+                <div className="d-flex align-items-center gap-4">
+                  <div className="text-muted small">{report.lastGenerated}</div>
+                  <button 
+                    onClick={(e) => toggleFavorite(report.id, e)} 
+                    className={`fav-heart-btn ${favorites.includes(report.id) ? 'active' : ''}`}
+                  >
+                    <Heart size={18} fill={favorites.includes(report.id) ? "#0E7490" : "none"} />
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
-        {!selectedDept && customReport && (
-          <div>
-            <h3>Custom Filters Report</h3>
-            <div className="mb-4 mt-3">
-              <div><strong>Total Tasks:</strong> {customReport.summary.total_tasks}</div>
-              <div><strong>Completed Tasks:</strong> {customReport.summary.completed_tasks}</div>
-              <div><strong>Completion Rate:</strong> {customReport.summary.completion_rate}%</div>
-              <div><strong>Total Billable Hours:</strong> {customReport.summary.total_billable_hours} hrs</div>
-            </div>
-            <Table bordered className="align-middle">
-              <thead>
-                <tr>
-                  <th>Task ID</th>
-                  <th>Title</th>
-                  <th>Status</th>
-                  <th>Priority</th>
-                  <th>Assigned Staff</th>
-                  <th>Billable Hours</th>
-                </tr>
-              </thead>
-              <tbody>
-                {customReport.tasks.map(t => (
-                  <tr key={t.id}>
-                    <td>{t.id}</td>
-                    <td>{t.title}</td>
-                    <td>{t.status}</td>
-                    <td>{t.priority}</td>
-                    <td>{t.assigned_staff?.join(", ")}</td>
-                    <td>{t.billable_hours} hrs</td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
+        {/* --- TAB B: REPORTS LIBRARY --- */}
+        {activeTab === "library" && (
+          <div className="p-3">
+            {loadingLibrary ? (
+              <div className="text-center py-5">
+                <Spinner animation="border" style={{ color: '#0E7490' }} />
+              </div>
+            ) : libraryData.length === 0 ? (
+              <div className="text-center py-5 text-muted">
+                No reports configured in the library.
+              </div>
+            ) : (
+              <div className="d-flex flex-column gap-3">
+                {/* Dynamically render Library Categories (expandable accordions) */}
+                {libraryData.map((category) => {
+                  const isExpanded = expandedSections[category.id];
+                  const matchedReports = filterReports(category.reports);
+
+                  return (
+                    <div key={category.id} className="border border-slate-200 rounded-3 overflow-hidden">
+                      <button 
+                        className="accordion-header-btn" 
+                        onClick={() => toggleSection(category.id)}
+                      >
+                        {category.name}
+                        {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                      </button>
+
+                      {isExpanded && (
+                        <div className="bg-white border-top">
+                          {matchedReports.length === 0 ? (
+                            <div className="text-center py-4 text-muted small">No reports found matching your query.</div>
+                          ) : (
+                            matchedReports.map((report) => (
+                              <div key={report.id} className="report-list-row border-0 border-bottom">
+                                <div style={{ flex: 1 }}>
+                                  <a 
+                                    href="#" 
+                                    onClick={(e) => { e.preventDefault(); handleOpenGenerate(report); }} 
+                                    className="report-card-title"
+                                  >
+                                    {report.name}
+                                  </a>
+                                  <div className="text-muted small mt-1">{report.description}</div>
+                                </div>
+                                <button 
+                                  onClick={(e) => toggleFavorite(report.id, e)} 
+                                  className={`fav-heart-btn ${favorites.includes(report.id) ? 'active' : ''}`}
+                                >
+                                  <Heart size={18} fill={favorites.includes(report.id) ? "#0E7490" : "none"} />
+                                </button>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* --- TAB C: CREATED BY ME --- */}
+        {activeTab === "created_by_me" && (
+          <div className="text-center py-5 text-muted">
+            <Clock size={40} className="mb-2 text-slate-300" />
+            <h5>No Custom Built Reports</h5>
+            <p className="small mb-0">Custom query templates you design will be stored here.</p>
           </div>
         )}
       </div>
+
+      {/* ========================================= */}
+      {/* 🚀 MODAL A: PARAMETERS GENERATION INPUTS */}
+      {/* ========================================= */}
+      <Modal show={showGenerateModal} onHide={() => setShowGenerateModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title className="fw-bold text-slate-800" style={{ fontSize: '1.2rem' }}>
+            Generate {selectedReport?.name}
+          </Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleGenerateSubmit}>
+          <Modal.Body className="p-4">
+            <Form.Group className="mb-3">
+              <Form.Label className="small fw-semibold text-slate-700">Start Date</Form.Label>
+              <div className="position-relative">
+                <Form.Control 
+                  type="date" 
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  required
+                />
+              </div>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label className="small fw-semibold text-slate-700">End Date</Form.Label>
+              <Form.Control 
+                type="date" 
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                required
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label className="small fw-semibold text-slate-700">File Output Format</Form.Label>
+              <div className="d-flex gap-3">
+                <Form.Check
+                  type="radio"
+                  label="Excel Sheet (.xlsx)"
+                  name="reportFormat"
+                  id="formatXLSX"
+                  checked={reportFormat === "XLSX"}
+                  onChange={() => setReportFormat("XLSX")}
+                />
+                <Form.Check
+                  type="radio"
+                  label="Adobe Document (.pdf)"
+                  name="reportFormat"
+                  id="formatPDF"
+                  checked={reportFormat === "PDF"}
+                  onChange={() => setReportFormat("PDF")}
+                  disabled={selectedReport?.id === "categorized_transaction_summary"} // Ledger report is XLSX only
+                />
+              </div>
+              {selectedReport?.id === "categorized_transaction_summary" && (
+                <div className="text-muted small mt-1">Note: Multi-section ledger transaction reports are optimized for XLSX.</div>
+              )}
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="light" onClick={() => setShowGenerateModal(false)}>Cancel</Button>
+            <Button 
+              type="submit" 
+              style={{ backgroundColor: '#0E7490', borderColor: '#0E7490' }}
+              disabled={generating}
+              className="d-flex align-items-center gap-1"
+            >
+              {generating ? <Spinner size="sm" animation="border" /> : <RefreshCw size={15} />}
+              Generate Report
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
+
+      {/* ========================================= */}
+      {/* 🚀 MODAL B: RECENTLY GENERATED REPORTS    */}
+      {/* ========================================= */}
+      <Modal show={showRecentModal} onHide={() => setShowRecentModal(false)} size="lg" centered>
+        <Modal.Header closeButton>
+          <Modal.Title className="fw-bold text-slate-800" style={{ fontSize: '1.25rem' }}>
+            Recently Generated Reports
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-0">
+          {/* Internal Modal Tab Bar */}
+          <div className="d-flex border-bottom bg-slate-50 px-3">
+            <button className="reports-tab-btn active px-3" style={{ fontSize: '0.85rem' }}>
+              REPORTS LIBRARY
+            </button>
+            <button className="reports-tab-btn px-3" style={{ fontSize: '0.85rem' }} disabled>
+              CREATED BY ME
+            </button>
+          </div>
+
+          <div style={{ maxHeight: '420px', overflowY: 'auto' }}>
+            {loadingRecent ? (
+              <div className="text-center py-5">
+                <Spinner animation="border" style={{ color: '#0E7490' }} />
+              </div>
+            ) : recentReports.length === 0 ? (
+              <div className="text-center py-5 text-muted">
+                No reports generated yet. Click a report in the library to create one.
+              </div>
+            ) : (
+              recentReports.map((report) => (
+                <div key={report.id} className="recent-report-item">
+                  <div>
+                    <span className="fw-semibold text-slate-800 d-block">{report.name}</span>
+                    <span className="text-muted small">
+                      Generated by {report.creator_name} ({report.created_by_role}) • Range: {report.date_range}
+                    </span>
+                  </div>
+                  <div className="d-flex align-items-center gap-3">
+                    <span className={`file-format-badge ${report.format === 'XLSX' ? 'badge-xlsx' : 'badge-pdf'}`}>
+                      {report.format}
+                    </span>
+                    <Button 
+                      variant="outline-primary" 
+                      size="sm" 
+                      onClick={() => downloadReportFile(report)}
+                      style={{ color: '#0E7490', borderColor: '#0E7490' }}
+                      className="d-flex align-items-center gap-1"
+                    >
+                      <Download size={14} /> Download
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </Modal.Body>
+        <Modal.Footer className="bg-slate-50">
+          <Button variant="secondary" onClick={() => setShowRecentModal(false)}>Close</Button>
+        </Modal.Footer>
+      </Modal>
     </Container>
   );
 };

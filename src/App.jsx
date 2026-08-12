@@ -40,6 +40,7 @@ import MessagingPage from "./pages/admin/MessagingPage";
 import EnrollmentDashboard from "./pages/admin/enrollment/EnrollmentDashboard";
 import EnrollmentFormBuilder from "./pages/admin/enrollment/EnrollmentFormBuilder";
 import PublicEnrollmentForm from "./pages/public/PublicEnrollmentForm";
+import EnrollmentSubmissionViewer from "./pages/public/EnrollmentSubmissionViewer";
 import PublicFormFiller from "./pages/public/PublicFormFiller";
 import AllTasksPage from "./pages/admin/AllTasksPage";
 import BillingDashboard from "./pages/admin/billing/BillingDashboard";
@@ -92,6 +93,7 @@ function App() {
             <Route path="/admissions/apply" element={<AdmissionForm />} />
             <Route path="/admissions/live-look-in" element={<LiveLookInForm />} />
             <Route path="/enrollment/:token" element={<PublicEnrollmentForm />} />
+            <Route path="/enrollment/view/:token" element={<EnrollmentSubmissionViewer />} />
             <Route path="/public/forms/:formId" element={<PublicFormFiller />} />
             <Route path="/setup-password" element={<SetupPassword />} />
 
@@ -131,7 +133,6 @@ function App() {
                   />
                 </Route>
 
-                {/* Accounting — department sidebar layout */}
                 <Route element={<AccountingLayout />}>
                   <Route path="accounting" element={<AccountingDashboard />} />
                   <Route path="accounting/accounts" element={<BillingDashboard />} />
@@ -151,6 +152,14 @@ function App() {
                     path="accounting/subsidies/:subsidyId"
                     element={<SubsidyDetailPage />}
                   />
+                  <Route
+                    path="accounting/registration"
+                    element={<EnrollmentDashboard />}
+                  />
+                  <Route
+                    path="accounting/registration/forms/:formId"
+                    element={<EnrollmentFormBuilder />}
+                  />
                 </Route>
 
                 {/* Legacy billing routes — redirect to accounting */}
@@ -159,11 +168,9 @@ function App() {
                 <Route path="billing/recurring-plans" element={<Navigate to="/admin/accounting/recurring-plans" replace />} />
                 <Route path="billing/subsidies" element={<Navigate to="/admin/accounting/subsidies" replace />} />
 
-                <Route path="enrollment" element={<EnrollmentDashboard />} />
-                <Route
-                  path="enrollment/forms/:formId"
-                  element={<EnrollmentFormBuilder />}
-                />
+                {/* Legacy enrollment routes — redirect to registration under accounting */}
+                <Route path="enrollment" element={<Navigate to="/admin/accounting/registration" replace />} />
+                <Route path="enrollment/forms/:formId" element={<Navigate to="/admin/accounting/registration/forms/:formId" replace />} />
                 {/* Administration — department sidebar layout */}
                 <Route element={<AdministrationLayout />}>
                   <Route path="administration" element={<AdministrationDashboard />} />
