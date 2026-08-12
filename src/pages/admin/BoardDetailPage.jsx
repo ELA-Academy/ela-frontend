@@ -1031,6 +1031,73 @@ const BoardDetailPage = () => {
     return match ? match.type : activeView;
   }, [activeView, boardViews]);
 
+  // Sticky table headers sync scroll effect for List View
+  useEffect(() => {
+    const scrollContainer = document.querySelector(".content-area-workspace");
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      if (currentViewType !== "list") return;
+
+      const listContainer = scrollContainer.querySelector(".workspace-list-view");
+      if (!listContainer) return;
+
+      const sections = listContainer.querySelectorAll(".status-group-section");
+      sections.forEach((section) => {
+        const table = section.querySelector(".workspace-table");
+        const thead = table ? table.querySelector("thead") : null;
+        const statusHeader = section.querySelector(".status-group-header");
+        if (!table || !thead || !statusHeader) return;
+
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const tableRect = table.getBoundingClientRect();
+        const statusHeaderRect = statusHeader.getBoundingClientRect();
+
+        // Target top position of the table header is right below the sticky statusHeader
+        // Since statusHeader is sticky at top: 0, its bottom edge relative to container is statusHeaderRect.height
+        const targetTop = containerRect.top + statusHeaderRect.height;
+        const offset = targetTop - tableRect.top;
+
+        const theadHeight = thead.getBoundingClientRect().height;
+        const footerRow = table.querySelector(".workspace-group-tfoot");
+        const footerHeight = footerRow ? footerRow.getBoundingClientRect().height : 0;
+        const maxOffset = tableRect.height - theadHeight - footerHeight - 10;
+
+        const ths = thead.querySelectorAll("th");
+        if (offset > 0 && offset < maxOffset) {
+          ths.forEach((th) => {
+            th.style.transform = `translateY(${offset}px)`;
+            // Ensure z-index is higher to float above body columns
+            th.style.zIndex = "28"; 
+          });
+        } else if (offset >= maxOffset && maxOffset > 0) {
+          ths.forEach((th) => {
+            th.style.transform = `translateY(${maxOffset}px)`;
+            th.style.zIndex = "28";
+          });
+        } else {
+          ths.forEach((th) => {
+            th.style.transform = "";
+            th.style.zIndex = "";
+          });
+        }
+      });
+    };
+
+    scrollContainer.addEventListener("scroll", handleScroll, { passive: true });
+    // Trigger on layout mount / change
+    const timer = setTimeout(handleScroll, 50);
+
+    // Also listen to window resize as it can change rects
+    window.addEventListener("resize", handleScroll, { passive: true });
+
+    return () => {
+      scrollContainer.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+      clearTimeout(timer);
+    };
+  }, [currentViewType, board, collapsedStatuses]);
+
   const filteredAvailableViews = useMemo(() => {
     const q = viewSearchQuery.trim().toLowerCase();
     if (!q) return ALL_AVAILABLE_VIEWS;
