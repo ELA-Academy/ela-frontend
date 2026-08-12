@@ -6,11 +6,19 @@ import {
   Card,
   Row,
   Col,
-  Tabs,
-  Tab,
   Button,
+  Modal,
+  Form,
+  Table,
+  Badge,
+  Dropdown
 } from "react-bootstrap";
-import { getStudentById } from "../../../services/studentService";
+import {
+  getStudentById,
+  getStudentDocuments,
+  uploadStudentDocument,
+  deleteStudentDocument
+} from "../../../services/studentService";
 import {
   DollarSign,
   Calendar,
@@ -25,31 +33,64 @@ import {
   CheckCircle,
   Clock,
   Printer,
-  Edit2
+  Edit2,
+  Trash2,
+  Download,
+  Upload,
+  MoreHorizontal
 } from "lucide-react";
+import api from "../../../utils/api";
+import { showSuccess, showError } from "../../../utils/notificationService";
 import "../../../styles/StudentProfile.css";
 import "../../../styles/AdminModern.css";
+
+const CustomToggle = React.forwardRef(({ children, onClick }, ref) => (
+  <a
+    href=""
+    ref={ref}
+    onClick={(e) => {
+      e.preventDefault();
+      onClick(e);
+    }}
+    className="text-muted p-1"
+  >
+    {children}
+  </a>
+));
 
 const StudentProfilePage = () => {
   const { studentId } = useParams();
   const [student, setStudent] = useState(null);
+  const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("profile");
 
+  // Document Upload States
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadDocName, setUploadDocName] = useState("");
+  const [uploadDocType, setUploadDocType] = useState("Document");
+  const [uploadExpiryDate, setUploadExpiryDate] = useState("");
+
   useEffect(() => {
-    const fetchStudent = async () => {
+    const fetchStudentData = async () => {
       try {
         setLoading(true);
-        const data = await getStudentById(studentId);
-        setStudent(data);
+        const [studentData, docsData] = await Promise.all([
+          getStudentById(studentId),
+          getStudentDocuments(studentId).catch(() => [])
+        ]);
+        setStudent(studentData);
+        setDocuments(docsData || []);
       } catch (err) {
         setError("Failed to load student profile.");
       } finally {
         setLoading(false);
       }
     };
-    fetchStudent();
+    fetchStudentData();
   }, [studentId]);
 
   const calculateAge = (dobString) => {
@@ -65,13 +106,57 @@ const StudentProfilePage = () => {
     return `${years} years and ${months} months`;
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "No date set";
+  const formatDate = (dateString, fallback = "No date set") => {
+    if (!dateString) return fallback;
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
     });
+  };
+
+  const handleUploadSubmit = async (e) => {
+    e.preventDefault();
+    if (!uploadFile) return;
+
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append("file", uploadFile);
+      formData.append("name", uploadDocName || uploadFile.name);
+      formData.append("document_type", uploadDocType);
+      if (uploadExpiryDate) {
+        formData.append("expiry_date", uploadExpiryDate);
+      }
+
+      await uploadStudentDocument(studentId, formData);
+      showSuccess("Document uploaded successfully!");
+      setShowUploadModal(false);
+      
+      // Reset fields
+      setUploadFile(null);
+      setUploadDocName("");
+      setUploadExpiryDate("");
+      
+      // Reload documents
+      const docsData = await getStudentDocuments(studentId);
+      setDocuments(docsData || []);
+    } catch (err) {
+      showError("Failed to upload document.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteDocClick = async (docId) => {
+    if (!window.confirm("Are you sure you want to permanently delete this document?")) return;
+    try {
+      await deleteStudentDocument(docId);
+      showSuccess("Document deleted successfully.");
+      setDocuments(documents.filter(d => d.id !== docId));
+    } catch (err) {
+      showError("Failed to delete document.");
+    }
   };
 
   if (loading) {
@@ -86,6 +171,8 @@ const StudentProfilePage = () => {
   if (!student) return <Alert variant="warning">Student not found.</Alert>;
 
   const initials = `${student.first_name?.charAt(0) || ""}${student.last_name?.charAt(0) || ""}`.toUpperCase();
+  const baseURL = api.defaults.baseURL || "";
+  const baseStaticURL = baseURL.endsWith("/api") ? baseURL.slice(0, -4) : baseURL;
 
   return (
     <div className="student-profile-rebuild" style={{ padding: "20px" }}>
@@ -138,7 +225,7 @@ const StudentProfilePage = () => {
             borderBottom: activeTab === "documents" ? "2px solid #0ea5e9" : "none"
           }}
         >
-          Documents <span className="badge bg-secondary rounded-pill" style={{ fontSize: "10px" }}>0</span>
+          Documents <span className="badge bg-secondary rounded-pill" style={{ fontSize: "10px" }}>{documents.length}</span>
         </button>
       </div>
 
@@ -198,10 +285,10 @@ const StudentProfilePage = () => {
                   <div className="text-center">
                     <Link 
                       to={`/admin/admissions`}
-                      className="text-decoration-none d-flex align-items-center justify-content-center gap-2 fw-bold"
-                      style={{ color: "#0ea5e9", fontSize: "11px" }}
+                      className="btn btn-outline-info w-100 btn-sm text-uppercase fw-bold"
+                      style={{ fontSize: "11px", letterSpacing: "0.05em" }}
                     >
-                      <User size={14} /> VIEW LEAD DETAILS
+                      View Admission Lead
                     </Link>
                   </div>
                 </div>
@@ -210,143 +297,57 @@ const StudentProfilePage = () => {
           </Card>
         </Col>
 
-        {/* Right Details Panel */}
+        {/* Right Tab Content Panel */}
         <Col md={9}>
           {activeTab === "profile" && (
-            <div className="space-y-6">
-              {/* Profile Details List */}
-              <Card className="shadow-sm border-0" style={{ borderRadius: "12px" }}>
-                <Card.Body className="p-0">
-                  <div className="table-responsive">
-                    <table className="table table-hover align-middle mb-0" style={{ fontSize: "13px" }}>
-                      <tbody>
-                        <tr>
-                          <td className="fw-bold text-slate-500 py-3 ps-4" style={{ width: "200px" }}>STATUS</td>
-                          <td className="py-3">
-                            <span className="d-flex align-items-center gap-2 fw-bold" style={{ color: student.status === "Active" ? "#22c55e" : "#ef4444" }}>
-                              <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: student.status === "Active" ? "#22c55e" : "#ef4444" }} />
-                              {student.status?.toUpperCase() || "ACTIVE"}
-                            </span>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="fw-bold text-slate-500 py-3 ps-4">PRIMARY ROOM</td>
-                          <td className="py-3 fw-bold text-slate-800">{student.home_room || `Home Room ${student.grade_level}`}</td>
-                        </tr>
-                        <tr>
-                          <td className="fw-bold text-slate-500 py-3 ps-4">UPCOMING TRANSITIONS</td>
-                          <td className="py-3 text-slate-400">No upcoming transitions</td>
-                        </tr>
-                        <tr>
-                          <td className="fw-bold text-slate-500 py-3 ps-4">STUDENT ID</td>
-                          <td className="py-3 text-slate-800">{student.student_id_number || "No External Student ID"}</td>
-                        </tr>
-                        <tr>
-                          <td className="fw-bold text-slate-500 py-3 ps-4">DOB</td>
-                          <td className="py-3 text-slate-800 fw-bold">
-                            {formatDate(student.date_of_birth)} ({calculateAge(student.date_of_birth)})
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="fw-bold text-slate-500 py-3 ps-4">TAGS</td>
-                          <td className="py-3 text-slate-400">No tags on record</td>
-                        </tr>
-                        <tr>
-                          <td className="fw-bold text-slate-500 py-3 ps-4">SCHEDULE</td>
-                          <td className="py-3">
-                            <div className="d-flex gap-1">
-                              {["MON", "TUE", "WED", "THU", "FRI"].map(day => (
-                                <span key={day} className="badge bg-light text-slate-600 px-2 py-1 border" style={{ fontSize: "10px" }}>{day}</span>
-                              ))}
-                            </div>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="fw-bold text-slate-500 py-3 ps-4">ALLERGIES</td>
-                          <td className="py-3 text-slate-800 fw-bold">NA</td>
-                        </tr>
-                        <tr>
-                          <td className="fw-bold text-slate-500 py-3 ps-4">MEDICATION</td>
-                          <td className="py-3 text-slate-800 fw-bold">NA</td>
-                        </tr>
-                        <tr>
-                          <td className="fw-bold text-slate-500 py-3 ps-4">DIET RESTRICTION</td>
-                          <td className="py-3 text-slate-400">No diet restrictions on record</td>
-                        </tr>
-                        <tr>
-                          <td className="fw-bold text-slate-500 py-3 ps-4">FOOD PROGRAM</td>
-                          <td className="py-3 text-slate-400">No food program on record</td>
-                        </tr>
-                        <tr>
-                          <td className="fw-bold text-slate-500 py-3 ps-4">ADDRESS</td>
-                          <td className="py-3 text-slate-800">{student.address || "No address on record"}</td>
-                        </tr>
-                        <tr>
-                          <td className="fw-bold text-slate-500 py-3 ps-4">NOTES</td>
-                          <td className="py-3 text-slate-700" style={{ whiteSpace: "pre-line" }}>
-                            {student.notes || "No notes on record"}
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="fw-bold text-slate-500 py-3 ps-4">SIBLINGS</td>
-                          <td className="py-3 text-slate-800">
-                            <div className="d-flex justify-content-between align-items-center">
-                              <span className="text-slate-400">No siblings for {student.first_name} {student.last_name}</span>
-                              <button className="btn btn-link text-decoration-none p-0 fw-bold" style={{ color: "#0ea5e9", fontSize: "12px" }}>ADD SIBLING</button>
-                            </div>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="fw-bold text-slate-500 py-3 ps-4">ENROLL DATE</td>
-                          <td className="py-3 text-slate-800 fw-bold">{formatDate(student.enrollment_date)}</td>
-                        </tr>
-                        <tr>
-                          <td className="fw-bold text-slate-500 py-3 ps-4">GRADUATION DATE</td>
-                          <td className="py-3 text-slate-400">No date set</td>
-                        </tr>
-                        <tr>
-                          <td className="fw-bold text-slate-500 py-3 ps-4">GRADE LEVEL</td>
-                          <td className="py-3 text-slate-800 fw-bold">{student.grade_level}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </Card.Body>
+            <div>
+              {/* Profile Details Cards */}
+              <Card className="shadow-sm border-0 p-4 mb-4">
+                <h4 className="fw-bold text-slate-800 mb-3" style={{ fontSize: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <User size={18} className="text-slate-500" /> Student Profile Details
+                </h4>
+                
+                <Row className="g-3">
+                  <Col md={4}>
+                    <label className="text-uppercase fw-bold text-slate-400 d-block" style={{ fontSize: "10px", letterSpacing: "0.05em" }}>First Name</label>
+                    <span className="text-slate-800 fw-semibold" style={{ fontSize: "14px" }}>{student.first_name || "—"}</span>
+                  </Col>
+                  <Col md={4}>
+                    <label className="text-uppercase fw-bold text-slate-400 d-block" style={{ fontSize: "10px", letterSpacing: "0.05em" }}>Last Name</label>
+                    <span className="text-slate-800 fw-semibold" style={{ fontSize: "14px" }}>{student.last_name || "—"}</span>
+                  </Col>
+                  <Col md={4}>
+                    <label className="text-uppercase fw-bold text-slate-400 d-block" style={{ fontSize: "10px", letterSpacing: "0.05em" }}>Status</label>
+                    <span className="badge bg-success-light text-success" style={{ fontSize: "11px", padding: "0.35em 0.65em" }}>ACTIVE</span>
+                  </Col>
+                  <Col md={4}>
+                    <label className="text-uppercase fw-bold text-slate-400 d-block" style={{ fontSize: "10px", letterSpacing: "0.05em" }}>Date of Birth</label>
+                    <span className="text-slate-800" style={{ fontSize: "14px" }}>{formatDate(student.date_of_birth)}</span>
+                  </Col>
+                  <Col md={4}>
+                    <label className="text-uppercase fw-bold text-slate-400 d-block" style={{ fontSize: "10px", letterSpacing: "0.05em" }}>Age</label>
+                    <span className="text-slate-800" style={{ fontSize: "14px" }}>{calculateAge(student.date_of_birth)}</span>
+                  </Col>
+                  <Col md={4}>
+                    <label className="text-uppercase fw-bold text-slate-400 d-block" style={{ fontSize: "10px", letterSpacing: "0.05em" }}>Grade Level</label>
+                    <span className="text-slate-800" style={{ fontSize: "14px" }}>{student.grade_level || "—"}</span>
+                  </Col>
+                </Row>
               </Card>
 
-              {/* Parents / Guardians Section */}
-              <div className="mt-4">
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <h4 className="fw-bold text-slate-800 m-0" style={{ fontSize: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
-                    <Shield size={18} className="text-slate-500" /> Parent / Guardians
-                  </h4>
-                  <div className="d-flex gap-3">
-                    <button className="btn btn-link text-decoration-none p-0 fw-bold" style={{ color: "#0ea5e9", fontSize: "12px" }}>EMAIL SIGN-IN PIN</button>
-                    <button className="btn btn-link text-decoration-none p-0 fw-bold" style={{ color: "#0ea5e9", fontSize: "12px" }}>ADD PARENT</button>
-                  </div>
-                </div>
-
-                <Row>
-                  {student.parents && student.parents.map(parent => (
-                    <Col md={6} key={parent.id} className="mb-3">
-                      <Card className="shadow-sm border border-light" style={{ borderRadius: "10px" }}>
+              {/* Parents Section */}
+              <div>
+                <h4 className="fw-bold text-slate-800 mb-3" style={{ fontSize: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <UserCheck size={18} className="text-slate-500" /> Associated Parents / Guardians
+                </h4>
+                <Row className="g-3">
+                  {student.parents?.map((parent) => (
+                    <Col md={6} key={parent.id}>
+                      <Card className="shadow-sm border-0 h-100">
                         <Card.Body className="p-3">
-                          <div className="d-flex justify-content-between align-items-start mb-3">
-                            <div className="d-flex align-items-center gap-2">
-                              <div 
-                                className="d-flex align-items-center justify-content-center fw-bold text-white" 
-                                style={{ width: "32px", height: "32px", borderRadius: "50%", backgroundColor: "#94a3b8", fontSize: "12px" }}
-                              >
-                                {`${parent.first_name?.charAt(0) || ""}${parent.last_name?.charAt(0) || ""}`.toUpperCase()}
-                              </div>
-                              <div>
-                                <h6 className="fw-bold m-0 text-slate-800">{parent.first_name} {parent.last_name}</h6>
-                                <span className="badge bg-success-light text-success px-2 py-0.5 rounded-pill" style={{ fontSize: "9px" }}>
-                                  ✓ Signed up
-                                </span>
-                              </div>
-                            </div>
-                            <button className="btn btn-link text-muted p-0"><Edit2 size={14} /></button>
+                          <div className="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                            <span className="fw-bold text-slate-800" style={{ fontSize: "14px" }}>{parent.first_name} {parent.last_name}</span>
+                            <span className="text-slate-400 small" style={{ fontSize: "11px" }}>Primary Contact</span>
                           </div>
 
                           <div className="space-y-2 text-slate-600" style={{ fontSize: "12px" }}>
@@ -436,12 +437,161 @@ const StudentProfilePage = () => {
 
           {activeTab === "documents" && (
             <Card className="shadow-sm border-0 p-4">
-              <h5 className="fw-bold text-slate-800 mb-3">Student Documents</h5>
-              <p className="text-muted">Upload and manage documents for this student.</p>
+              {/* Card Header with UPLOAD FILE button */}
+              <div className="d-flex justify-content-between align-items-center mb-4">
+                <h5 className="fw-bold text-slate-800 m-0">Student Documents</h5>
+                <Button 
+                  onClick={() => setShowUploadModal(true)} 
+                  style={{ backgroundColor: "#007ba4", borderColor: "#007ba4", fontSize: "12px", fontWeight: "600" }}
+                  className="d-flex align-items-center gap-1 text-uppercase"
+                >
+                  <Upload size={14} /> Upload File
+                </Button>
+              </div>
+
+              {/* Documents Directory Table */}
+              <Table responsive className="align-middle mb-0" style={{ borderCollapse: "separate", borderSpacing: "0 10px" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid #E2E8F0" }}>
+                    <th className="text-slate-500 uppercase fw-bold pb-2" style={{ fontSize: "11px", letterSpacing: "0.05em" }}>NAME</th>
+                    <th className="text-slate-500 uppercase fw-bold pb-2" style={{ fontSize: "11px", letterSpacing: "0.05em" }}>EXPIRY DATE</th>
+                    <th className="text-slate-500 uppercase fw-bold pb-2" style={{ fontSize: "11px", letterSpacing: "0.05em" }}>DOCUMENT TYPE</th>
+                    <th className="text-slate-500 uppercase fw-bold pb-2" style={{ fontSize: "11px", letterSpacing: "0.05em" }}>STATUS</th>
+                    <th className="text-slate-500 uppercase fw-bold pb-2" style={{ fontSize: "11px", letterSpacing: "0.05em" }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {documents.length > 0 ? (
+                    documents.map((doc) => {
+                      const isFormViewer = doc.file_path.startsWith("/enrollment/view");
+                      const downloadUrl = isFormViewer ? doc.file_path : `${baseStaticURL}${doc.file_path}`;
+
+                      return (
+                        <tr key={doc.id} className="bg-light shadow-sm rounded">
+                          <td className="p-3" style={{ borderTopLeftRadius: "6px", borderBottomLeftRadius: "6px" }}>
+                            <a 
+                              href={downloadUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="fw-semibold text-decoration-none"
+                              style={{ color: "#007ba4" }}
+                            >
+                              {doc.name}
+                            </a>
+                          </td>
+                          <td className="p-3 text-slate-600">
+                            {formatDate(doc.expiry_date, "No Date")}
+                          </td>
+                          <td className="p-3 text-slate-600">
+                            {doc.document_type || "Document"}
+                          </td>
+                          <td className="p-3">
+                            <Badge 
+                              bg={doc.status === "UPLOADED" ? "success" : "warning"}
+                              style={{ fontSize: "10px", padding: "0.4em 0.7em" }}
+                              className="text-uppercase"
+                            >
+                              {doc.status}
+                            </Badge>
+                          </td>
+                          <td className="p-3 text-end" style={{ borderTopRightRadius: "6px", borderBottomRightRadius: "6px" }}>
+                            <Dropdown align="end">
+                              <Dropdown.Toggle as={CustomToggle}>
+                                <MoreHorizontal size={18} className="text-slate-400 hover-slate-800" />
+                              </Dropdown.Toggle>
+                              <Dropdown.Menu className="shadow border-slate-200">
+                                <Dropdown.Item href={downloadUrl} target="_blank" rel="noopener noreferrer">
+                                  <Download size={14} className="me-2 text-slate-500" /> View/Download
+                                </Dropdown.Item>
+                                <Dropdown.Divider />
+                                <Dropdown.Item onClick={() => handleDeleteDocClick(doc.id)} className="text-danger">
+                                  <Trash2 size={14} className="me-2" /> Delete
+                                </Dropdown.Item>
+                              </Dropdown.Menu>
+                            </Dropdown>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan="5" className="text-center py-5 text-slate-400">
+                        There are no documents uploaded for this student profile.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </Table>
             </Card>
           )}
         </Col>
       </Row>
+
+      {/* Upload Document Modal */}
+      <Modal show={showUploadModal} onHide={() => setShowUploadModal(false)} centered>
+        <Form onSubmit={handleUploadSubmit}>
+          <Modal.Header closeButton>
+            <Modal.Title style={{ fontSize: "18px", fontWeight: "700" }}>Upload Student Document</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Form.Group className="mb-3">
+              <Form.Label className="small fw-semibold text-slate-600 mb-1">SELECT FILE *</Form.Label>
+              <Form.Control 
+                type="file" 
+                required 
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  setUploadFile(file);
+                  if (file && !uploadDocName) {
+                    setUploadDocName(file.name.split('.').slice(0, -1).join('.'));
+                  }
+                }}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label className="small fw-semibold text-slate-600 mb-1">DOCUMENT NAME *</Form.Label>
+              <Form.Control 
+                type="text" 
+                placeholder="Enter document name"
+                required 
+                value={uploadDocName}
+                onChange={(e) => setUploadDocName(e.target.value)}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label className="small fw-semibold text-slate-600 mb-1">DOCUMENT TYPE</Form.Label>
+              <Form.Select 
+                value={uploadDocType}
+                onChange={(e) => setUploadDocType(e.target.value)}
+              >
+                <option value="Document">Document</option>
+                <option value="Immunization">Immunization</option>
+                <option value="ID Card">ID Card</option>
+                <option value="Medical Report">Medical Report</option>
+              </Form.Select>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label className="small fw-semibold text-slate-600 mb-1">EXPIRY DATE (OPTIONAL)</Form.Label>
+              <Form.Control 
+                type="date" 
+                value={uploadExpiryDate}
+                onChange={(e) => setUploadExpiryDate(e.target.value)}
+              />
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="outline-secondary" size="sm" onClick={() => setShowUploadModal(false)} disabled={uploading}>
+              Cancel
+            </Button>
+            <Button type="submit" size="sm" style={{ backgroundColor: "#007ba4", borderColor: "#007ba4" }} disabled={uploading || !uploadFile}>
+              {uploading ? <Spinner animation="border" size="sm" /> : "Upload Document"}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
     </div>
   );
 };

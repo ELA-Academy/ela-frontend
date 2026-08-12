@@ -6,7 +6,7 @@ import SubStepper from "./SubStepper";
 
 const FormBuilderStep1 = ({ formState, setFormState }) => {
   const [activeSectionIndex, setActiveSectionIndex] = useState(0);
-  const sections = formState.form_structure_json?.sections || [];
+  const sections = (formState.form_structure_json?.sections || []).filter(s => s.id !== "pickup_info");
   const activeSection = sections[activeSectionIndex];
 
   const handleTitleChange = (e) => {
