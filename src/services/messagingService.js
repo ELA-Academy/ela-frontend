@@ -138,3 +138,14 @@ export const deleteChannel = async (channelId) => {
     throw error;
   }
 };
+
+// Edit an existing message
+export const editMessage = async (messageId, content) => {
+  try {
+    const response = await api.put(`/messaging/messages/${messageId}`, { content });
+    return response.data;
+  } catch (error) {
+    console.error("Error editing message:", error);
+    throw error;
+  }
+};
