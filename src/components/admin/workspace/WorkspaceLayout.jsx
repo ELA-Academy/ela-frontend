@@ -200,7 +200,7 @@ const WorkspaceLayout = () => {
     if (moving) return;
     setMoving(true);
     try {
-      const targetParentId = moveTargetParentId === "" ? null : Number(moveTargetParentId);
+      const targetParentId = moveTargetParentId === "" ? null : moveTargetParentId;
       await updateBoard(moveBoardId, { parent_id: targetParentId });
       setShowMoveModal(false);
       await fetchWorkspaceData(false);
@@ -235,8 +235,8 @@ const WorkspaceLayout = () => {
   };
 
   // Derive active board ID from URL
-  const boardIdMatch = location.pathname.match(/\/admin\/boards\/(\d+)/);
-  const activeBoardId = boardIdMatch ? Number(boardIdMatch[1]) : null;
+  const boardIdMatch = location.pathname.match(/\/admin\/boards\/([a-zA-Z0-9]+)/);
+  const activeBoardId = boardIdMatch ? boardIdMatch[1] : null;
 
   // Derive active conversation ID from search params
   const searchParams = new URLSearchParams(location.search);

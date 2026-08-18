@@ -850,7 +850,7 @@ const BoardDetailPage = () => {
       setDestGroups([]);
       return;
     }
-    const spaceLists = boards.filter(b => b.parent_id === Number(spaceId) && !b.is_folder);
+    const spaceLists = boards.filter(b => b.parent_id === spaceId && !b.is_folder);
     if (spaceLists.length === 0) {
       setDestListId("CREATE_DEFAULT");
       setDestGroupId("CREATE_DEFAULT_GROUP");
@@ -899,7 +899,7 @@ const BoardDetailPage = () => {
       if (destListId === "CREATE_DEFAULT") {
         const defaultList = await createBoard({
           name: "General",
-          parent_id: Number(destSpaceId),
+          parent_id: destSpaceId,
           is_private: false,
           is_folder: false
         });
@@ -7885,7 +7885,7 @@ const BoardDetailPage = () => {
               </Form.Select>
             </Form.Group>
 
-            {destSpaceId && boards.filter(b => b.parent_id === Number(destSpaceId) && b.is_folder).length > 0 && (
+            {destSpaceId && boards.filter(b => b.parent_id === destSpaceId && b.is_folder).length > 0 && (
               <Form.Group>
                 <Form.Label className="fw-bold text-slate-700 text-xs uppercase mb-1">Folder (Optional)</Form.Label>
                 <Form.Select 
@@ -7894,7 +7894,7 @@ const BoardDetailPage = () => {
                   style={{ fontSize: "13px" }}
                 >
                   <option value="">-- No Folder (Direct List) --</option>
-                  {boards.filter(b => b.parent_id === Number(destSpaceId) && b.is_folder).map(f => (
+                  {boards.filter(b => b.parent_id === destSpaceId && b.is_folder).map(f => (
                     <option key={`folder_${f.id}`} value={f.id}>📁 {f.name}</option>
                   ))}
                 </Form.Select>
@@ -7910,12 +7910,12 @@ const BoardDetailPage = () => {
                   style={{ fontSize: "13px" }}
                 >
                   <option value="">-- Select List --</option>
-                  {boards.filter(b => b.parent_id === (destFolderId !== "" ? Number(destFolderId) : Number(destSpaceId)) && !b.is_folder).length === 0 && (
+                  {boards.filter(b => b.parent_id === (destFolderId !== "" ? destFolderId : destSpaceId) && !b.is_folder).length === 0 && (
                     <option value="CREATE_DEFAULT">-- Auto-create default list ('General') --</option>
                   )}
                   {(destFolderId !== "" 
-                    ? boards.filter(b => b.parent_id === Number(destFolderId) && !b.is_folder)
-                    : boards.filter(b => b.parent_id === Number(destSpaceId) && !b.is_folder)
+                    ? boards.filter(b => b.parent_id === destFolderId && !b.is_folder)
+                    : boards.filter(b => b.parent_id === destSpaceId && !b.is_folder)
                   ).map(l => (
                     <option key={`list_${l.id}`} value={l.id}>{l.icon || "📋"} {l.name}</option>
                   ))}
