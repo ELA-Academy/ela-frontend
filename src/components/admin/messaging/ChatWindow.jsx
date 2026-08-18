@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Form, Alert, Spinner, Card, Modal, Button } from "react-bootstrap";
 import { SendFill } from "react-bootstrap-icons";
-import { getMessages, sendMessage, deleteChannel } from "../../../services/messagingService";
+import { getMessages, sendMessage, deleteChannel, editMessage } from "../../../services/messagingService";
 import { useAuth } from "../../../context/AuthContext";
 import useAutosizeTextArea from "../../../hooks/useAutosizeTextArea";
 import { format, parseISO, isToday, isYesterday } from "date-fns";
@@ -294,12 +294,13 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
   const handleSaveEdit = async (msgId) => {
     if (!editingText.trim()) return;
     try {
+      const updatedMsg = await editMessage(msgId, editingText);
       setMessages((prev) =>
-        prev.map((m) => (m.id === msgId ? { ...m, content: editingText } : m))
+        prev.map((m) => (m.id === msgId ? { ...m, content: updatedMsg.content, is_edited: true } : m))
       );
       if (globalMessageCache[conversationId]) {
         globalMessageCache[conversationId] = globalMessageCache[conversationId].map((m) =>
-          m.id === msgId ? { ...m, content: editingText } : m
+          m.id === msgId ? { ...m, content: updatedMsg.content, is_edited: true } : m
         );
       }
       setEditingMessageId(null);
@@ -770,6 +771,18 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
         return nextMessages;
       });
       updateSidebarConversation(conversationId, message.content, message.created_at);
+    });
+
+    socket.on("message_edited", (editedMessage) => {
+      setMessages((prev) => {
+        const nextMessages = prev.map((msg) =>
+          msg.id === editedMessage.id
+            ? { ...msg, content: editedMessage.content, is_edited: true }
+            : msg
+        );
+        globalMessageCache[conversationId] = nextMessages;
+        return nextMessages;
+      });
     });
 
     return () => {
@@ -1366,6 +1379,14 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
                                   }}
                                 >
                                   {renderMessageText(msg.content)}
+                                  {msg.is_edited && (
+                                    <span 
+                                      className="text-muted ms-2 select-none" 
+                                      style={{ fontSize: "10px", opacity: 0.7 }}
+                                    >
+                                      (edited)
+                                    </span>
+                                  )}
                                 </p>
                               </>
                             )}
