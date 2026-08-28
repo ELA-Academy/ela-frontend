@@ -9,7 +9,7 @@ const DeleteConfirmModal = ({
   title = "Delete Confirmation",
   message = "Are you sure you want to permanently delete this item? This action cannot be undone.",
   confirmText = "Delete",
-  loading = False
+  loading = false
 }) => {
   return (
     <Modal
