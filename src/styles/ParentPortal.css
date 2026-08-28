@@ -25,7 +25,7 @@
 }
 
 .parent-sidebar-header {
-  padding: 1.25rem 1.5rem;
+  padding: 1rem 1.25rem;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -33,10 +33,40 @@
   height: 72px;
 }
 
+.parent-logo-badge {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+}
+
 .parent-sidebar-logo {
-  max-height: 38px;
+  max-height: 32px;
+  max-width: 32px;
   width: auto;
   object-fit: contain;
+}
+
+.parent-sidebar-brand-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.parent-sidebar-brand-subtitle {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #673de6;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .parent-sidebar-nav {
@@ -666,22 +696,74 @@
   border-color: #111827;
 }
 
+/* Bottom Navigation Bar for Mobile */
+.parent-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background-color: #ffffff;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 8px calc(env(safe-area-inset-bottom, 0px));
+  z-index: 1000;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.04);
+}
+
+.parent-bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  text-decoration: none;
+  color: #64748b;
+  flex: 1;
+  padding: 6px 0;
+  transition: all 0.15s ease;
+  border-radius: 8px;
+}
+
+.parent-bottom-nav-icon-wrap {
+  width: 32px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  transition: all 0.2s ease;
+}
+
+.parent-bottom-nav-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.parent-bottom-nav-item.active {
+  color: #673de6;
+}
+
+.parent-bottom-nav-item.active .parent-bottom-nav-icon-wrap {
+  background-color: #f0ebff;
+  color: #673de6;
+}
+
+.parent-bottom-nav-item.active .parent-bottom-nav-label {
+  font-weight: 700;
+  color: #673de6;
+}
+
 /* Responsive Mobile Rules */
 @media (max-width: 900px) {
   .parent-dashboard-grid {
     grid-template-columns: 1fr;
   }
 
-  .parent-sidebar {
-    position: fixed;
-    transform: translateX(-100%);
-  }
-
-  .parent-sidebar.open {
-    transform: translateX(0);
-  }
-
   .parent-content-pane {
-    padding: 1rem;
+    padding: 1rem 1rem 84px 1rem;
   }
 }

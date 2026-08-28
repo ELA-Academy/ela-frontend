@@ -19,15 +19,18 @@ const ParentHeader = ({ onToggleSidebar, activeStudent, onSelectStudent, childre
 
   return (
     <header className="parent-header">
-      <div className="d-flex align-items-center gap-3">
-        <button
-          onClick={onToggleSidebar}
-          className="d-md-none btn p-0 border-0 text-dark"
-          aria-label="Toggle Sidebar"
-        >
-          <Menu size={22} />
-        </button>
-        <span className="parent-header-school-name d-none d-sm-inline">
+      <div className="d-flex align-items-center gap-2">
+        <div className="parent-logo-badge d-md-none">
+          <img
+            src="/images/ELA-logo.png"
+            alt="ELA Academy Logo"
+            className="parent-sidebar-logo"
+          />
+        </div>
+        <span className="parent-header-school-name d-md-none" style={{ fontSize: "0.92rem", fontWeight: 700 }}>
+          ELA Academy
+        </span>
+        <span className="parent-header-school-name d-none d-md-inline">
           Exceptional Learning and Arts Academy
         </span>
       </div>

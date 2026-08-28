@@ -35,19 +35,21 @@ const ParentSidebar = ({ open, onClose }) => {
         />
       )}
 
-      <aside className={`parent-sidebar ${open ? "open" : ""}`}>
+      <aside className="parent-sidebar d-none d-md-flex">
         <div className="parent-sidebar-header">
-          <img
-            src="/images/ELA-logo.png"
-            alt="ELA Academy Logo"
-            className="parent-sidebar-logo"
-          />
-          <button
-            onClick={onClose}
-            className="d-md-none ms-auto btn p-0 border-0 text-muted"
-          >
-            <X size={20} />
-          </button>
+          <div className="d-flex align-items-center gap-2">
+            <div className="parent-logo-badge">
+              <img
+                src="/images/ELA-logo.png"
+                alt="ELA Academy Logo"
+                className="parent-sidebar-logo"
+              />
+            </div>
+            <div className="d-flex flex-column">
+              <span className="parent-sidebar-brand-title">ELA ACADEMY</span>
+              <span className="parent-sidebar-brand-subtitle">Parent Portal</span>
+            </div>
+          </div>
         </div>
 
         <nav className="parent-sidebar-nav">
