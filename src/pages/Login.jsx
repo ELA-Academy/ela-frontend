@@ -7,7 +7,7 @@ import "../styles/AuthForms.css"; // Import the new styles
 
 const Login = () => {
   const navigate = useNavigate();
-  const { staffLogin, verifyOtpLogin, isAuthenticated, loading } = useAuth();
+  const { staffLogin, verifyOtpLogin, isAuthenticated, loading, user } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -49,8 +49,16 @@ const Login = () => {
         setOtpRequired(true);
         setRole(res.role || "staff");
       } else {
-        // The redirect logic is now handled in AdminLayout,
-        // so we just navigate to the base admin path.
+        const token = localStorage.getItem("authToken");
+        if (token) {
+          try {
+            const decoded = JSON.parse(atob(token.split('.')[1]));
+            if (decoded.role === 'parent') {
+              navigate("/parent/payments");
+              return;
+            }
+          } catch (e) {}
+        }
         navigate("/admin");
       }
     } catch (err) {
@@ -69,6 +77,16 @@ const Login = () => {
     setSubmitting(true);
     try {
       await verifyOtpLogin(email, otp, role, rememberDevice);
+      const token = localStorage.getItem("authToken");
+      if (token) {
+        try {
+          const decoded = JSON.parse(atob(token.split('.')[1]));
+          if (decoded.role === 'parent') {
+            navigate("/parent/payments");
+            return;
+          }
+        } catch (e) {}
+      }
       navigate("/admin");
     } catch (err) {
       setError(
@@ -80,8 +98,11 @@ const Login = () => {
     }
   };
 
-  // If loading is finished and user is authenticated, redirect them.
+  // If loading is finished and user is authenticated, redirect them based on role.
   if (!loading && isAuthenticated) {
+    if (user?.role === 'parent') {
+      return <Navigate to="/parent/payments" replace />;
+    }
     return <Navigate to="/admin" replace />;
   }
 

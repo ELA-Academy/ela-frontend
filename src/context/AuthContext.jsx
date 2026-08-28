@@ -52,7 +52,8 @@ export const AuthProvider = ({ children }) => {
 
       activeSocket.on("connect", () => {
         console.log("Global notification socket connected");
-        const roomName = `user_${user.role === 'superadmin' ? 'superadmin' : 'staff'}_${user.id}`;
+        const rolePrefix = user.role === 'superadmin' ? 'superadmin' : user.role === 'parent' ? 'parent' : 'staff';
+        const roomName = `user_${rolePrefix}_${user.id}`;
         activeSocket.emit("join", { conversation_id: roomName });
       });
 
@@ -193,24 +194,43 @@ export const AuthProvider = ({ children }) => {
           setUser(initialUser);
           setIsAuthenticated(true);
 
-          // Fetch fresh profile in background to sync newly assigned departments instantly
-          api.get("/profile")
-            .then((res) => {
-              if (res.data) {
-                const freshDeps = res.data.departments || [];
-                setUser({
-                  id: decoded.id,
-                  email: decoded.sub,
-                  name: res.data.name || decoded.name,
-                  role: decoded.role,
-                  departmentNames: freshDeps,
-                  dashboardRoutes: decoded.dashboardRoutes || [],
-                });
-              }
-            })
-            .catch((err) => {
-              console.error("Failed to sync fresh profile departments:", err);
-            });
+          if (decoded.role === 'parent') {
+            api.get("/parent/me")
+              .then((res) => {
+                if (res.data) {
+                  setUser({
+                    id: decoded.id,
+                    email: decoded.sub,
+                    name: `${res.data.first_name} ${res.data.last_name}`,
+                    role: 'parent',
+                    children: res.data.children || [],
+                    sign_in_pin: res.data.sign_in_pin
+                  });
+                }
+              })
+              .catch((err) => {
+                console.error("Failed to sync parent profile:", err);
+              });
+          } else {
+            // Fetch fresh profile in background to sync newly assigned departments instantly
+            api.get("/profile")
+              .then((res) => {
+                if (res.data) {
+                  const freshDeps = res.data.departments || [];
+                  setUser({
+                    id: decoded.id,
+                    email: decoded.sub,
+                    name: res.data.name || decoded.name,
+                    role: decoded.role,
+                    departmentNames: freshDeps,
+                    dashboardRoutes: decoded.dashboardRoutes || [],
+                  });
+                }
+              })
+              .catch((err) => {
+                console.error("Failed to sync fresh profile departments:", err);
+              });
+          }
         } else {
           logout();
         }
