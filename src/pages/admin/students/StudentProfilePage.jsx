@@ -370,32 +370,41 @@ const StudentProfilePage = () => {
                               <span className="text-slate-800">{parent.phone || "—"}</span>
                             </div>
                             <div className="d-flex">
-                              <span className="fw-bold text-slate-400" style={{ width: "120px" }}>SIGN IN PIN</span>
-                              <span className="text-slate-800 fw-bold">{parent.sign_in_pin || "2963"}</span>
-                            </div>
-                            <div className="d-flex">
                               <span className="fw-bold text-slate-400" style={{ width: "120px" }}>PORTAL ACCESS</span>
-                              <span className="text-success fw-bold">Active</span>
+                              {parent.is_active ? (
+                                <span className="text-success fw-bold">Active</span>
+                              ) : (
+                                <span className="text-warning fw-bold">Pending</span>
+                              )}
                             </div>
                           </div>
 
                           <div className="mt-3 pt-2 border-top d-flex justify-content-end">
-                            <Button
-                              variant="outline-secondary"
-                              size="sm"
-                              className="d-flex align-items-center gap-1"
-                              style={{ fontSize: "11px", fontWeight: 600 }}
-                              onClick={async () => {
-                                try {
-                                  const res = await api.post(`/parent/admin/${parent.id}/resend-invite`);
-                                  showSuccess(res.data?.message || "Portal setup email sent to parent!");
-                                } catch (err) {
-                                  showError(err.response?.data?.error || "Failed to send invite email.");
-                                }
-                              }}
-                            >
-                              <Mail size={12} /> Send Portal Invite
-                            </Button>
+                            {parent.is_active ? (
+                              <span
+                                className="d-flex align-items-center gap-1 text-success"
+                                style={{ fontSize: "11px", fontWeight: 600 }}
+                              >
+                                <CheckCircle size={13} /> Portal Active
+                              </span>
+                            ) : (
+                              <Button
+                                variant="outline-secondary"
+                                size="sm"
+                                className="d-flex align-items-center gap-1"
+                                style={{ fontSize: "11px", fontWeight: 600 }}
+                                onClick={async () => {
+                                  try {
+                                    const res = await api.post(`/parent/admin/${parent.id}/resend-invite`);
+                                    showSuccess(res.data?.message || "Portal setup email sent to parent!");
+                                  } catch (err) {
+                                    showError(err.response?.data?.error || "Failed to send invite email.");
+                                  }
+                                }}
+                              >
+                                <Mail size={12} /> Send Portal Invite
+                              </Button>
+                            )}
                           </div>
                         </Card.Body>
                       </Card>

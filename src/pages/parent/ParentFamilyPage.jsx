@@ -7,8 +7,7 @@ import {
   UserCheck,
   Phone,
   Mail,
-  Plus,
-  KeyRound
+  Plus
 } from "lucide-react";
 import api from "../../utils/api";
 import { Link } from "react-router-dom";
@@ -62,31 +61,24 @@ const ParentFamilyPage = () => {
           </div>
 
           <div className="row g-3">
-            <div className="col-md-3">
+            <div className="col-md-4">
               <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 600 }}>PARENT NAME</div>
               <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0f172a" }}>
                 {parent.first_name} {parent.last_name}
               </div>
             </div>
-            <div className="col-md-3">
+            <div className="col-md-4">
               <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 600 }}>EMAIL ADDRESS</div>
               <div style={{ fontSize: "0.9rem", color: "#0f172a" }} className="d-flex align-items-center gap-1">
                 <Mail size={13} className="text-muted" />
                 <span>{parent.email}</span>
               </div>
             </div>
-            <div className="col-md-3">
+            <div className="col-md-4">
               <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 600 }}>PHONE NUMBER</div>
               <div style={{ fontSize: "0.9rem", color: "#0f172a" }} className="d-flex align-items-center gap-1">
                 <Phone size={13} className="text-muted" />
                 <span>{parent.phone}</span>
-              </div>
-            </div>
-            <div className="col-md-3">
-              <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 600 }}>MY SIGN-IN PIN</div>
-              <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#0284c7" }} className="d-flex align-items-center gap-1">
-                <KeyRound size={15} />
-                <span>{parent.sign_in_pin}</span>
               </div>
             </div>
           </div>
