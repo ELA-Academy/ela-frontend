@@ -69,7 +69,7 @@ const ManageParents = () => {
       setError("");
       const [parentsRes, studentsRes] = await Promise.all([
         api.get("/parent/admin/all"),
-        api.get("/students")
+        api.get("/students/")
       ]);
       setParentsList(Array.isArray(parentsRes.data) ? parentsRes.data : []);
       setStudentsList(Array.isArray(studentsRes.data) ? studentsRes.data : []);
