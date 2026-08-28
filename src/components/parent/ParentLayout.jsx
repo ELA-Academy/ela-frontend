@@ -2,11 +2,11 @@ import React, { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import ParentSidebar from "./ParentSidebar";
 import ParentHeader from "./ParentHeader";
+import ParentBottomNav from "./ParentBottomNav";
 import api from "../../utils/api";
 import "../../styles/ParentPortal.css";
 
 const ParentLayout = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [childrenList, setChildrenList] = useState([]);
   const [activeStudent, setActiveStudent] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -31,11 +31,10 @@ const ParentLayout = () => {
 
   return (
     <div className="parent-app-container">
-      <ParentSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <ParentSidebar />
       
       <div className="parent-main">
         <ParentHeader
-          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           activeStudent={activeStudent}
           onSelectStudent={setActiveStudent}
           childrenList={childrenList}
@@ -44,6 +43,8 @@ const ParentLayout = () => {
         <main className="parent-content-pane">
           <Outlet context={{ activeStudent, setActiveStudent, childrenList }} />
         </main>
+
+        <ParentBottomNav />
       </div>
     </div>
   );
