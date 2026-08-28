@@ -14,7 +14,7 @@ const AdminOrITRoute = () => {
     user.role === "superadmin" || (
       user.role === "staff" && Array.isArray(user.departmentNames) &&
       user.departmentNames.some((name) =>
-        /\b(it|information technology|info tech|tech)\b/i.test((name || "").trim())
+        /\b(it|information technology|info tech|tech|administration|admin)\b/i.test((name || "").trim())
       )
     )
   );

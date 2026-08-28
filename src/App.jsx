@@ -21,6 +21,7 @@ import DashboardOverview from "./pages/admin/DashboardOverview";
 import SettingsPage from "./pages/admin/SettingsPage";
 import ManageDepartments from "./pages/admin/ManageDepartments";
 import ManageStaff from "./pages/admin/ManageStaff";
+import ManageParents from "./pages/admin/administration/ManageParents";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SuperAdminRoute from "./components/SuperAdminRoute";
@@ -65,6 +66,14 @@ import WorkspaceLayout from "./components/admin/workspace/WorkspaceLayout";
 import AdmissionsLayout from "./components/admin/admissions/AdmissionsLayout";
 import AccountingLayout from "./components/admin/accounting/AccountingLayout";
 import AdministrationLayout from "./components/admin/administration/AdministrationLayout";
+
+// Parent Portal
+import ParentRoute from "./components/ParentRoute";
+import ParentLayout from "./components/parent/ParentLayout";
+import ParentDashboardPage from "./pages/parent/ParentDashboardPage";
+import ParentPaymentsPage from "./pages/parent/ParentPaymentsPage";
+import ParentDocumentsPage from "./pages/parent/ParentDocumentsPage";
+import ParentFamilyPage from "./pages/parent/ParentFamilyPage";
 
 function App() {
   return (
@@ -185,10 +194,23 @@ function App() {
                   </Route>
                   <Route element={<AdminOrITRoute />}>
                     <Route path="administration/staff" element={<ManageStaff />} />
+                    <Route path="administration/parents" element={<ManageParents />} />
                   </Route>
                 </Route>
                 <Route path="my-dashboard" element={<GenericDashboard />} />
                 <Route path="*" element={<NotFound />} />
+              </Route>
+            </Route>
+
+            {/* Parent Portal Routes */}
+            <Route element={<ParentRoute />}>
+              <Route path="/parent" element={<ParentLayout />}>
+                <Route index element={<Navigate to="payments" replace />} />
+                <Route path="dashboard" element={<ParentDashboardPage />} />
+                <Route path="payments" element={<ParentPaymentsPage />} />
+                <Route path="documents" element={<ParentDocumentsPage />} />
+                <Route path="family" element={<ParentFamilyPage />} />
+                <Route path="*" element={<Navigate to="payments" replace />} />
               </Route>
             </Route>
 
