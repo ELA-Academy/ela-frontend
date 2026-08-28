@@ -72,7 +72,36 @@ import "../../styles/Boards.css";
 const formatDescriptionHtml = (html) => {
   if (!html || typeof html !== "string") return "";
   try {
-    return html.replace(/(href="|src="|href='|src=')?(\/static\/uploads\/[^\s<"']+|https?:\/\/[^\s<"']+)/gi, (match, attr, url) => {
+    let content = html;
+
+    // Detect if content is raw markdown/text (not already HTML tags-heavy)
+    const isMarkdownLike = !content.includes('<table') && !content.includes('<div') && 
+      (content.includes('### ') || content.includes('**') || /^- /m.test(content));
+
+    if (isMarkdownLike) {
+      // Convert markdown headings
+      content = content.replace(/^### (.+)$/gm, '<h5 style="font-weight:700;color:#0f172a;margin:0 0 10px 0;font-size:14px;border-bottom:1px solid #e2e8f0;padding-bottom:8px;">$1</h5>');
+      content = content.replace(/^## (.+)$/gm, '<h4 style="font-weight:700;color:#0f172a;margin:0 0 10px 0;font-size:15px;">$1</h4>');
+
+      // Convert bold **text**
+      content = content.replace(/\*\*([^*]+)\*\*/g, '<strong style="color:#334155;">$1</strong>');
+
+      // Convert list items: "- label: value" → styled row
+      content = content.replace(/^- (.+)$/gm, (match, inner) => {
+        // Check if it's a key: value pair
+        const kvMatch = inner.match(/^(<strong[^>]*>[^<]+<\/strong>):\s*(.+)$/);
+        if (kvMatch) {
+          return `<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid #f1f5f9;font-size:13px;"><span style="min-width:140px;color:#64748b;font-weight:600;flex-shrink:0;">${kvMatch[1]}</span><span style="color:#0f172a;word-break:break-word;">${kvMatch[2]}</span></div>`;
+        }
+        return `<div style="padding:4px 0;font-size:13px;color:#334155;">• ${inner}</div>`;
+      });
+
+      // Wrap in a styled container
+      content = `<div style="background:#fafbfc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;">${content}</div>`;
+    }
+
+    // Handle URLs / file links
+    content = content.replace(/(href="|src="|href='|src=')?(\/?static\/uploads\/[^\s<"']+|https?:\/\/[^\s<"']+)/gi, (match, attr, url) => {
       if (attr) return match;
       const fname = url.split('/').pop() || 'View File';
       const isImg = /\.(png|jpe?g|gif|svg|webp)($|\?)/i.test(url) || url.toLowerCase().includes('signature');
@@ -80,10 +109,13 @@ const formatDescriptionHtml = (html) => {
       const imgTag = isImg ? `<br/><a href="${url}" target="_blank" rel="noopener noreferrer" style="display: inline-block; margin-top: 6px;"><img src="${url}" alt="Attachment" style="max-height: 120px; max-width: 280px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px; background-color: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.1);" /></a>` : '';
       return `${linkTag}${imgTag}`;
     });
+
+    return content;
   } catch (err) {
     return String(html || "");
   }
 };
+
 
 const DrawerCustomFieldTextInput = ({ initialValue, type, onSave, className, placeholder }) => {
   const [val, setVal] = useState(initialValue || "");
