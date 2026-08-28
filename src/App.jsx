@@ -66,6 +66,14 @@ import AdmissionsLayout from "./components/admin/admissions/AdmissionsLayout";
 import AccountingLayout from "./components/admin/accounting/AccountingLayout";
 import AdministrationLayout from "./components/admin/administration/AdministrationLayout";
 
+// Parent Portal
+import ParentRoute from "./components/ParentRoute";
+import ParentLayout from "./components/parent/ParentLayout";
+import ParentDashboardPage from "./pages/parent/ParentDashboardPage";
+import ParentPaymentsPage from "./pages/parent/ParentPaymentsPage";
+import ParentDocumentsPage from "./pages/parent/ParentDocumentsPage";
+import ParentFamilyPage from "./pages/parent/ParentFamilyPage";
+
 function App() {
   return (
     <ErrorBoundary>
@@ -189,6 +197,18 @@ function App() {
                 </Route>
                 <Route path="my-dashboard" element={<GenericDashboard />} />
                 <Route path="*" element={<NotFound />} />
+              </Route>
+            </Route>
+
+            {/* Parent Portal Routes */}
+            <Route element={<ParentRoute />}>
+              <Route path="/parent" element={<ParentLayout />}>
+                <Route index element={<Navigate to="payments" replace />} />
+                <Route path="dashboard" element={<ParentDashboardPage />} />
+                <Route path="payments" element={<ParentPaymentsPage />} />
+                <Route path="documents" element={<ParentDocumentsPage />} />
+                <Route path="family" element={<ParentFamilyPage />} />
+                <Route path="*" element={<Navigate to="payments" replace />} />
               </Route>
             </Route>
 
