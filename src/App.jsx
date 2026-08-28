@@ -21,6 +21,7 @@ import DashboardOverview from "./pages/admin/DashboardOverview";
 import SettingsPage from "./pages/admin/SettingsPage";
 import ManageDepartments from "./pages/admin/ManageDepartments";
 import ManageStaff from "./pages/admin/ManageStaff";
+import ManageParents from "./pages/admin/administration/ManageParents";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SuperAdminRoute from "./components/SuperAdminRoute";
@@ -193,6 +194,7 @@ function App() {
                   </Route>
                   <Route element={<AdminOrITRoute />}>
                     <Route path="administration/staff" element={<ManageStaff />} />
+                    <Route path="administration/parents" element={<ManageParents />} />
                   </Route>
                 </Route>
                 <Route path="my-dashboard" element={<GenericDashboard />} />

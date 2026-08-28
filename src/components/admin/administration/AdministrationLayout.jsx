@@ -108,6 +108,16 @@ const AdministrationLayout = () => {
                 </span>
               </NavLink>
 
+              <NavLink 
+                to="/admin/administration/parents"
+                className={({ isActive }) => `workspace-secondary-link ${isActive ? 'active' : ''}`}
+              >
+                <span className="workspace-secondary-link-icon"><Users size={15} /></span>
+                <span className="workspace-secondary-link-text">
+                  <span className="workspace-secondary-link-title">Parent Accounts</span>
+                </span>
+              </NavLink>
+
               {user?.role === "superadmin" && (
                 <>
                   <NavLink 
