@@ -337,9 +337,19 @@ const StudentProfilePage = () => {
 
               {/* Parents Section */}
               <div>
-                <h4 className="fw-bold text-slate-800 mb-3" style={{ fontSize: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
-                  <UserCheck size={18} className="text-slate-500" /> Associated Parents / Guardians
-                </h4>
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <h4 className="fw-bold text-slate-800 m-0" style={{ fontSize: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <UserCheck size={18} className="text-slate-500" /> Associated Parents / Guardians
+                  </h4>
+                  <Link
+                    to="/admin/administration/parents"
+                    className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
+                    style={{ fontSize: "11px", fontWeight: 700 }}
+                  >
+                    <Plus size={13} /> Manage / Add Parents
+                  </Link>
+                </div>
+
                 <Row className="g-3">
                   {student.parents?.map((parent) => (
                     <Col md={6} key={parent.id}>
@@ -347,7 +357,7 @@ const StudentProfilePage = () => {
                         <Card.Body className="p-3">
                           <div className="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
                             <span className="fw-bold text-slate-800" style={{ fontSize: "14px" }}>{parent.first_name} {parent.last_name}</span>
-                            <span className="text-slate-400 small" style={{ fontSize: "11px" }}>Primary Contact</span>
+                            <span className="badge bg-light text-dark border" style={{ fontSize: "10px" }}>Primary Contact</span>
                           </div>
 
                           <div className="space-y-2 text-slate-600" style={{ fontSize: "12px" }}>
@@ -357,26 +367,35 @@ const StudentProfilePage = () => {
                             </div>
                             <div className="d-flex">
                               <span className="fw-bold text-slate-400" style={{ width: "120px" }}>PHONE</span>
-                              <span className="text-slate-800">{parent.phone}</span>
-                            </div>
-                            <div className="d-flex">
-                              <span className="fw-bold text-slate-400" style={{ width: "120px" }}>RELATION</span>
-                              <span className="text-slate-800">—</span>
+                              <span className="text-slate-800">{parent.phone || "—"}</span>
                             </div>
                             <div className="d-flex">
                               <span className="fw-bold text-slate-400" style={{ width: "120px" }}>SIGN IN PIN</span>
-                              <span className="text-slate-800 fw-bold">6154</span>
-                            </div>
-                            <div className="d-flex align-items-center">
-                              <span className="fw-bold text-slate-400" style={{ width: "120px" }}>EMERGENCY</span>
-                              <span style={{ width: "24px", height: "14px", borderRadius: "99px", backgroundColor: "#0284c7", display: "inline-block", position: "relative" }}>
-                                <span style={{ width: "10px", height: "10px", borderRadius: "50%", backgroundColor: "#fff", display: "inline-block", position: "absolute", right: "2px", top: "2px" }} />
-                              </span>
+                              <span className="text-slate-800 fw-bold">{parent.sign_in_pin || "2963"}</span>
                             </div>
                             <div className="d-flex">
-                              <span className="fw-bold text-slate-400" style={{ width: "120px" }}>2-STEP VERIFICATION</span>
-                              <span className="text-slate-400 text-uppercase fw-bold" style={{ fontSize: "10px" }}>Not set up</span>
+                              <span className="fw-bold text-slate-400" style={{ width: "120px" }}>PORTAL ACCESS</span>
+                              <span className="text-success fw-bold">Active</span>
                             </div>
+                          </div>
+
+                          <div className="mt-3 pt-2 border-top d-flex justify-content-end">
+                            <Button
+                              variant="outline-secondary"
+                              size="sm"
+                              className="d-flex align-items-center gap-1"
+                              style={{ fontSize: "11px", fontWeight: 600 }}
+                              onClick={async () => {
+                                try {
+                                  const res = await api.post(`/parent/admin/${parent.id}/resend-invite`);
+                                  showSuccess(res.data?.message || "Portal setup email sent to parent!");
+                                } catch (err) {
+                                  showError(err.response?.data?.error || "Failed to send invite email.");
+                                }
+                              }}
+                            >
+                              <Mail size={12} /> Send Portal Invite
+                            </Button>
                           </div>
                         </Card.Body>
                       </Card>
@@ -384,7 +403,14 @@ const StudentProfilePage = () => {
                   ))}
                   {(!student.parents || student.parents.length === 0) && (
                     <Col>
-                      <p className="text-muted text-center py-3">No parents associated with this student profile.</p>
+                      <Card className="shadow-sm border-0 py-3 px-4 text-center">
+                        <p className="text-muted mb-2" style={{ fontSize: "13px" }}>No parents associated with this student profile.</p>
+                        <div>
+                          <Link to="/admin/administration/parents" className="btn btn-sm btn-outline-primary" style={{ fontSize: "12px" }}>
+                            <Plus size={13} className="me-1" /> Create & Link Parent Account
+                          </Link>
+                        </div>
+                      </Card>
                     </Col>
                   )}
                 </Row>
