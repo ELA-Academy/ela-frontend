@@ -190,8 +190,13 @@ const ParentPaymentsPage = () => {
           <div className="d-flex align-items-center gap-4 flex-wrap">
             <div className="parent-summary-metric">
               <span className="parent-summary-metric-label">Current Balance</span>
-              <span className="parent-summary-metric-value">
-                ${currentBalance.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+              <span className="parent-summary-metric-value" style={{ color: currentBalance < 0 ? "#059669" : "#0f172a" }}>
+                ${Math.max(0, currentBalance).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                {currentBalance < 0 && (
+                  <small style={{ fontSize: "0.75rem", display: "block", color: "#059669", fontWeight: 600 }}>
+                    (${Math.abs(currentBalance).toFixed(2)} Credit)
+                  </small>
+                )}
               </span>
             </div>
 
@@ -218,6 +223,103 @@ const ParentPaymentsPage = () => {
             <CreditCard size={17} />
             <span>MAKE PAYMENT</span>
           </button>
+        </div>
+      </div>
+
+      {/* Saved Payment Methods Section */}
+      <div className="parent-table-container mb-4">
+        <div className="parent-table-header-row">
+          <div>
+            <span style={{ fontSize: "1.05rem", fontWeight: 700, color: "#0f172a" }}>
+              Saved Payment Methods
+            </span>
+            <p className="text-muted mb-0" style={{ fontSize: "0.78rem" }}>
+              Manage your credit/debit cards on file. The default method will be used for 1-click payments and auto-billing.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setAddPmModalOpen(true)}
+            className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1.5 px-3 py-1.5"
+            style={{ borderRadius: "8px", fontWeight: 600, fontSize: "0.82rem" }}
+          >
+            <Plus size={15} />
+            <span>Add Payment Method</span>
+          </button>
+        </div>
+
+        <div className="p-3">
+          {paymentMethods.length > 0 ? (
+            <div className="row g-3">
+              {paymentMethods.map((pm) => (
+                <div key={pm.id} className="col-12 col-md-6">
+                  <div 
+                    className={`parent-pm-card ${pm.is_default ? "selected" : ""}`}
+                    style={{ background: "#ffffff", border: pm.is_default ? "2px solid #673de6" : "1px solid #e2e8f0" }}
+                  >
+                    <div className="parent-pm-left">
+                      <div className="parent-pm-icon" style={{ background: pm.is_default ? "#f0ebff" : "#f1f5f9", color: pm.is_default ? "#673de6" : "#475569" }}>
+                        {pm.method_type === 'bank_account' ? <Building2 size={20} /> : <CreditCard size={20} />}
+                      </div>
+                      <div>
+                        <div className="parent-pm-title" style={{ fontSize: "0.95rem" }}>
+                          •••• •••• •••• {pm.last4}
+                        </div>
+                        <div className="parent-pm-subtitle text-muted" style={{ fontSize: "0.78rem" }}>
+                          {pm.card_brand || "Card"} {pm.exp_month && pm.exp_year ? `• Exp ${pm.exp_month}/${pm.exp_year}` : ""}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="d-flex align-items-center gap-2">
+                      {pm.is_default ? (
+                        <span className="parent-badge-default" style={{ background: "#f0ebff", color: "#673de6", fontWeight: 700, fontSize: "0.72rem", padding: "4px 8px", borderRadius: "6px" }}>
+                          DEFAULT
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleSetDefaultPm(pm.id)}
+                          className="btn btn-sm btn-light border py-1 px-2 text-primary"
+                          style={{ fontSize: "0.75rem", fontWeight: 600, borderRadius: "6px" }}
+                        >
+                          Make Default
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeletePm(pm.id)}
+                        className="btn btn-sm btn-light border py-1 px-2 text-danger"
+                        title="Remove method"
+                        style={{ borderRadius: "6px" }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-4 px-3 bg-light rounded-3 border">
+              <CreditCard size={32} className="text-muted mb-2 opacity-50" />
+              <p className="mb-2" style={{ fontSize: "0.88rem", fontWeight: 600, color: "#334155" }}>
+                No payment method saved yet
+              </p>
+              <p className="text-muted mb-3" style={{ fontSize: "0.78rem", maxWidth: "360px", margin: "0 auto" }}>
+                Save your card securely for faster checkout and easy tuition payments.
+              </p>
+              <button
+                onClick={() => setAddPmModalOpen(true)}
+                className="btn btn-sm btn-primary px-3 py-1.5"
+                style={{ borderRadius: "8px", fontWeight: 600, fontSize: "0.82rem" }}
+              >
+                <Plus size={15} className="me-1" />
+                Add Your First Card
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -303,14 +405,19 @@ const ParentPaymentsPage = () => {
                     </td>
 
                     <td>
-                      <span className={`parent-amount-badge ${tx.amount < 0 ? "negative" : "positive"}`}>
+                      <span className={`parent-amount-badge ${tx.type === 'Payment' || tx.type === 'Credit' ? 'negative' : 'positive'}`}>
                         <CheckCircle2 size={13} />
-                        <span>${tx.amount.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+                        <span>${Math.abs(tx.amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </span>
                     </td>
 
-                    <td style={{ fontWeight: 700, color: "#0f172a" }}>
-                      ${tx.balance.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                    <td style={{ fontWeight: 700, color: tx.balance < 0 ? "#059669" : "#0f172a" }}>
+                      ${Math.max(0, tx.balance).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {tx.balance < 0 && (
+                        <span style={{ fontSize: "0.75rem", color: "#059669", marginLeft: "4px" }}>
+                          (Credit)
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}

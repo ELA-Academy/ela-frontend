@@ -118,39 +118,19 @@ const ParentDashboardPage = () => {
           {/* Bill Amount Card */}
           <div className="parent-widget-card">
             <div className="parent-widget-label">BILL AMOUNT</div>
-            <div className="parent-widget-balance">
-              ${balanceAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <div className="parent-widget-balance" style={{ color: balanceAmount < 0 ? "#059669" : "#0f172a" }}>
+              ${Math.max(0, balanceAmount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
-            <div className="parent-widget-subtext">CURRENT BALANCE</div>
+            <div className="parent-widget-subtext">
+              {balanceAmount < 0 
+                ? `$${Math.abs(balanceAmount).toFixed(2)} Credit on Account`
+                : "CURRENT BALANCE"}
+            </div>
 
             <Link to="/parent/payments" className="btn-parent-primary">
               <CreditCard size={16} />
-              <span>PAY NOW</span>
+              <span>{balanceAmount < 0 ? "MAKE PAYMENT" : "PAY NOW"}</span>
             </Link>
-          </div>
-
-          {/* Sign-in PIN Card */}
-          <div className="parent-widget-card">
-            <div className="parent-widget-label">SIGN-IN PIN</div>
-            <div className="parent-pin-badge mt-2 mb-3">
-              <div className="parent-pin-icon">
-                <KeyRound size={16} />
-              </div>
-              <div className="d-flex flex-column">
-                <span className="parent-pin-digits">{pin}</span>
-                <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600 }}>MY SIGN-IN PIN</span>
-              </div>
-              <button
-                onClick={() => handleCopyPin(pin)}
-                className="btn btn-sm btn-light ms-auto border"
-                title="Copy PIN"
-              >
-                {copiedPin ? <Check size={14} color="#059669" /> : <Copy size={14} />}
-              </button>
-            </div>
-            <div style={{ fontSize: "0.75rem", color: "#64748b", lineHeight: 1.4 }}>
-              Use this 4-digit code at the reception kiosk to sign your child in and out.
-            </div>
           </div>
 
           {/* Another Child / Register Card */}
