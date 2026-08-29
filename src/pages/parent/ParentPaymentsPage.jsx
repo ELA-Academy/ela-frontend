@@ -87,14 +87,18 @@ const ParentPaymentsPage = () => {
   };
 
   const handleOpenMakePayment = (invoice = null) => {
-    setSelectedInvoice(invoice);
-    if (invoice) {
-      setPayAmount(invoice.amount.toString());
+    // If called directly from an onClick event handler without an invoice, ignore the event object
+    const targetInvoice = (invoice && typeof invoice === 'object' && 'amount' in invoice && !invoice.nativeEvent) ? invoice : null;
+    setSelectedInvoice(targetInvoice);
+
+    if (targetInvoice && targetInvoice.amount !== undefined && targetInvoice.amount !== null) {
+      setPayAmount(targetInvoice.amount.toString());
     } else {
       const defaultAmount = paymentsData?.summary?.current_balance > 0 ? paymentsData.summary.current_balance : 0;
-      setPayAmount(defaultAmount.toString());
+      setPayAmount(defaultAmount !== undefined && defaultAmount !== null ? defaultAmount.toString() : "0");
     }
-    if (paymentMethods.length > 0) {
+
+    if (paymentMethods && paymentMethods.length > 0) {
       setUseSavedMethod(true);
     } else {
       setUseSavedMethod(false);
@@ -207,7 +211,7 @@ const ParentPaymentsPage = () => {
           </div>
 
           <button
-            onClick={handleOpenMakePayment}
+            onClick={() => handleOpenMakePayment()}
             className="btn-parent-primary"
             style={{ width: "auto", padding: "0.75rem 1.75rem", fontSize: "0.92rem", letterSpacing: "0.02em" }}
           >
