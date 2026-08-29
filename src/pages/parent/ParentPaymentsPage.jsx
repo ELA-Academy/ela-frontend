@@ -13,8 +13,13 @@ import {
   ShieldCheck,
   Trash2,
   ArrowDownLeft,
-  ArrowUpRight
+  ArrowUpRight,
+  Lock
 } from "lucide-react";
+import { Elements } from "@stripe/react-stripe-js";
+import { getStripe } from "../../utils/stripe";
+import StripeCardSetupForm from "../../components/parent/StripeCardSetupForm";
+import StripeCardPayForm from "../../components/parent/StripeCardPayForm";
 import api from "../../utils/api";
 import { toast } from "react-toastify";
 
@@ -23,6 +28,7 @@ const ParentPaymentsPage = () => {
   const [paymentsData, setPaymentsData] = useState(null);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [stripePromise, setStripePromise] = useState(null);
 
   // Modal States
   const [makePaymentModalOpen, setMakePaymentModalOpen] = useState(false);
@@ -32,24 +38,16 @@ const ParentPaymentsPage = () => {
   // Payment Form States
   const [payAmount, setPayAmount] = useState("");
   const [selectedPm, setSelectedPm] = useState(null);
-  const [submittingPayment, setSubmittingPayment] = useState(false);
-
-  // Add PM Form States
-  const [pmType, setPmType] = useState("bank_account"); // 'bank_account' or 'card'
-  const [bankName, setBankName] = useState("");
-  const [accountNumber, setAccountNumber] = useState("");
-  const [routingNumber, setRoutingNumber] = useState("");
-  const [accountHolder, setAccountHolder] = useState("");
-  const [cardBrand, setCardBrand] = useState("Visa");
-  const [cardNumber, setCardNumber] = useState("");
-  const [expMonth, setExpMonth] = useState("12");
-  const [expYear, setExpYear] = useState("2028");
-  const [setAsDefault, setSetAsDefault] = useState(true);
-  const [savingPm, setSavingPm] = useState(false);
+  const [useSavedMethod, setUseSavedMethod] = useState(true);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
+
+  useEffect(() => {
+    getStripe().then(setStripePromise);
+  }, []);
 
   useEffect(() => {
     fetchPaymentsSummary();
@@ -78,6 +76,9 @@ const ParentPaymentsPage = () => {
         const defaultMethod = res.data.find((m) => m.is_default) || res.data[0];
         if (defaultMethod) {
           setSelectedPm(defaultMethod);
+          setUseSavedMethod(true);
+        } else {
+          setUseSavedMethod(false);
         }
       })
       .catch((err) => {
@@ -85,45 +86,20 @@ const ParentPaymentsPage = () => {
       });
   };
 
-  const handleOpenMakePayment = () => {
-    const defaultAmount = paymentsData?.summary?.current_balance > 0 ? paymentsData.summary.current_balance : 0;
-    setPayAmount(defaultAmount.toString());
-    setMakePaymentModalOpen(true);
-  };
-
-  const handleAddPaymentMethod = async (e) => {
-    e.preventDefault();
-    setSavingPm(true);
-    try {
-      const payload = {
-        method_type: pmType,
-        is_default: setAsDefault,
-        last4: pmType === 'card' ? cardNumber.slice(-4) : accountNumber.slice(-4),
-        card_brand: pmType === 'card' ? cardBrand : null,
-        exp_month: pmType === 'card' ? parseInt(expMonth) : null,
-        exp_year: pmType === 'card' ? parseInt(expYear) : null,
-        bank_name: pmType === 'bank_account' ? (bankName || "Verified Bank") : null,
-        account_type: 'checking',
-        account_holder_name: accountHolder
-      };
-
-      const res = await api.post("/parent/payment-methods", payload);
-      toast.success("Payment method added successfully!");
-      setAddPmModalOpen(false);
-      
-      // Reset form
-      setAccountNumber("");
-      setRoutingNumber("");
-      setCardNumber("");
-      
-      // Refresh list & select newly created method
-      await fetchPaymentMethods();
-      setSelectedPm(res.data);
-    } catch (err) {
-      toast.error(err.response?.data?.error || "Failed to add payment method.");
-    } finally {
-      setSavingPm(false);
+  const handleOpenMakePayment = (invoice = null) => {
+    setSelectedInvoice(invoice);
+    if (invoice) {
+      setPayAmount(invoice.amount.toString());
+    } else {
+      const defaultAmount = paymentsData?.summary?.current_balance > 0 ? paymentsData.summary.current_balance : 0;
+      setPayAmount(defaultAmount.toString());
     }
+    if (paymentMethods.length > 0) {
+      setUseSavedMethod(true);
+    } else {
+      setUseSavedMethod(false);
+    }
+    setMakePaymentModalOpen(true);
   };
 
   const handleSetDefaultPm = async (pmId) => {
@@ -140,7 +116,7 @@ const ParentPaymentsPage = () => {
     if (!window.confirm("Are you sure you want to remove this payment method?")) return;
     try {
       await api.delete(`/parent/payment-methods/${pmId}`);
-      toast.success("Payment method removed.");
+      toast.success("Payment method removed from Stripe.");
       fetchPaymentMethods();
     } catch (err) {
       toast.error("Failed to remove payment method.");
@@ -361,108 +337,81 @@ const ParentPaymentsPage = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmitPayment}>
-              <div className="parent-modal-body">
-                {/* Payment Amount Card */}
-                <div className="bg-light p-3 rounded-3 border mb-3 text-center">
-                  <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: "8px", display: "block" }}>
-                    Payment Amount ($)
-                  </label>
-                  <div className="d-flex justify-content-center">
-                    <div className="input-group" style={{ maxWidth: "220px" }}>
-                      <span className="input-group-text bg-white font-weight-bold">$</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0.01"
-                        required
-                        value={payAmount}
-                        onChange={(e) => setPayAmount(e.target.value)}
-                        className="form-control text-center font-weight-bold"
-                        style={{ fontSize: "1.25rem" }}
-                      />
-                    </div>
+            <div className="parent-modal-body">
+              {/* Payment Amount Card */}
+              <div className="bg-light p-3 rounded-3 border mb-3 text-center">
+                <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: "8px", display: "block" }}>
+                  Payment Amount ($)
+                </label>
+                <div className="d-flex justify-content-center">
+                  <div className="input-group" style={{ maxWidth: "220px" }}>
+                    <span className="input-group-text bg-white font-weight-bold">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      required
+                      value={payAmount}
+                      onChange={(e) => setPayAmount(e.target.value)}
+                      className="form-control text-center font-weight-bold"
+                      style={{ fontSize: "1.25rem" }}
+                    />
                   </div>
                 </div>
-
-                {/* Selected Payment Method Header */}
-                <div className="d-flex align-items-center justify-content-between mb-2">
-                  <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#475569", textTransform: "uppercase" }}>
-                    Payment Method
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setChangePmModalOpen(true)}
-                    className="btn p-0 border-0 text-primary"
-                    style={{ fontSize: "0.8rem", fontWeight: 700 }}
-                  >
-                    CHANGE PAYMENT
-                  </button>
-                </div>
-
-                {/* Selected Payment Method Box */}
-                {selectedPm ? (
-                  <div className="parent-pm-card selected mb-3">
-                    <div className="parent-pm-left">
-                      <div className="parent-pm-icon">
-                        {selectedPm.method_type === 'bank_account' ? <Building2 size={20} /> : <CreditCard size={20} />}
-                      </div>
-                      <div>
-                        <div className="parent-pm-title">
-                          •••••••• {selectedPm.last4}
-                        </div>
-                        <div className="parent-pm-subtitle text-success">
-                          <ShieldCheck size={13} />
-                          <span>{selectedPm.method_type === 'bank_account' ? "Verified Bank" : selectedPm.card_brand || "Card"}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {selectedPm.is_default && (
-                      <span className="parent-badge-default">DEFAULT</span>
-                    )}
-                  </div>
-                ) : (
-                  <div className="p-3 border rounded-3 bg-light text-center mb-3">
-                    <p style={{ fontSize: "0.85rem", color: "#64748b", margin: 0 }}>
-                      No payment method saved yet.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setAddPmModalOpen(true)}
-                      className="btn btn-sm btn-outline-primary mt-2"
-                    >
-                      <Plus size={14} className="me-1" /> Add Payment Method
-                    </button>
+                {selectedInvoice && (
+                  <div className="mt-2 text-muted" style={{ fontSize: "0.78rem" }}>
+                    Paying for: <strong>{selectedInvoice.description || `Invoice #${selectedInvoice.raw_id}`}</strong>
                   </div>
                 )}
+              </div>
 
-                <div className="d-flex justify-content-between align-items-center py-2 px-1 border-top" style={{ fontSize: "0.95rem", fontWeight: 700 }}>
-                  <span>Total Amount to Pay:</span>
-                  <span style={{ fontSize: "1.15rem", color: "#0284c7" }}>
-                    ${parseFloat(payAmount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
+              {/* Payment Option Switcher */}
+              {paymentMethods.length > 0 && (
+                <div className="d-flex gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setUseSavedMethod(true)}
+                    className={`btn flex-fill py-2 border ${useSavedMethod ? 'btn-dark font-weight-bold' : 'btn-light'}`}
+                    style={{ fontSize: "0.85rem" }}
+                  >
+                    <CreditCard size={15} className="me-1.5" />
+                    Saved Card
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUseSavedMethod(false)}
+                    className={`btn flex-fill py-2 border ${!useSavedMethod ? 'btn-dark font-weight-bold' : 'btn-light'}`}
+                    style={{ fontSize: "0.85rem" }}
+                  >
+                    <Plus size={15} className="me-1.5" />
+                    New Card
+                  </button>
                 </div>
-              </div>
+              )}
 
-              <div className="parent-modal-footer">
-                <button
-                  type="button"
-                  onClick={() => setMakePaymentModalOpen(false)}
-                  className="btn btn-light"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submittingPayment || !selectedPm}
-                  className="btn-parent-primary"
-                  style={{ width: "auto" }}
-                >
-                  {submittingPayment ? "Processing..." : "SUBMIT PAYMENT"}
-                </button>
-              </div>
-            </form>
+              {/* Stripe Payment Form */}
+              {stripePromise ? (
+                <Elements stripe={stripePromise}>
+                  <StripeCardPayForm
+                    amount={payAmount}
+                    studentId={activeStudent?.id}
+                    invoiceId={selectedInvoice?.raw_id}
+                    selectedSavedPm={selectedPm}
+                    useSavedPm={useSavedMethod}
+                    onPaymentSuccess={() => {
+                      setMakePaymentModalOpen(false);
+                      fetchPaymentsSummary();
+                    }}
+                    onCancel={() => setMakePaymentModalOpen(false)}
+                  />
+                </Elements>
+              ) : (
+                <div className="text-center py-4">
+                  <span className="spinner-border spinner-border-sm text-primary" role="status"></span>
+                  <p className="mt-2 text-muted" style={{ fontSize: "0.85rem" }}>Initializing secure Stripe payment...</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -490,6 +439,7 @@ const ParentPaymentsPage = () => {
                     key={pm.id}
                     onClick={() => {
                       setSelectedPm(pm);
+                      setUseSavedMethod(true);
                       setChangePmModalOpen(false);
                     }}
                     className={`parent-pm-card ${selectedPm?.id === pm.id ? "selected" : ""}`}
@@ -503,7 +453,7 @@ const ParentPaymentsPage = () => {
                           •••••••• {pm.last4}
                         </div>
                         <div className="parent-pm-subtitle text-muted">
-                          {pm.bank_name || pm.card_brand || "Account"} ({pm.method_type === 'bank_account' ? 'ACH Bank' : 'Card'})
+                          {pm.card_brand || pm.bank_name || "Card"}
                         </div>
                       </div>
                     </div>
@@ -558,13 +508,13 @@ const ParentPaymentsPage = () => {
         </div>
       )}
 
-      {/* === MODAL 3: ADD PAYMENT METHOD MODAL === */}
+      {/* === MODAL 3: ADD PAYMENT METHOD MODAL (PCI-Compliant Stripe SetupIntent) === */}
       {addPmModalOpen && (
         <div className="parent-modal-overlay">
           <div className="parent-modal-content">
             <div className="parent-modal-header">
               <span style={{ fontSize: "1.05rem", fontWeight: 700, color: "#0f172a" }}>
-                Add Payment Method
+                Add Saved Payment Card
               </span>
               <button
                 onClick={() => setAddPmModalOpen(false)}
@@ -574,178 +524,25 @@ const ParentPaymentsPage = () => {
               </button>
             </div>
 
-            <form onSubmit={handleAddPaymentMethod}>
-              <div className="parent-modal-body">
-                {/* Method Type Pills */}
-                <div className="d-flex gap-2 mb-3">
-                  <button
-                    type="button"
-                    onClick={() => setPmType("bank_account")}
-                    className={`btn flex-fill py-2 border ${pmType === 'bank_account' ? 'btn-dark font-weight-bold' : 'btn-light'}`}
-                    style={{ fontSize: "0.85rem" }}
-                  >
-                    <Building2 size={16} className="me-2" />
-                    Bank Account (ACH)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPmType("card")}
-                    className={`btn flex-fill py-2 border ${pmType === 'card' ? 'btn-dark font-weight-bold' : 'btn-light'}`}
-                    style={{ fontSize: "0.85rem" }}
-                  >
-                    <CreditCard size={16} className="me-2" />
-                    Credit / Debit Card
-                  </button>
-                </div>
-
-                {pmType === 'bank_account' ? (
-                  <>
-                    <div className="mb-3">
-                      <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 600 }}>Bank Name</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Chase, Wells Fargo, Bank of America"
-                        value={bankName}
-                        onChange={(e) => setBankName(e.target.value)}
-                        required
-                        className="form-control"
-                        style={{ fontSize: "0.85rem" }}
-                      />
-                    </div>
-
-                    <div className="mb-3">
-                      <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 600 }}>Routing Number (9 digits)</label>
-                      <input
-                        type="text"
-                        placeholder="123456789"
-                        maxLength="9"
-                        value={routingNumber}
-                        onChange={(e) => setRoutingNumber(e.target.value)}
-                        required
-                        className="form-control"
-                        style={{ fontSize: "0.85rem" }}
-                      />
-                    </div>
-
-                    <div className="mb-3">
-                      <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 600 }}>Account Number</label>
-                      <input
-                        type="text"
-                        placeholder="Enter full account number"
-                        value={accountNumber}
-                        onChange={(e) => setAccountNumber(e.target.value)}
-                        required
-                        className="form-control"
-                        style={{ fontSize: "0.85rem" }}
-                      />
-                    </div>
-
-                    <div className="mb-3">
-                      <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 600 }}>Account Holder Name</label>
-                      <input
-                        type="text"
-                        placeholder="Full Name as on Account"
-                        value={accountHolder}
-                        onChange={(e) => setAccountHolder(e.target.value)}
-                        required
-                        className="form-control"
-                        style={{ fontSize: "0.85rem" }}
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="mb-3">
-                      <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 600 }}>Card Brand</label>
-                      <select
-                        value={cardBrand}
-                        onChange={(e) => setCardBrand(e.target.value)}
-                        className="form-select"
-                        style={{ fontSize: "0.85rem" }}
-                      >
-                        <option value="Visa">Visa</option>
-                        <option value="Mastercard">Mastercard</option>
-                        <option value="American Express">American Express</option>
-                        <option value="Discover">Discover</option>
-                      </select>
-                    </div>
-
-                    <div className="mb-3">
-                      <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 600 }}>Card Number</label>
-                      <input
-                        type="text"
-                        placeholder="16-digit card number"
-                        maxLength="19"
-                        value={cardNumber}
-                        onChange={(e) => setCardNumber(e.target.value)}
-                        required
-                        className="form-control"
-                        style={{ fontSize: "0.85rem" }}
-                      />
-                    </div>
-
-                    <div className="row g-2 mb-3">
-                      <div className="col-6">
-                        <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 600 }}>Exp Month</label>
-                        <input
-                          type="number"
-                          min="1"
-                          max="12"
-                          value={expMonth}
-                          onChange={(e) => setExpMonth(e.target.value)}
-                          required
-                          className="form-control"
-                          style={{ fontSize: "0.85rem" }}
-                        />
-                      </div>
-                      <div className="col-6">
-                        <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 600 }}>Exp Year</label>
-                        <input
-                          type="number"
-                          min="2025"
-                          max="2040"
-                          value={expYear}
-                          onChange={(e) => setExpYear(e.target.value)}
-                          required
-                          className="form-control"
-                          style={{ fontSize: "0.85rem" }}
-                        />
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                <div className="form-check mt-3">
-                  <input
-                    type="checkbox"
-                    id="setDefaultCheckbox"
-                    checked={setAsDefault}
-                    onChange={(e) => setSetAsDefault(e.target.checked)}
-                    className="form-check-input"
+            <div className="parent-modal-body">
+              {stripePromise ? (
+                <Elements stripe={stripePromise}>
+                  <StripeCardSetupForm
+                    isDefault={true}
+                    onPaymentMethodSaved={() => {
+                      setAddPmModalOpen(false);
+                      fetchPaymentMethods();
+                    }}
+                    onCancel={() => setAddPmModalOpen(false)}
                   />
-                  <label htmlFor="setDefaultCheckbox" className="form-check-label" style={{ fontSize: "0.82rem", fontWeight: 600 }}>
-                    Set as default payment method
-                  </label>
+                </Elements>
+              ) : (
+                <div className="text-center py-4">
+                  <span className="spinner-border spinner-border-sm text-primary" role="status"></span>
+                  <p className="mt-2 text-muted" style={{ fontSize: "0.85rem" }}>Initializing secure card form...</p>
                 </div>
-              </div>
-
-              <div className="parent-modal-footer">
-                <button
-                  type="button"
-                  onClick={() => setAddPmModalOpen(false)}
-                  className="btn btn-light"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingPm}
-                  className="btn-parent-dark"
-                >
-                  {savingPm ? "Saving..." : "Save Payment Method"}
-                </button>
-              </div>
-            </form>
+              )}
+            </div>
           </div>
         </div>
       )}
