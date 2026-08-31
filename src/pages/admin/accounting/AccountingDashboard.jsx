@@ -15,7 +15,7 @@ import {
   HelpCircle
 } from "lucide-react";
 import { getTransactions } from "../../../services/billingService";
-import "../../../styles/AdminModern.css"; // Ensure fonts and base styles
+import AccountingNav from "../../../components/admin/billing/AccountingNav";
 
 const AccountingDashboard = () => {
   const navigate = useNavigate();
@@ -237,7 +237,7 @@ const AccountingDashboard = () => {
   return (
     <div className="all-transactions-page font-prompt" style={{ fontFamily: '"Prompt", sans-serif' }}>
       {/* Page Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="d-flex justify-content-between align-items-center mb-3">
         <h1 className="page-title fs-4 fw-bold text-slate-800 m-0">All Transactions</h1>
         <Button
           variant="link"
@@ -248,6 +248,8 @@ const AccountingDashboard = () => {
           <Download size={14} /> EXPORT
         </Button>
       </div>
+
+      <AccountingNav />
 
       {/* Top Cards/Banners */}
       <div className="row g-3 mb-4">

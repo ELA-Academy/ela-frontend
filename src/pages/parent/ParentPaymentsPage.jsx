@@ -127,6 +127,23 @@ const ParentPaymentsPage = () => {
     }
   };
 
+  const handleDownloadReceipt = async (paymentId) => {
+    try {
+      toast.info("Downloading receipt PDF...");
+      const res = await api.get(`/parent/payments/${paymentId}/receipt`, { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `receipt_PYMT_${paymentId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success("Receipt downloaded successfully!");
+    } catch (err) {
+      toast.error("Failed to download receipt PDF.");
+    }
+  };
+
   const handleSubmitPayment = async (e) => {
     e.preventDefault();
     const numAmount = parseFloat(payAmount);
@@ -364,6 +381,7 @@ const ParentPaymentsPage = () => {
                   <th>DESCRIPTION</th>
                   <th>AMOUNT</th>
                   <th>BALANCE</th>
+                  <th className="text-end">ACTION</th>
                 </tr>
               </thead>
               <tbody>
@@ -417,6 +435,21 @@ const ParentPaymentsPage = () => {
                         <span style={{ fontSize: "0.75rem", color: "#059669", marginLeft: "4px" }}>
                           (Credit)
                         </span>
+                      )}
+                    </td>
+
+                    <td className="text-end">
+                      {tx.type === 'Payment' && (
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadReceipt(tx.raw_id)}
+                          className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 px-2 py-1"
+                          style={{ fontSize: "0.75rem", borderRadius: "6px", fontWeight: 600 }}
+                          title="Download PDF Receipt"
+                        >
+                          <Download size={13} />
+                          <span>Receipt</span>
+                        </button>
                       )}
                     </td>
                   </tr>
