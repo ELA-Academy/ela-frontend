@@ -94,6 +94,7 @@ const StripeCardPayForm = ({
               name: cardholderName.trim() || undefined,
             },
           },
+          return_url: window.location.href,
         });
 
         if (confirmResult.error) {
