@@ -133,7 +133,13 @@ const AccountingLayout = () => {
             <div className="workspace-secondary-links">
               {recentAccounts.map(account => {
                 const balance = parseFloat(account.open_balance || 0);
-                const hasPositiveBalance = balance > 0;
+                const isOwed = balance > 0;
+                const isCredit = balance < 0;
+                const balanceText = isCredit
+                  ? `Credit: $${Math.abs(balance).toFixed(2)}`
+                  : isOwed
+                  ? `Owed: $${balance.toFixed(2)}`
+                  : `Balance: $0.00`;
                 
                 return (
                   <Link 
@@ -146,15 +152,15 @@ const AccountingLayout = () => {
                         width: '8px',
                         height: '8px',
                         borderRadius: '50%',
-                        backgroundColor: hasPositiveBalance ? '#ef4444' : '#22c55e'
+                        backgroundColor: isOwed ? '#ef4444' : (isCredit ? '#22c55e' : '#94a3b8')
                       }} />
                     </div>
                     <div className="d-flex flex-column overflow-hidden">
                       <span className="workspace-secondary-link-title text-truncate">
                         {account.student_name}
                       </span>
-                      <span className="workspace-secondary-link-meta text-truncate">
-                        Balance: ${balance.toFixed(2)}
+                      <span className="workspace-secondary-link-meta text-truncate" style={{ color: isCredit ? '#22c55e' : (isOwed ? '#ef4444' : '#64748b') }}>
+                        {balanceText}
                       </span>
                     </div>
                   </Link>

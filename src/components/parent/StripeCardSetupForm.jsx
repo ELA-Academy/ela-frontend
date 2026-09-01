@@ -49,6 +49,7 @@ const StripeCardSetupForm = ({ onPaymentMethodSaved, onCancel, isDefault = true 
             name: cardholderName.trim(),
           },
         },
+        return_url: window.location.href,
       });
 
       if (setupResult.error) {

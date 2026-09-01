@@ -311,10 +311,37 @@ const StudentLedgerPage = () => {
                 </span>
               </div>
               <div>
-                <span className="text-muted">Un-Paid: </span>
-                <span className="fw-bold text-danger" style={{ fontSize: "13px" }}>
-                  {formatCurrency(ledger?.summary.unpaid || 0)}
-                </span>
+                {(() => {
+                  const unpaidVal = ledger?.summary?.unpaid || 0;
+                  if (unpaidVal < 0) {
+                    return (
+                      <>
+                        <span className="text-muted">Account Credit: </span>
+                        <span className="fw-bold text-success" style={{ fontSize: "13px" }}>
+                          ${Math.abs(unpaidVal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </>
+                    );
+                  } else if (unpaidVal > 0) {
+                    return (
+                      <>
+                        <span className="text-muted">Un-Paid: </span>
+                        <span className="fw-bold text-danger" style={{ fontSize: "13px" }}>
+                          ${unpaidVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </>
+                    );
+                  } else {
+                    return (
+                      <>
+                        <span className="text-muted">Un-Paid: </span>
+                        <span className="fw-bold text-dark" style={{ fontSize: "13px" }}>
+                          $0.00
+                        </span>
+                      </>
+                    );
+                  }
+                })()}
               </div>
             </div>
           </div>
