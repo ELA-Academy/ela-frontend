@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Button, Form, InputGroup, Spinner, Row, Col } from "react-bootstrap";
-import { receivePayment } from "../../../services/billingService";
+import { Modal, Button, Form, InputGroup, Spinner, Row, Col, Alert } from "react-bootstrap";
+import { receivePayment, chargeSavedCard, getStudentParentPaymentMethods } from "../../../services/billingService";
 import { showSuccess, showError } from "../../../utils/notificationService";
 
 const ReceivePaymentModal = ({
@@ -19,15 +19,40 @@ const ReceivePaymentModal = ({
   const [sendEmail, setSendEmail] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Saved Payment Methods
+  const [parentPms, setParentPms] = useState([]);
+  const [selectedPmId, setSelectedPmId] = useState("");
+  const [loadingPms, setLoadingPms] = useState(false);
+
   useEffect(() => {
-    if (show) {
-      setAmount(invoice ? String(Math.abs(invoice.amount || 0)) : "");
-      setMethod("Cash");
+    if (show && studentId) {
+      setAmount(invoice ? String(Math.abs(invoice.amount || invoice.total_amount || 0)) : "");
+      setMethod("Charge Parent ACH/CC");
       setNotes("");
       setStaffNote("");
       setSendEmail(true);
+
+      // Fetch saved payment methods
+      setLoadingPms(true);
+      getStudentParentPaymentMethods(studentId)
+        .then((pms) => {
+          setParentPms(pms || []);
+          const defaultPm = pms.find((p) => p.is_default) || pms[0];
+          if (defaultPm) {
+            setSelectedPmId(defaultPm.id);
+            setMethod("Charge Parent ACH/CC");
+          } else {
+            setMethod("Cash");
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to load parent payment methods:", err);
+        })
+        .finally(() => {
+          setLoadingPms(false);
+        });
     }
-  }, [show, invoice]);
+  }, [show, studentId, invoice]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -39,25 +64,48 @@ const ReceivePaymentModal = ({
 
     setIsSaving(true);
     try {
-      const payload = {
-        amount: payAmount,
-        method,
-        notes: notes + (staffNote ? ` | Staff Note: ${staffNote}` : ""),
-        send_email: sendEmail,
-        invoice_id: invoice?.id || null,
-      };
-      await receivePayment(studentId, payload);
-      showSuccess("Payment recorded successfully!");
+      if (method === "Charge Parent ACH/CC") {
+        if (!selectedPmId && parentPms.length > 0) {
+          showError("Please select a saved card to charge.");
+          setIsSaving(false);
+          return;
+        }
+
+        const chargePayload = {
+          amount: payAmount,
+          invoice_id: invoice?.id || null,
+          payment_method_id: selectedPmId || null,
+        };
+
+        const res = await chargeSavedCard(studentId, chargePayload);
+        if (res.status === "requires_action") {
+          showError("Payment requires 3D Secure verification. Parent has been notified.");
+        } else {
+          showSuccess(res.message || "Payment charged successfully via Stripe!");
+        }
+      } else {
+        const payload = {
+          amount: payAmount,
+          method,
+          notes: notes + (staffNote ? ` | Staff Note: ${staffNote}` : ""),
+          send_email: sendEmail,
+          invoice_id: invoice?.id || null,
+        };
+        await receivePayment(studentId, payload);
+        showSuccess("Payment recorded successfully!");
+      }
+
       onPaymentReceived();
       handleClose();
     } catch (err) {
-      showError(err.response?.data?.error || "Failed to record payment.");
+      showError(err.response?.data?.error || "Failed to process payment.");
     } finally {
       setIsSaving(false);
     }
   };
 
   const initialLetter = studentName?.charAt(0) || "S";
+  const isStripeCharge = method === "Charge Parent ACH/CC";
 
   return (
     <Modal show={show} onHide={handleClose} centered className="modern-modal">
@@ -96,7 +144,7 @@ const ReceivePaymentModal = ({
 
           {invoice && (
             <div className="p-2 mb-3 rounded text-muted bg-light" style={{ fontSize: "11px" }}>
-              Applying payment to Invoice for: <b>{invoice.description}</b> (Due {new Date(invoice.due_date).toLocaleDateString()})
+              Applying payment to Invoice #{invoice.id}: <b>{invoice.description}</b> (Due {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : "N/A"})
             </div>
           )}
 
@@ -132,30 +180,63 @@ const ReceivePaymentModal = ({
                   onChange={(e) => setMethod(e.target.value)}
                   style={{ fontSize: "12px", padding: "6px" }}
                 >
-                  <option value="Charge Parent ACH/CC">Charge Parent ACH/CC</option>
-                  <option value="Cash">Cash</option>
-                  <option value="Check">Check</option>
-                  <option value="Card">Card</option>
-                  <option value="Other">Other</option>
+                  <option value="Charge Parent ACH/CC">Charge Parent Saved Card (Stripe)</option>
+                  <option value="Cash">Cash (Offline)</option>
+                  <option value="Check">Check (Offline)</option>
+                  <option value="Card">Card (Offline Terminal)</option>
+                  <option value="Other">Other / Manual</option>
                 </Form.Select>
               </Form.Group>
             </Col>
           </Row>
 
-          <Form.Group className="mb-3">
-            <Form.Label className="fw-bold text-slate-600" style={{ fontSize: "11px" }}>
-              DESCRIPTION <span className="text-danger">*</span>
-            </Form.Label>
-            <Form.Control
-              as="textarea"
-              rows={3}
-              placeholder="Add description"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              required
-              style={{ fontSize: "12px" }}
-            />
-          </Form.Group>
+          {/* Stripe Card Picker if Charge Parent ACH/CC selected */}
+          {isStripeCharge && (
+            <Form.Group className="mb-3 p-3 bg-light rounded border">
+              <Form.Label className="fw-bold text-slate-700 mb-1" style={{ fontSize: "11px" }}>
+                SELECT SAVED STRIPE CARD
+              </Form.Label>
+              {loadingPms ? (
+                <div className="text-muted" style={{ fontSize: "11px" }}>
+                  <Spinner size="sm" animation="border" className="me-2" /> Loading saved payment methods...
+                </div>
+              ) : parentPms.length > 0 ? (
+                <Form.Select
+                  value={selectedPmId}
+                  onChange={(e) => setSelectedPmId(e.target.value)}
+                  style={{ fontSize: "12px" }}
+                  required
+                >
+                  {parentPms.map((pm) => (
+                    <option key={pm.id} value={pm.id}>
+                      {pm.parent_name} - {pm.card_brand || pm.bank_name || "Card"} (•••• {pm.last4}) {pm.is_default ? "[DEFAULT]" : ""}
+                    </option>
+                  ))}
+                </Form.Select>
+              ) : (
+                <Alert variant="warning" className="m-0 py-2" style={{ fontSize: "11px" }}>
+                  No saved payment method found on file for this student's parents. Please ask the parent to add a payment card in their Parent Portal, or select an offline payment method (Cash/Check).
+                </Alert>
+              )}
+            </Form.Group>
+          )}
+
+          {!isStripeCharge && (
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-bold text-slate-600" style={{ fontSize: "11px" }}>
+                DESCRIPTION / NOTES <span className="text-danger">*</span>
+              </Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={2}
+                placeholder="e.g. Received cash payment at office"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                required={!isStripeCharge}
+                style={{ fontSize: "12px" }}
+              />
+            </Form.Group>
+          )}
 
           <Form.Group className="mb-3">
             <Form.Check
@@ -191,7 +272,7 @@ const ReceivePaymentModal = ({
           </Button>
           <Button
             type="submit"
-            disabled={isSaving}
+            disabled={isSaving || (isStripeCharge && parentPms.length === 0)}
             style={{
               backgroundColor: "#00b8d4",
               borderColor: "#00b8d4",
@@ -202,7 +283,7 @@ const ReceivePaymentModal = ({
               color: "#ffffff"
             }}
           >
-            {isSaving ? <Spinner size="sm" animation="border" /> : "SUBMIT"}
+            {isSaving ? <Spinner size="sm" animation="border" /> : isStripeCharge ? "CHARGE STRIPE CARD" : "SUBMIT PAYMENT"}
           </Button>
         </Modal.Footer>
       </Form>
@@ -211,3 +292,4 @@ const ReceivePaymentModal = ({
 };
 
 export default ReceivePaymentModal;
+
