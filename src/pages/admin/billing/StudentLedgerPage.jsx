@@ -411,27 +411,31 @@ const StudentLedgerPage = () => {
                       {formatCurrency(tx.balance)}
                     </td>
                     <td className="text-center">
-                      {/* For invoice transaction - modified with Procare options */}
-                      {tx.type === "Invoice" && tx.status !== "Paid" && (
+                      {/* For invoice transaction */}
+                      {tx.type === "Invoice" && (
                         <Dropdown align="end">
                           <Dropdown.Toggle as={Button} variant="link" className="p-0 text-muted border-0">
                             <ThreeDotsVertical size={16} />
                           </Dropdown.Toggle>
                           <Dropdown.Menu popperConfig={{ strategy: "fixed" }} style={{ fontSize: "12px" }}>
                             <Dropdown.Item onClick={() => handleShowViewInvoiceModal(tx)}>
-                              View
+                              View Invoice
                             </Dropdown.Item>
-                            <Dropdown.Item onClick={() => handleShowEditInvoiceModal(tx)}>
-                              Edit
-                            </Dropdown.Item>
-                            <Dropdown.Item onClick={() => handleCancelInvoice(tx.id)}>
-                              Cancel
-                            </Dropdown.Item>
+                            {tx.status !== "Paid" && (
+                              <>
+                                <Dropdown.Item onClick={() => handleShowPaymentModal(tx)}>
+                                  Receive Payment / Charge Card
+                                </Dropdown.Item>
+                                <Dropdown.Item onClick={() => handleShowEditInvoiceModal(tx)}>
+                                  Edit
+                                </Dropdown.Item>
+                                <Dropdown.Item onClick={() => handleCancelInvoice(tx.id)}>
+                                  Cancel / Void
+                                </Dropdown.Item>
+                              </>
+                            )}
                             <Dropdown.Item onClick={() => handleSendInvoice(tx.id)}>
-                              Send Invoice
-                            </Dropdown.Item>
-                            <Dropdown.Item onClick={() => handleShowPaymentModal(tx)}>
-                              Receive Payment
+                              Send Invoice Email
                             </Dropdown.Item>
                           </Dropdown.Menu>
                         </Dropdown>
