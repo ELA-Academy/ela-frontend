@@ -266,3 +266,7 @@ export const reorderChecklistItems = async (taskId, orderedIds) => {
   return response.data;
 };
 
+export const cleanJunkCustomFields = async (boardId) => {
+  const response = await api.post(`/boards/${boardId}/clean-junk-fields`);
+  return response.data;
+};

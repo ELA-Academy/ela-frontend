@@ -152,3 +152,13 @@ export const sendFormToRecipients = async (formId, leadIds) => {
     throw error;
   }
 };
+
+export const approveSubmission = async (submissionId) => {
+  try {
+    const response = await api.post(`/enrollment/submissions/${submissionId}/approve`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error approving submission ${submissionId}:`, error);
+    throw error;
+  }
+};

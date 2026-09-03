@@ -9,11 +9,12 @@ import {
   Button,
   Tooltip,
   OverlayTrigger,
-  Form
+  Form,
+  Modal
 } from "react-bootstrap";
 import { 
   Search, Filter, MoreHorizontal, Link as LinkIcon, 
-  Trash2, Copy, Edit, Plus
+  Trash2, Copy, Edit, Plus, CheckCircle, FileText, Download
 } from "lucide-react";
 import {
   getEnrollmentForms,
@@ -22,9 +23,11 @@ import {
   copyEnrollmentForm,
   getEnrollmentSubmissions,
   deleteEnrollmentSubmission,
+  approveSubmission
 } from "../../../services/enrollmentService";
 import { showSuccess, showError } from "../../../utils/notificationService";
 import DeleteConfirmModal from "../../../components/admin/DeleteConfirmModal";
+import api from "../../../utils/api";
 
 const CustomToggle = React.forwardRef(({ children, onClick }, ref) => (
   <a
@@ -43,6 +46,7 @@ const CustomToggle = React.forwardRef(({ children, onClick }, ref) => (
 const EnrollmentDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("forms"); // "forms" or "submissions"
+  const [submissionSubTab, setSubmissionSubTab] = useState("review"); // "review" (IN REVIEW) or "completed" (COMPLETED)
   const [forms, setForms] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -52,6 +56,10 @@ const EnrollmentDashboard = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null); // { type: 'form' | 'submission', id, name }
   const [deleting, setDeleting] = useState(false);
+
+  // View / Approve Submission Modal State
+  const [viewSubmission, setViewSubmission] = useState(null);
+  const [approving, setApproving] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -135,6 +143,20 @@ const EnrollmentDashboard = () => {
     showSuccess("Parent link copied to clipboard!");
   };
 
+  const handleApproveSubmission = async (subId) => {
+    try {
+      setApproving(true);
+      const res = await approveSubmission(subId);
+      showSuccess(res.message || "Registration approved & contract linked to Student Profile!");
+      setViewSubmission(null);
+      fetchData();
+    } catch (err) {
+      showError("Failed to approve submission.");
+    } finally {
+      setApproving(false);
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
@@ -147,19 +169,34 @@ const EnrollmentDashboard = () => {
     });
   };
 
-  const filteredForms = forms.filter(form => 
+  // Filter Submissions by status
+  const inReviewSubmissions = submissions.filter(
+    (s) => s.status !== "Completed" && s.status !== "APPROVED"
+  );
+  const completedSubmissions = submissions.filter(
+    (s) => s.status === "Completed" || s.status === "APPROVED"
+  );
+
+  const hasUnapprovedSubmissions = inReviewSubmissions.length > 0;
+
+  const filteredForms = forms.filter((form) =>
     form.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     form.recipient_type.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredSubmissions = submissions.filter(sub => 
-    sub.lead_student_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    sub.form_name.toLowerCase().includes(searchQuery.toLowerCase())
+  const currentSubmissionsList =
+    submissionSubTab === "review" ? inReviewSubmissions : completedSubmissions;
+
+  const filteredSubmissions = currentSubmissionsList.filter((sub) =>
+    (sub.lead_student_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (sub.form_name || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const baseURL = api.defaults.baseURL || "";
+  const baseStaticURL = baseURL.endsWith("/api") ? baseURL.slice(0, -4) : baseURL;
 
   return (
     <div className="py-4 px-md-4 bg-slate-50 min-vh-100 no-print">
-      {/* Dynamic Style injection for premium Procare aesthetics */}
       <style>{`
         .reg-tab-header {
           display: flex;
@@ -195,7 +232,7 @@ const EnrollmentDashboard = () => {
         }
         .procare-search-container {
           position: relative;
-          max-width: 320px;
+          max-width: 340px;
           display: flex;
           align-items: center;
           gap: 8px;
@@ -229,7 +266,7 @@ const EnrollmentDashboard = () => {
           background: #E2E8F0;
         }
         .procare-btn-primary {
-          background-color: #007ba4; /* Procare primary blue button */
+          background-color: #007ba4;
           border-color: #007ba4;
           font-weight: 600;
           font-size: 0.85rem;
@@ -277,9 +314,45 @@ const EnrollmentDashboard = () => {
         .procare-link:hover {
           text-decoration: underline;
         }
+        .submission-metrics-container {
+          display: flex;
+          border: 1px solid #E2E8F0;
+          border-radius: 8px;
+          overflow: hidden;
+          background: #FFFFFF;
+          margin-bottom: 1.5rem;
+        }
+        .submission-metric-btn {
+          flex: 1;
+          padding: 1.2rem 1.5rem;
+          border: none;
+          background: #FFFFFF;
+          text-align: center;
+          cursor: pointer;
+          transition: background 0.15s;
+        }
+        .submission-metric-btn:first-child {
+          border-right: 1px solid #E2E8F0;
+        }
+        .submission-metric-btn.active {
+          background: #E0F2FE;
+        }
+        .metric-num {
+          font-size: 1.5rem;
+          font-weight: 800;
+          color: #0F172A;
+          display: block;
+        }
+        .metric-label {
+          font-size: 0.75rem;
+          font-weight: 700;
+          color: #0284C7;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
       `}</style>
 
-      {/* Title & Top Right Actions */}
+      {/* Header */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h1 className="fw-bold text-slate-800 mb-0" style={{ fontSize: "24px" }}>Registration</h1>
         <Button onClick={handleCreateForm} className="procare-btn-primary d-flex align-items-center gap-1">
@@ -287,7 +360,7 @@ const EnrollmentDashboard = () => {
         </Button>
       </div>
 
-      {/* Tabs */}
+      {/* Top Main Tabs */}
       <div className="reg-tab-header">
         <button
           className={`reg-tab-btn ${activeTab === "forms" ? "active" : ""}`}
@@ -299,9 +372,29 @@ const EnrollmentDashboard = () => {
           className={`reg-tab-btn ${activeTab === "submissions" ? "active" : ""}`}
           onClick={() => setActiveTab("submissions")}
         >
-          Submitted Registrations
+          Submitted Registrations {hasUnapprovedSubmissions && <span className="text-danger fw-bold ms-1" style={{ fontSize: "14px" }}>•</span>}
         </button>
       </div>
+
+      {/* Submissions Metrics Bar (Matching Image 2 & 4) */}
+      {activeTab === "submissions" && (
+        <div className="submission-metrics-container">
+          <button
+            className={`submission-metric-btn ${submissionSubTab === "review" ? "active" : ""}`}
+            onClick={() => setSubmissionSubTab("review")}
+          >
+            <span className="metric-num">{inReviewSubmissions.length}</span>
+            <span className="metric-label">IN REVIEW</span>
+          </button>
+          <button
+            className={`submission-metric-btn ${submissionSubTab === "completed" ? "active" : ""}`}
+            onClick={() => setSubmissionSubTab("completed")}
+          >
+            <span className="metric-num">{completedSubmissions.length}</span>
+            <span className="metric-label">COMPLETED</span>
+          </button>
+        </div>
+      )}
 
       {/* Search & Filter Bar */}
       <div className="d-flex justify-content-between align-items-center mb-4 bg-white p-3 rounded-3 shadow-sm border border-slate-200">
@@ -309,7 +402,7 @@ const EnrollmentDashboard = () => {
           <Search className="procare-search-icon" size={16} />
           <input
             type="text"
-            placeholder={activeTab === "forms" ? "Search forms..." : "Search submissions..."}
+            placeholder={activeTab === "forms" ? "Search forms..." : "Search by form, lead or student name"}
             className="procare-search-input"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -412,70 +505,99 @@ const EnrollmentDashboard = () => {
           <Table responsive className="procare-table align-middle mb-0">
             <thead>
               <tr>
-                <th>STUDENT NAME</th>
                 <th>FORM NAME</th>
+                <th>FROM</th>
+                <th>AMOUNT</th>
+                <th>DATE RECEIVED</th>
                 <th>FORM STATUS</th>
-                <th>PAYMENT</th>
-                <th>DATE SENT</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {filteredSubmissions.length > 0 ? (
-                filteredSubmissions.map((sub) => (
-                  <tr key={sub.id}>
-                    <td>
-                      <strong className="text-slate-800">{sub.lead_student_name}</strong>
-                    </td>
-                    <td>{sub.form_name}</td>
-                    <td>
-                      <Badge
-                        bg={sub.status === "Submitted" ? "success" : "secondary"}
-                        style={{ fontSize: "0.75rem", padding: "0.3em 0.6em" }}
-                      >
-                        {sub.status}
-                      </Badge>
-                    </td>
-                    <td>
-                      <Badge
-                        bg={sub.payment_status === "Paid" ? "success-light" : "warning-light"}
-                        text={sub.payment_status === "Paid" ? "success" : "warning"}
-                        style={{ fontSize: "0.75rem", padding: "0.3em 0.6em" }}
-                      >
-                        {sub.payment_status}
-                      </Badge>
-                    </td>
-                    <td>{formatDate(sub.sent_at)}</td>
-                    <td className="text-end">
-                      <div className="d-flex align-items-center justify-content-end gap-1">
-                        <OverlayTrigger overlay={<Tooltip>Copy Link</Tooltip>}>
-                          <Button
-                            variant="light"
-                            size="sm"
-                            className="p-1 text-slate-500 hover-bg-slate border-0"
-                            onClick={(e) => handleCopyLink(sub.secure_token, e)}
-                          >
-                            <LinkIcon size={16} />
-                          </Button>
-                        </OverlayTrigger>
-                        <Dropdown align="end">
-                          <Dropdown.Toggle as={CustomToggle}>
-                            <MoreHorizontal size={18} />
-                          </Dropdown.Toggle>
-                          <Dropdown.Menu className="shadow border-slate-200">
-                            <Dropdown.Item onClick={(e) => handleDeleteSubmissionClick(sub.id, sub.lead_student_name, e)} className="text-danger">
-                              <Trash2 size={14} className="me-2" /> Delete
-                            </Dropdown.Item>
-                          </Dropdown.Menu>
-                        </Dropdown>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                filteredSubmissions.map((sub) => {
+                  const pdfUrl = `${baseStaticURL}/api/enrollment/submission/${sub.secure_token}/pdf`;
+                  const isApproved = sub.status === "Completed" || sub.status === "APPROVED";
+
+                  return (
+                    <tr key={sub.id}>
+                      <td>
+                        <button
+                          onClick={() => setViewSubmission(sub)}
+                          className="procare-link bg-transparent border-0 p-0 text-start"
+                        >
+                          {sub.form_name}
+                        </button>
+                      </td>
+                      <td>
+                        <strong className="text-slate-800 d-block">{sub.lead_student_name || "Form Submitter"}</strong>
+                        <span className="small text-slate-400">Web Link Submission</span>
+                      </td>
+                      <td>
+                        {sub.payment_status === "Paid" ? (
+                          <span className="text-slate-700 fw-semibold">Paid ${sub.fee_amount || 0}</span>
+                        ) : (
+                          <span className="text-slate-500">No Fee</span>
+                        )}
+                      </td>
+                      <td>{formatDate(sub.submitted_at || sub.sent_at)}</td>
+                      <td>
+                        {isApproved ? (
+                          <Badge bg="success" style={{ fontSize: "0.75rem", padding: "0.4em 0.7em" }}>
+                            APPROVED
+                          </Badge>
+                        ) : (
+                          <Badge bg="info" style={{ fontSize: "0.75rem", padding: "0.4em 0.7em" }}>
+                            NEW
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="text-end">
+                        <div className="d-flex align-items-center justify-content-end gap-1">
+                          <OverlayTrigger overlay={<Tooltip>Copy Link</Tooltip>}>
+                            <Button
+                              variant="light"
+                              size="sm"
+                              className="p-1 text-slate-500 hover-bg-slate border-0"
+                              onClick={(e) => handleCopyLink(sub.secure_token, e)}
+                            >
+                              <LinkIcon size={16} />
+                            </Button>
+                          </OverlayTrigger>
+                          <Dropdown align="end">
+                            <Dropdown.Toggle as={CustomToggle}>
+                              <MoreHorizontal size={18} />
+                            </Dropdown.Toggle>
+                            <Dropdown.Menu className="shadow border-slate-200">
+                              <Dropdown.Item onClick={() => setViewSubmission(sub)}>
+                                <FileText size={14} className="me-2 text-slate-500" /> View Submission
+                              </Dropdown.Item>
+                              <Dropdown.Item href={pdfUrl} target="_blank" rel="noopener noreferrer">
+                                <Download size={14} className="me-2 text-slate-500" /> Download Signed Contract
+                              </Dropdown.Item>
+                              {!isApproved && (
+                                <Dropdown.Item 
+                                  onClick={() => handleApproveSubmission(sub.id)} 
+                                  className="text-success fw-bold"
+                                >
+                                  <CheckCircle size={14} className="me-2" /> Approve Registration
+                                </Dropdown.Item>
+                              )}
+                              <Dropdown.Divider />
+                              <Dropdown.Item onClick={(e) => handleDeleteSubmissionClick(sub.id, sub.lead_student_name, e)} className="text-danger">
+                                <Trash2 size={14} className="me-2" /> Delete
+                              </Dropdown.Item>
+                            </Dropdown.Menu>
+                          </Dropdown>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan="6" className="text-center py-5 text-slate-400">
-                    No submissions found matching your query.
+                    No submissions found under this section.
                   </td>
                 </tr>
               )}
@@ -484,6 +606,7 @@ const EnrollmentDashboard = () => {
         )}
       </div>
 
+      {/* Delete Confirm Modal */}
       <DeleteConfirmModal
         show={showDeleteModal}
         onHide={() => {
@@ -499,6 +622,84 @@ const EnrollmentDashboard = () => {
         }
         loading={deleting}
       />
+
+      {/* View & Approve Submission Modal */}
+      {viewSubmission && (
+        <Modal show={true} onHide={() => setViewSubmission(null)} size="lg" centered>
+          <Modal.Header closeButton className="border-bottom pb-3">
+            <Modal.Title style={{ fontSize: "18px", fontWeight: "700" }}>
+              📋 Registration Submission Details
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body className="p-4" style={{ maxHeight: "70vh", overflowY: "auto" }}>
+            <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+              <div>
+                <h5 className="fw-bold text-slate-800 mb-1">{viewSubmission.form_name}</h5>
+                <span className="text-muted small">Student: <strong>{viewSubmission.lead_student_name}</strong></span>
+              </div>
+              <Badge 
+                bg={(viewSubmission.status === "Completed" || viewSubmission.status === "APPROVED") ? "success" : "info"}
+                style={{ fontSize: "11px", padding: "0.4em 0.8em" }}
+              >
+                {viewSubmission.status}
+              </Badge>
+            </div>
+
+            {/* Submission Answers */}
+            <div className="bg-slate-50 p-3 rounded-3 border border-slate-200 mb-4">
+              <h6 className="fw-bold text-slate-700 mb-3 border-bottom pb-2">Submitted Responses</h6>
+              {viewSubmission.responses_json && typeof viewSubmission.responses_json === "object" ? (
+                Object.entries(viewSubmission.responses_json).map(([key, val]) => {
+                  if (key === "parent_signature") {
+                    return (
+                      <div key={key} className="mb-3">
+                        <strong className="text-slate-700 d-block mb-1">Parent Digital Signature:</strong>
+                        <div className="border rounded bg-white p-2 d-inline-block">
+                          <img src={val} alt="Parent Signature" style={{ maxHeight: "80px" }} />
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={key} className="d-flex justify-content-between py-1 border-bottom border-slate-200 text-slate-700 small">
+                      <span className="fw-semibold">{key.replace(/_/g, " ")}:</span>
+                      <span>{String(val)}</span>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-muted small mb-0">No response details recorded.</p>
+              )}
+            </div>
+          </Modal.Body>
+          <Modal.Footer className="d-flex justify-content-between">
+            <a 
+              href={`${baseStaticURL}/api/enrollment/submission/${viewSubmission.secure_token}/pdf`} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="btn btn-outline-primary btn-sm d-flex align-items-center gap-1"
+            >
+              <Download size={14} /> Download Contract PDF
+            </a>
+            <div className="d-flex gap-2">
+              <Button variant="outline-secondary" size="sm" onClick={() => setViewSubmission(null)}>
+                Close
+              </Button>
+              {(viewSubmission.status !== "Completed" && viewSubmission.status !== "APPROVED") && (
+                <Button 
+                  style={{ backgroundColor: "#007ba4", borderColor: "#007ba4" }} 
+                  size="sm" 
+                  disabled={approving}
+                  onClick={() => handleApproveSubmission(viewSubmission.id)}
+                  className="d-flex align-items-center gap-1"
+                >
+                  {approving ? <Spinner animation="border" size="sm" /> : <><CheckCircle size={14} /> Approve & Link to Profile</>}
+                </Button>
+              )}
+            </div>
+          </Modal.Footer>
+        </Modal>
+      )}
     </div>
   );
 };

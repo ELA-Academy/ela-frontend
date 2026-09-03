@@ -53,3 +53,13 @@ export const deleteStudentDocument = async (docId) => {
     throw error;
   }
 };
+
+export const updateStudentDocument = async (docId, docData) => {
+  try {
+    const response = await api.put(`/students/documents/${docId}`, docData);
+    return response.data;
+  } catch (error) {
+    console.error(`Error updating document ${docId}:`, error);
+    throw error;
+  }
+};
