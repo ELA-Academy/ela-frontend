@@ -17,6 +17,7 @@ import {
   getStudentById,
   getStudentDocuments,
   uploadStudentDocument,
+  updateStudentDocument,
   deleteStudentDocument
 } from "../../../services/studentService";
 import {
@@ -37,7 +38,8 @@ import {
   Trash2,
   Download,
   Upload,
-  MoreHorizontal
+  MoreHorizontal,
+  Eye
 } from "lucide-react";
 import api from "../../../utils/api";
 import { showSuccess, showError } from "../../../utils/notificationService";
@@ -73,6 +75,16 @@ const StudentProfilePage = () => {
   const [uploadDocName, setUploadDocName] = useState("");
   const [uploadDocType, setUploadDocType] = useState("Document");
   const [uploadExpiryDate, setUploadExpiryDate] = useState("");
+
+  // Document Edit States
+  const [editingDoc, setEditingDoc] = useState(null);
+  const [editDocName, setEditDocName] = useState("");
+  const [editDocType, setEditDocType] = useState("Document");
+  const [editExpiryDate, setEditExpiryDate] = useState("");
+  const [updatingDoc, setUpdatingDoc] = useState(false);
+
+  // Document Preview State
+  const [previewDoc, setPreviewDoc] = useState(null);
 
   useEffect(() => {
     const fetchStudentData = async () => {
@@ -133,18 +145,39 @@ const StudentProfilePage = () => {
       showSuccess("Document uploaded successfully!");
       setShowUploadModal(false);
       
-      // Reset fields
       setUploadFile(null);
       setUploadDocName("");
       setUploadExpiryDate("");
       
-      // Reload documents
       const docsData = await getStudentDocuments(studentId);
       setDocuments(docsData || []);
     } catch (err) {
       showError("Failed to upload document.");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleEditDocSubmit = async (e) => {
+    e.preventDefault();
+    if (!editingDoc) return;
+
+    try {
+      setUpdatingDoc(true);
+      await updateStudentDocument(editingDoc.id, {
+        name: editDocName,
+        document_type: editDocType,
+        expiry_date: editExpiryDate || null
+      });
+      showSuccess("Document updated successfully!");
+      setEditingDoc(null);
+
+      const docsData = await getStudentDocuments(studentId);
+      setDocuments(docsData || []);
+    } catch (err) {
+      showError("Failed to update document.");
+    } finally {
+      setUpdatingDoc(false);
     }
   };
 
@@ -192,7 +225,7 @@ const StudentProfilePage = () => {
         </button>
       </div>
 
-      {/* Rebuilt Tabs */}
+      {/* Tabs */}
       <div className="d-flex border-bottom mb-4">
         <button
           onClick={() => setActiveTab("profile")}
@@ -301,7 +334,6 @@ const StudentProfilePage = () => {
         <Col md={9}>
           {activeTab === "profile" && (
             <div>
-              {/* Profile Details Cards */}
               <Card className="shadow-sm border-0 p-4 mb-4">
                 <h4 className="fw-bold text-slate-800 mb-3" style={{ fontSize: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
                   <User size={18} className="text-slate-500" /> Student Profile Details
@@ -378,88 +410,12 @@ const StudentProfilePage = () => {
                               )}
                             </div>
                           </div>
-
-                          <div className="mt-3 pt-2 border-top d-flex justify-content-end">
-                            {parent.is_active ? (
-                              <span
-                                className="d-flex align-items-center gap-1 text-success"
-                                style={{ fontSize: "11px", fontWeight: 600 }}
-                              >
-                                <CheckCircle size={13} /> Portal Active
-                              </span>
-                            ) : (
-                              <Button
-                                variant="outline-secondary"
-                                size="sm"
-                                className="d-flex align-items-center gap-1"
-                                style={{ fontSize: "11px", fontWeight: 600 }}
-                                onClick={async () => {
-                                  try {
-                                    const res = await api.post(`/parent/admin/${parent.id}/resend-invite`);
-                                    showSuccess(res.data?.message || "Portal setup email sent to parent!");
-                                  } catch (err) {
-                                    showError(err.response?.data?.error || "Failed to send invite email.");
-                                  }
-                                }}
-                              >
-                                <Mail size={12} /> Send Portal Invite
-                              </Button>
-                            )}
-                          </div>
                         </Card.Body>
                       </Card>
                     </Col>
                   ))}
-                  {(!student.parents || student.parents.length === 0) && (
-                    <Col>
-                      <Card className="shadow-sm border-0 py-3 px-4 text-center">
-                        <p className="text-muted mb-2" style={{ fontSize: "13px" }}>No parents associated with this student profile.</p>
-                        <div>
-                          <Link to="/admin/administration/parents" className="btn btn-sm btn-outline-primary" style={{ fontSize: "12px" }}>
-                            <Plus size={13} className="me-1" /> Create & Link Parent Account
-                          </Link>
-                        </div>
-                      </Card>
-                    </Col>
-                  )}
                 </Row>
               </div>
-
-              {/* Additional Authorized Pickup Section */}
-              <div className="mt-4">
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <h4 className="fw-bold text-slate-800 m-0" style={{ fontSize: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
-                    <Clock size={18} className="text-slate-500" /> Additional Authorized Pickup
-                  </h4>
-                  <button className="btn btn-link text-decoration-none p-0 fw-bold" style={{ color: "#0ea5e9", fontSize: "12px" }}>ADD PICKUP</button>
-                </div>
-                <Card className="shadow-sm border-0 py-3 px-4">
-                  <span className="text-slate-400" style={{ fontSize: "13px" }}>There are no additional authorized pickups added.</span>
-                </Card>
-              </div>
-
-              {/* Replaced Activity timeline section */}
-              {student.activity_logs && student.activity_logs.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="fw-bold text-slate-800 mb-3" style={{ fontSize: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
-                    <Clock size={18} className="text-slate-500" /> Student History & Activity
-                  </h4>
-                  <Card className="shadow-sm border-0 p-4">
-                    <div className="timeline">
-                      {student.activity_logs.map((log) => (
-                        <div key={log.id} className="timeline-item mb-3">
-                          <p className="mb-1">
-                            <strong>{log.action}</strong>
-                          </p>
-                          <small className="text-slate-400">
-                            Performed by {log.actor_name} on {new Date(log.created_at).toLocaleString()}
-                          </small>
-                        </div>
-                      ))}
-                    </div>
-                  </Card>
-                </div>
-              )}
             </div>
           )}
 
@@ -484,7 +440,7 @@ const StudentProfilePage = () => {
                 </Button>
               </div>
 
-              {/* Documents Directory Table */}
+              {/* Documents Directory Table (Matching Image 3) */}
               <Table responsive className="align-middle mb-0" style={{ borderCollapse: "separate", borderSpacing: "0 10px" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid #E2E8F0" }}>
@@ -498,21 +454,19 @@ const StudentProfilePage = () => {
                 <tbody>
                   {documents.length > 0 ? (
                     documents.map((doc) => {
-                      const isFormViewer = doc.file_path.startsWith("/enrollment/view");
-                      const downloadUrl = isFormViewer ? doc.file_path : `${baseStaticURL}${doc.file_path}`;
+                      const isAbsoluteUrl = doc.file_path.startsWith("http") || doc.file_path.startsWith("/api");
+                      const downloadUrl = isAbsoluteUrl ? `${baseStaticURL}${doc.file_path.replace('/api', '')}` : `${baseStaticURL}${doc.file_path}`;
 
                       return (
                         <tr key={doc.id} className="bg-light shadow-sm rounded">
                           <td className="p-3" style={{ borderTopLeftRadius: "6px", borderBottomLeftRadius: "6px" }}>
-                            <a 
-                              href={downloadUrl} 
-                              target="_blank" 
-                              rel="noopener noreferrer" 
-                              className="fw-semibold text-decoration-none"
+                            <button 
+                              onClick={() => setPreviewDoc(doc)}
+                              className="fw-semibold text-decoration-none bg-transparent border-0 p-0 text-start"
                               style={{ color: "#007ba4" }}
                             >
                               {doc.name}
-                            </a>
+                            </button>
                           </td>
                           <td className="p-3 text-slate-600">
                             {formatDate(doc.expiry_date, "No Date")}
@@ -535,8 +489,21 @@ const StudentProfilePage = () => {
                                 <MoreHorizontal size={18} className="text-slate-400 hover-slate-800" />
                               </Dropdown.Toggle>
                               <Dropdown.Menu className="shadow border-slate-200">
-                                <Dropdown.Item href={downloadUrl} target="_blank" rel="noopener noreferrer">
-                                  <Download size={14} className="me-2 text-slate-500" /> View/Download
+                                <Dropdown.Item 
+                                  onClick={() => {
+                                    setEditingDoc(doc);
+                                    setEditDocName(doc.name);
+                                    setEditDocType(doc.document_type || "Document");
+                                    setEditExpiryDate(doc.expiry_date ? doc.expiry_date.split("T")[0] : "");
+                                  }}
+                                >
+                                  <Edit2 size={14} className="me-2 text-slate-500" /> Edit
+                                </Dropdown.Item>
+                                <Dropdown.Item onClick={() => setPreviewDoc(doc)}>
+                                  <Eye size={14} className="me-2 text-slate-500" /> Preview
+                                </Dropdown.Item>
+                                <Dropdown.Item href={downloadUrl} target="_blank" rel="noopener noreferrer" download>
+                                  <Download size={14} className="me-2 text-slate-500" /> Download
                                 </Dropdown.Item>
                                 <Dropdown.Divider />
                                 <Dropdown.Item onClick={() => handleDeleteDocClick(doc.id)} className="text-danger">
@@ -627,6 +594,90 @@ const StudentProfilePage = () => {
           </Modal.Footer>
         </Form>
       </Modal>
+
+      {/* Edit Document Modal */}
+      {editingDoc && (
+        <Modal show={true} onHide={() => setEditingDoc(null)} centered>
+          <Form onSubmit={handleEditDocSubmit}>
+            <Modal.Header closeButton>
+              <Modal.Title style={{ fontSize: "18px", fontWeight: "700" }}>Edit Student Document</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              <Form.Group className="mb-3">
+                <Form.Label className="small fw-semibold text-slate-600 mb-1">DOCUMENT NAME *</Form.Label>
+                <Form.Control 
+                  type="text" 
+                  required 
+                  value={editDocName}
+                  onChange={(e) => setEditDocName(e.target.value)}
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label className="small fw-semibold text-slate-600 mb-1">DOCUMENT TYPE</Form.Label>
+                <Form.Select 
+                  value={editDocType}
+                  onChange={(e) => setEditDocType(e.target.value)}
+                >
+                  <option value="Document">Document</option>
+                  <option value="Immunization">Immunization</option>
+                  <option value="ID Card">ID Card</option>
+                  <option value="Medical Report">Medical Report</option>
+                </Form.Select>
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label className="small fw-semibold text-slate-600 mb-1">EXPIRY DATE (OPTIONAL)</Form.Label>
+                <Form.Control 
+                  type="date" 
+                  value={editExpiryDate}
+                  onChange={(e) => setEditExpiryDate(e.target.value)}
+                />
+              </Form.Group>
+            </Modal.Body>
+            <Modal.Footer>
+              <Button variant="outline-secondary" size="sm" onClick={() => setEditingDoc(null)} disabled={updatingDoc}>
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" style={{ backgroundColor: "#007ba4", borderColor: "#007ba4" }} disabled={updatingDoc}>
+                {updatingDoc ? <Spinner animation="border" size="sm" /> : "Save Changes"}
+              </Button>
+            </Modal.Footer>
+          </Form>
+        </Modal>
+      )}
+
+      {/* Preview Document Modal */}
+      {previewDoc && (
+        <Modal show={true} onHide={() => setPreviewDoc(null)} size="lg" centered>
+          <Modal.Header closeButton>
+            <Modal.Title style={{ fontSize: "18px", fontWeight: "700" }}>
+              📄 Preview Document: {previewDoc.name}
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body className="p-0 text-center" style={{ minHeight: "500px" }}>
+            <iframe 
+              src={`${baseStaticURL}${previewDoc.file_path.replace('/api', '')}`} 
+              title={previewDoc.name}
+              style={{ width: "100%", height: "550px", border: "none" }}
+            />
+          </Modal.Body>
+          <Modal.Footer>
+            <a 
+              href={`${baseStaticURL}${previewDoc.file_path.replace('/api', '')}`} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="btn btn-primary btn-sm"
+              download
+            >
+              <Download size={14} className="me-1" /> Download File
+            </a>
+            <Button variant="secondary" size="sm" onClick={() => setPreviewDoc(null)}>
+              Close
+            </Button>
+          </Modal.Footer>
+        </Modal>
+      )}
     </div>
   );
 };
