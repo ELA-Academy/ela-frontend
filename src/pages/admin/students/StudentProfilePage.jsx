@@ -454,8 +454,8 @@ const StudentProfilePage = () => {
                 <tbody>
                   {documents.length > 0 ? (
                     documents.map((doc) => {
-                      const isAbsoluteUrl = doc.file_path.startsWith("http") || doc.file_path.startsWith("/api");
-                      const downloadUrl = isAbsoluteUrl ? `${baseStaticURL}${doc.file_path.replace('/api', '')}` : `${baseStaticURL}${doc.file_path}`;
+                      const isAbsoluteUrl = doc.file_path.startsWith("http");
+                      const downloadUrl = isAbsoluteUrl ? doc.file_path : `${baseStaticURL}${doc.file_path}`;
 
                       return (
                         <tr key={doc.id} className="bg-light shadow-sm rounded">
@@ -657,14 +657,14 @@ const StudentProfilePage = () => {
           </Modal.Header>
           <Modal.Body className="p-0 text-center" style={{ minHeight: "500px" }}>
             <iframe 
-              src={`${baseStaticURL}${previewDoc.file_path.replace('/api', '')}`} 
+              src={previewDoc.file_path.startsWith("http") ? previewDoc.file_path : `${baseStaticURL}${previewDoc.file_path}`} 
               title={previewDoc.name}
               style={{ width: "100%", height: "550px", border: "none" }}
             />
           </Modal.Body>
           <Modal.Footer>
             <a 
-              href={`${baseStaticURL}${previewDoc.file_path.replace('/api', '')}`} 
+              href={previewDoc.file_path.startsWith("http") ? previewDoc.file_path : `${baseStaticURL}${previewDoc.file_path}`} 
               target="_blank" 
               rel="noopener noreferrer" 
               className="btn btn-primary btn-sm"
