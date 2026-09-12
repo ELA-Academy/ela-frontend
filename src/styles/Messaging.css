@@ -661,6 +661,23 @@
   font-weight: 600;
 }
 
+/* Mention Pill in Message Bubble */
+.zbot-mention-pill {
+  display: inline-flex;
+  align-items: center;
+  background-color: #eef2ff;
+  color: #4f46e5;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  font-size: 0.9em;
+  line-height: 1.35;
+  margin: 0 2px;
+  vertical-align: baseline;
+  user-select: text;
+}
+
 /* Message row hover action container and menu */
 .zbot-message-row {
   position: relative;
@@ -981,6 +998,12 @@
   background-color: #121215 !important;
   color: #ffffff !important;
   border-color: #27272a !important;
+}
+
+[data-theme="dark"] .zbot-mention-pill {
+  background-color: rgba(99, 102, 241, 0.2) !important;
+  color: #a5b4fc !important;
+  border-color: rgba(99, 102, 241, 0.35) !important;
 }
 
 

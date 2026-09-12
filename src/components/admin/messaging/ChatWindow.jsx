@@ -47,25 +47,51 @@ import EmojiPickerPopover from "../../common/EmojiPickerPopover";
 // A global, persistent in-memory cache to store conversation histories
 const globalMessageCache = {};
 
-const renderMessageText = (text) => {
+const renderMessageText = (text, usersList = []) => {
   if (!text) return "";
-  const parts = text.split(/(https?:\/\/[^\s]+)/g);
-  return parts.map((part, index) => {
-    if (part.match(/https?:\/\/[^\s]+/)) {
+  const urlParts = text.split(/(https?:\/\/[^\s]+)/g);
+  
+  // Build a regex for mentions matching known users or generic @Name
+  const knownNames = (usersList || [])
+    .map((u) => u.name?.replace(" (You)", "").trim())
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length);
+
+  let mentionPattern;
+  if (knownNames.length > 0) {
+    const escaped = knownNames.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    mentionPattern = new RegExp(`(@(?:${escaped.join("|")})|@[A-Za-z0-9_.-]+)`, "g");
+  } else {
+    mentionPattern = /(@[A-Za-z0-9_.-]+)/g;
+  }
+
+  return urlParts.map((urlPart, uIdx) => {
+    if (urlPart.match(/^https?:\/\/[^\s]+$/)) {
       return (
         <a 
-          key={index} 
-          href={part} 
+          key={`url-${uIdx}`} 
+          href={urlPart} 
           target="_blank" 
           rel="noopener noreferrer"
           className="text-purple-600 hover:text-purple-800 text-decoration-underline"
           style={{ wordBreak: "break-all" }}
         >
-          {part}
+          {urlPart}
         </a>
       );
     }
-    return part;
+
+    const textParts = urlPart.split(mentionPattern);
+    return textParts.map((tPart, tIdx) => {
+      if (tPart.startsWith("@") && tPart.length > 1) {
+        return (
+          <span key={`mention-${uIdx}-${tIdx}`} className="zbot-mention-pill">
+            {tPart}
+          </span>
+        );
+      }
+      return tPart;
+    });
   });
 };
 
@@ -449,7 +475,8 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
     
     const prefix = val.slice(0, triggerIndex);
     const suffix = val.slice(cursorPosition);
-    const mentionText = `@${userToMention.name} `;
+    const cleanName = (userToMention.name || "").replace(" (You)", "").trim();
+    const mentionText = `@${cleanName} `;
     const newVal = prefix + mentionText + suffix;
     
     setNewMessage(newVal);
@@ -459,7 +486,7 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
     
     setSelectedMentions(prev => {
       if (prev.some(u => u.id === userToMention.id && u.role === userToMention.role)) return prev;
-      return [...prev, { id: userToMention.id, role: userToMention.role, name: userToMention.name }];
+      return [...prev, { id: userToMention.id, role: userToMention.role, name: cleanName }];
     });
     
     const newCursorPos = triggerIndex + mentionText.length;
@@ -470,17 +497,50 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
   };
 
   const filteredUsers = useMemo(() => {
-    let usersList = allAppUsers;
+    let usersList = allAppUsers || [];
+    
     if (conversation?.conversation_type === "direct") {
-      usersList = targetUser ? [targetUser] : [];
+      // 1. Check if conversation has participant_keys (e.g. ['staff_1', 'staff_2', 'superadmin_3'])
+      const participantKeys = conversation?.participant_keys || [];
+      if (participantKeys.length > 0) {
+        const participants = allAppUsers.filter(u => participantKeys.includes(u.id));
+        if (participants.length > 0) {
+          usersList = participants;
+        } else if (targetUser) {
+          usersList = [targetUser];
+        }
+      } else if (conversation?.title && conversation.title.includes(",")) {
+        // Group message without participant_keys loaded yet: match names from title
+        const titleNames = conversation.title
+          .split(",")
+          .map(n => n.replace(" (You)", "").trim().toLowerCase());
+        const matched = allAppUsers.filter(u => {
+          const cleanName = (u.name || "").replace(" (You)", "").trim().toLowerCase();
+          return titleNames.includes(cleanName);
+        });
+        if (matched.length > 0) {
+          usersList = matched;
+        }
+      } else if (targetUser) {
+        usersList = [targetUser];
+      }
     }
 
+    // Sort users so other participants appear first, and current user (You) appears last
+    const sortedUsers = [...usersList].sort((a, b) => {
+      const aIsYou = (a.name || "").includes("(You)");
+      const bIsYou = (b.name || "").includes("(You)");
+      if (aIsYou && !bIsYou) return 1;
+      if (!aIsYou && bIsYou) return -1;
+      return (a.name || "").localeCompare(b.name || "");
+    });
+
     if (!mentionSearchQuery) {
-      return usersList;
+      return sortedUsers;
     }
     const q = mentionSearchQuery.toLowerCase();
-    return usersList.filter(u => 
-      u.name.toLowerCase().includes(q) || 
+    return sortedUsers.filter(u => 
+      (u.name && u.name.toLowerCase().includes(q)) || 
       (u.email && u.email.toLowerCase().includes(q))
     );
   }, [allAppUsers, mentionSearchQuery, conversation, targetUser]);
@@ -559,7 +619,7 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
     [conversationId]
   );
 
-  // Resolve direct message participant & fetch messaging users list
+  // Resolve direct message participant (for 1-on-1 conversations)
   useEffect(() => {
     if (!conversationId || conversation?.conversation_type !== "direct") {
       setTargetUser(null);
@@ -568,21 +628,36 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
 
     const resolveTargetUser = async () => {
       try {
-        const res = await api.get("/messaging/users");
-        const cleanConvoTitle = (conversation.title || "").replace(" (You)", "").trim();
-        const matched = res.data.find(
-          (u) => u.name.replace(" (You)", "").trim() === cleanConvoTitle
-        );
-        if (matched) {
-          setTargetUser(matched);
+        let users = allAppUsers;
+        if (!users || users.length === 0) {
+          const res = await api.get("/messaging/users");
+          users = res.data || [];
         }
+        
+        // In 1-on-1 DMs, find the other participant via participant_keys or title
+        const userKey = user ? `${user.role}_${user.id}` : "";
+        const otherKey = conversation.participant_keys?.find((k) => k !== userKey);
+        
+        let matched = null;
+        if (otherKey && (!conversation.participant_keys || conversation.participant_keys.length <= 2)) {
+          matched = users.find((u) => u.id === otherKey);
+        }
+        
+        if (!matched) {
+          const cleanConvoTitle = (conversation.title || "").replace(" (You)", "").trim();
+          matched = users.find(
+            (u) => (u.name || "").replace(" (You)", "").trim() === cleanConvoTitle
+          );
+        }
+
+        setTargetUser(matched || null);
       } catch (err) {
         console.error("Error resolving target user", err);
       }
     };
 
     resolveTargetUser();
-  }, [conversationId, conversation]);
+  }, [conversationId, conversation, allAppUsers, user]);
 
   // Load Tasks assigned to target user
   const fetchAssignedTasks = async () => {
@@ -853,6 +928,29 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
 
     const replyId = replyingToMessage ? replyingToMessage.id : null;
     const tempIdBase = Date.now();
+    const msgContent = newMessage.trim();
+
+    // Compute active mentions from selectedMentions and any manually typed @Name in content
+    const allPossibleUsers = allAppUsers || [];
+    const mentionedFromText = allPossibleUsers.filter((u) => {
+      const cleanName = (u.name || "").replace(" (You)", "").trim();
+      return cleanName && msgContent.includes(`@${cleanName}`);
+    }).map((u) => ({
+      id: u.id,
+      role: u.role,
+      name: (u.name || "").replace(" (You)", "").trim()
+    }));
+
+    const combinedMentionsMap = new Map();
+    selectedMentions.forEach((u) => {
+      if (msgContent.includes(`@${u.name}`)) {
+        combinedMentionsMap.set(`${u.role}_${u.id}`, u);
+      }
+    });
+    mentionedFromText.forEach((u) => {
+      combinedMentionsMap.set(`${u.role}_${u.id}`, u);
+    });
+    const activeMentions = Array.from(combinedMentionsMap.values());
 
     if (pendingAttachments.length > 0) {
       setUploading(true);
@@ -868,6 +966,9 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
       }
       if (replyId) {
         firstFormData.append("reply_to_message_id", replyId);
+      }
+      if (activeMentions.length > 0) {
+        firstFormData.append("mentions", JSON.stringify(activeMentions.map((u) => ({ id: u.id, role: u.role }))));
       }
 
       const tempId1 = `temp_1_${tempIdBase}`;
@@ -974,7 +1075,6 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
         return nextMessages;
       });
       updateSidebarConversation(conversationId, optimisticMessage.content, optimisticMessage.created_at);
-      const activeMentions = selectedMentions.filter(u => optimisticMessage.content.includes(`@${u.name}`));
       setNewMessage("");
       setReplyingToMessage(null);
       setSelectedMentions([]);
@@ -983,7 +1083,7 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
           conversationId,
           optimisticMessage.content,
           replyId,
-          activeMentions.map(u => ({ id: u.id, role: u.role }))
+          activeMentions.map((u) => ({ id: u.id, role: u.role }))
         );
         setMessages((prevMessages) =>
           prevMessages.map((msg) => (msg.id === tempId ? sentMessage : msg))
@@ -1378,7 +1478,7 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
                                     wordBreak: "break-word",
                                   }}
                                 >
-                                  {renderMessageText(msg.content)}
+                                  {renderMessageText(msg.content, allAppUsers)}
                                   {msg.is_edited && (
                                     <span 
                                       className="text-muted ms-2 select-none" 
