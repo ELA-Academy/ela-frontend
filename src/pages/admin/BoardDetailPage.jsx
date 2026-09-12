@@ -10,7 +10,7 @@ import {
   Plus,
   Trash,
 } from "react-bootstrap-icons";
-import { FileText, LayoutList, Kanban, Flag, User, Calendar, BookOpen, Folder, Repeat, GitFork, Link, MoreHorizontal, Copy, Star, Edit3, Bell, ArrowRight, PlusSquare, Layers, ClipboardCopy, Zap, Clock, Mail, Archive, Trash2, MessageSquare, Search, AlignLeft, Table, PieChart, Image, Activity, Share2, Users, MapPin, Pin, Settings, Lock, Filter, RefreshCw, Columns, ChevronDown, ChevronLeft, ChevronRight, Send, MousePointer, Type, PenTool, StickyNote, Eraser, Square, Target, Paperclip, Hash, Globe, DollarSign, CheckSquare, PlusCircle, ArrowLeft, ListPlus, Tag, Sparkles, Phone, Upload, Check } from "lucide-react";
+import { FileText, LayoutList, Kanban, Flag, User, Calendar, BookOpen, Folder, Repeat, GitFork, Link, MoreHorizontal, Copy, Star, Edit3, Bell, ArrowRight, PlusSquare, Layers, ClipboardCopy, Zap, Clock, Mail, Archive, Trash2, MessageSquare, Search, AlignLeft, Table, PieChart, Image, Activity, Share2, Users, MapPin, Pin, Settings, Lock, Filter, RefreshCw, Columns, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, Send, MousePointer, Type, PenTool, StickyNote, Eraser, Square, Target, Paperclip, Hash, Globe, DollarSign, CheckSquare, PlusCircle, ArrowLeft, ListPlus, Tag, Sparkles, Phone, Upload, Check } from "lucide-react";
 import { toast } from "react-toastify";
 import { format, parseISO } from "date-fns";
 
@@ -425,37 +425,208 @@ const BoardDetailPage = () => {
     return [];
   });
 
+  // Column Order State (persisted per board across all departments in board.view_settings)
+  const [columnOrder, setColumnOrder] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`col_order_${boardId}`);
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return [];
+  });
+
+  const [draggedColKey, setDraggedColKey] = useState(null);
+  const [dragOverColKey, setDragOverColKey] = useState(null);
   const [deletingFieldId, setDeletingFieldId] = useState(null);
 
-  useEffect(() => {
-    if (boardId) {
-      try {
-        const stored = localStorage.getItem(`hidden_columns_${boardId}`);
-        if (stored) {
-          setHiddenColumns(JSON.parse(stored));
-        } else {
-          setHiddenColumns([]);
-        }
-      } catch (e) {
-        setHiddenColumns([]);
+  const STANDARD_COL_KEYS = useMemo(() => ["assignee", "start_date", "due_date", "priority", "status", "comments"], []);
+
+  // Compute all available and ordered columns
+  const orderedColumns = useMemo(() => {
+    const customColKeys = boardCustomFields.map(f => String(f.id));
+    const allValidKeys = [...STANDARD_COL_KEYS, ...customColKeys];
+
+    const seen = new Set();
+    const result = [];
+
+    (columnOrder || []).forEach(k => {
+      const keyStr = String(k).replace(/^custom_/, "");
+      if (allValidKeys.includes(keyStr) && !seen.has(keyStr)) {
+        seen.add(keyStr);
+        result.push(keyStr);
       }
+    });
+
+    allValidKeys.forEach(ak => {
+      if (!seen.has(ak)) {
+        seen.add(ak);
+        result.push(ak);
+      }
+    });
+
+    return result;
+  }, [boardCustomFields, columnOrder, STANDARD_COL_KEYS]);
+
+  const isColHidden = useCallback((key) => {
+    const keyStr = String(key).replace(/^custom_/, "");
+    return hiddenColumns.includes(keyStr);
+  }, [hiddenColumns]);
+
+  const activeOrderedColumns = useMemo(() => {
+    return orderedColumns.filter(colKey => !isColHidden(colKey));
+  }, [orderedColumns, isColHidden]);
+
+  const saveViewSettings = useCallback(async (updates) => {
+    if (!boardId) return;
+    try {
+      if (updates.column_order) {
+        localStorage.setItem(`col_order_${boardId}`, JSON.stringify(updates.column_order));
+      }
+      if (updates.hidden_columns) {
+        localStorage.setItem(`hidden_columns_${boardId}`, JSON.stringify(updates.hidden_columns));
+      }
+      await api.put(`/boards/${boardId}/view-settings`, updates);
+    } catch (err) {
+      console.error("Failed to save view settings to server", err);
     }
   }, [boardId]);
 
   const toggleHideColumn = (colKey) => {
-    const keyStr = String(colKey);
+    const keyStr = String(colKey).replace(/^custom_/, "");
     setHiddenColumns((prev) => {
       const isHidden = prev.includes(keyStr);
       const updated = isHidden ? prev.filter((c) => c !== keyStr) : [...prev, keyStr];
       if (boardId) {
         localStorage.setItem(`hidden_columns_${boardId}`, JSON.stringify(updated));
       }
+      saveViewSettings({ hidden_columns: updated });
       toast.info(isHidden ? `Column shown` : `Column hidden`);
       return updated;
     });
   };
 
-  const isColHidden = (key) => hiddenColumns.includes(String(key));
+  const handleMoveColumn = (colKey, direction) => {
+    const keyStr = String(colKey).replace(/^custom_/, "");
+    const currentOrder = [...orderedColumns];
+    const idx = currentOrder.indexOf(keyStr);
+    if (idx === -1) return;
+
+    const [item] = currentOrder.splice(idx, 1);
+
+    if (direction === "start") {
+      currentOrder.unshift(item);
+    } else if (direction === "end") {
+      currentOrder.push(item);
+    } else if (direction === "left") {
+      const targetIdx = Math.max(0, idx - 1);
+      currentOrder.splice(targetIdx, 0, item);
+    } else if (direction === "right") {
+      const targetIdx = Math.min(currentOrder.length, idx + 1);
+      currentOrder.splice(targetIdx, 0, item);
+    }
+
+    setColumnOrder(currentOrder);
+    saveViewSettings({ column_order: currentOrder });
+    toast.success("Column order updated");
+
+    const customFieldIds = currentOrder
+      .filter(k => !STANDARD_COL_KEYS.includes(k))
+      .map(Number)
+      .filter(n => !isNaN(n));
+    if (customFieldIds.length > 0) {
+      api.post(`/board-extensions/boards/${boardId}/custom-fields/reorder`, { field_ids: customFieldIds }).catch(() => {});
+    }
+  };
+
+  const handleColDragStart = (e, colKey) => {
+    e.stopPropagation();
+    const keyStr = String(colKey).replace(/^custom_/, "");
+    setDraggedColKey(keyStr);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", keyStr);
+  };
+
+  const handleColDragOver = (e, targetColKey) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const keyStr = String(targetColKey).replace(/^custom_/, "");
+    if (draggedColKey && draggedColKey !== keyStr) {
+      setDragOverColKey(keyStr);
+    }
+  };
+
+  const handleColDrop = (e, targetColKey) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const targetKeyStr = String(targetColKey).replace(/^custom_/, "");
+    if (!draggedColKey || draggedColKey === targetKeyStr) {
+      setDraggedColKey(null);
+      setDragOverColKey(null);
+      return;
+    }
+
+    const currentOrder = [...orderedColumns];
+    const srcIdx = currentOrder.indexOf(draggedColKey);
+    const dstIdx = currentOrder.indexOf(targetKeyStr);
+
+    if (srcIdx !== -1 && dstIdx !== -1) {
+      const [item] = currentOrder.splice(srcIdx, 1);
+      currentOrder.splice(dstIdx, 0, item);
+
+      setColumnOrder(currentOrder);
+      saveViewSettings({ column_order: currentOrder });
+      toast.success("Column reordered");
+
+      const customFieldIds = currentOrder
+        .filter(k => !STANDARD_COL_KEYS.includes(k))
+        .map(Number)
+        .filter(n => !isNaN(n));
+      if (customFieldIds.length > 0) {
+        api.post(`/board-extensions/boards/${boardId}/custom-fields/reorder`, { field_ids: customFieldIds }).catch(() => {});
+      }
+    }
+
+    setDraggedColKey(null);
+    setDragOverColKey(null);
+  };
+
+  const handleColDragEnd = () => {
+    setDraggedColKey(null);
+    setDragOverColKey(null);
+  };
+
+  const handleResetColumns = () => {
+    const defaultOrder = ["assignee", "start_date", "due_date", "priority", "status", ...boardCustomFields.map(f => String(f.id)), "comments"];
+    setColumnOrder(defaultOrder);
+    setHiddenColumns([]);
+    saveViewSettings({ column_order: defaultOrder, hidden_columns: [] });
+    toast.success("Columns reset to default layout");
+  };
+
+  const handleCleanJunkFields = async () => {
+    try {
+      const res = await api.post(`/boards/${boardId}/clean-junk-fields`);
+      toast.success(res.data?.message || "Cleaned up junk columns!");
+      fetchWorkspace(false);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to clean up junk columns.");
+    }
+  };
+
+  const getColumnLabel = (colKey) => {
+    switch (colKey) {
+      case "assignee": return "Assignee";
+      case "start_date": return "Start date";
+      case "due_date": return "Due date";
+      case "priority": return "Priority";
+      case "status": return "Status";
+      case "comments": return "Comments";
+      default: {
+        const f = boardCustomFields.find(fld => String(fld.id) === String(colKey) || fld.id === colKey);
+        return f ? f.name : colKey;
+      }
+    }
+  };
 
   // Column Calculations State
   const [columnCalculations, setColumnCalculations] = useState(() => {
@@ -1399,6 +1570,18 @@ const BoardDetailPage = () => {
       
       const res = await api.get(`/board-extensions/boards/${boardId}/custom-fields`);
       setBoardCustomFields(res.data || []);
+
+      if (boardData?.view_settings) {
+        const vs = typeof boardData.view_settings === "string" ? JSON.parse(boardData.view_settings) : boardData.view_settings;
+        if (Array.isArray(vs.column_order) && vs.column_order.length > 0) {
+          setColumnOrder(vs.column_order);
+          localStorage.setItem(`col_order_${boardId}`, JSON.stringify(vs.column_order));
+        }
+        if (Array.isArray(vs.hidden_columns)) {
+          setHiddenColumns(vs.hidden_columns);
+          localStorage.setItem(`hidden_columns_${boardId}`, JSON.stringify(vs.hidden_columns));
+        }
+      }
     } catch (fetchError) {
       setError("Failed to load space details.");
     } finally {
@@ -3847,13 +4030,7 @@ const BoardDetailPage = () => {
                           </th>
                           <th style={{ width: "3%" }} className="zbot-sticky-col-2"></th>
                           {renderStandardFieldHeader("title", "Name", { width: "32%", minWidth: "350px" }, "zbot-sticky-col-3")}
-                          {!isColHidden("assignee") && renderStandardFieldHeader("assignee", "Assignee", { width: "12%", minWidth: "120px" })}
-                          {!isColHidden("start_date") && renderStandardFieldHeader("start_date", "Start date", { width: "10%", minWidth: "110px" })}
-                          {!isColHidden("due_date") && renderStandardFieldHeader("due_date", "Due date", { width: "10%", minWidth: "110px" })}
-                          {!isColHidden("priority") && renderStandardFieldHeader("priority", "Priority", { width: "8%", minWidth: "90px" })}
-                          {!isColHidden("status") && renderStandardFieldHeader("status", "Status", { width: "10%", minWidth: "120px" })}
-                          {boardCustomFields.filter(f => !isColHidden(f.id)).map(field => renderCustomFieldHeader(field))}
-                          <th style={{ width: "5%", minWidth: "80px" }}>Comments</th>
+                          {activeOrderedColumns.map(colKey => renderDynamicColumnHeader(colKey))}
                           <th style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }} className="zbot-sticky-col-right">
                             <button
                               type="button"
@@ -3981,31 +4158,7 @@ const BoardDetailPage = () => {
                                   </button>
                                 </div>
                               </td>
-                              {!isColHidden("assignee") && <td style={{ minWidth: "120px" }}>{renderAssigneeCell(task)}</td>}
-                              {!isColHidden("start_date") && <td style={{ minWidth: "110px" }}>{renderDateCell(task, "start_date")}</td>}
-                              {!isColHidden("due_date") && <td style={{ minWidth: "110px" }}>{renderDateCell(task, "due_date")}</td>}
-                              {!isColHidden("priority") && <td style={{ minWidth: "90px" }}>{renderPriorityDropdown(task)}</td>}
-                              {!isColHidden("status") && <td style={{ minWidth: "120px" }}>{renderStatusDropdown(task)}</td>}
-                              {boardCustomFields.filter(f => !isColHidden(f.id)).map(field => (
-                                <td key={field.id} style={{ width: "140px", minWidth: "140px", maxWidth: "180px" }} className="text-truncate">
-                                  {renderCustomFieldCell(task, field)}
-                                </td>
-                              ))}
-                              <td className="text-center position-relative" style={{ minWidth: "80px" }}>
-                                <button
-                                  type="button"
-                                  className="chat-bubble-btn position-relative d-inline-flex align-items-center justify-content-center cursor-pointer border-0 bg-transparent"
-                                  style={{ width: "24px", height: "24px" }}
-                                  onClick={() => setActiveCommentTaskId(activeCommentTaskId === task.id ? null : task.id)}
-                                >
-                                  <MessageSquare size={13} className={task.updates_count > 0 ? "text-primary" : "text-slate-300"} />
-                                  {task.updates_count > 0 && (
-                                    <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: "9px", padding: "1px 3px" }}>
-                                      {task.updates_count}
-                                    </span>
-                                  )}
-                                </button>
-                              </td>
+                              {activeOrderedColumns.map(colKey => renderDynamicColumnCell(task, colKey))}
                               <td style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }} className="zbot-sticky-col-right">
                                 <Dropdown align="end">
                                   <Dropdown.Toggle as="button" className="task-row-menu-btn">
@@ -4106,28 +4259,7 @@ const BoardDetailPage = () => {
                                       </button>
                                     </div>
                                   </td>
-                                  {!isColHidden("assignee") && <td style={{ minWidth: "120px" }}>{renderAssigneeCell(subtaskFull)}</td>}
-                                  {!isColHidden("due_date") && <td style={{ minWidth: "110px" }}>{renderDateCell(subtaskFull, "due_date")}</td>}
-                                  {!isColHidden("priority") && <td style={{ minWidth: "90px" }}>{renderPriorityDropdown(subtaskFull)}</td>}
-                                  {!isColHidden("status") && <td style={{ minWidth: "120px" }}>{renderStatusDropdown(subtaskFull)}</td>}
-                                  {boardCustomFields.filter(f => !isColHidden(f.id)).map(field => (
-                                    <td key={field.id} style={{ width: "140px", minWidth: "140px" }}></td>
-                                  ))}
-                                  <td className="text-center position-relative" style={{ minWidth: "80px" }}>
-                                    <button
-                                      type="button"
-                                      className="chat-bubble-btn position-relative d-inline-flex align-items-center justify-content-center cursor-pointer border-0 bg-transparent"
-                                      style={{ width: "24px", height: "24px" }}
-                                      onClick={() => setActiveCommentTaskId(activeCommentTaskId === subtask.id ? null : subtask.id)}
-                                    >
-                                      <MessageSquare size={13} className={subtask.updates_count > 0 ? "text-primary" : "text-slate-300"} />
-                                      {subtask.updates_count > 0 && (
-                                        <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: "9px", padding: "1px 3px" }}>
-                                          {subtask.updates_count}
-                                        </span>
-                                      )}
-                                    </button>
-                                  </td>
+                                  {activeOrderedColumns.map(colKey => renderDynamicSubtaskCell(subtaskFull, colKey))}
                                   <td style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }} className="zbot-sticky-col-right">
                                     <Dropdown align="end">
                                       <Dropdown.Toggle as="button" className="task-row-menu-btn">
@@ -4459,37 +4591,7 @@ const BoardDetailPage = () => {
                               </div>
                             )}
                           </td>
-                          {!isColHidden("assignee") && (
-                            <td style={{ minWidth: "120px" }} className="px-2 py-1 align-middle">
-                              {renderColumnCalculationCell("assignee", statusTasks)}
-                            </td>
-                          )}
-                          {!isColHidden("start_date") && (
-                            <td style={{ minWidth: "110px" }} className="px-2 py-1 align-middle">
-                              {renderColumnCalculationCell("start_date", statusTasks)}
-                            </td>
-                          )}
-                          {!isColHidden("due_date") && (
-                            <td style={{ minWidth: "110px" }} className="px-2 py-1 align-middle">
-                              {renderColumnCalculationCell("due_date", statusTasks)}
-                            </td>
-                          )}
-                          {!isColHidden("priority") && (
-                            <td style={{ minWidth: "90px" }} className="px-2 py-1 align-middle">
-                              {renderColumnCalculationCell("priority", statusTasks)}
-                            </td>
-                          )}
-                          {!isColHidden("status") && (
-                            <td style={{ minWidth: "120px" }} className="px-2 py-1 align-middle">
-                              {renderColumnCalculationCell("status", statusTasks)}
-                            </td>
-                          )}
-                          {boardCustomFields.filter(f => !isColHidden(f.id)).map(field => (
-                            <td key={`calc_${field.id}`} style={{ width: "140px", minWidth: "140px", maxWidth: "180px" }} className="px-2 py-1 align-middle">
-                              {renderColumnCalculationCell(field, statusTasks)}
-                            </td>
-                          ))}
-                          <td style={{ minWidth: "80px" }} />
+                          {activeOrderedColumns.map(colKey => renderDynamicCalculationCell(colKey, statusTasks))}
                           <td style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }} className="zbot-sticky-col-right" />
                         </tr>
                       )}
@@ -4598,11 +4700,7 @@ const BoardDetailPage = () => {
             <tr>
               <th style={{ width: "3%" }} className="zbot-sticky-table-col-1"></th>
               {renderStandardFieldHeader("title", "Name", { width: "32%", minWidth: "350px" }, "zbot-sticky-table-col-2")}
-              {renderStandardFieldHeader("assignee", "Assignee", { width: "12%", minWidth: "120px" })}
-              {renderStandardFieldHeader("status", "Status", { width: "12%", minWidth: "120px" })}
-              {renderStandardFieldHeader("due_date", "Due date", { width: "10%", minWidth: "110px" })}
-              {renderStandardFieldHeader("priority", "Priority", { width: "8%", minWidth: "90px" })}
-              {boardCustomFields.map(field => renderCustomFieldHeader(field))}
+              {activeOrderedColumns.map(colKey => renderDynamicColumnHeader(colKey))}
               <th style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }} className="zbot-sticky-table-col-right-2">
                 <button
                   type="button"
@@ -4681,15 +4779,7 @@ const BoardDetailPage = () => {
                         </button>
                       </div>
                     </td>
-                    <td style={{ minWidth: "120px" }}>{renderAssigneeCell(task)}</td>
-                    <td style={{ minWidth: "120px" }}>{renderStatusDropdown(task)}</td>
-                    <td style={{ minWidth: "110px" }}>{renderDateCell(task, "due_date")}</td>
-                    <td style={{ minWidth: "90px" }}>{renderPriorityDropdown(task)}</td>
-                    {boardCustomFields.map(field => (
-                      <td key={field.id} style={{ width: "140px", minWidth: "140px", maxWidth: "180px" }} className="text-truncate">
-                        {renderCustomFieldCell(task, field)}
-                      </td>
-                    ))}
+                    {activeOrderedColumns.map(colKey => renderDynamicColumnCell(task, colKey))}
                     <td style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }} className="zbot-sticky-table-col-right-2"></td>
                     <td style={{ width: "50px", minWidth: "50px", maxWidth: "50px" }} className="zbot-sticky-table-col-right-1">
                       {/* Three-dot context menu */}
@@ -5666,25 +5756,6 @@ const BoardDetailPage = () => {
   const handleSortColumn = (fieldId, order) => {
     setSortBy(`custom_field_${fieldId}`);
     setSortOrder(order);
-  };
-
-  const handleMoveColumn = (fieldId, direction) => {
-    setBoardCustomFields(prev => {
-      const idx = prev.findIndex(f => f.id === fieldId);
-      if (idx === -1) return prev;
-      const next = [...prev];
-      const [item] = next.splice(idx, 1);
-      if (direction === "start") {
-        next.unshift(item);
-      } else {
-        next.push(item);
-      }
-      return next;
-    });
-  };
-
-  const handleHideColumn = (fieldId) => {
-    toggleHideColumn(fieldId);
   };
 
   const handleDuplicateColumn = async (field) => {
@@ -6764,11 +6835,17 @@ const BoardDetailPage = () => {
 
   const renderStandardFieldHeader = (fieldKey, fieldName, style = {}, className = "") => {
     if (isColHidden(fieldKey)) return null;
+    const isDragOver = dragOverColKey === fieldKey;
     return (
       <th 
         key={fieldKey} 
         style={{ cursor: "pointer", position: "relative", ...style }}
-        className={className}
+        className={`${className} ${isDragOver ? "drag-over-col-header" : ""}`.trim()}
+        draggable={fieldKey !== "title"}
+        onDragStart={(e) => handleColDragStart(e, fieldKey)}
+        onDragOver={(e) => handleColDragOver(e, fieldKey)}
+        onDrop={(e) => handleColDrop(e, fieldKey)}
+        onDragEnd={handleColDragEnd}
       >
         <Dropdown align="start">
           <Dropdown.Toggle as="div" className="d-flex align-items-center justify-content-between w-100 fw-semibold text-slate-700">
@@ -6788,6 +6865,8 @@ const BoardDetailPage = () => {
             <Dropdown.Item onClick={() => toast.info(`${fieldName} column fit to content`)}>Fit to content</Dropdown.Item>
             <Dropdown.Item onClick={() => toast.info(`${fieldName} column pinned`)}>Pin column</Dropdown.Item>
             <Dropdown.Divider />
+            <Dropdown.Item onClick={() => handleMoveColumn(fieldKey, "left")}>Move left</Dropdown.Item>
+            <Dropdown.Item onClick={() => handleMoveColumn(fieldKey, "right")}>Move right</Dropdown.Item>
             <Dropdown.Item onClick={() => handleMoveColumn(fieldKey, "start")}>Move to start</Dropdown.Item>
             <Dropdown.Item onClick={() => handleMoveColumn(fieldKey, "end")}>Move to end</Dropdown.Item>
             <Dropdown.Divider />
@@ -6800,11 +6879,17 @@ const BoardDetailPage = () => {
 
   const renderCustomFieldHeader = (field) => {
     if (isColHidden(field.id)) return null;
+    const isDragOver = dragOverColKey === String(field.id);
     return (
       <th 
         key={field.id} 
         style={{ width: "140px", minWidth: "140px", maxWidth: "180px", cursor: "pointer" }} 
-        className="position-relative"
+        className={`position-relative ${isDragOver ? "drag-over-col-header" : ""}`.trim()}
+        draggable
+        onDragStart={(e) => handleColDragStart(e, String(field.id))}
+        onDragOver={(e) => handleColDragOver(e, String(field.id))}
+        onDrop={(e) => handleColDrop(e, String(field.id))}
+        onDragEnd={handleColDragEnd}
       >
         <Dropdown align="end">
           <Dropdown.Toggle as="div" className="d-flex align-items-center justify-content-between w-100 fw-semibold text-slate-700">
@@ -6849,6 +6934,8 @@ const BoardDetailPage = () => {
               setShowCustomFieldsOffcanvas(true);
             }}>Edit field</Dropdown.Item>
 
+            <Dropdown.Item onClick={() => handleMoveColumn(field.id, "left")}>Move left</Dropdown.Item>
+            <Dropdown.Item onClick={() => handleMoveColumn(field.id, "right")}>Move right</Dropdown.Item>
             <Dropdown.Item onClick={() => handleMoveColumn(field.id, "start")}>Move to start</Dropdown.Item>
             <Dropdown.Item onClick={() => handleMoveColumn(field.id, "end")}>Move to end</Dropdown.Item>
             <Dropdown.Divider />
@@ -6861,6 +6948,205 @@ const BoardDetailPage = () => {
         </Dropdown>
       </th>
     );
+  };
+
+  const renderDynamicColumnHeader = (colKey) => {
+    if (isColHidden(colKey)) return null;
+
+    if (colKey === "assignee") {
+      return renderStandardFieldHeader("assignee", "Assignee", { width: "12%", minWidth: "120px" });
+    }
+    if (colKey === "start_date") {
+      return renderStandardFieldHeader("start_date", "Start date", { width: "10%", minWidth: "110px" });
+    }
+    if (colKey === "due_date") {
+      return renderStandardFieldHeader("due_date", "Due date", { width: "10%", minWidth: "110px" });
+    }
+    if (colKey === "priority") {
+      return renderStandardFieldHeader("priority", "Priority", { width: "8%", minWidth: "90px" });
+    }
+    if (colKey === "status") {
+      return renderStandardFieldHeader("status", "Status", { width: "10%", minWidth: "120px" });
+    }
+    if (colKey === "comments") {
+      const isDragOver = dragOverColKey === "comments";
+      return (
+        <th 
+          key="comments" 
+          style={{ width: "5%", minWidth: "80px", cursor: "pointer" }}
+          className={`position-relative ${isDragOver ? "drag-over-col-header" : ""}`.trim()}
+          draggable
+          onDragStart={(e) => handleColDragStart(e, "comments")}
+          onDragOver={(e) => handleColDragOver(e, "comments")}
+          onDrop={(e) => handleColDrop(e, "comments")}
+          onDragEnd={handleColDragEnd}
+        >
+          <Dropdown align="end">
+            <Dropdown.Toggle as="div" className="d-flex align-items-center justify-content-between w-100 fw-semibold text-slate-700">
+              <span>Comments</span>
+              <ChevronDown size={10} className="ms-1 text-slate-400 opacity-50" />
+            </Dropdown.Toggle>
+            <Dropdown.Menu className="shadow border-0 py-1" style={{ fontSize: "12px", minWidth: "180px", zIndex: 1060 }} popperConfig={{ strategy: "fixed" }}>
+              <Dropdown.Item onClick={() => handleMoveColumn("comments", "left")}>Move left</Dropdown.Item>
+              <Dropdown.Item onClick={() => handleMoveColumn("comments", "right")}>Move right</Dropdown.Item>
+              <Dropdown.Item onClick={() => handleMoveColumn("comments", "start")}>Move to start</Dropdown.Item>
+              <Dropdown.Item onClick={() => handleMoveColumn("comments", "end")}>Move to end</Dropdown.Item>
+              <Dropdown.Divider />
+              <Dropdown.Item onClick={() => handleHideColumn("comments")}>Hide column</Dropdown.Item>
+            </Dropdown.Menu>
+          </Dropdown>
+        </th>
+      );
+    }
+
+    const field = boardCustomFields.find(f => String(f.id) === String(colKey) || f.id === colKey);
+    if (field) {
+      return renderCustomFieldHeader(field);
+    }
+    return null;
+  };
+
+  const renderDynamicColumnCell = (task, colKey) => {
+    if (isColHidden(colKey)) return null;
+
+    if (colKey === "assignee") {
+      return <td key="assignee" style={{ minWidth: "120px" }}>{renderAssigneeCell(task)}</td>;
+    }
+    if (colKey === "start_date") {
+      return <td key="start_date" style={{ minWidth: "110px" }}>{renderDateCell(task, "start_date")}</td>;
+    }
+    if (colKey === "due_date") {
+      return <td key="due_date" style={{ minWidth: "110px" }}>{renderDateCell(task, "due_date")}</td>;
+    }
+    if (colKey === "priority") {
+      return <td key="priority" style={{ minWidth: "90px" }}>{renderPriorityDropdown(task)}</td>;
+    }
+    if (colKey === "status") {
+      return <td key="status" style={{ minWidth: "120px" }}>{renderStatusDropdown(task)}</td>;
+    }
+    if (colKey === "comments") {
+      return (
+        <td key="comments" className="text-center position-relative" style={{ minWidth: "80px" }}>
+          <button
+            type="button"
+            className="chat-bubble-btn position-relative d-inline-flex align-items-center justify-content-center cursor-pointer border-0 bg-transparent"
+            style={{ width: "24px", height: "24px" }}
+            onClick={() => setActiveCommentTaskId(activeCommentTaskId === task.id ? null : task.id)}
+          >
+            <MessageSquare size={13} className={task.updates_count > 0 ? "text-primary" : "text-slate-300"} />
+            {task.updates_count > 0 && (
+              <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: "9px", padding: "1px 3px" }}>
+                {task.updates_count}
+              </span>
+            )}
+          </button>
+        </td>
+      );
+    }
+
+    const field = boardCustomFields.find(f => String(f.id) === String(colKey) || f.id === colKey);
+    if (field) {
+      return (
+        <td key={`cf_${field.id}`} style={{ width: "140px", minWidth: "140px", maxWidth: "180px" }} className="text-truncate">
+          {renderCustomFieldCell(task, field)}
+        </td>
+      );
+    }
+    return null;
+  };
+
+  const renderDynamicCalculationCell = (colKey, statusTasks) => {
+    if (isColHidden(colKey)) return null;
+
+    if (colKey === "assignee") {
+      return (
+        <td key="calc_assignee" style={{ minWidth: "120px" }} className="px-2 py-1 align-middle">
+          {renderColumnCalculationCell("assignee", statusTasks)}
+        </td>
+      );
+    }
+    if (colKey === "start_date") {
+      return (
+        <td key="calc_start_date" style={{ minWidth: "110px" }} className="px-2 py-1 align-middle">
+          {renderColumnCalculationCell("start_date", statusTasks)}
+        </td>
+      );
+    }
+    if (colKey === "due_date") {
+      return (
+        <td key="calc_due_date" style={{ minWidth: "110px" }} className="px-2 py-1 align-middle">
+          {renderColumnCalculationCell("due_date", statusTasks)}
+        </td>
+      );
+    }
+    if (colKey === "priority") {
+      return (
+        <td key="calc_priority" style={{ minWidth: "90px" }} className="px-2 py-1 align-middle">
+          {renderColumnCalculationCell("priority", statusTasks)}
+        </td>
+      );
+    }
+    if (colKey === "status") {
+      return (
+        <td key="calc_status" style={{ minWidth: "120px" }} className="px-2 py-1 align-middle">
+          {renderColumnCalculationCell("status", statusTasks)}
+        </td>
+      );
+    }
+    if (colKey === "comments") {
+      return <td key="calc_comments" style={{ minWidth: "80px" }} />;
+    }
+
+    const field = boardCustomFields.find(f => String(f.id) === String(colKey) || f.id === colKey);
+    if (field) {
+      return (
+        <td key={`calc_cf_${field.id}`} style={{ width: "140px", minWidth: "140px", maxWidth: "180px" }} className="px-2 py-1 align-middle">
+          {renderColumnCalculationCell(field, statusTasks)}
+        </td>
+      );
+    }
+    return null;
+  };
+
+  const renderDynamicSubtaskCell = (subtaskFull, colKey) => {
+    if (isColHidden(colKey)) return null;
+
+    if (colKey === "assignee") {
+      return <td key="st_assignee" style={{ minWidth: "120px" }}>{renderAssigneeCell(subtaskFull)}</td>;
+    }
+    if (colKey === "start_date") {
+      return <td key="st_start_date" style={{ minWidth: "110px" }}>{renderDateCell(subtaskFull, "start_date")}</td>;
+    }
+    if (colKey === "due_date") {
+      return <td key="st_due_date" style={{ minWidth: "110px" }}>{renderDateCell(subtaskFull, "due_date")}</td>;
+    }
+    if (colKey === "priority") {
+      return <td key="st_priority" style={{ minWidth: "90px" }}>{renderPriorityDropdown(subtaskFull)}</td>;
+    }
+    if (colKey === "status") {
+      return <td key="st_status" style={{ minWidth: "120px" }}>{renderStatusDropdown(subtaskFull)}</td>;
+    }
+    if (colKey === "comments") {
+      return (
+        <td key="st_comments" className="text-center position-relative" style={{ minWidth: "80px" }}>
+          <button
+            type="button"
+            className="chat-bubble-btn position-relative d-inline-flex align-items-center justify-content-center cursor-pointer border-0 bg-transparent"
+            style={{ width: "24px", height: "24px" }}
+            onClick={() => setActiveCommentTaskId(activeCommentTaskId === subtaskFull.id ? null : subtaskFull.id)}
+          >
+            <MessageSquare size={13} className={subtaskFull.updates_count > 0 ? "text-primary" : "text-slate-300"} />
+            {subtaskFull.updates_count > 0 && (
+              <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: "9px", padding: "1px 3px" }}>
+                {subtaskFull.updates_count}
+              </span>
+            )}
+          </button>
+        </td>
+      );
+    }
+
+    return <td key={`st_cf_${colKey}`} style={{ width: "140px", minWidth: "140px" }}></td>;
   };
 
   return (
@@ -7183,79 +7469,64 @@ const BoardDetailPage = () => {
                 <Columns size={12} />
                 <span className="font-semibold text-xs">Columns</span>
               </Dropdown.Toggle>
-              <Dropdown.Menu className="shadow-lg border-0 py-2 px-1" style={{ minWidth: "210px", zIndex: 1060 }} popperConfig={{ strategy: "fixed" }}>
-                <div className="px-2 pb-1.5 mb-1 border-bottom text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Show / Hide Fields
+              <Dropdown.Menu className="shadow-lg border-0 py-2 px-1" style={{ minWidth: "260px", zIndex: 1060 }} popperConfig={{ strategy: "fixed" }}>
+                <div className="px-2 pb-1.5 mb-1 border-bottom d-flex align-items-center justify-content-between">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Organize Columns</span>
+                  <span className="text-xs text-muted">Order & Visibility</span>
                 </div>
-                <div className="d-flex flex-column gap-1 max-h-[260px] overflow-y-auto px-1" onClick={(e) => e.stopPropagation()}>
-                  <Form.Check
-                    type="checkbox"
-                    id="col-toggle-assignee"
-                    label="Assignee"
-                    checked={!isColHidden("assignee")}
-                    onChange={() => toggleHideColumn("assignee")}
-                    className="text-xs font-medium cursor-pointer"
-                  />
-                  <Form.Check
-                    type="checkbox"
-                    id="col-toggle-start_date"
-                    label="Start date"
-                    checked={!isColHidden("start_date")}
-                    onChange={() => toggleHideColumn("start_date")}
-                    className="text-xs font-medium cursor-pointer"
-                  />
-                  <Form.Check
-                    type="checkbox"
-                    id="col-toggle-due_date"
-                    label="Due date"
-                    checked={!isColHidden("due_date")}
-                    onChange={() => toggleHideColumn("due_date")}
-                    className="text-xs font-medium cursor-pointer"
-                  />
-                  <Form.Check
-                    type="checkbox"
-                    id="col-toggle-priority"
-                    label="Priority"
-                    checked={!isColHidden("priority")}
-                    onChange={() => toggleHideColumn("priority")}
-                    className="text-xs font-medium cursor-pointer"
-                  />
-                  <Form.Check
-                    type="checkbox"
-                    id="col-toggle-status"
-                    label="Status"
-                    checked={!isColHidden("status")}
-                    onChange={() => toggleHideColumn("status")}
-                    className="text-xs font-medium cursor-pointer"
-                  />
-                  {boardCustomFields.length > 0 && <Dropdown.Divider className="my-1" />}
-                  {boardCustomFields.map((field) => (
-                    <Form.Check
-                      key={field.id}
-                      type="checkbox"
-                      id={`col-toggle-custom-${field.id}`}
-                      label={field.name}
-                      checked={!isColHidden(field.id)}
-                      onChange={() => toggleHideColumn(field.id)}
-                      className="text-xs font-medium cursor-pointer"
-                    />
-                  ))}
+                <div className="d-flex flex-column gap-1 max-h-[300px] overflow-y-auto px-1" onClick={(e) => e.stopPropagation()}>
+                  {orderedColumns.map((colKey, idx) => {
+                    const label = getColumnLabel(colKey);
+                    const isHidden = isColHidden(colKey);
+                    return (
+                      <div key={colKey} className="d-flex align-items-center justify-content-between px-1 py-0.5 rounded hover:bg-slate-50">
+                        <Form.Check
+                          type="checkbox"
+                          id={`col-toggle-${colKey}`}
+                          label={<span className="text-truncate d-inline-block" style={{ maxWidth: "140px" }} title={label}>{label}</span>}
+                          checked={!isHidden}
+                          onChange={() => toggleHideColumn(colKey)}
+                          className="text-xs font-medium cursor-pointer mb-0 d-flex align-items-center gap-1.5"
+                        />
+                        <div className="d-flex align-items-center gap-0.5">
+                          <button
+                            type="button"
+                            className="btn btn-link p-0 text-slate-400 hover:text-slate-700"
+                            disabled={idx === 0}
+                            onClick={() => handleMoveColumn(colKey, "left")}
+                            title="Move column left / up"
+                            style={{ width: "20px", height: "20px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                          >
+                            <ChevronUp size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-link p-0 text-slate-400 hover:text-slate-700"
+                            disabled={idx === orderedColumns.length - 1}
+                            onClick={() => handleMoveColumn(colKey, "right")}
+                            title="Move column right / down"
+                            style={{ width: "20px", height: "20px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                          >
+                            <ChevronDown size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                {hiddenColumns.length > 0 && (
-                  <>
-                    <Dropdown.Divider className="my-1" />
-                    <Dropdown.Item
-                      onClick={() => {
-                        setHiddenColumns([]);
-                        if (boardId) localStorage.removeItem(`hidden_columns_${boardId}`);
-                        toast.success("All columns shown!");
-                      }}
-                      className="text-xs text-primary font-bold py-1"
-                    >
-                      Reset / Show all columns
-                    </Dropdown.Item>
-                  </>
-                )}
+                <Dropdown.Divider className="my-1" />
+                <Dropdown.Item
+                  onClick={handleResetColumns}
+                  className="text-xs text-primary font-semibold py-1 d-flex align-items-center gap-1.5"
+                >
+                  <RefreshCw size={11} /> Reset to default layout
+                </Dropdown.Item>
+                <Dropdown.Item
+                  onClick={handleCleanJunkFields}
+                  className="text-xs text-danger font-semibold py-1 d-flex align-items-center gap-1.5"
+                >
+                  <Trash2 size={11} /> Clean up junk Jotform columns
+                </Dropdown.Item>
               </Dropdown.Menu>
             </Dropdown>
 

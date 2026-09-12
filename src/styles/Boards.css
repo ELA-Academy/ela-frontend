@@ -4962,10 +4962,14 @@ th.zbot-sticky-col-right, th.zbot-sticky-table-col-right-1, th.zbot-sticky-table
   background-color: #1e1e24 !important;
 }
 
+/* Column Header Drag-and-Drop Reordering */
+.workspace-table thead th.drag-over-col-header {
+  outline: 2px dashed #3b82f6 !important;
+  background-color: #eff6ff !important;
+}
 
-
-
-
-
-
+[data-theme="dark"] .workspace-table thead th.drag-over-col-header {
+  outline: 2px dashed #60a5fa !important;
+  background-color: #1e293b !important;
+}
 

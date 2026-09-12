@@ -15,6 +15,9 @@ import { getSubscriptions, getBillingPlans } from "../../../services/billingServ
 import { getAllStudents } from "../../../services/studentService";
 import "../../../styles/AdminModern.css";
 
+import ProcareImportWizardModal from "../../../components/admin/billing/ProcareImportWizardModal";
+import { Upload } from "lucide-react";
+
 const RecurringPlansPage = () => {
   const [activePlans, setActivePlans] = useState([]);
   const [templates, setTemplates] = useState([]);
@@ -22,6 +25,7 @@ const RecurringPlansPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showWizard, setShowWizard] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [activeTab, setActiveTab] = useState("active-plans");
 
   // Search & Pagination
@@ -121,20 +125,36 @@ const RecurringPlansPage = () => {
       {/* Top Header */}
       <div className="d-flex justify-content-between align-items-center mb-2">
         <h1 className="page-title fs-4 fw-bold text-slate-800 m-0">Recurring Plans</h1>
-        <Button
-          onClick={() => setShowWizard(true)}
-          style={{
-            backgroundColor: "#00b8d4",
-            borderColor: "#00b8d4",
-            borderRadius: "20px",
-            fontSize: "0.82rem",
-            fontWeight: "600",
-            padding: "6px 20px"
-          }}
-          className="d-flex align-items-center gap-1 shadow-sm"
-        >
-          <Plus size={16} /> CREATE RECURRING PLAN
-        </Button>
+        <div className="d-flex gap-2">
+          <Button
+            onClick={() => setShowImportModal(true)}
+            variant="outline-success"
+            style={{
+              borderRadius: "20px",
+              fontSize: "0.82rem",
+              fontWeight: "600",
+              padding: "6px 18px"
+            }}
+            className="d-flex align-items-center gap-1 shadow-sm bg-white"
+          >
+            <Upload size={15} /> IMPORT PROCARE PLANS
+          </Button>
+
+          <Button
+            onClick={() => setShowWizard(true)}
+            style={{
+              backgroundColor: "#00b8d4",
+              borderColor: "#00b8d4",
+              borderRadius: "20px",
+              fontSize: "0.82rem",
+              fontWeight: "600",
+              padding: "6px 20px"
+            }}
+            className="d-flex align-items-center gap-1 shadow-sm"
+          >
+            <Plus size={16} /> CREATE RECURRING PLAN
+          </Button>
+        </div>
       </div>
 
       <AccountingNav />
@@ -393,6 +413,12 @@ const RecurringPlansPage = () => {
         show={showWizard}
         handleClose={() => setShowWizard(false)}
         onPlanCreated={handlePlanCreated}
+      />
+
+      <ProcareImportWizardModal
+        show={showImportModal}
+        handleClose={() => setShowImportModal(false)}
+        onImportSuccess={fetchData}
       />
       
       <style>{`

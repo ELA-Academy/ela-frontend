@@ -87,6 +87,31 @@ const ParentDocumentsPage = () => {
     }
   };
 
+  const handleDownloadDocument = async (doc) => {
+    try {
+      if (!doc.file_path) {
+        toast.error("No document file available.");
+        return;
+      }
+      if (doc.file_path.startsWith("/api/")) {
+        toast.info("Downloading document...");
+        const res = await api.get(doc.file_path, { responseType: "blob" });
+        const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `${doc.name || "Contract"}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        toast.success("Document downloaded!");
+      } else {
+        window.open(doc.file_path, "_blank");
+      }
+    } catch (err) {
+      toast.error("Failed to download document.");
+    }
+  };
+
   const documents = docsData.documents || [];
   const documentRequests = docsData.document_requests || [];
 
@@ -224,16 +249,15 @@ const ParentDocumentsPage = () => {
                     </td>
 
                     <td>
-                      <a
-                        href={doc.file_path}
-                        target="_blank"
-                        rel="noreferrer"
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadDocument(doc)}
                         className="btn btn-sm btn-light border d-inline-flex align-items-center gap-1"
                         style={{ fontSize: "0.75rem", fontWeight: 600 }}
                       >
                         <Download size={13} />
                         <span>Download</span>
-                      </a>
+                      </button>
                     </td>
                   </tr>
                 ))}

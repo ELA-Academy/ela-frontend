@@ -12,6 +12,8 @@ const PublicEnrollmentForm = () => {
   const { token } = useParams();
   const [formData, setFormData] = useState(null);
   const [responses, setResponses] = useState({});
+  const [signerName, setSignerName] = useState("");
+  const [signatureDataUrl, setSignatureDataUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,6 +28,9 @@ const PublicEnrollmentForm = () => {
       if (data.prefill_data) {
         const initialResponses = {};
         const { students, parents } = data.prefill_data;
+        if (parents.length > 0) {
+          setSignerName(`${parents[0].first_name || ''} ${parents[0].last_name || ''}`.trim() || parents[0].email);
+        }
         data.form_structure.sections.forEach((section) => {
           section.fields.forEach((field) => {
             const label = field.label.toLowerCase();
@@ -66,9 +71,18 @@ const PublicEnrollmentForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!signerName.trim()) {
+      alert("Please provide the full legal name of the signer before submitting.");
+      return;
+    }
     setIsSubmitting(true);
     try {
-      await submitEnrollmentForm(token, responses);
+      const finalResponses = {
+        ...responses,
+        parent_signer_name: signerName.trim(),
+        parent_signature: signatureDataUrl
+      };
+      await submitEnrollmentForm(token, finalResponses);
       setSubmitSuccess(true);
     } catch (err) {
       setError(
@@ -152,6 +166,9 @@ const PublicEnrollmentForm = () => {
                     <ReviewStep
                       sections={visibleSections}
                       responses={responses}
+                      onSaveSignature={setSignatureDataUrl}
+                      signerName={signerName}
+                      setSignerName={setSignerName}
                     />
                   )}
 
@@ -313,11 +330,168 @@ const PaymentStep = ({ feeAmount }) => (
   </div>
 );
 
-const ReviewStep = ({ sections, responses }) => (
+const SignaturePad = ({ onSaveSignature, signerName, setSignerName }) => {
+  const [sigMode, setSigMode] = useState("draw"); // "draw" or "type"
+  const canvasRef = React.useRef(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [hasDrawn, setHasDrawn] = useState(false);
+
+  useEffect(() => {
+    if (sigMode === "draw" && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext("2d");
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "#0b2f4c";
+    }
+  }, [sigMode]);
+
+  const startDrawing = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
+    const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    setIsDrawing(true);
+    setHasDrawn(true);
+  };
+
+  const draw = (e) => {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
+    const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    if (!isDrawing) return;
+    setIsDrawing(false);
+    if (canvasRef.current) {
+      onSaveSignature(canvasRef.current.toDataURL("image/png"));
+    }
+  };
+
+  const clearCanvas = () => {
+    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setHasDrawn(false);
+    onSaveSignature(null);
+  };
+
+  const handleTypeChange = (name) => {
+    setSignerName(name);
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = 400;
+    tempCanvas.height = 100;
+    const ctx = tempCanvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, 400, 100);
+    ctx.font = "italic 32px 'Brush Script MT', cursive, sans-serif";
+    ctx.fillStyle = "#0b2f4c";
+    ctx.fillText(name || "Parent Signature", 20, 60);
+    onSaveSignature(tempCanvas.toDataURL("image/png"));
+  };
+
+  return (
+    <Card className="p-3 border border-slate-300 shadow-sm rounded-3 mt-4 bg-slate-50">
+      <h5 className="fw-bold text-slate-800 mb-2">Parent / Guardian Digital Signature</h5>
+      <p className="small text-muted mb-3">
+        By signing below, you certify that all information provided is accurate and agree to the academy enrollment contract terms.
+      </p>
+
+      <Form.Group className="mb-3">
+        <Form.Label className="small fw-semibold text-slate-700">FULL LEGAL NAME OF SIGNER *</Form.Label>
+        <Form.Control 
+          type="text"
+          placeholder="e.g. Justice Dibofu"
+          value={signerName}
+          onChange={(e) => {
+            setSignerName(e.target.value);
+            if (sigMode === "type") handleTypeChange(e.target.value);
+          }}
+          required
+        />
+      </Form.Group>
+
+      <div className="d-flex gap-2 mb-3">
+        <Button 
+          type="button" 
+          size="sm" 
+          variant={sigMode === "draw" ? "primary" : "outline-secondary"}
+          onClick={() => setSigMode("draw")}
+        >
+          Draw Signature
+        </Button>
+        <Button 
+          type="button" 
+          size="sm" 
+          variant={sigMode === "type" ? "primary" : "outline-secondary"}
+          onClick={() => {
+            setSigMode("type");
+            handleTypeChange(signerName);
+          }}
+        >
+          Type Signature
+        </Button>
+      </div>
+
+      {sigMode === "draw" ? (
+        <div>
+          <div className="border rounded bg-white p-1 d-inline-block position-relative">
+            <canvas 
+              ref={canvasRef}
+              width={480}
+              height={120}
+              style={{ cursor: "crosshair", touchAction: "none" }}
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              onTouchStart={startDrawing}
+              onTouchMove={draw}
+              onTouchEnd={stopDrawing}
+            />
+            {!hasDrawn && (
+              <div 
+                className="position-absolute top-50 start-50 translate-middle text-muted pointer-events-none"
+                style={{ fontSize: "13px", opacity: 0.5, userSelect: "none" }}
+              >
+                Sign here using mouse or touch
+              </div>
+            )}
+          </div>
+          <div className="mt-2">
+            <Button type="button" variant="link" size="sm" className="text-danger p-0 text-decoration-none" onClick={clearCanvas}>
+              Clear Signature
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="p-3 border rounded bg-white text-center">
+          <div style={{ fontFamily: "'Brush Script MT', cursive, sans-serif", fontSize: "36px", color: "#0b2f4c" }}>
+            {signerName || "Your Signature Preview"}
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+};
+
+const ReviewStep = ({ sections, responses, onSaveSignature, signerName, setSignerName }) => (
   <div>
-    <h3>Review & Submit</h3>
+    <h3>Review & Submit Contract</h3>
     <hr />
-    <p>Please review all your information before submitting.</p>
+    <p>Please review all your information and sign below to execute the enrollment contract.</p>
     {sections.map((section) => (
       <div key={section.id} className="review-section">
         <h5>{section.title}</h5>
@@ -332,6 +506,12 @@ const ReviewStep = ({ sections, responses }) => (
         })}
       </div>
     ))}
+
+    <SignaturePad 
+      onSaveSignature={onSaveSignature}
+      signerName={signerName}
+      setSignerName={setSignerName}
+    />
   </div>
 );
 
@@ -352,7 +532,7 @@ const NavigationButtons = ({
       </Button>
     ) : (
       <Button variant="success" type="submit" disabled={isSubmitting}>
-        {isSubmitting ? <Spinner size="sm" /> : "Submit Application"}
+        {isSubmitting ? <Spinner size="sm" /> : "Sign & Submit Contract"}
       </Button>
     )}
   </div>

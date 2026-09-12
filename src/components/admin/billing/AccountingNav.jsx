@@ -25,6 +25,11 @@ const AccountingNav = () => {
           Subsidy Accounts
         </Nav.Link>
       </Nav.Item>
+      <Nav.Item>
+        <Nav.Link as={NavLink} to="/admin/reports">
+          Financial Reports
+        </Nav.Link>
+      </Nav.Item>
     </Nav>
   );
 };

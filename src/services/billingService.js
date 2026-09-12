@@ -236,4 +236,27 @@ export const sendInvoice = async (invoiceId) => {
   }
 };
 
+export const chargeSavedCard = async (studentId, chargeData) => {
+  try {
+    const response = await api.post(
+      `/billing/accounts/${studentId}/charge-saved-card`,
+      chargeData
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Error charging saved card for student ${studentId}:`, error);
+    throw error;
+  }
+};
+
+export const getStudentParentPaymentMethods = async (studentId) => {
+  try {
+    const response = await api.get(`/billing/accounts/${studentId}/parent-payment-methods`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching parent payment methods for student ${studentId}:`, error);
+    throw error;
+  }
+};
+
 

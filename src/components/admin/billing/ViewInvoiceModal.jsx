@@ -95,24 +95,36 @@ const ViewInvoiceModal = ({ show, handleClose, invoice, studentName }) => {
               </tr>
             </thead>
             <tbody>
-              {invoice.items && invoice.items.map((item, idx) => (
-                <tr key={idx}>
-                  <td className="py-3 text-slate-700">{item.description}</td>
+              {invoice.items && invoice.items.length > 0 ? (
+                invoice.items.map((item, idx) => (
+                  <tr key={idx}>
+                    <td className="py-3 text-slate-700">{item.description}</td>
+                    <td className="py-3 text-slate-700 text-end fw-semibold">
+                      {(item.amount || 0).toLocaleString("en-US", {
+                        style: "currency",
+                        currency: "USD",
+                      })}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td className="py-3 text-slate-700">{invoice.description || "Invoice Charge"}</td>
                   <td className="py-3 text-slate-700 text-end fw-semibold">
-                    {item.amount.toLocaleString("en-US", {
+                    {(invoice.total_amount || invoice.amount || 0).toLocaleString("en-US", {
                       style: "currency",
                       currency: "USD",
                     })}
                   </td>
                 </tr>
-              ))}
+              )}
               <tr style={{ backgroundColor: "#f1f5f9" }}>
                 <td className="py-3 fw-bold text-slate-800">Total Amount</td>
                 <td className="py-3 text-end fw-bold text-slate-800">
-                  {invoice.total_amount?.toLocaleString("en-US", {
+                  {(invoice.total_amount || invoice.amount || 0).toLocaleString("en-US", {
                     style: "currency",
                     currency: "USD",
-                  }) || "$0.00"}
+                  })}
                 </td>
               </tr>
             </tbody>
