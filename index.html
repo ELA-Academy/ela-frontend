@@ -14,6 +14,27 @@
       rel="stylesheet"
     />
     <title>ELA Academy Management System</title>
+    <script>
+      // Self-healing for chunk loading errors (e.g. after a new production deployment)
+      window.addEventListener('error', function (e) {
+        var msg = e && e.message ? String(e.message) : '';
+        var isChunkError =
+          msg.indexOf('Loading chunk') !== -1 ||
+          msg.indexOf('Failed to fetch dynamically imported module') !== -1 ||
+          msg.indexOf('Unexpected token \'<\'') !== -1 ||
+          (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK'));
+
+        if (isChunkError) {
+          var reloadKey = 'chunk_reload_lock';
+          var lastReload = sessionStorage.getItem(reloadKey);
+          var now = Date.now();
+          if (!lastReload || now - parseInt(lastReload, 10) > 15000) {
+            sessionStorage.setItem(reloadKey, String(now));
+            window.location.reload();
+          }
+        }
+      }, true);
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -163,6 +163,8 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
   
   // File Upload State
   const [uploading, setUploading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const isSendingRef = useRef(false);
   const [pendingAttachments, setPendingAttachments] = useState([]);
   const [lightboxIndex, setLightboxIndex] = useState(null);
   
@@ -837,10 +839,16 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
 
     socket.on("new_message", (message) => {
       setMessages((prev) => {
-        if (prev.some((msg) => msg.id === message.id)) {
+        if (prev.some((msg) => String(msg.id) === String(message.id))) {
           return prev;
         }
-        const filtered = prev.filter((msg) => !(String(msg.id).startsWith("temp_") && msg.content === message.content));
+        const filtered = prev.filter((msg) => {
+          if (String(msg.id).startsWith("temp_")) {
+            if (message.client_temp_id && msg.client_temp_id === message.client_temp_id) return false;
+            if (msg.content && message.content && msg.content.trim() === message.content.trim()) return false;
+          }
+          return true;
+        });
         const nextMessages = [...filtered, message];
         globalMessageCache[conversationId] = nextMessages;
         return nextMessages;
@@ -924,181 +932,208 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() && pendingAttachments.length === 0) return;
-
-    const replyId = replyingToMessage ? replyingToMessage.id : null;
-    const tempIdBase = Date.now();
     const msgContent = newMessage.trim();
+    if ((!msgContent && pendingAttachments.length === 0) || isSendingRef.current || uploading) return;
 
-    // Compute active mentions from selectedMentions and any manually typed @Name in content
-    const allPossibleUsers = allAppUsers || [];
-    const mentionedFromText = allPossibleUsers.filter((u) => {
-      const cleanName = (u.name || "").replace(" (You)", "").trim();
-      return cleanName && msgContent.includes(`@${cleanName}`);
-    }).map((u) => ({
-      id: u.id,
-      role: u.role,
-      name: (u.name || "").replace(" (You)", "").trim()
-    }));
+    isSendingRef.current = true;
+    setIsSending(true);
 
-    const combinedMentionsMap = new Map();
-    selectedMentions.forEach((u) => {
-      if (msgContent.includes(`@${u.name}`)) {
-        combinedMentionsMap.set(`${u.role}_${u.id}`, u);
-      }
-    });
-    mentionedFromText.forEach((u) => {
-      combinedMentionsMap.set(`${u.role}_${u.id}`, u);
-    });
-    const activeMentions = Array.from(combinedMentionsMap.values());
+    try {
+      const replyId = replyingToMessage ? replyingToMessage.id : null;
+      const tempIdBase = Date.now();
 
-    if (pendingAttachments.length > 0) {
-      setUploading(true);
-      const filesToUpload = [...pendingAttachments];
-      setPendingAttachments([]);
+      // Compute active mentions from selectedMentions and any manually typed @Name in content
+      const allPossibleUsers = allAppUsers || [];
+      const mentionedFromText = allPossibleUsers.filter((u) => {
+        const cleanName = (u.name || "").replace(" (You)", "").trim();
+        return cleanName && msgContent.includes(`@${cleanName}`);
+      }).map((u) => ({
+        id: u.id,
+        role: u.role,
+        name: (u.name || "").replace(" (You)", "").trim()
+      }));
 
-      // 1. Upload first file together with message text
-      const firstFile = filesToUpload[0];
-      const firstFormData = new FormData();
-      firstFormData.append("file", firstFile);
-      if (newMessage.trim()) {
-        firstFormData.append("content", newMessage.trim());
-      }
-      if (replyId) {
-        firstFormData.append("reply_to_message_id", replyId);
-      }
-      if (activeMentions.length > 0) {
-        firstFormData.append("mentions", JSON.stringify(activeMentions.map((u) => ({ id: u.id, role: u.role }))));
-      }
-
-      const tempId1 = `temp_1_${tempIdBase}`;
-      const optimistic1 = {
-        id: tempId1,
-        content: newMessage.trim() || `Uploaded attachment: ${firstFile.name}`,
-        created_at: new Date().toISOString(),
-        sender_id: user.id,
-        sender_type: user.role,
-        sender_name: user.name,
-        status: "sending",
-        filename: firstFile.name,
-        file_path: "",
-        reply_to_message_id: replyId,
-        reply_to_details: replyingToMessage ? {
-          id: replyingToMessage.id,
-          content: replyingToMessage.content,
-          sender_name: replyingToMessage.sender_name
-        } : null
-      };
-
-      setMessages((prevMessages) => {
-        const nextMessages = [...prevMessages, optimistic1];
-        globalMessageCache[conversationId] = nextMessages;
-        return nextMessages;
+      const combinedMentionsMap = new Map();
+      selectedMentions.forEach((u) => {
+        if (msgContent.includes(`@${u.name}`)) {
+          combinedMentionsMap.set(`${u.role}_${u.id}`, u);
+        }
       });
-      updateSidebarConversation(conversationId, optimistic1.content, optimistic1.created_at);
+      mentionedFromText.forEach((u) => {
+        combinedMentionsMap.set(`${u.role}_${u.id}`, u);
+      });
+      const activeMentions = Array.from(combinedMentionsMap.values());
 
-      setNewMessage("");
-      setReplyingToMessage(null);
-      setSelectedMentions([]);
+      if (pendingAttachments.length > 0) {
+        setUploading(true);
+        const filesToUpload = [...pendingAttachments];
+        setPendingAttachments([]);
 
-      try {
-        const res1 = await api.post(`/messaging/conversations/${conversationId}/upload`, firstFormData, {
-          headers: { "Content-Type": "multipart/form-data" }
+        // 1. Upload first file together with message text
+        const firstFile = filesToUpload[0];
+        const firstFormData = new FormData();
+        firstFormData.append("file", firstFile);
+        if (msgContent) {
+          firstFormData.append("content", msgContent);
+        }
+        if (replyId) {
+          firstFormData.append("reply_to_message_id", replyId);
+        }
+        if (activeMentions.length > 0) {
+          firstFormData.append("mentions", JSON.stringify(activeMentions.map((u) => ({ id: u.id, role: u.role }))));
+        }
+
+        const tempId1 = `temp_1_${tempIdBase}`;
+        const optimistic1 = {
+          id: tempId1,
+          client_temp_id: tempId1,
+          content: msgContent || `Uploaded attachment: ${firstFile.name}`,
+          created_at: new Date().toISOString(),
+          sender_id: user.id,
+          sender_type: user.role,
+          sender_name: user.name,
+          status: "sending",
+          filename: firstFile.name,
+          file_path: "",
+          reply_to_message_id: replyId,
+          reply_to_details: replyingToMessage ? {
+            id: replyingToMessage.id,
+            content: replyingToMessage.content,
+            sender_name: replyingToMessage.sender_name
+          } : null
+        };
+
+        setMessages((prevMessages) => {
+          const nextMessages = [...prevMessages, optimistic1];
+          globalMessageCache[conversationId] = nextMessages;
+          return nextMessages;
         });
+        updateSidebarConversation(conversationId, optimistic1.content, optimistic1.created_at);
 
-        setMessages((prev) =>
-          prev.map((msg) => (msg.id === tempId1 ? res1.data : msg))
-        );
-        globalMessageCache[conversationId] = (globalMessageCache[conversationId] || []).map(
-          (msg) => (msg.id === tempId1 ? res1.data : msg)
-        );
+        setNewMessage("");
+        setReplyingToMessage(null);
+        setSelectedMentions([]);
 
-        // 2. Upload rest of files sequentially
-        for (let i = 1; i < filesToUpload.length; i++) {
-          const file = filesToUpload[i];
-          const formData = new FormData();
-          formData.append("file", file);
-
-          const tempIdN = `temp_${i + 1}_${tempIdBase}`;
-          const optimisticN = {
-            id: tempIdN,
-            content: `Uploaded attachment: ${file.name}`,
-            created_at: new Date().toISOString(),
-            sender_id: user.id,
-            sender_type: user.role,
-            sender_name: user.name,
-            status: "sending",
-            filename: file.name,
-            file_path: ""
-          };
-
-          setMessages((prev) => [...prev, optimisticN]);
-
-          const resN = await api.post(`/messaging/conversations/${conversationId}/upload`, formData, {
+        try {
+          const res1 = await api.post(`/messaging/conversations/${conversationId}/upload`, firstFormData, {
             headers: { "Content-Type": "multipart/form-data" }
           });
 
-          setMessages((prev) =>
-            prev.map((msg) => (msg.id === tempIdN ? resN.data : msg))
+          setMessages((prev) => {
+            const alreadyHasReal = prev.some((m) => String(m.id) === String(res1.data?.id));
+            if (alreadyHasReal) {
+              const cleaned = prev.filter((m) => m.id !== tempId1);
+              globalMessageCache[conversationId] = cleaned;
+              return cleaned;
+            }
+            const updated = prev.map((msg) => (msg.id === tempId1 ? res1.data : msg));
+            globalMessageCache[conversationId] = updated;
+            return updated;
+          });
+
+          // 2. Upload rest of files sequentially
+          for (let i = 1; i < filesToUpload.length; i++) {
+            const file = filesToUpload[i];
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const tempIdN = `temp_${i + 1}_${tempIdBase}`;
+            const optimisticN = {
+              id: tempIdN,
+              client_temp_id: tempIdN,
+              content: `Uploaded attachment: ${file.name}`,
+              created_at: new Date().toISOString(),
+              sender_id: user.id,
+              sender_type: user.role,
+              sender_name: user.name,
+              status: "sending",
+              filename: file.name,
+              file_path: ""
+            };
+
+            setMessages((prev) => [...prev, optimisticN]);
+
+            const resN = await api.post(`/messaging/conversations/${conversationId}/upload`, formData, {
+              headers: { "Content-Type": "multipart/form-data" }
+            });
+
+            setMessages((prev) => {
+              const alreadyHasReal = prev.some((m) => String(m.id) === String(resN.data?.id));
+              if (alreadyHasReal) {
+                const cleaned = prev.filter((m) => m.id !== tempIdN);
+                globalMessageCache[conversationId] = cleaned;
+                return cleaned;
+              }
+              const updated = prev.map((msg) => (msg.id === tempIdN ? resN.data : msg));
+              globalMessageCache[conversationId] = updated;
+              return updated;
+            });
+          }
+
+        } catch (err) {
+          console.error("Upload failed", err);
+          toast.error("Failed to upload all attachments.");
+        } finally {
+          setUploading(false);
+        }
+      } else {
+        const tempId = `temp_${tempIdBase}`;
+        const optimisticMessage = {
+          id: tempId,
+          client_temp_id: tempId,
+          content: msgContent,
+          created_at: new Date().toISOString(),
+          sender_id: user.id,
+          sender_type: user.role,
+          sender_name: user.name,
+          status: "sending",
+          reply_to_message_id: replyId,
+          reply_to_details: replyingToMessage ? {
+            id: replyingToMessage.id,
+            content: replyingToMessage.content,
+            sender_name: replyingToMessage.sender_name
+          } : null
+        };
+        setMessages((prevMessages) => {
+          const nextMessages = [...prevMessages, optimisticMessage];
+          globalMessageCache[conversationId] = nextMessages;
+          return nextMessages;
+        });
+        updateSidebarConversation(conversationId, optimisticMessage.content, optimisticMessage.created_at);
+        setNewMessage("");
+        setReplyingToMessage(null);
+        setSelectedMentions([]);
+        try {
+          const sentMessage = await sendMessage(
+            conversationId,
+            optimisticMessage.content,
+            replyId,
+            activeMentions.map((u) => ({ id: u.id, role: u.role })),
+            tempId
           );
-          globalMessageCache[conversationId] = (globalMessageCache[conversationId] || []).map(
-            (msg) => (msg.id === tempIdN ? resN.data : msg)
+          setMessages((prevMessages) => {
+            const alreadyHasReal = prevMessages.some((msg) => String(msg.id) === String(sentMessage.id));
+            if (alreadyHasReal) {
+              const cleaned = prevMessages.filter((msg) => msg.id !== tempId);
+              globalMessageCache[conversationId] = cleaned;
+              return cleaned;
+            }
+            const updated = prevMessages.map((msg) => (msg.id === tempId ? sentMessage : msg));
+            globalMessageCache[conversationId] = updated;
+            return updated;
+          });
+        } catch (err) {
+          setError("Failed to send message.");
+          setMessages((prevMessages) =>
+            prevMessages.map((msg) =>
+              msg.id === tempId ? { ...msg, status: "failed" } : msg
+            )
           );
         }
-
-      } catch (err) {
-        console.error("Upload failed", err);
-        toast.error("Failed to upload all attachments.");
-      } finally {
-        setUploading(false);
       }
-    } else {
-      const tempId = `temp_${tempIdBase}`;
-      const optimisticMessage = {
-        id: tempId,
-        content: newMessage,
-        created_at: new Date().toISOString(),
-        sender_id: user.id,
-        sender_type: user.role,
-        sender_name: user.name,
-        status: "sending",
-        reply_to_message_id: replyId,
-        reply_to_details: replyingToMessage ? {
-          id: replyingToMessage.id,
-          content: replyingToMessage.content,
-          sender_name: replyingToMessage.sender_name
-        } : null
-      };
-      setMessages((prevMessages) => {
-        const nextMessages = [...prevMessages, optimisticMessage];
-        globalMessageCache[conversationId] = nextMessages;
-        return nextMessages;
-      });
-      updateSidebarConversation(conversationId, optimisticMessage.content, optimisticMessage.created_at);
-      setNewMessage("");
-      setReplyingToMessage(null);
-      setSelectedMentions([]);
-      try {
-        const sentMessage = await sendMessage(
-          conversationId,
-          optimisticMessage.content,
-          replyId,
-          activeMentions.map((u) => ({ id: u.id, role: u.role }))
-        );
-        setMessages((prevMessages) =>
-          prevMessages.map((msg) => (msg.id === tempId ? sentMessage : msg))
-        );
-        globalMessageCache[conversationId] = (globalMessageCache[conversationId] || []).map(
-          (msg) => (msg.id === tempId ? sentMessage : msg)
-        );
-      } catch (err) {
-        setError("Failed to send message.");
-        setMessages((prevMessages) =>
-          prevMessages.map((msg) =>
-            msg.id === tempId ? { ...msg, status: "failed" } : msg
-          )
-        );
-      }
+    } finally {
+      isSendingRef.current = false;
+      setIsSending(false);
     }
   };
 
@@ -1141,7 +1176,9 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
 
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage(e);
+      if (!isSendingRef.current && (newMessage.trim() || pendingAttachments.length > 0)) {
+        handleSendMessage(e);
+      }
     }
   };
 
@@ -1693,7 +1730,7 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
                     {uploading && <Spinner size="sm" animation="border" className="ms-2" />}
                   </div>
                   <div className="zbot-toolbar-right">
-                    <button type="submit" className="zbot-send-btn" disabled={(!newMessage.trim() && pendingAttachments.length === 0) || uploading} title="Send message">
+                    <button type="submit" className="zbot-send-btn" disabled={(!newMessage.trim() && pendingAttachments.length === 0) || uploading || isSending} title="Send message">
                       <SendFill size={13} />
                     </button>
                   </div>

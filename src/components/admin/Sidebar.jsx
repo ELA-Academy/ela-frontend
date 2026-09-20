@@ -16,12 +16,41 @@ import {
   UserPlus,
   DollarSign,
   BriefcaseBusiness,
-  BarChart3
+  BarChart3,
+  Star
 } from "lucide-react";
 
 const Sidebar = ({ collapsed, setCollapsed }) => {
   const { user, unreadTasks } = useAuth();
   const [hoveredLink, setHoveredLink] = useState(null);
+
+  // Favorites state from localStorage
+  const [favorites, setFavorites] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("ela_quick_access_favorites") || "[]");
+    } catch (e) {
+      return [];
+    }
+  });
+
+  React.useEffect(() => {
+    const handleFavoritesUpdated = (e) => {
+      if (e.detail) {
+        setFavorites(e.detail);
+      } else {
+        try {
+          setFavorites(JSON.parse(localStorage.getItem("ela_quick_access_favorites") || "[]"));
+        } catch (err) {}
+      }
+    };
+
+    window.addEventListener("favorites-updated", handleFavoritesUpdated);
+    window.addEventListener("storage", handleFavoritesUpdated);
+    return () => {
+      window.removeEventListener("favorites-updated", handleFavoritesUpdated);
+      window.removeEventListener("storage", handleFavoritesUpdated);
+    };
+  }, []);
 
   const coreLinks = [
     { path: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard", role: ["superadmin", "staff"], end: true },
@@ -149,6 +178,35 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
               end={link.end}
             />
           ))}
+
+          {favorites.length > 0 && (
+            <div className="w-full my-2 pt-2 border-t border-slate-700/40 flex flex-col items-center gap-1">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider px-1 text-center" style={{ fontSize: "8.5px" }}>
+                Favs
+              </span>
+              {favorites.slice(0, 4).map((fav) => (
+                <NavLink
+                  key={fav.id}
+                  to={fav.path || `/admin/boards/${fav.id}`}
+                  className={({ isActive }) =>
+                    `sidebar-nav-item group relative flex flex-col items-center justify-center gap-1 w-full py-1.5 transition-all duration-150 ease-out no-underline ${
+                      isActive ? "sidebar-nav-active" : "sidebar-nav-inactive"
+                    }`
+                  }
+                  onMouseEnter={(e) => handleMouseEnter(e, `★ ${fav.name}`)}
+                  onMouseLeave={handleMouseLeave}
+                >
+                  <div
+                    className="w-5 h-5 rounded-md flex items-center justify-center font-bold text-[10px] text-white shadow-sm"
+                    style={{ backgroundColor: fav.color || "#4f46e5" }}
+                  >
+                    {fav.name ? fav.name.charAt(0).toUpperCase() : "★"}
+                  </div>
+                  <span className="sidebar-label text-[9.5px] truncate max-w-[50px]">{fav.name}</span>
+                </NavLink>
+              ))}
+            </div>
+          )}
         </nav>
       </div>
 
