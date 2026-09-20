@@ -1,7 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/((?!assets/|images/|icons/|favicon.ico|manifest.json|service-worker.js|version.json).*)$",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
@@ -20,11 +20,11 @@
       ]
     },
     {
-      "source": "/(.*\\.(?:html|json)|index\\.html|^/$)",
+      "source": "/version.json",
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=0, must-revalidate"
+          "value": "no-cache, no-store, must-revalidate"
         }
       ]
     },
