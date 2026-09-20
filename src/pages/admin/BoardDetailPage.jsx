@@ -58,6 +58,7 @@ import "../../styles/WorkspaceShell.css";
 
 const DEFAULT_STATUS_OPTIONS = ["Not Started", "In Progress", "Done"];
 const PRIORITY_OPTIONS = ["Urgent", "High", "Normal", "Low"];
+const STANDARD_COL_KEYS = ["assignee", "start_date", "due_date", "priority", "status", "comments"];
 
 const DEFAULT_STATUS_META = {
   "Not Started": { label: "To do", className: "badge-status-todo", color: "#7c8798" },
@@ -550,8 +551,6 @@ const BoardDetailPage = () => {
   const [dragOverColKey, setDragOverColKey] = useState(null);
   const [deletingFieldId, setDeletingFieldId] = useState(null);
 
-  const STANDARD_COL_KEYS = useMemo(() => ["assignee", "start_date", "due_date", "priority", "status", "comments"], []);
-
   // Compute all available and ordered columns
   const orderedColumns = useMemo(() => {
     const customColKeys = boardCustomFields.map(f => String(f.id));
@@ -576,7 +575,7 @@ const BoardDetailPage = () => {
     });
 
     return result;
-  }, [boardCustomFields, columnOrder, STANDARD_COL_KEYS]);
+  }, [boardCustomFields, columnOrder]);
 
   const isColHidden = useCallback((key) => {
     const keyStr = String(key).replace(/^custom_/, "");
@@ -615,65 +614,6 @@ const BoardDetailPage = () => {
       return updated;
     });
   };
-
-  // Sticky Horizontal Scrollbar Synchronization Effect
-  useEffect(() => {
-    const tableEl = tableContainerRef.current;
-    if (!tableEl) return;
-
-    const checkScrollNeeded = () => {
-      if (!tableEl) return;
-      const hasOverflow = tableEl.scrollWidth > tableEl.clientWidth + 10;
-      setFloatingScrollWidth(tableEl.scrollWidth);
-
-      if (!hasOverflow) {
-        setShowFloatingScroll(false);
-        return;
-      }
-
-      // Check if native scrollbar of table is below viewport
-      const rect = tableEl.getBoundingClientRect();
-      const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-      const isTopVisible = rect.top < viewportHeight;
-      const isBottomBelowFold = rect.bottom > viewportHeight + 15;
-
-      setShowFloatingScroll(isTopVisible && isBottomBelowFold);
-    };
-
-    const handleTableScroll = () => {
-      if (floatingScrollRef.current && tableEl) {
-        floatingScrollRef.current.scrollLeft = tableEl.scrollLeft;
-      }
-    };
-
-    const handleFloatingScroll = () => {
-      if (floatingScrollRef.current && tableEl) {
-        tableEl.scrollLeft = floatingScrollRef.current.scrollLeft;
-      }
-    };
-
-    tableEl.addEventListener("scroll", handleTableScroll, { passive: true });
-    window.addEventListener("scroll", checkScrollNeeded, { passive: true });
-    window.addEventListener("resize", checkScrollNeeded, { passive: true });
-
-    const floatEl = floatingScrollRef.current;
-    if (floatEl) {
-      floatEl.addEventListener("scroll", handleFloatingScroll, { passive: true });
-    }
-
-    checkScrollNeeded();
-    const timer = setTimeout(checkScrollNeeded, 300);
-
-    return () => {
-      tableEl.removeEventListener("scroll", handleTableScroll);
-      window.removeEventListener("scroll", checkScrollNeeded);
-      window.removeEventListener("resize", checkScrollNeeded);
-      if (floatEl) {
-        floatEl.removeEventListener("scroll", handleFloatingScroll);
-      }
-      clearTimeout(timer);
-    };
-  }, [activeOrderedColumns, columnWidths, currentViewType, filteredTasks]);
 
   const handleMoveColumn = (colKey, direction) => {
     const keyStr = String(colKey).replace(/^custom_/, "");
@@ -2542,6 +2482,65 @@ const BoardDetailPage = () => {
       }
     ];
   }, [board, filteredTasks, groupBy, assignees, allTasks, boardCustomFields]);
+
+  // Sticky Horizontal Scrollbar Synchronization Effect
+  useEffect(() => {
+    const tableEl = tableContainerRef.current;
+    if (!tableEl) return;
+
+    const checkScrollNeeded = () => {
+      if (!tableEl) return;
+      const hasOverflow = tableEl.scrollWidth > tableEl.clientWidth + 10;
+      setFloatingScrollWidth(tableEl.scrollWidth);
+
+      if (!hasOverflow) {
+        setShowFloatingScroll(false);
+        return;
+      }
+
+      // Check if native scrollbar of table is below viewport
+      const rect = tableEl.getBoundingClientRect();
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+      const isTopVisible = rect.top < viewportHeight;
+      const isBottomBelowFold = rect.bottom > viewportHeight + 15;
+
+      setShowFloatingScroll(isTopVisible && isBottomBelowFold);
+    };
+
+    const handleTableScroll = () => {
+      if (floatingScrollRef.current && tableEl) {
+        floatingScrollRef.current.scrollLeft = tableEl.scrollLeft;
+      }
+    };
+
+    const handleFloatingScroll = () => {
+      if (floatingScrollRef.current && tableEl) {
+        tableEl.scrollLeft = floatingScrollRef.current.scrollLeft;
+      }
+    };
+
+    tableEl.addEventListener("scroll", handleTableScroll, { passive: true });
+    window.addEventListener("scroll", checkScrollNeeded, { passive: true });
+    window.addEventListener("resize", checkScrollNeeded, { passive: true });
+
+    const floatEl = floatingScrollRef.current;
+    if (floatEl) {
+      floatEl.addEventListener("scroll", handleFloatingScroll, { passive: true });
+    }
+
+    checkScrollNeeded();
+    const timer = setTimeout(checkScrollNeeded, 300);
+
+    return () => {
+      tableEl.removeEventListener("scroll", handleTableScroll);
+      window.removeEventListener("scroll", checkScrollNeeded);
+      window.removeEventListener("resize", checkScrollNeeded);
+      if (floatEl) {
+        floatEl.removeEventListener("scroll", handleFloatingScroll);
+      }
+      clearTimeout(timer);
+    };
+  }, [activeOrderedColumns, columnWidths, currentViewType, filteredTasks]);
 
   // Swimlanes for Kanban
   const swimlanes = useMemo(() => {
