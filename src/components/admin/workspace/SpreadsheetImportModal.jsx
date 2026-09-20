@@ -126,6 +126,12 @@ const SpreadsheetImportModal = ({
     const uploadedFile = e.target.files[0];
     if (!uploadedFile) return;
 
+    const ext = uploadedFile.name.split('.').pop().toLowerCase();
+    if (ext === 'pdf' || ext === 'doc' || ext === 'docx') {
+      setErrorMsg(`"${uploadedFile.name}" is a ${ext.toUpperCase()} document. To upload reference documents or PDFs to this board, please use the "Upload Document" button on the board toolbar.`);
+      return;
+    }
+
     setFile(uploadedFile);
     setErrorMsg("");
     setIsParsing(true);
