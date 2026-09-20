@@ -121,14 +121,58 @@ const getViewIcon = (type) => {
   }
 };
 
-const CustomFieldTextInput = ({ initialValue, type, onSave, placeholder }) => {
-  const [val, setVal] = useState(initialValue || "");
+const EditableTaskTitle = ({ initialTitle, onCommit, className, placeholder }) => {
+  const [val, setVal] = useState(initialTitle || "");
+  const isFocusedRef = useRef(false);
 
   useEffect(() => {
-    setVal(initialValue || "");
+    if (!isFocusedRef.current) {
+      setVal(initialTitle || "");
+    }
+  }, [initialTitle]);
+
+  const handleBlur = (e) => {
+    isFocusedRef.current = false;
+    const finalVal = e.target.value;
+    if (finalVal !== initialTitle) {
+      onCommit(finalVal);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.target.blur();
+    }
+  };
+
+  return (
+    <input
+      type="text"
+      className={className || "cell-editable-text flex-grow-1"}
+      value={val}
+      onFocus={() => {
+        isFocusedRef.current = true;
+      }}
+      onChange={(e) => setVal(e.target.value)}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      placeholder={placeholder || "Task name..."}
+    />
+  );
+};
+
+const CustomFieldTextInput = ({ initialValue, type, onSave, placeholder }) => {
+  const [val, setVal] = useState(initialValue || "");
+  const isFocusedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isFocusedRef.current) {
+      setVal(initialValue || "");
+    }
   }, [initialValue]);
 
   const handleBlur = () => {
+    isFocusedRef.current = false;
     if (val !== initialValue) {
       onSave(val);
     }
@@ -139,6 +183,9 @@ const CustomFieldTextInput = ({ initialValue, type, onSave, placeholder }) => {
       type={type}
       className="cell-editable-text w-100"
       value={val}
+      onFocus={() => {
+        isFocusedRef.current = true;
+      }}
       onChange={(e) => setVal(e.target.value)}
       onBlur={handleBlur}
       onKeyDown={(e) => {
@@ -153,12 +200,16 @@ const CustomFieldTextInput = ({ initialValue, type, onSave, placeholder }) => {
 
 const CustomFieldNumberInput = ({ initialValue, onSave, placeholder }) => {
   const [val, setVal] = useState(initialValue !== undefined && initialValue !== null ? initialValue : "");
+  const isFocusedRef = useRef(false);
 
   useEffect(() => {
-    setVal(initialValue !== undefined && initialValue !== null ? initialValue : "");
+    if (!isFocusedRef.current) {
+      setVal(initialValue !== undefined && initialValue !== null ? initialValue : "");
+    }
   }, [initialValue]);
 
   const handleBlur = () => {
+    isFocusedRef.current = false;
     if (val !== initialValue) {
       onSave(val !== "" ? Number(val) : "");
     }
@@ -169,6 +220,9 @@ const CustomFieldNumberInput = ({ initialValue, onSave, placeholder }) => {
       type="number"
       className="cell-editable-text w-100"
       value={val}
+      onFocus={() => {
+        isFocusedRef.current = true;
+      }}
       onChange={(e) => setVal(e.target.value)}
       onBlur={handleBlur}
       onKeyDown={(e) => {
@@ -194,14 +248,16 @@ const formatCurrencyVal = (v) => {
 
 const CustomFieldCurrencyInput = ({ initialValue, onSave, placeholder }) => {
   const [val, setVal] = useState(() => formatCurrencyVal(initialValue));
-  const [isEditing, setIsEditing] = useState(false);
+  const isFocusedRef = useRef(false);
 
   useEffect(() => {
-    setVal(formatCurrencyVal(initialValue));
+    if (!isFocusedRef.current) {
+      setVal(formatCurrencyVal(initialValue));
+    }
   }, [initialValue]);
 
   const handleBlur = () => {
-    setIsEditing(false);
+    isFocusedRef.current = false;
     const formatted = formatCurrencyVal(val);
     setVal(formatted);
     if (formatted !== formatCurrencyVal(initialValue)) {
@@ -213,8 +269,10 @@ const CustomFieldCurrencyInput = ({ initialValue, onSave, placeholder }) => {
     <input
       type="text"
       className="cell-editable-text w-100 font-medium"
-      value={isEditing ? val : (val || "")}
-      onFocus={() => setIsEditing(true)}
+      value={val || ""}
+      onFocus={() => {
+        isFocusedRef.current = true;
+      }}
       onChange={(e) => setVal(e.target.value)}
       onBlur={handleBlur}
       onKeyDown={(e) => {
@@ -308,6 +366,7 @@ const BoardDetailPage = () => {
   const [collapsedStatuses, setCollapsedStatuses] = useState({});
   const [activeTaskId, setActiveTaskId] = useState(null);
   const [activeCommentTaskId, setActiveCommentTaskId] = useState(null);
+  const lastKnownActiveTaskRef = useRef(null);
 
   const [newTaskTitles, setNewTaskTitles] = useState({});
   const [addingTask, setAddingTask] = useState({});
@@ -416,6 +475,43 @@ const BoardDetailPage = () => {
   // Money configuration state
   const [currencyCode, setCurrencyCode] = useState("USD");
 
+  // Favorite / Quick Access State
+  const [isFavorite, setIsFavorite] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("ela_quick_access_favorites") || "[]");
+      return saved.some(item => String(item.id) === String(boardId));
+    } catch (e) {
+      return false;
+    }
+  });
+
+  const handleToggleFavorite = () => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("ela_quick_access_favorites") || "[]");
+      const exists = saved.some(item => String(item.id) === String(boardId));
+      let next;
+      if (exists) {
+        next = saved.filter(item => String(item.id) !== String(boardId));
+        setIsFavorite(false);
+        toast.info(`Removed "${board?.name || "Space"}" from Favorites`);
+      } else {
+        const newItem = {
+          id: boardId,
+          name: board?.name || "Space",
+          path: `/admin/boards/${boardId}`,
+          color: board?.color || "#4f46e5"
+        };
+        next = [...saved, newItem];
+        setIsFavorite(true);
+        toast.success(`Pinned "${board?.name || "Space"}" to Favorites!`);
+      }
+      localStorage.setItem("ela_quick_access_favorites", JSON.stringify(next));
+      window.dispatchEvent(new CustomEvent("favorites-updated", { detail: next }));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   // Hidden Columns State
   const [hiddenColumns, setHiddenColumns] = useState(() => {
     try {
@@ -433,6 +529,22 @@ const BoardDetailPage = () => {
     } catch (e) {}
     return [];
   });
+
+  // Column Widths State (persisted per board in localStorage)
+  const [columnWidths, setColumnWidths] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`col_widths_${boardId}`);
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return {};
+  });
+
+  const resizingColRef = useRef(null);
+  const [resizingColKey, setResizingColKey] = useState(null);
+  const tableContainerRef = useRef(null);
+  const floatingScrollRef = useRef(null);
+  const [showFloatingScroll, setShowFloatingScroll] = useState(false);
+  const [floatingScrollWidth, setFloatingScrollWidth] = useState(0);
 
   const [draggedColKey, setDraggedColKey] = useState(null);
   const [dragOverColKey, setDragOverColKey] = useState(null);
@@ -503,6 +615,65 @@ const BoardDetailPage = () => {
       return updated;
     });
   };
+
+  // Sticky Horizontal Scrollbar Synchronization Effect
+  useEffect(() => {
+    const tableEl = tableContainerRef.current;
+    if (!tableEl) return;
+
+    const checkScrollNeeded = () => {
+      if (!tableEl) return;
+      const hasOverflow = tableEl.scrollWidth > tableEl.clientWidth + 10;
+      setFloatingScrollWidth(tableEl.scrollWidth);
+
+      if (!hasOverflow) {
+        setShowFloatingScroll(false);
+        return;
+      }
+
+      // Check if native scrollbar of table is below viewport
+      const rect = tableEl.getBoundingClientRect();
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+      const isTopVisible = rect.top < viewportHeight;
+      const isBottomBelowFold = rect.bottom > viewportHeight + 15;
+
+      setShowFloatingScroll(isTopVisible && isBottomBelowFold);
+    };
+
+    const handleTableScroll = () => {
+      if (floatingScrollRef.current && tableEl) {
+        floatingScrollRef.current.scrollLeft = tableEl.scrollLeft;
+      }
+    };
+
+    const handleFloatingScroll = () => {
+      if (floatingScrollRef.current && tableEl) {
+        tableEl.scrollLeft = floatingScrollRef.current.scrollLeft;
+      }
+    };
+
+    tableEl.addEventListener("scroll", handleTableScroll, { passive: true });
+    window.addEventListener("scroll", checkScrollNeeded, { passive: true });
+    window.addEventListener("resize", checkScrollNeeded, { passive: true });
+
+    const floatEl = floatingScrollRef.current;
+    if (floatEl) {
+      floatEl.addEventListener("scroll", handleFloatingScroll, { passive: true });
+    }
+
+    checkScrollNeeded();
+    const timer = setTimeout(checkScrollNeeded, 300);
+
+    return () => {
+      tableEl.removeEventListener("scroll", handleTableScroll);
+      window.removeEventListener("scroll", checkScrollNeeded);
+      window.removeEventListener("resize", checkScrollNeeded);
+      if (floatEl) {
+        floatEl.removeEventListener("scroll", handleFloatingScroll);
+      }
+      clearTimeout(timer);
+    };
+  }, [activeOrderedColumns, columnWidths, currentViewType, filteredTasks]);
 
   const handleMoveColumn = (colKey, direction) => {
     const keyStr = String(colKey).replace(/^custom_/, "");
@@ -598,8 +769,43 @@ const BoardDetailPage = () => {
     const defaultOrder = ["assignee", "start_date", "due_date", "priority", "status", ...boardCustomFields.map(f => String(f.id)), "comments"];
     setColumnOrder(defaultOrder);
     setHiddenColumns([]);
+    setColumnWidths({});
+    try {
+      localStorage.removeItem(`col_widths_${boardId}`);
+    } catch (e) {}
     saveViewSettings({ column_order: defaultOrder, hidden_columns: [] });
     toast.success("Columns reset to default layout");
+  };
+
+  const handleResizeStart = (e, colKey) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const startX = e.clientX;
+    const thElement = e.target.closest("th");
+    const startWidth = thElement ? thElement.getBoundingClientRect().width : (columnWidths[colKey] || 140);
+    setResizingColKey(colKey);
+
+    const handleMouseMove = (moveEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const newWidth = Math.max(60, Math.round(startWidth + deltaX));
+      setColumnWidths((prev) => ({ ...prev, [colKey]: newWidth }));
+    };
+
+    const handleMouseUp = () => {
+      setResizingColKey(null);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      setColumnWidths((latest) => {
+        try {
+          localStorage.setItem(`col_widths_${boardId}`, JSON.stringify(latest));
+        } catch (err) {}
+        return latest;
+      });
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
   };
 
   const handleCleanJunkFields = async () => {
@@ -1654,19 +1860,32 @@ const BoardDetailPage = () => {
   }, [board]);
 
   const activeTask = useMemo(() => {
-    if (!activeTaskId || !board?.groups) return null;
-    for (const group of board.groups) {
-      for (const task of (group.tasks || [])) {
-        if (task.id === activeTaskId) {
-          return { ...task, group_id: group.id };
-        }
-        if (task.subtasks) {
-          const sub = task.subtasks.find((s) => s.id === activeTaskId);
-          if (sub) {
-            return { ...sub, group_id: group.id, parent_task_id: task.id };
+    if (!activeTaskId) {
+      lastKnownActiveTaskRef.current = null;
+      return null;
+    }
+    if (board?.groups) {
+      for (const group of board.groups) {
+        for (const task of (group.tasks || [])) {
+          if (task.id === activeTaskId) {
+            const found = { ...task, group_id: group.id };
+            lastKnownActiveTaskRef.current = found;
+            return found;
+          }
+          if (task.subtasks) {
+            const sub = task.subtasks.find((s) => s.id === activeTaskId);
+            if (sub) {
+              const found = { ...sub, group_id: group.id, parent_task_id: task.id };
+              lastKnownActiveTaskRef.current = found;
+              return found;
+            }
           }
         }
       }
+    }
+    // Fallback to last known task if ID matches, preventing unmount/flicker during refreshes
+    if (lastKnownActiveTaskRef.current && lastKnownActiveTaskRef.current.id === activeTaskId) {
+      return lastKnownActiveTaskRef.current;
     }
     return null;
   }, [activeTaskId, board]);
@@ -2093,12 +2312,37 @@ const BoardDetailPage = () => {
         valB = getTaskAssignees(b).map((assignee) => assignee.name).join(", ");
       }
 
-      if (valA === undefined || valA === null) valA = "";
-      if (valB === undefined || valB === null) valB = "";
+      const isDateCol = sortBy === "due_date" || sortBy === "start_date" || (typeof sortBy === "string" && sortBy.includes("date"));
 
-      // Normalize values for sorting - arrays (multi_select) get joined
-      if (Array.isArray(valA)) valA = valA.join(', ');
-      if (Array.isArray(valB)) valB = valB.join(', ');
+      // If one of the values is empty, rank it last in ascending order
+      const isEmptyA = valA === undefined || valA === null || valA === "";
+      const isEmptyB = valB === undefined || valB === null || valB === "";
+      if (isEmptyA && isEmptyB) return 0;
+      if (isEmptyA) return 1;
+      if (isEmptyB) return -1;
+
+      // Chronological date comparison
+      if (isDateCol) {
+        const timeA = new Date(valA).getTime();
+        const timeB = new Date(valB).getTime();
+        if (!isNaN(timeA) && !isNaN(timeB)) {
+          return sortOrder === "asc" ? timeA - timeB : timeB - timeA;
+        }
+      }
+
+      // Numeric comparison
+      const numA = Number(valA);
+      const numB = Number(valB);
+      if (typeof valA === "number" && typeof valB === "number") {
+        return sortOrder === "asc" ? valA - valB : valB - valA;
+      }
+      if (!isNaN(numA) && !isNaN(numB) && typeof valA !== "boolean" && typeof valB !== "boolean" && String(valA).trim() !== "" && String(valB).trim() !== "") {
+        return sortOrder === "asc" ? numA - numB : numB - numA;
+      }
+
+      // Normalize values for string comparison - arrays (multi_select) get joined
+      if (Array.isArray(valA)) valA = valA.join(", ");
+      if (Array.isArray(valB)) valB = valB.join(", ");
       if (typeof valA === "string") {
         valA = valA.toLowerCase();
         valB = typeof valB === "string" ? valB.toLowerCase() : String(valB).toLowerCase();
@@ -2204,6 +2448,91 @@ const BoardDetailPage = () => {
       return groups;
     }
 
+    if (groupBy === "due_date" || groupBy === "start_date") {
+      const dateKey = groupBy;
+      const todayStr = format(new Date(), "yyyy-MM-dd");
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = format(tomorrow, "yyyy-MM-dd");
+
+      const overdueTasks = [];
+      const todayTasks = [];
+      const tomorrowTasks = [];
+      const futureTasks = [];
+      const noDateTasks = [];
+
+      filteredTasks.forEach((t) => {
+        const d = t[dateKey];
+        if (!d) {
+          noDateTasks.push(t);
+        } else if (d < todayStr) {
+          overdueTasks.push(t);
+        } else if (d === todayStr) {
+          todayTasks.push(t);
+        } else if (d === tomorrowStr) {
+          tomorrowTasks.push(t);
+        } else {
+          futureTasks.push(t);
+        }
+      });
+
+      const dateGroups = [
+        { id: "overdue", name: "Overdue", color: "#ef4444", tasks: overdueTasks },
+        { id: "today", name: "Today", color: "#3b82f6", tasks: todayTasks },
+        { id: "tomorrow", name: "Tomorrow", color: "#6366f1", tasks: tomorrowTasks },
+        { id: "future", name: "Upcoming", color: "#10b981", tasks: futureTasks },
+        { id: "no_date", name: "No Date", color: "#94a3b8", tasks: noDateTasks }
+      ];
+      return dateGroups.filter(g => g.tasks.length > 0);
+    }
+
+    if (typeof groupBy === "string" && (groupBy.startsWith("custom_field_") || !isNaN(Number(groupBy)))) {
+      const fieldId = Number(groupBy.replace("custom_field_", ""));
+      const field = boardCustomFields.find(f => f.id === fieldId);
+      const fieldName = field?.name || `Field ${fieldId}`;
+
+      const valueMap = new Map();
+      const noValueTasks = [];
+
+      filteredTasks.forEach((t) => {
+        const val = t.custom_field_values?.[fieldId];
+        if (val === undefined || val === null || val === "" || (Array.isArray(val) && val.length === 0)) {
+          noValueTasks.push(t);
+        } else {
+          const strVal = Array.isArray(val) ? val.join(", ") : String(val);
+          if (!valueMap.has(strVal)) {
+            valueMap.set(strVal, []);
+          }
+          valueMap.get(strVal).push(t);
+        }
+      });
+
+      const customGroups = [];
+      const groupColors = ["#6366f1", "#0891b2", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#3b82f6"];
+      let colorIdx = 0;
+
+      valueMap.forEach((tasks, label) => {
+        customGroups.push({
+          id: `cf_${fieldId}_${label}`,
+          name: label,
+          color: groupColors[colorIdx % groupColors.length],
+          tasks
+        });
+        colorIdx++;
+      });
+
+      if (noValueTasks.length > 0) {
+        customGroups.push({
+          id: `cf_${fieldId}_empty`,
+          name: `No ${fieldName}`,
+          color: "#94a3b8",
+          tasks: noValueTasks
+        });
+      }
+
+      return customGroups;
+    }
+
     return [
       {
         id: "all",
@@ -2212,7 +2541,7 @@ const BoardDetailPage = () => {
         tasks: filteredTasks
       }
     ];
-  }, [board, filteredTasks, groupBy, assignees, allTasks]);
+  }, [board, filteredTasks, groupBy, assignees, allTasks, boardCustomFields]);
 
   // Swimlanes for Kanban
   const swimlanes = useMemo(() => {
@@ -2250,6 +2579,20 @@ const BoardDetailPage = () => {
     return tasks;
   }, [filteredTasks, kanbanGrouping]);
 
+  const findTaskOrSubtask = useCallback((groups, targetId) => {
+    if (!groups || !targetId) return null;
+    for (const group of groups) {
+      for (const task of (group.tasks || [])) {
+        if (task.id === targetId) return task;
+        if (task.subtasks) {
+          const sub = task.subtasks.find((s) => s.id === targetId);
+          if (sub) return sub;
+        }
+      }
+    }
+    return null;
+  }, []);
+
   useEffect(() => {
     if (!board) return;
 
@@ -2258,8 +2601,13 @@ const BoardDetailPage = () => {
     if (!taskIdParam) {
       setActiveTaskId(null);
     } else {
-      const task = allTasks.find((item) => item.id === taskIdParam);
-      setActiveTaskId(task ? taskIdParam : null);
+      const task = findTaskOrSubtask(board.groups, taskIdParam);
+      if (task) {
+        setActiveTaskId(taskIdParam);
+      } else if (!lastKnownActiveTaskRef.current || lastKnownActiveTaskRef.current.id !== taskIdParam) {
+        // Only clear if neither the current board nor our cached ref knows this task
+        setActiveTaskId(null);
+      }
     }
 
     const viewParam = params.get("view");
@@ -2273,7 +2621,7 @@ const BoardDetailPage = () => {
       nextParams.delete("manage_statuses");
       navigate(`${location.pathname}?${nextParams.toString()}`, { replace: true });
     }
-  }, [location.search, board, allTasks]);
+  }, [location.search, board, findTaskOrSubtask]);
 
   const getIncompleteSubtasks = (task) =>
     (task.subtasks || []).filter((subtask) => subtask.status !== "Done");
@@ -4098,21 +4446,11 @@ const BoardDetailPage = () => {
                               </td>
                               <td style={{ minWidth: "350px" }} className="zbot-sticky-col-3">
                                 <div className="d-flex align-items-center gap-2">
-                                  <input
-                                    type="text"
-                                    className="cell-editable-text flex-grow-1"
-                                    value={task.title}
-                                    onChange={(event) => {
-                                      const val = event.target.value;
-                                      patchTaskInState(task.id, (t) => ({ ...t, title: val }));
-                                    }}
-                                    onBlur={(event) =>
-                                      handleTaskCellChange(task.id, "title", event.target.value)
-                                    }
-                                    onKeyDown={(event) => {
-                                      if (event.key === "Enter") {
-                                        event.target.blur();
-                                      }
+                                  <EditableTaskTitle
+                                    initialTitle={task.title}
+                                    onCommit={(newTitle) => {
+                                      patchTaskInState(task.id, (t) => ({ ...t, title: newTitle }));
+                                      handleTaskCellChange(task.id, "title", newTitle);
                                     }}
                                   />
                                   {subtaskCount > 0 && (
@@ -4216,21 +4554,11 @@ const BoardDetailPage = () => {
                                     <div className="d-flex align-items-center gap-2" style={{ paddingLeft: "16px" }}>
                                       <span className="subtask-tree-line" style={{ width: "12px", height: "14px", borderLeft: "1.5px solid #cbd5e1", borderBottom: "1.5px solid #cbd5e1", borderBottomLeftRadius: "4px", display: "inline-block", marginRight: "2px", transform: "translateY(-5px)" }} />
                                       {renderSubtaskCheckCircleDropdown(subtask, subtaskFull, STATUS_META[subtask.status] || STATUS_META["Not Started"])}
-                                      <input
-                                        type="text"
-                                        className="cell-editable-text flex-grow-1"
-                                        value={subtask.title}
-                                        onChange={(event) => {
-                                          const val = event.target.value;
-                                          patchTaskInState(subtask.id, (s) => ({ ...s, title: val }));
-                                        }}
-                                        onBlur={(event) =>
-                                          handleTaskCellChange(subtask.id, "title", event.target.value)
-                                        }
-                                        onKeyDown={(event) => {
-                                          if (event.key === "Enter") {
-                                            event.target.blur();
-                                          }
+                                      <EditableTaskTitle
+                                        initialTitle={subtask.title}
+                                        onCommit={(newTitle) => {
+                                          patchTaskInState(subtask.id, (s) => ({ ...s, title: newTitle }));
+                                          handleTaskCellChange(subtask.id, "title", newTitle);
                                         }}
                                       />
                                       {renderTaskNotesIcon(subtaskFull)}
@@ -4694,7 +5022,10 @@ const BoardDetailPage = () => {
     const paginatedTasks = filteredTasks.slice(startIndex, startIndex + TABLE_PAGE_SIZE);
 
     return (
-      <div className="workspace-table-container zbot-proper-table bg-white rounded-3 shadow-sm border p-2">
+      <div 
+        ref={tableContainerRef}
+        className="workspace-table-container zbot-proper-table bg-white rounded-3 shadow-sm border p-2"
+      >
         <table className="workspace-table" style={{ minWidth: boardCustomFields.length > 0 ? `${800 + boardCustomFields.length * 150}px` : "100%" }}>
           <thead>
             <tr>
@@ -4749,21 +5080,11 @@ const BoardDetailPage = () => {
                     </td>
                     <td style={{ minWidth: "350px" }} className="zbot-sticky-table-col-2">
                       <div className="d-flex align-items-center gap-2">
-                        <input
-                          type="text"
-                          className="cell-editable-text flex-grow-1"
-                          value={task.title}
-                          onChange={(event) => {
-                            const val = event.target.value;
-                            patchTaskInState(task.id, (t) => ({ ...t, title: val }));
-                          }}
-                          onBlur={(event) =>
-                            handleTaskCellChange(task.id, "title", event.target.value)
-                          }
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") {
-                              event.target.blur();
-                            }
+                        <EditableTaskTitle
+                          initialTitle={task.title}
+                          onCommit={(newTitle) => {
+                            patchTaskInState(task.id, (t) => ({ ...t, title: newTitle }));
+                            handleTaskCellChange(task.id, "title", newTitle);
                           }}
                         />
                         {renderTaskNotesIcon(task)}
@@ -4839,21 +5160,11 @@ const BoardDetailPage = () => {
                           <div className="d-flex align-items-center gap-2" style={{ paddingLeft: "24px" }}>
                             {renderSubtaskCheckCircleDropdown(subtask, subtaskFull, subtaskStatusMeta)}
                             <GitFork size={13} className="text-slate-300" style={{ transform: "rotate(180deg)" }} />
-                            <input
-                              type="text"
-                              className="cell-editable-text flex-grow-1"
-                              value={subtask.title}
-                              onChange={(event) => {
-                                const val = event.target.value;
-                                patchTaskInState(subtask.id, (s) => ({ ...s, title: val }));
-                              }}
-                              onBlur={(event) =>
-                                handleTaskCellChange(subtask.id, "title", event.target.value)
-                              }
-                              onKeyDown={(event) => {
-                                if (event.key === "Enter") {
-                                  event.target.blur();
-                                }
+                            <EditableTaskTitle
+                              initialTitle={subtask.title}
+                              onCommit={(newTitle) => {
+                                patchTaskInState(subtask.id, (s) => ({ ...s, title: newTitle }));
+                                handleTaskCellChange(subtask.id, "title", newTitle);
                               }}
                             />
                           </div>
@@ -5170,6 +5481,17 @@ const BoardDetailPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Sticky Floating Horizontal Scrollbar Widget */}
+        {showFloatingScroll && (
+          <div
+            ref={floatingScrollRef}
+            className="floating-horizontal-scrollbar-wrapper"
+            title="Scroll horizontally across table"
+          >
+            <div style={{ width: `${floatingScrollWidth}px`, height: "1px" }} />
+          </div>
+        )}
       </div>
     );
   };
@@ -5754,7 +6076,13 @@ const BoardDetailPage = () => {
   };
 
   const handleSortColumn = (fieldId, order) => {
-    setSortBy(`custom_field_${fieldId}`);
+    const isStandard = STANDARD_COL_KEYS.includes(String(fieldId)) || fieldId === "title";
+    if (isStandard) {
+      setSortBy(String(fieldId));
+    } else {
+      const idStr = String(fieldId).replace(/^custom_field_/, "").replace(/^custom_/, "");
+      setSortBy(`custom_field_${idStr}`);
+    }
     setSortOrder(order);
   };
 
@@ -6258,11 +6586,9 @@ const BoardDetailPage = () => {
       }
       default:
         return (
-          <input
-            type="text"
-            className="cell-editable-text w-100"
-            value={typeof value === 'object' ? JSON.stringify(value) : value}
-            onChange={(e) => handleUpdateValue(e.target.value)}
+          <CustomFieldTextInput
+            initialValue={typeof value === 'object' ? JSON.stringify(value) : (value || "")}
+            onSave={(newVal) => handleUpdateValue(newVal)}
             placeholder="-"
           />
         );
@@ -6836,10 +7162,15 @@ const BoardDetailPage = () => {
   const renderStandardFieldHeader = (fieldKey, fieldName, style = {}, className = "") => {
     if (isColHidden(fieldKey)) return null;
     const isDragOver = dragOverColKey === fieldKey;
+    const customWidth = columnWidths[fieldKey];
+    const appliedStyle = customWidth 
+      ? { ...style, width: `${customWidth}px`, minWidth: `${customWidth}px`, maxWidth: `${customWidth}px` }
+      : style;
+
     return (
       <th 
         key={fieldKey} 
-        style={{ cursor: "pointer", position: "relative", ...style }}
+        style={{ cursor: "pointer", position: "relative", ...appliedStyle }}
         className={`${className} ${isDragOver ? "drag-over-col-header" : ""}`.trim()}
         draggable={fieldKey !== "title"}
         onDragStart={(e) => handleColDragStart(e, fieldKey)}
@@ -6873,6 +7204,11 @@ const BoardDetailPage = () => {
             <Dropdown.Item onClick={() => handleHideColumn(fieldKey)}>Hide column</Dropdown.Item>
           </Dropdown.Menu>
         </Dropdown>
+        <div
+          className={`col-resizer ${resizingColKey === fieldKey ? "is-resizing" : ""}`}
+          onMouseDown={(e) => handleResizeStart(e, fieldKey)}
+          title="Drag to resize column"
+        />
       </th>
     );
   };
@@ -6880,10 +7216,15 @@ const BoardDetailPage = () => {
   const renderCustomFieldHeader = (field) => {
     if (isColHidden(field.id)) return null;
     const isDragOver = dragOverColKey === String(field.id);
+    const customWidth = columnWidths[String(field.id)] || columnWidths[field.id];
+    const widthStyle = customWidth 
+      ? { width: `${customWidth}px`, minWidth: `${customWidth}px`, maxWidth: `${customWidth}px` }
+      : { width: "140px", minWidth: "140px", maxWidth: "180px" };
+
     return (
       <th 
         key={field.id} 
-        style={{ width: "140px", minWidth: "140px", maxWidth: "180px", cursor: "pointer" }} 
+        style={{ ...widthStyle, cursor: "pointer", position: "relative" }} 
         className={`position-relative ${isDragOver ? "drag-over-col-header" : ""}`.trim()}
         draggable
         onDragStart={(e) => handleColDragStart(e, String(field.id))}
@@ -6946,6 +7287,11 @@ const BoardDetailPage = () => {
             }} className="text-danger">Delete field</Dropdown.Item>
           </Dropdown.Menu>
         </Dropdown>
+        <div
+          className={`col-resizer ${resizingColKey === String(field.id) ? "is-resizing" : ""}`}
+          onMouseDown={(e) => handleResizeStart(e, String(field.id))}
+          title="Drag to resize column"
+        />
       </th>
     );
   };
@@ -6970,10 +7316,13 @@ const BoardDetailPage = () => {
     }
     if (colKey === "comments") {
       const isDragOver = dragOverColKey === "comments";
+      const customWidth = columnWidths["comments"];
+      const appliedWidth = customWidth ? { width: `${customWidth}px`, minWidth: `${customWidth}px`, maxWidth: `${customWidth}px` } : { width: "5%", minWidth: "80px" };
+
       return (
         <th 
           key="comments" 
-          style={{ width: "5%", minWidth: "80px", cursor: "pointer" }}
+          style={{ ...appliedWidth, cursor: "pointer", position: "relative" }}
           className={`position-relative ${isDragOver ? "drag-over-col-header" : ""}`.trim()}
           draggable
           onDragStart={(e) => handleColDragStart(e, "comments")}
@@ -6995,6 +7344,11 @@ const BoardDetailPage = () => {
               <Dropdown.Item onClick={() => handleHideColumn("comments")}>Hide column</Dropdown.Item>
             </Dropdown.Menu>
           </Dropdown>
+          <div
+            className={`col-resizer ${resizingColKey === "comments" ? "is-resizing" : ""}`}
+            onMouseDown={(e) => handleResizeStart(e, "comments")}
+            title="Drag to resize column"
+          />
         </th>
       );
     }
@@ -7009,24 +7363,29 @@ const BoardDetailPage = () => {
   const renderDynamicColumnCell = (task, colKey) => {
     if (isColHidden(colKey)) return null;
 
+    const customWidth = columnWidths[colKey];
+    const cellWidthStyle = customWidth 
+      ? { width: `${customWidth}px`, minWidth: `${customWidth}px`, maxWidth: `${customWidth}px` } 
+      : {};
+
     if (colKey === "assignee") {
-      return <td key="assignee" style={{ minWidth: "120px" }}>{renderAssigneeCell(task)}</td>;
+      return <td key="assignee" style={{ minWidth: "120px", ...cellWidthStyle }}>{renderAssigneeCell(task)}</td>;
     }
     if (colKey === "start_date") {
-      return <td key="start_date" style={{ minWidth: "110px" }}>{renderDateCell(task, "start_date")}</td>;
+      return <td key="start_date" style={{ minWidth: "110px", ...cellWidthStyle }}>{renderDateCell(task, "start_date")}</td>;
     }
     if (colKey === "due_date") {
-      return <td key="due_date" style={{ minWidth: "110px" }}>{renderDateCell(task, "due_date")}</td>;
+      return <td key="due_date" style={{ minWidth: "110px", ...cellWidthStyle }}>{renderDateCell(task, "due_date")}</td>;
     }
     if (colKey === "priority") {
-      return <td key="priority" style={{ minWidth: "90px" }}>{renderPriorityDropdown(task)}</td>;
+      return <td key="priority" style={{ minWidth: "90px", ...cellWidthStyle }}>{renderPriorityDropdown(task)}</td>;
     }
     if (colKey === "status") {
-      return <td key="status" style={{ minWidth: "120px" }}>{renderStatusDropdown(task)}</td>;
+      return <td key="status" style={{ minWidth: "120px", ...cellWidthStyle }}>{renderStatusDropdown(task)}</td>;
     }
     if (colKey === "comments") {
       return (
-        <td key="comments" className="text-center position-relative" style={{ minWidth: "80px" }}>
+        <td key="comments" className="text-center position-relative" style={{ minWidth: "80px", ...cellWidthStyle }}>
           <button
             type="button"
             className="chat-bubble-btn position-relative d-inline-flex align-items-center justify-content-center cursor-pointer border-0 bg-transparent"
@@ -7047,7 +7406,7 @@ const BoardDetailPage = () => {
     const field = boardCustomFields.find(f => String(f.id) === String(colKey) || f.id === colKey);
     if (field) {
       return (
-        <td key={`cf_${field.id}`} style={{ width: "140px", minWidth: "140px", maxWidth: "180px" }} className="text-truncate">
+        <td key={`cf_${field.id}`} style={{ width: customWidth ? `${customWidth}px` : "140px", minWidth: customWidth ? `${customWidth}px` : "140px", maxWidth: customWidth ? `${customWidth}px` : "180px" }} className="text-truncate">
           {renderCustomFieldCell(task, field)}
         </td>
       );
@@ -7057,50 +7416,54 @@ const BoardDetailPage = () => {
 
   const renderDynamicCalculationCell = (colKey, statusTasks) => {
     if (isColHidden(colKey)) return null;
+    const customWidth = columnWidths[colKey];
+    const cellWidthStyle = customWidth 
+      ? { width: `${customWidth}px`, minWidth: `${customWidth}px`, maxWidth: `${customWidth}px` } 
+      : {};
 
     if (colKey === "assignee") {
       return (
-        <td key="calc_assignee" style={{ minWidth: "120px" }} className="px-2 py-1 align-middle">
+        <td key="calc_assignee" style={{ minWidth: "120px", ...cellWidthStyle }} className="px-2 py-1 align-middle">
           {renderColumnCalculationCell("assignee", statusTasks)}
         </td>
       );
     }
     if (colKey === "start_date") {
       return (
-        <td key="calc_start_date" style={{ minWidth: "110px" }} className="px-2 py-1 align-middle">
+        <td key="calc_start_date" style={{ minWidth: "110px", ...cellWidthStyle }} className="px-2 py-1 align-middle">
           {renderColumnCalculationCell("start_date", statusTasks)}
         </td>
       );
     }
     if (colKey === "due_date") {
       return (
-        <td key="calc_due_date" style={{ minWidth: "110px" }} className="px-2 py-1 align-middle">
+        <td key="calc_due_date" style={{ minWidth: "110px", ...cellWidthStyle }} className="px-2 py-1 align-middle">
           {renderColumnCalculationCell("due_date", statusTasks)}
         </td>
       );
     }
     if (colKey === "priority") {
       return (
-        <td key="calc_priority" style={{ minWidth: "90px" }} className="px-2 py-1 align-middle">
+        <td key="calc_priority" style={{ minWidth: "90px", ...cellWidthStyle }} className="px-2 py-1 align-middle">
           {renderColumnCalculationCell("priority", statusTasks)}
         </td>
       );
     }
     if (colKey === "status") {
       return (
-        <td key="calc_status" style={{ minWidth: "120px" }} className="px-2 py-1 align-middle">
+        <td key="calc_status" style={{ minWidth: "120px", ...cellWidthStyle }} className="px-2 py-1 align-middle">
           {renderColumnCalculationCell("status", statusTasks)}
         </td>
       );
     }
     if (colKey === "comments") {
-      return <td key="calc_comments" style={{ minWidth: "80px" }} />;
+      return <td key="calc_comments" style={{ minWidth: "80px", ...cellWidthStyle }} />;
     }
 
     const field = boardCustomFields.find(f => String(f.id) === String(colKey) || f.id === colKey);
     if (field) {
       return (
-        <td key={`calc_cf_${field.id}`} style={{ width: "140px", minWidth: "140px", maxWidth: "180px" }} className="px-2 py-1 align-middle">
+        <td key={`calc_cf_${field.id}`} style={{ width: customWidth ? `${customWidth}px` : "140px", minWidth: customWidth ? `${customWidth}px` : "140px", maxWidth: customWidth ? `${customWidth}px` : "180px" }} className="px-2 py-1 align-middle">
           {renderColumnCalculationCell(field, statusTasks)}
         </td>
       );
@@ -7110,25 +7473,29 @@ const BoardDetailPage = () => {
 
   const renderDynamicSubtaskCell = (subtaskFull, colKey) => {
     if (isColHidden(colKey)) return null;
+    const customWidth = columnWidths[colKey];
+    const cellWidthStyle = customWidth 
+      ? { width: `${customWidth}px`, minWidth: `${customWidth}px`, maxWidth: `${customWidth}px` } 
+      : {};
 
     if (colKey === "assignee") {
-      return <td key="st_assignee" style={{ minWidth: "120px" }}>{renderAssigneeCell(subtaskFull)}</td>;
+      return <td key="st_assignee" style={{ minWidth: "120px", ...cellWidthStyle }}>{renderAssigneeCell(subtaskFull)}</td>;
     }
     if (colKey === "start_date") {
-      return <td key="st_start_date" style={{ minWidth: "110px" }}>{renderDateCell(subtaskFull, "start_date")}</td>;
+      return <td key="st_start_date" style={{ minWidth: "110px", ...cellWidthStyle }}>{renderDateCell(subtaskFull, "start_date")}</td>;
     }
     if (colKey === "due_date") {
-      return <td key="st_due_date" style={{ minWidth: "110px" }}>{renderDateCell(subtaskFull, "due_date")}</td>;
+      return <td key="st_due_date" style={{ minWidth: "110px", ...cellWidthStyle }}>{renderDateCell(subtaskFull, "due_date")}</td>;
     }
     if (colKey === "priority") {
-      return <td key="st_priority" style={{ minWidth: "90px" }}>{renderPriorityDropdown(subtaskFull)}</td>;
+      return <td key="st_priority" style={{ minWidth: "90px", ...cellWidthStyle }}>{renderPriorityDropdown(subtaskFull)}</td>;
     }
     if (colKey === "status") {
-      return <td key="st_status" style={{ minWidth: "120px" }}>{renderStatusDropdown(subtaskFull)}</td>;
+      return <td key="st_status" style={{ minWidth: "120px", ...cellWidthStyle }}>{renderStatusDropdown(subtaskFull)}</td>;
     }
     if (colKey === "comments") {
       return (
-        <td key="st_comments" className="text-center position-relative" style={{ minWidth: "80px" }}>
+        <td key="st_comments" className="text-center position-relative" style={{ minWidth: "80px", ...cellWidthStyle }}>
           <button
             type="button"
             className="chat-bubble-btn position-relative d-inline-flex align-items-center justify-content-center cursor-pointer border-0 bg-transparent"
@@ -7146,7 +7513,7 @@ const BoardDetailPage = () => {
       );
     }
 
-    return <td key={`st_cf_${colKey}`} style={{ width: "140px", minWidth: "140px" }}></td>;
+    return <td key={`st_cf_${colKey}`} style={{ width: customWidth ? `${customWidth}px` : "140px", minWidth: customWidth ? `${customWidth}px` : "140px", ...cellWidthStyle }}></td>;
   };
 
   return (
@@ -7156,6 +7523,14 @@ const BoardDetailPage = () => {
           <div className="workspace-breadcrumb">Spaces / {board.name}</div>
           <div className="workspace-title-row d-flex align-items-center gap-2">
             <h2 className="mb-0 fs-4 fw-bold text-slate-800">{board.name}</h2>
+            <button
+              type="button"
+              className={`board-favorite-star-btn ${isFavorite ? "is-favorite" : ""}`}
+              onClick={handleToggleFavorite}
+              title={isFavorite ? "Remove from Favorites" : "Add to Favorites / Quick Access"}
+            >
+              <Star size={15} fill={isFavorite ? "#eab308" : "none"} />
+            </button>
             {saving && (
               <span className="sync-pill">
                 <Spinner size="sm" animation="border" />
@@ -7434,14 +7809,30 @@ const BoardDetailPage = () => {
             <Dropdown className="d-inline-block">
               <Dropdown.Toggle as="button" className="zbot-status-pill-btn">
                 <span className="zbot-status-dot" style={{ backgroundColor: "#673de6" }} />
-                <span className="font-bold">{groupBy === "status" ? "Status" : groupBy === "priority" ? "Priority" : groupBy === "assignee" ? "Teammate" : "Group"}</span>
+                <span className="font-bold">
+                  {groupBy === "status" ? "Status" : 
+                   groupBy === "priority" ? "Priority" : 
+                   groupBy === "assignee" ? "Teammate" : 
+                   groupBy === "due_date" ? "Due Date" :
+                   groupBy === "start_date" ? "Start Date" :
+                   groupBy === "category" ? "Category" :
+                   groupBy.startsWith("custom_field_") ? (boardCustomFields.find(f => f.id === Number(groupBy.replace("custom_field_", "")))?.name || "Custom Field") : "Group"}
+                </span>
                 <ChevronDown size={11} className="ms-1.5 text-slate-400" />
               </Dropdown.Toggle>
-              <Dropdown.Menu className="border-0 shadow-lg py-1" style={{ fontSize: "11.5px", zIndex: 1060 }} popperConfig={{ strategy: "fixed" }}>
+              <Dropdown.Menu className="border-0 shadow-lg py-1" style={{ fontSize: "11.5px", zIndex: 1060, maxHeight: "320px", overflowY: "auto" }} popperConfig={{ strategy: "fixed" }}>
                 <Dropdown.Item onClick={() => setGroupBy("status")}>Group: Status</Dropdown.Item>
                 <Dropdown.Item onClick={() => setGroupBy("priority")}>Group: Priority</Dropdown.Item>
                 <Dropdown.Item onClick={() => setGroupBy("assignee")}>Group: Teammate</Dropdown.Item>
+                <Dropdown.Item onClick={() => setGroupBy("due_date")}>Group: Due Date</Dropdown.Item>
+                <Dropdown.Item onClick={() => setGroupBy("start_date")}>Group: Start Date</Dropdown.Item>
                 <Dropdown.Item onClick={() => setGroupBy("category")}>Group: Category</Dropdown.Item>
+                {boardCustomFields.length > 0 && <Dropdown.Divider />}
+                {boardCustomFields.map(f => (
+                  <Dropdown.Item key={`grp_cf_${f.id}`} onClick={() => setGroupBy(`custom_field_${f.id}`)}>
+                    Group: {f.name}
+                  </Dropdown.Item>
+                ))}
               </Dropdown.Menu>
             </Dropdown>
 
@@ -7678,6 +8069,14 @@ const BoardDetailPage = () => {
                 <option value="title">Sort: Alphabetical</option>
                 <option value="priority">Sort: Priority</option>
                 <option value="due_date">Sort: Due Date</option>
+                <option value="start_date">Sort: Start Date</option>
+                <option value="status">Sort: Status</option>
+                <option value="assignee">Sort: Assignee</option>
+                {boardCustomFields.map(f => (
+                  <option key={`sort_cf_${f.id}`} value={`custom_field_${f.id}`}>
+                    Sort: {f.name}
+                  </option>
+                ))}
               </select>
               <button
                 className="workspace-inline-tool-btn"

@@ -24,11 +24,40 @@ if (typeof window !== "undefined") {
   window.addEventListener("keydown", handleUserGesture, { capture: true, passive: true });
 }
 
+const CHIME_MUTEX_KEY = "ela_last_chime_timestamp";
+const CHIME_COOLDOWN_MS = 1500; // 1.5 seconds
+
+/**
+ * Checks whether this tab should play the chime, coordinating with other open tabs
+ * via localStorage so only one tab plays the sound per event.
+ */
+export const shouldPlayNotificationChime = () => {
+  if (typeof window === "undefined" || !window.localStorage) return true;
+  try {
+    const now = Date.now();
+    const lastChimeStr = localStorage.getItem(CHIME_MUTEX_KEY);
+    const lastChime = lastChimeStr ? parseInt(lastChimeStr, 10) : 0;
+
+    if (now - lastChime < CHIME_COOLDOWN_MS) {
+      return false;
+    }
+
+    localStorage.setItem(CHIME_MUTEX_KEY, String(now));
+    return true;
+  } catch {
+    return true;
+  }
+};
+
 /**
  * Plays a crisp, prominent notification chime — ClickUp-style triple-tone.
  * Louder and more distinct than the previous dual-tone.
+ * Deduplicates across open tabs to prevent audio echoing/multiple pings.
  */
-export const playNotificationChime = () => {
+export const playNotificationChime = (force = false) => {
+  if (!force && !shouldPlayNotificationChime()) {
+    return;
+  }
   try {
     unlockAudio();
 

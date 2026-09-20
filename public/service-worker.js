@@ -1,7 +1,5 @@
-const CACHE_NAME = "ela-academy-cache-v4";
+const CACHE_NAME = "ela-academy-cache-v5";
 const ASSETS_TO_CACHE = [
-  "/",
-  "/index.html",
   "/vite.svg",
   "/images/ela-app-logo.png",
   "/images/ELA-logo.png",
@@ -49,13 +47,34 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Handle HTML document navigations with Network-First strategy
+  if (
+    event.request.mode === "navigate" ||
+    requestUrl.pathname === "/" ||
+    requestUrl.pathname === "/index.html" ||
+    (event.request.headers.get("accept") && event.request.headers.get("accept").includes("text/html"))
+  ) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const copy = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/")))
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
         // Fetch in the background to update the cache (Stale-While-Revalidate)
         fetch(event.request)
           .then((networkResponse) => {
-            if (networkResponse.status === 200) {
+            if (networkResponse && networkResponse.status === 200 && networkResponse.type === "basic") {
               caches.open(CACHE_NAME).then((cache) => {
                 cache.put(event.request, networkResponse);
               });
@@ -76,17 +95,20 @@ self.addEventListener("fetch", (event) => {
           ) {
             return networkResponse;
           }
+          // Do not cache HTML responses if requesting JS/CSS assets (e.g. from 404 rewrite)
+          const contentType = networkResponse.headers.get("content-type") || "";
+          if (
+            (requestUrl.pathname.endsWith(".js") || requestUrl.pathname.endsWith(".css")) &&
+            contentType.includes("text/html")
+          ) {
+            return networkResponse;
+          }
+
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseToCache);
           });
           return networkResponse;
-        })
-        .catch(() => {
-          // If offline and requesting page/document, return cached index
-          if (event.request.mode === "navigate") {
-            return caches.match("/");
-          }
         });
     })
   );

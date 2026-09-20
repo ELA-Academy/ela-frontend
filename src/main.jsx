@@ -11,8 +11,8 @@ createRoot(document.getElementById("root")).render(
   </StrictMode>
 );
 
-// Unregister any active service worker to prevent localhost Vite HMR conflicts
-if ("serviceWorker" in navigator) {
+// Unregister any active service worker during local Vite development to prevent HMR conflicts
+if (import.meta.env.DEV && "serviceWorker" in navigator) {
   navigator.serviceWorker.getRegistrations().then((registrations) => {
     for (let registration of registrations) {
       registration.unregister();

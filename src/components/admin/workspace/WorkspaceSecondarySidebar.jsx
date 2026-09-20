@@ -160,6 +160,43 @@ const WorkspaceSecondarySidebar = ({
     fetchCount();
   }, [location.pathname, location.search]);
 
+  // Quick Access / Pinned Favorites State
+  const [favoritesList, setFavoritesList] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("ela_quick_access_favorites") || "[]");
+    } catch (e) {
+      return [];
+    }
+  });
+
+  React.useEffect(() => {
+    const handleFavoritesUpdated = (e) => {
+      if (e.detail) {
+        setFavoritesList(e.detail);
+      } else {
+        try {
+          setFavoritesList(JSON.parse(localStorage.getItem("ela_quick_access_favorites") || "[]"));
+        } catch (err) {}
+      }
+    };
+
+    window.addEventListener("favorites-updated", handleFavoritesUpdated);
+    window.addEventListener("storage", handleFavoritesUpdated);
+    return () => {
+      window.removeEventListener("favorites-updated", handleFavoritesUpdated);
+      window.removeEventListener("storage", handleFavoritesUpdated);
+    };
+  }, []);
+
+  const handleRemoveFavorite = (e, favId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const next = favoritesList.filter(item => String(item.id) !== String(favId));
+    setFavoritesList(next);
+    localStorage.setItem("ela_quick_access_favorites", JSON.stringify(next));
+    window.dispatchEvent(new CustomEvent("favorites-updated", { detail: next }));
+  };
+
   const menuRef = useRef(null);
 
   useLayoutEffect(() => {
@@ -1074,6 +1111,52 @@ const WorkspaceSecondarySidebar = ({
       </div>
 
       <div className="workspace-secondary-body">
+        {/* Pinned Favorites / Quick Access Section */}
+        {favoritesList.length > 0 && (
+          <section className="workspace-secondary-section" style={{ gap: "3px", marginBottom: "6px" }}>
+            <div className="workspace-secondary-section-header" style={{ padding: "4px 8px", fontSize: "10px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.05em", color: "#64748b" }}>
+              <span className="d-flex align-items-center gap-1.5">
+                <Star size={11} className="text-amber-500" fill="#f59e0b" />
+                <span>Favorites</span>
+              </span>
+              <span className="text-slate-400 font-normal" style={{ fontSize: "9.5px" }}>{favoritesList.length}</span>
+            </div>
+            <div className="workspace-secondary-links d-flex flex-column gap-1">
+              {favoritesList.map((fav) => {
+                const isFavActive = location.pathname === fav.path;
+                return (
+                  <div
+                    key={fav.id}
+                    className={`workspace-secondary-link position-relative d-flex align-items-center justify-content-between ${isFavActive ? "active" : ""}`}
+                    style={{ padding: "4px 8px", borderRadius: "6px", cursor: "pointer" }}
+                    onClick={() => navigate(fav.path || `/admin/boards/${fav.id}`)}
+                  >
+                    <div className="d-flex align-items-center gap-2 text-truncate" style={{ flexGrow: 1, minWidth: 0 }}>
+                      <span
+                        className="rounded-circle d-inline-block flex-shrink-0"
+                        style={{ width: "8px", height: "8px", backgroundColor: fav.color || "#4f46e5" }}
+                      />
+                      <span className="text-truncate fw-medium" style={{ fontSize: "12px", color: isFavActive ? "#673de6" : "#334155" }}>
+                        {fav.name}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="border-0 bg-transparent text-slate-400 hover:text-danger p-0 ms-1 d-inline-flex align-items-center"
+                      style={{ opacity: 0.7, cursor: "pointer" }}
+                      onClick={(e) => handleRemoveFavorite(e, fav.id)}
+                      title="Unpin from Favorites"
+                    >
+                      <Star size={11} fill="#f59e0b" className="text-amber-500" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="my-1 border-bottom" style={{ borderColor: "#e2e8f0" }} />
+          </section>
+        )}
+
         {/* Home tree structure navigation (Zbot Style) */}
         <section className="workspace-secondary-section top-navigation-section" style={{ gap: "4px" }}>
           <div className="workspace-secondary-links">
