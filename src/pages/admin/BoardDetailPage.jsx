@@ -22,6 +22,7 @@ import DeleteConfirmModal from "../../components/admin/DeleteConfirmModal";
 import SpaceSettingsModal from "../../components/admin/workspace/SpaceSettingsModal";
 import CreateTaskModal from "../../components/admin/workspace/CreateTaskModal";
 import SpreadsheetImportModal from "../../components/admin/workspace/SpreadsheetImportModal";
+import DocumentUploadModal from "../../components/admin/workspace/DocumentUploadModal";
 import CalendarView from "../../components/admin/workspace/CalendarView";
 import GanttView from "../../components/admin/workspace/GanttView";
 import DocsView from "../../components/admin/workspace/DocsView";
@@ -382,6 +383,7 @@ const BoardDetailPage = () => {
   const [updatingSpaceSettings, setUpdatingSpaceSettings] = useState(false);
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
   const [showSpreadsheetImportModal, setShowSpreadsheetImportModal] = useState(false);
+  const [showDocumentUploadModal, setShowDocumentUploadModal] = useState(false);
   const [targetGroupId, setTargetGroupId] = useState(null);
 
   // Sorting & Grouping
@@ -1447,32 +1449,116 @@ const BoardDetailPage = () => {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
 
-  // Helper to persist whiteboard notes to localStorage
-  const persistWhiteboardNotes = (notes) => {
-    if (boardId) {
+  const [whiteboardSyncStatus, setWhiteboardSyncStatus] = useState("synced"); // 'synced' | 'saving' | 'error'
+  const [whiteboardLastUpdated, setWhiteboardLastUpdated] = useState(null);
+  const whiteboardSyncTimerRef = useRef(null);
+
+  // Helper to persist whiteboard notes to localStorage and backend
+  const persistWhiteboardNotes = (notes, drawingData = null) => {
+    if (!boardId) return;
+    try {
       localStorage.setItem(`whiteboard_notes_${boardId}`, JSON.stringify(notes));
+    } catch (e) {}
+
+    setWhiteboardSyncStatus("saving");
+    if (whiteboardSyncTimerRef.current) clearTimeout(whiteboardSyncTimerRef.current);
+    whiteboardSyncTimerRef.current = setTimeout(async () => {
+      try {
+        const payload = { notes };
+        if (drawingData) {
+          payload.drawing = drawingData;
+        } else if (canvasRef.current) {
+          try {
+            payload.drawing = canvasRef.current.toDataURL();
+          } catch (err) {}
+        }
+        const res = await api.put(`/boards/${boardId}/whiteboard`, payload);
+        setWhiteboardSyncStatus("synced");
+        if (res.data) {
+          setWhiteboardLastUpdated(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to sync whiteboard with team server", err);
+        setWhiteboardSyncStatus("error");
+      }
+    }, 600);
+  };
+
+  const handleManualWhiteboardSync = async () => {
+    if (!boardId) return;
+    try {
+      setWhiteboardSyncStatus("saving");
+      const payload = {
+        notes: whiteboardNotes,
+        drawing: canvasRef.current ? canvasRef.current.toDataURL() : undefined
+      };
+      const res = await api.put(`/boards/${boardId}/whiteboard`, payload);
+      setWhiteboardSyncStatus("synced");
+      if (res.data) {
+        setWhiteboardLastUpdated(res.data);
+      }
+      toast.success("Whiteboard synced with team!");
+    } catch (err) {
+      setWhiteboardSyncStatus("error");
+      toast.error("Failed to sync whiteboard to server");
     }
   };
 
   // Sync whiteboard notes when boardId changes
   useEffect(() => {
     if (!boardId) return;
-    try {
-      const stored = localStorage.getItem(`whiteboard_notes_${boardId}`);
-      if (stored) {
-        setWhiteboardNotes(JSON.parse(stored));
-      } else {
-        const defaultNotes = [
-          { id: 1, text: "Brainstorming new features", color: "#fef08a", x: 40, y: 30, type: "sticky" },
-          { id: 2, text: "Zbot-style views checklist", color: "#fbcfe8", x: 260, y: 50, type: "sticky" },
-          { id: 3, text: "Staging deployment config notes", color: "#bbf7d0", x: 120, y: 200, type: "sticky" }
-        ];
-        setWhiteboardNotes(defaultNotes);
-        persistWhiteboardNotes(defaultNotes);
+    let isMounted = true;
+    const fetchWhiteboard = async () => {
+      try {
+        const res = await api.get(`/boards/${boardId}/whiteboard`);
+        if (!isMounted) return;
+        const serverNotes = res.data?.notes;
+        const serverDrawingUrl = res.data?.drawing_url;
+        setWhiteboardLastUpdated(res.data);
+
+        if (Array.isArray(serverNotes) && serverNotes.length > 0) {
+          setWhiteboardNotes(serverNotes);
+          localStorage.setItem(`whiteboard_notes_${boardId}`, JSON.stringify(serverNotes));
+        } else {
+          // Check if user has local notes (e.g. Dana's existing notes) to auto-migrate!
+          const localStored = localStorage.getItem(`whiteboard_notes_${boardId}`);
+          if (localStored) {
+            try {
+              const parsed = JSON.parse(localStored);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                setWhiteboardNotes(parsed);
+                // Auto-upload local notes to server so Gabriella & Chris see them!
+                api.put(`/boards/${boardId}/whiteboard`, { notes: parsed }).catch(console.error);
+                return;
+              }
+            } catch (e) {}
+          }
+          const defaultNotes = [
+            { id: 1, text: "Admissions Team Shared Notes", color: "#fef08a", x: 40, y: 30, type: "sticky" },
+            { id: 2, text: "Reference links & daily checklists", color: "#fbcfe8", x: 260, y: 50, type: "sticky" },
+            { id: 3, text: "Double click any note to edit", color: "#bbf7d0", x: 120, y: 200, type: "sticky" }
+          ];
+          setWhiteboardNotes(defaultNotes);
+          persistWhiteboardNotes(defaultNotes);
+        }
+
+        // Restore canvas drawing if available
+        if (serverDrawingUrl && canvasRef.current) {
+          const ctx = canvasRef.current.getContext("2d");
+          const img = new window.Image();
+          img.crossOrigin = "anonymous";
+          img.src = `${api.defaults.baseURL}${serverDrawingUrl}`;
+          img.onload = () => {
+            ctx.drawImage(img, 0, 0);
+          };
+        }
+      } catch (err) {
+        console.error("Failed to load team whiteboard, using local fallback", err);
       }
-    } catch (e) {
-      console.error(e);
-    }
+    };
+
+    fetchWhiteboard();
+    return () => { isMounted = false; };
   }, [boardId]);
 
   // Canvas freehand drawing logic
@@ -1516,7 +1602,9 @@ const BoardDetailPage = () => {
     setIsDrawing(false);
     const canvas = canvasRef.current;
     if (canvas && boardId) {
-      localStorage.setItem(`whiteboard_drawing_${boardId}`, canvas.toDataURL());
+      const dataUrl = canvas.toDataURL();
+      localStorage.setItem(`whiteboard_drawing_${boardId}`, dataUrl);
+      persistWhiteboardNotes(whiteboardNotes, dataUrl);
     }
   };
 
@@ -1577,37 +1665,61 @@ const BoardDetailPage = () => {
       ctx.lineWidth = 3;
       ctx.strokeStyle = "#4f46e5";
 
-      // Restore drawing from localStorage
-      const savedDrawing = localStorage.getItem(`whiteboard_drawing_${boardId}`);
-      if (savedDrawing) {
-        const img = new Image();
-        img.src = savedDrawing;
+      // Restore drawing from server drawing_url or local storage
+      const drawingUrl = whiteboardLastUpdated?.drawing_url;
+      if (drawingUrl) {
+        const img = new window.Image();
+        img.crossOrigin = "anonymous";
+        img.src = `${api.defaults.baseURL}${drawingUrl}`;
         img.onload = () => {
           ctx.drawImage(img, 0, 0);
         };
+      } else {
+        const savedDrawing = localStorage.getItem(`whiteboard_drawing_${boardId}`);
+        if (savedDrawing) {
+          const img = new window.Image();
+          img.src = savedDrawing;
+          img.onload = () => {
+            ctx.drawImage(img, 0, 0);
+          };
+        }
       }
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [currentViewType, boardId]);
+  }, [currentViewType, boardId, whiteboardLastUpdated]);
 
   useEffect(() => {
     if (boardId) {
       try {
         const stored = localStorage.getItem(`board_views_${boardId}`);
+        const defaultViews = [
+          { key: "list", type: "list", label: "List", isPinned: false, isPrivate: false, isDefault: true, isFavorite: false },
+          { key: "board", type: "board", label: "Board", isPinned: false, isPrivate: false, isDefault: false, isFavorite: false },
+          { key: "table", type: "table", label: "Table", isPinned: false, isPrivate: false, isDefault: false, isFavorite: false },
+          { key: "docs", type: "docs", label: "Reference Docs & Notes", isPinned: false, isPrivate: false, isDefault: false, isFavorite: false },
+          { key: "whiteboard", type: "whiteboard", label: "Shared Whiteboard", isPinned: false, isPrivate: false, isDefault: false, isFavorite: false },
+          { key: "files", type: "files", label: "Doc & File Center", isPinned: false, isPrivate: false, isDefault: false, isFavorite: false },
+          { key: "calendar", type: "calendar", label: "Calendar", isPinned: false, isPrivate: false, isDefault: false, isFavorite: false },
+          { key: "gantt", type: "gantt", label: "Gantt", isPinned: false, isPrivate: false, isDefault: false, isFavorite: false },
+        ];
+
         if (stored) {
-          setBoardViews(JSON.parse(stored));
+          const parsed = JSON.parse(stored);
+          const hasDocs = parsed.some(v => v.type === "docs");
+          const hasWhiteboard = parsed.some(v => v.type === "whiteboard");
+          const updated = [...parsed];
+          if (!hasDocs) {
+            updated.push({ key: "docs", type: "docs", label: "Reference Docs & Notes", isPinned: false, isPrivate: false, isDefault: false, isFavorite: false });
+          }
+          if (!hasWhiteboard) {
+            updated.push({ key: "whiteboard", type: "whiteboard", label: "Shared Whiteboard", isPinned: false, isPrivate: false, isDefault: false, isFavorite: false });
+          }
+          setBoardViews(updated);
+          localStorage.setItem(`board_views_${boardId}`, JSON.stringify(updated));
         } else {
-          const initialViews = [
-            { key: "list", type: "list", label: "List", isPinned: false, isPrivate: false, isDefault: true, isFavorite: false },
-            { key: "board", type: "board", label: "Board", isPinned: false, isPrivate: false, isDefault: false, isFavorite: false },
-            { key: "table", type: "table", label: "Table", isPinned: false, isPrivate: false, isDefault: false, isFavorite: false },
-            { key: "calendar", type: "calendar", label: "Calendar", isPinned: false, isPrivate: false, isDefault: false, isFavorite: false },
-            { key: "gantt", type: "gantt", label: "Gantt", isPinned: false, isPrivate: false, isDefault: false, isFavorite: false },
-            { key: "files", type: "files", label: "Files", isPinned: false, isPrivate: false, isDefault: false, isFavorite: false },
-          ];
-          setBoardViews(initialViews);
-          localStorage.setItem(`board_views_${boardId}`, JSON.stringify(initialViews));
+          setBoardViews(defaultViews);
+          localStorage.setItem(`board_views_${boardId}`, JSON.stringify(defaultViews));
         }
       } catch (err) {
         console.error("Failed to load board views", err);
@@ -3699,12 +3811,29 @@ const BoardDetailPage = () => {
 
     return (
       <div className="workspace-whiteboard-view p-4 bg-white rounded-3 shadow-sm border mb-4">
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <h5 className="fw-bold text-slate-800 mb-0 flex items-center gap-2">
-            <Image size={18} className="text-warning" />
-            <span>Workspace Whiteboard / Canvas</span>
-          </h5>
-          <div className="d-flex gap-2">
+        <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            <h5 className="fw-bold text-slate-800 mb-0 d-flex align-items-center gap-2">
+              <Image size={18} className="text-warning" />
+              <span>Workspace Whiteboard</span>
+            </h5>
+            <span className="badge bg-indigo-50 text-indigo-700 border border-indigo-200 px-2.5 py-1 d-inline-flex align-items-center gap-1.5" style={{ fontSize: "11.5px" }}>
+              <Globe size={13} /> Shared with Admissions Team
+            </span>
+            <span className="text-muted small d-inline-flex align-items-center gap-1.5 ms-2" style={{ fontSize: "11px" }}>
+              <span className={`rounded-circle d-inline-block ${whiteboardSyncStatus === "saving" ? "bg-warning" : whiteboardSyncStatus === "error" ? "bg-danger" : "bg-success"}`} style={{ width: 7, height: 7 }} />
+              {whiteboardSyncStatus === "saving" ? "Saving to team..." : whiteboardSyncStatus === "error" ? "Sync error" : "Synced with team"}
+            </span>
+            {whiteboardLastUpdated?.last_updated_by && (
+              <span className="text-muted small" style={{ fontSize: "10.5px" }}>
+                (Last edited by {whiteboardLastUpdated.last_updated_by})
+              </span>
+            )}
+          </div>
+          <div className="d-flex align-items-center gap-2">
+            <Button size="sm" variant="outline-primary" onClick={handleManualWhiteboardSync} style={{ fontSize: "11px" }} className="d-flex align-items-center gap-1">
+              <RefreshCw size={11} className={whiteboardSyncStatus === "saving" ? "spin" : ""} /> Sync to Team
+            </Button>
             <Button size="sm" variant="outline-warning" onClick={() => handleAddNote("#fef08a")} style={{ fontSize: "11px" }}>+ Yellow Note</Button>
             <Button size="sm" variant="outline-danger" onClick={() => handleAddNote("#fbcfe8")} style={{ fontSize: "11px" }}>+ Pink Note</Button>
             <Button size="sm" variant="outline-success" onClick={() => handleAddNote("#bbf7d0")} style={{ fontSize: "11px" }}>+ Green Note</Button>
@@ -7544,16 +7673,21 @@ const BoardDetailPage = () => {
           )}
         </div>
 
-        <div className="workspace-actions d-flex align-items-center gap-2">
+        <div className="workspace-actions d-flex align-items-center gap-2 flex-wrap">
           <Button variant="light" size="sm" className="workspace-icon-action" onClick={() => setShowSpaceSettingsModal(true)}>
             {board.is_private ? "Private Space" : "Space Access"}
           </Button>
-          <Button variant="light" size="sm" className="workspace-icon-action" onClick={() => setActiveView("overview")}>
-            Overview
+          <Button variant="light" size="sm" className="workspace-icon-action d-flex align-items-center gap-1" onClick={() => setActiveView("docs")} title="Open Shared Reference Notes & Documents">
+            <BookOpen size={14} className="text-indigo-600" />
+            <span>Docs & Notes</span>
           </Button>
-          <Button variant="light" size="sm" className="workspace-icon-action" onClick={() => setShowSpreadsheetImportModal(true)}>
-            <Upload size={14} className="me-1" />
-            Import
+          <Button variant="light" size="sm" className="workspace-icon-action d-flex align-items-center gap-1" onClick={() => setShowDocumentUploadModal(true)} title="Upload PDF, Word, or reference files to board">
+            <FileText size={14} className="text-indigo-600" />
+            <span>Upload Document</span>
+          </Button>
+          <Button variant="light" size="sm" className="workspace-icon-action d-flex align-items-center gap-1" onClick={() => setShowSpreadsheetImportModal(true)} title="Import Excel or CSV into tasks">
+            <Upload size={14} />
+            <span>Import</span>
           </Button>
           <Button variant="primary" size="sm" onClick={() => {
             setTargetGroupId(board.groups?.[0]?.id || null);
@@ -9250,6 +9384,14 @@ const BoardDetailPage = () => {
         groups={board?.groups || []}
         existingCustomFields={boardCustomFields}
         onImportComplete={() => fetchWorkspace(false)}
+      />
+
+      <DocumentUploadModal
+        show={showDocumentUploadModal}
+        onHide={() => setShowDocumentUploadModal(false)}
+        boardId={boardId}
+        onUploadSuccess={() => fetchWorkspace(false)}
+        onViewFiles={() => setActiveView("files")}
       />
     </>
   );

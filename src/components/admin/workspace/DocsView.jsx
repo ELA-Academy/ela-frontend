@@ -196,6 +196,23 @@ const DocsView = ({ boardId, assignees = [], departments = [] }) => {
     }
   };
 
+  const handleCreateReferenceSheet = async () => {
+    try {
+      setSaving(true);
+      const newDoc = await createWorkspaceDoc(boardId, {
+        title: "Team Reference Sheet & Notes",
+        content_html: "<h2>📌 Team Reference Sheet & Notes</h2><p>Use this shared document for reference materials, contact links, daily procedures, and team notes accessible to everyone without clicking into individual tasks.</p><h3>Key Contacts & Links</h3><ul><li><strong>Department Contact:</strong> </li><li><strong>Portal / Reference Link:</strong> </li></ul><h3>Frequently Used Notes & Procedures</h3><p>Enter commonly referenced steps or admission notes below:</p>"
+      });
+      setDocs(prev => [...prev, newDoc]);
+      handleSelectDoc(newDoc);
+      toast.success("Team Reference Sheet created!");
+    } catch (err) {
+      setError("Failed to create reference document.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleDeleteDoc = (docId, event) => {
     if (event) event.stopPropagation();
     setDocIdToDelete(docId);
@@ -1407,15 +1424,27 @@ const DocsView = ({ boardId, assignees = [], departments = [] }) => {
             <p className="text-muted max-w-sm mb-4" style={{ fontSize: "12px" }}>
               Write standard operating procedures, documentation, class resources, or meeting notes for your workspace here.
             </p>
-            <Button 
-              variant="primary" 
-              onClick={handleCreateDoc} 
-              className="px-4 font-bold d-flex align-items-center gap-1.5" 
-              style={{ borderRadius: "8px" }}
-              disabled={saving}
-            >
-              {saving ? <Spinner size="sm" animation="border" /> : "Create Document"}
-            </Button>
+            <div className="d-flex gap-2">
+              <Button 
+                variant="outline-primary" 
+                onClick={handleCreateReferenceSheet} 
+                className="px-3 font-bold d-flex align-items-center gap-1.5" 
+                style={{ borderRadius: "8px" }}
+                disabled={saving}
+              >
+                <FileText size={15} />
+                <span>+ Reference Sheet</span>
+              </Button>
+              <Button 
+                variant="primary" 
+                onClick={handleCreateDoc} 
+                className="px-4 font-bold d-flex align-items-center gap-1.5" 
+                style={{ borderRadius: "8px" }}
+                disabled={saving}
+              >
+                {saving ? <Spinner size="sm" animation="border" /> : <><Plus size={15} /> Create Document</>}
+              </Button>
+            </div>
           </div>
         )}
       </div>
