@@ -283,8 +283,12 @@ const EnrollmentDashboard = () => {
           background: #FFFFFF;
           border: 1px solid #E2E8F0;
           border-radius: 8px;
-          overflow: hidden;
+          overflow: visible;
           box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .procare-table-card .table-responsive {
+          overflow-y: visible !important;
+          min-height: 220px;
         }
         .procare-table thead {
           background-color: #F8FAFC;
@@ -469,7 +473,7 @@ const EnrollmentDashboard = () => {
                         <Dropdown.Toggle as={CustomToggle}>
                           <MoreHorizontal size={18} />
                         </Dropdown.Toggle>
-                        <Dropdown.Menu className="shadow border-slate-200">
+                        <Dropdown.Menu renderOnMount popperConfig={{ strategy: 'fixed' }} className="shadow border-slate-200" style={{ zIndex: 1050 }}>
                           <Dropdown.Item
                             as={Link}
                             to={`/admin/accounting/registration/forms/${form.id}`}
@@ -568,7 +572,7 @@ const EnrollmentDashboard = () => {
                             <Dropdown.Toggle as={CustomToggle}>
                               <MoreHorizontal size={18} />
                             </Dropdown.Toggle>
-                            <Dropdown.Menu className="shadow border-slate-200">
+                            <Dropdown.Menu renderOnMount popperConfig={{ strategy: 'fixed' }} className="shadow border-slate-200" style={{ zIndex: 1050 }}>
                               <Dropdown.Item onClick={() => setViewSubmission(sub)}>
                                 <FileText size={14} className="me-2 text-slate-500" /> View Submission
                               </Dropdown.Item>
@@ -650,12 +654,14 @@ const EnrollmentDashboard = () => {
               <h6 className="fw-bold text-slate-700 mb-3 border-bottom pb-2">Submitted Responses</h6>
               {viewSubmission.responses_json && typeof viewSubmission.responses_json === "object" ? (
                 Object.entries(viewSubmission.responses_json).map(([key, val]) => {
-                  if (key === "parent_signature") {
+                  if (key === "parent_signature" || (typeof val === "string" && val.startsWith("data:image"))) {
                     return (
                       <div key={key} className="mb-3">
-                        <strong className="text-slate-700 d-block mb-1">Parent Digital Signature:</strong>
-                        <div className="border rounded bg-white p-2 d-inline-block">
-                          <img src={val} alt="Parent Signature" style={{ maxHeight: "80px" }} />
+                        <strong className="text-slate-700 d-block mb-1">
+                          {key === "parent_signature" ? "Parent Digital Signature" : "Digital Signature"}:
+                        </strong>
+                        <div className="border rounded bg-white p-2 d-inline-block shadow-sm">
+                          <img src={val} alt="Signature" style={{ maxHeight: "80px", maxWidth: "320px" }} />
                         </div>
                       </div>
                     );

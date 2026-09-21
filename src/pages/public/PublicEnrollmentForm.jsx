@@ -71,16 +71,28 @@ const PublicEnrollmentForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!signerName.trim()) {
+    let effectiveSigner = signerName.trim();
+    if (!effectiveSigner && formData?.prefill_data?.parents?.length > 0) {
+      const p = formData.prefill_data.parents[0];
+      effectiveSigner = `${p.first_name || ""} ${p.last_name || ""}`.trim() || p.email || "";
+    }
+
+    if (!effectiveSigner) {
       alert("Please provide the full legal name of the signer before submitting.");
       return;
     }
+
+    const sectionSig = Object.values(responses).find(
+      (v) => typeof v === "string" && v.startsWith("data:image")
+    );
+    const finalSignature = signatureDataUrl || sectionSig || null;
+
     setIsSubmitting(true);
     try {
       const finalResponses = {
         ...responses,
-        parent_signer_name: signerName.trim(),
-        parent_signature: signatureDataUrl
+        parent_signer_name: effectiveSigner,
+        parent_signature: finalSignature
       };
       await submitEnrollmentForm(token, finalResponses);
       setSubmitSuccess(true);
@@ -153,6 +165,7 @@ const PublicEnrollmentForm = () => {
                           section={section}
                           responses={responses}
                           onInputChange={handleInputChange}
+                          signerName={signerName}
                         />
                       )
                   )}
@@ -215,13 +228,188 @@ const Stepper = ({ sections, feeRequired, currentStep }) => {
   );
 };
 
-const FormSection = ({ section, responses, onInputChange }) => {
+const SectionSignaturePad = ({ field, value, onInputChange, signerName }) => {
+  const [sigMode, setSigMode] = useState("draw");
+  const canvasRef = React.useRef(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [hasDrawn, setHasDrawn] = useState(false);
+  const [localSigner, setLocalSigner] = useState(signerName || "");
+
+  useEffect(() => {
+    if (sigMode === "draw" && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext("2d");
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "#0b2f4c";
+    }
+  }, [sigMode]);
+
+  const startDrawing = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    setIsDrawing(true);
+    setHasDrawn(true);
+  };
+
+  const draw = (e) => {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    if (!isDrawing) return;
+    setIsDrawing(false);
+    if (canvasRef.current) {
+      onInputChange(field.id, canvasRef.current.toDataURL("image/png"));
+    }
+  };
+
+  const clearCanvas = () => {
+    if (canvasRef.current) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    setHasDrawn(false);
+    onInputChange(field.id, "");
+  };
+
+  const handleTypeChange = (name) => {
+    setLocalSigner(name);
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = 400;
+    tempCanvas.height = 100;
+    const ctx = tempCanvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, 400, 100);
+    ctx.font = "italic 32px 'Brush Script MT', cursive, sans-serif";
+    ctx.fillStyle = "#0b2f4c";
+    ctx.fillText(name || "Parent Signature", 20, 60);
+    onInputChange(field.id, tempCanvas.toDataURL("image/png"));
+  };
+
+  return (
+    <Card className="p-3 border border-slate-300 shadow-sm rounded-3 mb-4 bg-slate-50">
+      <div className="d-flex justify-content-between align-items-center mb-2">
+        <Form.Label className="fw-bold mb-0 text-slate-800">
+          {field.label} {field.required && <span className="text-danger">*</span>}
+        </Form.Label>
+        {value && <span className="badge bg-success small">Signature Captured ✓</span>}
+      </div>
+      <p className="small text-muted mb-3">
+        Sign below using touch screen, mouse, or switch to type your signature.
+      </p>
+
+      <div className="d-flex gap-2 mb-3">
+        <Button
+          type="button"
+          size="sm"
+          variant={sigMode === "draw" ? "primary" : "outline-secondary"}
+          onClick={() => setSigMode("draw")}
+        >
+          Draw Signature
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={sigMode === "type" ? "primary" : "outline-secondary"}
+          onClick={() => {
+            setSigMode("type");
+            handleTypeChange(localSigner);
+          }}
+        >
+          Type Signature
+        </Button>
+      </div>
+
+      {sigMode === "draw" ? (
+        <div>
+          <div className="border rounded bg-white p-1 d-inline-block position-relative shadow-sm" style={{ width: "100%", maxWidth: "480px" }}>
+            <canvas
+              ref={canvasRef}
+              width={480}
+              height={120}
+              style={{ width: "100%", height: "120px", cursor: "crosshair", touchAction: "none" }}
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              onTouchStart={startDrawing}
+              onTouchMove={draw}
+              onTouchEnd={stopDrawing}
+            />
+            {!hasDrawn && !value && (
+              <div
+                className="position-absolute top-50 start-50 translate-middle text-muted pointer-events-none"
+                style={{ fontSize: "13px", opacity: 0.5, userSelect: "none" }}
+              >
+                Sign here with finger or mouse
+              </div>
+            )}
+          </div>
+          <div className="mt-2 d-flex align-items-center gap-3">
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="text-danger p-0 text-decoration-none"
+              onClick={clearCanvas}
+            >
+              Clear Signature
+            </Button>
+            {value && (
+              <span className="small text-muted">
+                Date: {new Date().toLocaleDateString()}
+              </span>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div>
+          <Form.Group className="mb-2" style={{ maxWidth: "400px" }}>
+            <Form.Label className="small fw-semibold text-slate-600">FULL LEGAL NAME</Form.Label>
+            <Form.Control
+              type="text"
+              size="sm"
+              placeholder="e.g. John Doe"
+              value={localSigner}
+              onChange={(e) => handleTypeChange(e.target.value)}
+            />
+          </Form.Group>
+          <div className="p-3 border rounded bg-white text-center shadow-sm" style={{ maxWidth: "400px" }}>
+            <div style={{ fontFamily: "'Brush Script MT', cursive, sans-serif", fontSize: "32px", color: "#0b2f4c" }}>
+              {localSigner || "Signature Preview"}
+            </div>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+};
+
+const FormSection = ({ section, responses, onInputChange, signerName }) => {
   const renderField = (field) => {
-    // This function is the same as the old one
     const label = (
-      <Form.Label>
-        {" "}
-        {field.label} {field.required && <span className="text-danger">*</span>}{" "}
+      <Form.Label className="fw-semibold text-slate-700">
+        {field.label} {field.required && <span className="text-danger">*</span>}
       </Form.Label>
     );
     const value = responses[field.id] || "";
@@ -256,14 +444,57 @@ const FormSection = ({ section, responses, onInputChange }) => {
           <Form.Group key={field.id} className="mb-3">
             <Form.Check
               type="checkbox"
+              id={`chk-${field.id}`}
               required={field.required}
               checked={!!value}
               onChange={(e) => onInputChange(field.id, e.target.checked)}
-              label={field.label}
+              label={<span className="fw-semibold">{field.label} {field.required && <span className="text-danger">*</span>}</span>}
             />
           </Form.Group>
         );
-      case "dropdown":
+      case "multi_select": {
+        const optionsList = typeof field.options === "string"
+          ? field.options.split(",").map((s) => s.trim()).filter(Boolean)
+          : Array.isArray(field.options) ? field.options : [];
+        const selected = Array.isArray(value)
+          ? value
+          : (typeof value === "string" && value ? value.split(", ") : []);
+        const handleToggle = (opt) => {
+          let next;
+          if (selected.includes(opt)) {
+            next = selected.filter((item) => item !== opt);
+          } else {
+            next = [...selected, opt];
+          }
+          onInputChange(field.id, next.join(", "));
+        };
+        return (
+          <Form.Group key={field.id} className="mb-3">
+            {label}
+            <div className="p-3 border rounded bg-white shadow-sm">
+              {optionsList.length > 0 ? (
+                optionsList.map((opt, idx) => (
+                  <Form.Check
+                    key={idx}
+                    type="checkbox"
+                    id={`field-${field.id}-${idx}`}
+                    label={opt}
+                    checked={selected.includes(opt)}
+                    onChange={() => handleToggle(opt)}
+                    className="mb-2"
+                  />
+                ))
+              ) : (
+                <span className="text-muted small">No options configured.</span>
+              )}
+            </div>
+          </Form.Group>
+        );
+      }
+      case "dropdown": {
+        const optionsList = typeof field.options === "string"
+          ? field.options.split(",").map((s) => s.trim()).filter(Boolean)
+          : Array.isArray(field.options) ? field.options : [];
         return (
           <Form.Group key={field.id} className="mb-3">
             {label}
@@ -272,10 +503,14 @@ const FormSection = ({ section, responses, onInputChange }) => {
               value={value}
               onChange={(e) => onInputChange(field.id, e.target.value)}
             >
-              <option value="">Select an option</option>
+              <option value="">Please choose one...</option>
+              {optionsList.map((opt, idx) => (
+                <option key={idx} value={opt}>{opt}</option>
+              ))}
             </Form.Select>
           </Form.Group>
         );
+      }
       case "date_picker":
         return (
           <Form.Group key={field.id} className="mb-3">
@@ -287,6 +522,16 @@ const FormSection = ({ section, responses, onInputChange }) => {
               onChange={(e) => onInputChange(field.id, e.target.value)}
             />
           </Form.Group>
+        );
+      case "signature":
+        return (
+          <SectionSignaturePad
+            key={field.id}
+            field={field}
+            value={value}
+            onInputChange={onInputChange}
+            signerName={signerName}
+          />
         );
       case "file_upload":
         return (
@@ -497,10 +742,17 @@ const ReviewStep = ({ sections, responses, onSaveSignature, signerName, setSigne
         <h5>{section.title}</h5>
         {section.fields.map((field) => {
           if (field.type === "line_divider") return null;
+          const val = responses[field.id];
           return (
             <div key={field.id} className="review-grid">
               <strong>{field.label}:</strong>
-              <span>{String(responses[field.id] || "Not provided")}</span>
+              {(field.type === "signature" || (typeof val === "string" && val?.startsWith("data:image"))) ? (
+                <div className="bg-white border rounded p-1 d-inline-block">
+                  <img src={val} alt="Signature" style={{ maxHeight: "50px", maxWidth: "220px" }} />
+                </div>
+              ) : (
+                <span>{String(val || "Not provided")}</span>
+              )}
             </div>
           );
         })}

@@ -33,11 +33,26 @@ const FormBuilderStep1 = ({ formState, setFormState }) => {
   };
 
   const addField = (sectionId, fieldType) => {
+    let defaultLabel = "";
+    let defaultOptions = "";
+    if (fieldType === "signature") {
+      defaultLabel = "Parent / Guardian Signature";
+    } else if (fieldType === "checkbox") {
+      defaultLabel = "I have read and agree to the above terms";
+    } else if (fieldType === "multi_select") {
+      defaultLabel = "Core Class / Program Selection(s)";
+      defaultOptions = "Option 1, Option 2, Option 3";
+    } else if (fieldType === "dropdown") {
+      defaultLabel = "Payment Method";
+      defaultOptions = "Credit Card ($12 fee), Debit Card ($12 fee), ACH Bank Transfer ($1 fee)";
+    }
+
     const newField = {
       id: uuidv4(),
       type: fieldType,
-      label: "",
+      label: defaultLabel,
       required: true,
+      options: defaultOptions,
     };
     const updatedSections = sections.map((s) =>
       s.id === sectionId ? { ...s, fields: [...s.fields, newField] } : s
@@ -145,17 +160,28 @@ const FormBuilderStep1 = ({ formState, setFormState }) => {
                     <Dropdown.Item
                       onClick={() => addField(activeSection.id, "checkbox")}
                     >
-                      Checkbox
+                      Checkbox (Agreement / Acknowledgement)
+                    </Dropdown.Item>
+                    <Dropdown.Item
+                      onClick={() => addField(activeSection.id, "multi_select")}
+                    >
+                      Multiple Choice (Check all that apply)
                     </Dropdown.Item>
                     <Dropdown.Item
                       onClick={() => addField(activeSection.id, "dropdown")}
                     >
-                      Dropdown
+                      Dropdown (Single Select)
                     </Dropdown.Item>
                     <Dropdown.Item
                       onClick={() => addField(activeSection.id, "date_picker")}
                     >
                       Date Picker
+                    </Dropdown.Item>
+                    <Dropdown.Item
+                      onClick={() => addField(activeSection.id, "signature")}
+                      className="fw-bold text-primary"
+                    >
+                      ✍️ Signature Pad (Draw or Type)
                     </Dropdown.Item>
                     <Dropdown.Item
                       onClick={() => addField(activeSection.id, "file_upload")}
