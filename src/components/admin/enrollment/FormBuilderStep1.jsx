@@ -43,8 +43,8 @@ const FormBuilderStep1 = ({ formState, setFormState }) => {
       defaultLabel = "Core Class / Program Selection(s)";
       defaultOptions = "Option 1, Option 2, Option 3";
     } else if (fieldType === "dropdown") {
-      defaultLabel = "Payment Method";
-      defaultOptions = "Credit Card ($12 fee), Debit Card ($12 fee), ACH Bank Transfer ($1 fee)";
+      defaultLabel = "Program / Class Selection";
+      defaultOptions = "Standard Curriculum, Honors Track, Arts Specialization";
     }
 
     const newField = {
