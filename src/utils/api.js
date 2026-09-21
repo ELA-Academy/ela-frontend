@@ -1,7 +1,23 @@
 import axios from "axios";
+export const getApiBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  if (envUrl && envUrl !== "undefined" && !envUrl.startsWith("/")) {
+    return envUrl.replace(/\/api\/?$/, "").replace(/\/+$/, "");
+  }
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host.includes("staging")) {
+      return "https://staging-api.elaaschool.org";
+    }
+    if (host.includes("elaaschool.org")) {
+      return "https://api.elaaschool.org";
+    }
+  }
+  return "http://localhost:5000";
+};
 
 const api = axios.create({
-  baseURL: `${import.meta.env.VITE_API_BASE_URL}/api`, // Use the environment variable
+  baseURL: `${getApiBaseUrl()}/api`,
   headers: {
     "Content-Type": "application/json",
   },
