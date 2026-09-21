@@ -432,6 +432,53 @@ const PublicEnrollmentForm = () => {
     );
   }
 
+  if (error || !formData) {
+    return (
+      <div
+        className="apply-page-container align-items-center justify-content-center"
+        style={{ backgroundColor: "#f8fafc", minHeight: "100vh", padding: "20px" }}
+      >
+        <div
+          className="text-center p-5 border-0 bg-white"
+          style={{
+            maxWidth: "500px",
+            width: "100%",
+            borderRadius: "16px",
+            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.08)",
+          }}
+        >
+          <div
+            className="d-flex align-items-center justify-content-center mx-auto mb-4"
+            style={{
+              width: "64px",
+              height: "64px",
+              borderRadius: "50%",
+              backgroundColor: "#fef2f2",
+              color: "#ef4444",
+              fontSize: "28px",
+            }}
+          >
+            !
+          </div>
+          <h2 style={{ fontSize: "22px", fontWeight: "800", color: "#0f172a", marginBottom: "12px" }}>
+            Enrollment Form Unavailable
+          </h2>
+          <p style={{ color: "#64748b", fontSize: "14px", lineHeight: "1.6" }}>
+            {error || "Could not load the requested enrollment form. The link may be expired, completed, or invalid."}
+          </p>
+          <div className="mt-4">
+            <a
+              href="https://www.elaaschool.org/"
+              className="apply-btn text-decoration-none d-inline-block"
+            >
+              Return to School Website
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (submitSuccess) {
     return (
       <div
@@ -640,8 +687,8 @@ const PublicEnrollmentForm = () => {
                 {stripePromise ? (
                   <Elements stripe={stripePromise}>
                     <StripeCardForm
-                      feeAmount={formData.fee_amount}
-                      studentName={formData.student_name}
+                      feeAmount={formData?.fee_amount || 0}
+                      studentName={formData?.student_name || "Student"}
                       token={token}
                       onPaymentSuccess={handlePaymentSuccess}
                       isPaid={isPaid}
@@ -665,7 +712,7 @@ const PublicEnrollmentForm = () => {
                 sections={sanitizedSections}
                 responses={responses}
                 feeRequired={feeRequired}
-                feeAmount={formData.fee_amount}
+                feeAmount={formData?.fee_amount || 0}
                 isPaid={isPaid}
                 paymentIntentId={paymentIntentId}
                 onSaveSignature={setSignatureDataUrl}
