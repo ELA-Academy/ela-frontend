@@ -38,11 +38,13 @@ export const getMessages = async (conversationId) => {
 };
 
 // Send a new message (optionally replying to an existing message)
-export const sendMessage = async (conversationId, content, replyToMessageId = null, mentions = []) => {
+export const sendMessage = async (conversationId, content, replyToMessageId = null, mentions = [], clientTempId = null) => {
   try {
+    const payload = { content, reply_to_message_id: replyToMessageId, mentions };
+    if (clientTempId) payload.client_temp_id = clientTempId;
     const response = await api.post(
       `/messaging/conversations/${conversationId}/messages`,
-      { content, reply_to_message_id: replyToMessageId, mentions }
+      payload
     );
     return response.data;
   } catch (error) {

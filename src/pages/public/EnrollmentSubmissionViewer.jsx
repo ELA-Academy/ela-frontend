@@ -159,6 +159,10 @@ const EnrollmentSubmissionViewer = () => {
                       <div className="p-2 border rounded bg-light text-slate-800" style={{ fontSize: "13px", minHeight: "36px" }}>
                         {field.type === "checkbox" ? (
                           val ? "☑ Checked / Agreed" : "☐ Unchecked"
+                        ) : (field.type === "signature" || (typeof val === "string" && val?.startsWith("data:image"))) ? (
+                          <div className="bg-white p-2 border rounded d-inline-block shadow-sm">
+                            <img src={val} alt="Signature" style={{ maxHeight: "60px", maxWidth: "240px" }} />
+                          </div>
                         ) : (
                           val || "—"
                         )}
@@ -176,6 +180,33 @@ const EnrollmentSubmissionViewer = () => {
           </div>
         );
       })}
+
+      {/* Parent Legal Digital Signature Block */}
+      {responses?.parent_signature && (
+        <div className="mb-5 p-3 rounded-3 border bg-light">
+          <h4 className="fw-bold text-slate-800 pb-2 border-bottom mb-3" style={{ fontSize: "16px", color: "#0E7490" }}>
+            Parent / Guardian Digital Signature & Execution
+          </h4>
+          <Row className="gy-3 align-items-center">
+            <Col sm={6}>
+              <div className="text-slate-500 fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "0.02em" }}>
+                SIGNER FULL NAME
+              </div>
+              <div className="fw-bold text-slate-800" style={{ fontSize: "14px" }}>
+                {responses.parent_signer_name || "Parent / Guardian"}
+              </div>
+            </Col>
+            <Col sm={6}>
+              <div className="text-slate-500 fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "0.02em" }}>
+                DIGITAL SIGNATURE
+              </div>
+              <div className="bg-white p-2 border rounded d-inline-block shadow-sm">
+                <img src={responses.parent_signature} alt="Parent Digital Signature" style={{ maxHeight: "70px", maxWidth: "260px" }} />
+              </div>
+            </Col>
+          </Row>
+        </div>
+      )}
 
       {/* Footer Branding */}
       <div className="text-center mt-5 pt-4 border-top text-slate-400 small">

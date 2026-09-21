@@ -46,10 +46,39 @@ export default function SleekAssigneeSelector({
     return nameMatch || emailMatch;
   });
 
-  // Group members into assigned vs unassigned (Departments vs People)
+  const isCurrentUser = (m) => {
+    if (!m || !currentUser || m.role === 'department') return false;
+    const cId = currentUser.id || currentUser._id;
+    const mId = m.id || m._id;
+    if (cId && mId && String(cId) === String(mId)) {
+      if (m.role && currentUser.role && m.role !== currentUser.role) {
+        return Boolean(currentUser.email && m.email && currentUser.email.toLowerCase() === m.email.toLowerCase());
+      }
+      return true;
+    }
+    if (currentUser.email && m.email && currentUser.email.toLowerCase() === m.email.toLowerCase()) {
+      return true;
+    }
+    return false;
+  };
+
+  // Group members into assigned vs unassigned (Suggested Self, People, Departments)
   const assignedList = filteredItems.filter((m) => selectedKeys.has(getAssigneeKey(m)));
   const unassignedDepartments = filteredItems.filter((m) => m.role === 'department' && !selectedKeys.has(getAssigneeKey(m)));
   const unassignedPeople = filteredItems.filter((m) => m.role !== 'department' && !selectedKeys.has(getAssigneeKey(m)));
+
+  const isSelfAssigned = assignedList.some(isCurrentUser);
+  const selfMember = (!isSelfAssigned && currentUser)
+    ? (unassignedPeople.find(isCurrentUser) || {
+        id: currentUser.id || currentUser._id,
+        name: currentUser.name || "Me",
+        email: currentUser.email,
+        role: currentUser.role || 'staff'
+      })
+    : null;
+
+  // Filter out self from general unassigned people so it isn't listed twice
+  const otherUnassignedPeople = unassignedPeople.filter((m) => !isCurrentUser(m));
 
   const getAvatarInitials = (name = "") => {
     if (!name) return "";
@@ -106,7 +135,7 @@ export default function SleekAssigneeSelector({
             <div className="d-flex flex-column gap-1">
               {assignedList.map((m) => {
                 const isDept = m.role === 'department';
-                const isMe = currentUser && String(m.id || m._id) === String(currentUser.id || currentUser._id) && !isDept;
+                const isMe = isCurrentUser(m);
                 const initials = isDept ? "DEP" : getAvatarInitials(m.name);
                 return (
                   <div
@@ -128,7 +157,7 @@ export default function SleekAssigneeSelector({
                       </div>
                     )}
                     <span className="sleek-item-name fw-semibold text-slate-800" style={{ fontSize: "12px" }}>
-                      {isMe ? "Me" : m.name} {isDept ? "(Department)" : ""}
+                      {isMe ? `Me (${m.name || currentUser?.name || 'You'})` : m.name} {isDept ? "(Department)" : ""}
                     </span>
                   </div>
                 );
@@ -137,11 +166,68 @@ export default function SleekAssigneeSelector({
           </div>
         )}
 
-        {/* Departments Section */}
+        {/* Suggested Section: Current User ("Assign to me") */}
+        {selfMember && (!search || selfMember.name?.toLowerCase().includes(search.toLowerCase()) || selfMember.email?.toLowerCase().includes(search.toLowerCase()) || "me".includes(search.toLowerCase())) && (
+          <div className="sleek-group-section mb-2">
+            <div className="sleek-group-header py-1 text-indigo-600 fw-bold text-uppercase d-flex align-items-center gap-1" style={{ fontSize: "10px", letterSpacing: "0.5px" }}>
+              Suggested
+            </div>
+            <div className="d-flex flex-column gap-1">
+              <div
+                key={getAssigneeKey(selfMember)}
+                className="sleek-assignee-item d-flex align-items-center justify-content-between px-2 py-1.5 rounded cursor-pointer bg-indigo-50/50 border border-indigo-100"
+                onClick={() => onToggleAssignee(selfMember)}
+                style={{ backgroundColor: "#f5f3ff" }}
+              >
+                <div className="d-flex align-items-center gap-2">
+                  <div className="sleek-avatar me-avatar d-flex align-items-center justify-content-center fw-bold text-white" style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#6366f1", fontSize: "10px" }}>
+                    {getAvatarInitials(selfMember.name || currentUser?.name || "Me")}
+                  </div>
+                  <span className="sleek-item-name fw-semibold text-indigo-950" style={{ fontSize: "12px" }}>
+                    Me ({selfMember.name || currentUser?.name || "You"})
+                  </span>
+                </div>
+                <span className="badge bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded" style={{ fontSize: "10px" }}>
+                  Assign to me
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* People Header and List (Placed BEFORE Departments) */}
+        {otherUnassignedPeople.length > 0 && (
+          <div className="sleek-group-section mb-2">
+            <div className="sleek-group-header py-1 text-slate-400 fw-bold text-uppercase" style={{ fontSize: "10px", letterSpacing: "0.5px" }}>
+              People ({otherUnassignedPeople.length})
+            </div>
+            <div className="d-flex flex-column gap-1">
+              {otherUnassignedPeople.map((m) => {
+                const initials = getAvatarInitials(m.name);
+                return (
+                  <div
+                    key={getAssigneeKey(m)}
+                    className="sleek-assignee-item d-flex align-items-center gap-2 px-2 py-1.5 rounded cursor-pointer"
+                    onClick={() => onToggleAssignee(m)}
+                  >
+                    <div className="sleek-avatar d-flex align-items-center justify-content-center text-white fw-bold" style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: getAvatarColor(m.name), fontSize: "10px" }}>
+                      {initials}
+                    </div>
+                    <span className="sleek-item-name text-slate-700" style={{ fontSize: "12px" }}>
+                      {m.name}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Departments Section (Placed AFTER People) */}
         {unassignedDepartments.length > 0 && (
           <div className="sleek-group-section mb-2">
             <div className="sleek-group-header py-1 text-purple-600 fw-bold text-uppercase d-flex align-items-center gap-1" style={{ fontSize: "10px", letterSpacing: "0.5px" }}>
-              <Building2 size={11} /> Departments
+              <Building2 size={11} /> Departments ({unassignedDepartments.length})
             </div>
             <div className="d-flex flex-column gap-1">
               {unassignedDepartments.map((d) => (
@@ -158,41 +244,6 @@ export default function SleekAssigneeSelector({
                   </span>
                 </div>
               ))}
-            </div>
-          </div>
-        )}
-
-        {/* People Header and List */}
-        {unassignedPeople.length > 0 && (
-          <div className="sleek-group-section mb-2">
-            <div className="sleek-group-header py-1 text-slate-400 fw-bold text-uppercase" style={{ fontSize: "10px", letterSpacing: "0.5px" }}>
-              People
-            </div>
-            <div className="d-flex flex-column gap-1">
-              {unassignedPeople.map((m) => {
-                const isMe = currentUser && String(m.id || m._id) === String(currentUser.id || currentUser._id);
-                const initials = getAvatarInitials(m.name);
-                return (
-                  <div
-                    key={getAssigneeKey(m)}
-                    className="sleek-assignee-item d-flex align-items-center gap-2 px-2 py-1.5 rounded cursor-pointer"
-                    onClick={() => onToggleAssignee(m)}
-                  >
-                    {isMe ? (
-                      <div className="sleek-avatar me-avatar d-flex align-items-center justify-content-center fw-bold" style={{ width: "24px", height: "24px", borderRadius: "50%", border: "2px solid #6366f1", color: "#6366f1", fontSize: "10px" }}>
-                        {initials}
-                      </div>
-                    ) : (
-                      <div className="sleek-avatar d-flex align-items-center justify-content-center text-white fw-bold" style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: getAvatarColor(m.name), fontSize: "10px" }}>
-                        {initials}
-                      </div>
-                    )}
-                    <span className="sleek-item-name text-slate-700" style={{ fontSize: "12px" }}>
-                      {isMe ? "Me" : m.name}
-                    </span>
-                  </div>
-                );
-              })}
             </div>
           </div>
         )}

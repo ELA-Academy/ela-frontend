@@ -14,7 +14,7 @@ import {
 } from "react-bootstrap";
 import { 
   Search, Filter, MoreHorizontal, Link as LinkIcon, 
-  Trash2, Copy, Edit, Plus, CheckCircle, FileText, Download
+  Trash2, Copy, Edit, Plus, CheckCircle, FileText, Download, RefreshCw
 } from "lucide-react";
 import {
   getEnrollmentForms,
@@ -22,12 +22,13 @@ import {
   deleteEnrollmentForm,
   copyEnrollmentForm,
   getEnrollmentSubmissions,
+  getEnrollmentSubmissionDetail,
   deleteEnrollmentSubmission,
   approveSubmission
 } from "../../../services/enrollmentService";
 import { showSuccess, showError } from "../../../utils/notificationService";
 import DeleteConfirmModal from "../../../components/admin/DeleteConfirmModal";
-import api from "../../../utils/api";
+import api, { getApiBaseUrl } from "../../../utils/api";
 
 const CustomToggle = React.forwardRef(({ children, onClick }, ref) => (
   <a
@@ -59,7 +60,69 @@ const EnrollmentDashboard = () => {
 
   // View / Approve Submission Modal State
   const [viewSubmission, setViewSubmission] = useState(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
   const [approving, setApproving] = useState(false);
+
+  const handleOpenSubmission = async (sub) => {
+    setViewSubmission(sub);
+    if (!sub.secure_token) return;
+    try {
+      setLoadingDetail(true);
+      const detail = await getEnrollmentSubmissionDetail(sub.secure_token);
+      if (detail) {
+        setViewSubmission((prev) => ({
+          ...prev,
+          ...detail,
+          responses_json: detail.responses || prev?.responses_json,
+          form_structure: detail.form_structure,
+          status: detail.status || prev?.status,
+          payment_status: detail.payment_status || prev?.payment_status,
+          fee_amount: detail.fee_amount || prev?.fee_amount,
+        }));
+        // Update in main list to keep counts synchronized
+        setSubmissions((prevList) =>
+          prevList.map((item) =>
+            item.id === sub.id
+              ? {
+                  ...item,
+                  ...detail,
+                  responses_json: detail.responses || item.responses_json,
+                }
+              : item
+          )
+        );
+      }
+    } catch (err) {
+      console.warn("Could not fetch latest submission detail:", err);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
+  const getFieldLabel = (key, formStructure) => {
+    if (key === "parent_signature") return "Parent Digital Signature";
+    if (key === "parent_signer_name") return "Signer Full Name";
+    if (key === "_stripe_payment_intent_id") return "Stripe Payment Reference";
+
+    if (formStructure?.sections) {
+      for (const sec of formStructure.sections) {
+        const field = (sec.fields || []).find((f) => f.id === key);
+        if (field?.label) return field.label;
+      }
+    }
+    if (viewSubmission?.form_id) {
+      const parentForm = forms.find((f) => f.id === viewSubmission.form_id);
+      if (parentForm?.form_structure_json?.sections) {
+        for (const sec of parentForm.form_structure_json.sections) {
+          const field = (sec.fields || []).find((f) => f.id === key);
+          if (field?.label) return field.label;
+        }
+      }
+    }
+    return key
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -192,9 +255,6 @@ const EnrollmentDashboard = () => {
     (sub.form_name || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const baseURL = api.defaults.baseURL || "";
-  const baseStaticURL = baseURL.endsWith("/api") ? baseURL.slice(0, -4) : baseURL;
-
   return (
     <div className="py-4 px-md-4 bg-slate-50 min-vh-100 no-print">
       <style>{`
@@ -283,8 +343,12 @@ const EnrollmentDashboard = () => {
           background: #FFFFFF;
           border: 1px solid #E2E8F0;
           border-radius: 8px;
-          overflow: hidden;
+          overflow: visible;
           box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .procare-table-card .table-responsive {
+          overflow-y: visible !important;
+          min-height: 220px;
         }
         .procare-table thead {
           background-color: #F8FAFC;
@@ -350,14 +414,32 @@ const EnrollmentDashboard = () => {
           letter-spacing: 0.08em;
           text-transform: uppercase;
         }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .spin-icon {
+          animation: spin 0.8s linear infinite;
+        }
       `}</style>
 
       {/* Header */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h1 className="fw-bold text-slate-800 mb-0" style={{ fontSize: "24px" }}>Registration</h1>
-        <Button onClick={handleCreateForm} className="procare-btn-primary d-flex align-items-center gap-1">
-          <Plus size={16} /> CREATE REGISTRATION
-        </Button>
+        <div className="d-flex align-items-center gap-2">
+          <Button
+            variant="outline-secondary"
+            onClick={fetchData}
+            disabled={loading}
+            className="d-flex align-items-center gap-1 bg-white shadow-sm"
+            style={{ borderColor: "#CBD5E1", fontSize: "0.85rem", fontWeight: 600, padding: "0.6rem 1rem" }}
+          >
+            <RefreshCw size={15} className={loading ? "spin-icon" : ""} /> Refresh
+          </Button>
+          <Button onClick={handleCreateForm} className="procare-btn-primary d-flex align-items-center gap-1">
+            <Plus size={16} /> CREATE REGISTRATION
+          </Button>
+        </div>
       </div>
 
       {/* Top Main Tabs */}
@@ -370,7 +452,10 @@ const EnrollmentDashboard = () => {
         </button>
         <button
           className={`reg-tab-btn ${activeTab === "submissions" ? "active" : ""}`}
-          onClick={() => setActiveTab("submissions")}
+          onClick={() => {
+            setActiveTab("submissions");
+            fetchData();
+          }}
         >
           Submitted Registrations {hasUnapprovedSubmissions && <span className="text-danger fw-bold ms-1" style={{ fontSize: "14px" }}>•</span>}
         </button>
@@ -469,7 +554,7 @@ const EnrollmentDashboard = () => {
                         <Dropdown.Toggle as={CustomToggle}>
                           <MoreHorizontal size={18} />
                         </Dropdown.Toggle>
-                        <Dropdown.Menu className="shadow border-slate-200">
+                        <Dropdown.Menu renderOnMount popperConfig={{ strategy: 'fixed' }} className="shadow border-slate-200" style={{ zIndex: 1050 }}>
                           <Dropdown.Item
                             as={Link}
                             to={`/admin/accounting/registration/forms/${form.id}`}
@@ -516,14 +601,14 @@ const EnrollmentDashboard = () => {
             <tbody>
               {filteredSubmissions.length > 0 ? (
                 filteredSubmissions.map((sub) => {
-                  const pdfUrl = `${baseStaticURL}/api/enrollment/submission/${sub.secure_token}/pdf`;
+                  const pdfUrl = `${getApiBaseUrl()}/api/enrollment/submission/${sub.secure_token}/pdf`;
                   const isApproved = sub.status === "Completed" || sub.status === "APPROVED";
 
                   return (
                     <tr key={sub.id}>
                       <td>
                         <button
-                          onClick={() => setViewSubmission(sub)}
+                          onClick={() => handleOpenSubmission(sub)}
                           className="procare-link bg-transparent border-0 p-0 text-start"
                         >
                           {sub.form_name}
@@ -535,7 +620,9 @@ const EnrollmentDashboard = () => {
                       </td>
                       <td>
                         {sub.payment_status === "Paid" ? (
-                          <span className="text-slate-700 fw-semibold">Paid ${sub.fee_amount || 0}</span>
+                          <span className="text-success fw-bold">Paid ${Number(sub.fee_amount || 0).toFixed(2)}</span>
+                        ) : sub.fee_amount > 0 ? (
+                          <span className="text-warning fw-semibold">Unpaid ${Number(sub.fee_amount).toFixed(2)}</span>
                         ) : (
                           <span className="text-slate-500">No Fee</span>
                         )}
@@ -546,9 +633,13 @@ const EnrollmentDashboard = () => {
                           <Badge bg="success" style={{ fontSize: "0.75rem", padding: "0.4em 0.7em" }}>
                             APPROVED
                           </Badge>
+                        ) : sub.status === "Submitted" ? (
+                          <Badge bg="primary" style={{ fontSize: "0.75rem", padding: "0.4em 0.7em" }}>
+                            SUBMITTED
+                          </Badge>
                         ) : (
-                          <Badge bg="info" style={{ fontSize: "0.75rem", padding: "0.4em 0.7em" }}>
-                            NEW
+                          <Badge bg="secondary" style={{ fontSize: "0.75rem", padding: "0.4em 0.7em" }}>
+                            PENDING PARENT
                           </Badge>
                         )}
                       </td>
@@ -568,8 +659,8 @@ const EnrollmentDashboard = () => {
                             <Dropdown.Toggle as={CustomToggle}>
                               <MoreHorizontal size={18} />
                             </Dropdown.Toggle>
-                            <Dropdown.Menu className="shadow border-slate-200">
-                              <Dropdown.Item onClick={() => setViewSubmission(sub)}>
+                            <Dropdown.Menu renderOnMount popperConfig={{ strategy: 'fixed' }} className="shadow border-slate-200" style={{ zIndex: 1050 }}>
+                              <Dropdown.Item onClick={() => handleOpenSubmission(sub)}>
                                 <FileText size={14} className="me-2 text-slate-500" /> View Submission
                               </Dropdown.Item>
                               <Dropdown.Item href={pdfUrl} target="_blank" rel="noopener noreferrer">
@@ -637,44 +728,88 @@ const EnrollmentDashboard = () => {
                 <h5 className="fw-bold text-slate-800 mb-1">{viewSubmission.form_name}</h5>
                 <span className="text-muted small">Student: <strong>{viewSubmission.lead_student_name}</strong></span>
               </div>
-              <Badge 
-                bg={(viewSubmission.status === "Completed" || viewSubmission.status === "APPROVED") ? "success" : "info"}
-                style={{ fontSize: "11px", padding: "0.4em 0.8em" }}
-              >
-                {viewSubmission.status}
-              </Badge>
+              <div className="d-flex align-items-center gap-2">
+                {loadingDetail && <Spinner animation="border" size="sm" variant="primary" />}
+                <Badge 
+                  bg={(viewSubmission.status === "Completed" || viewSubmission.status === "APPROVED") ? "success" : viewSubmission.status === "Submitted" ? "primary" : "secondary"}
+                  style={{ fontSize: "11px", padding: "0.4em 0.8em" }}
+                >
+                  {viewSubmission.status === "Completed" || viewSubmission.status === "APPROVED" ? "APPROVED" : viewSubmission.status === "Submitted" ? "SUBMITTED" : "PENDING PARENT"}
+                </Badge>
+              </div>
             </div>
+
+            {/* Payment Summary Box */}
+            {(viewSubmission.payment_status === "Paid" || (viewSubmission.fee_amount && viewSubmission.fee_amount > 0)) && (
+              <div className="bg-light p-3 rounded-3 border border-slate-200 mb-3 d-flex justify-content-between align-items-center">
+                <div>
+                  <div className="small text-muted fw-semibold">Registration Fee</div>
+                  <div className="fw-bold text-slate-800" style={{ fontSize: "16px" }}>
+                    ${Number(viewSubmission.fee_amount || 0).toFixed(2)}
+                  </div>
+                </div>
+                <div className="text-end">
+                  {viewSubmission.payment_status === "Paid" ? (
+                    <span className="badge bg-success py-2 px-3 fw-semibold">
+                      ✓ Paid via Stripe
+                    </span>
+                  ) : (
+                    <span className="badge bg-warning text-dark py-2 px-3 fw-semibold">
+                      Payment Pending
+                    </span>
+                  )}
+                  {viewSubmission.responses_json?._stripe_payment_intent_id && (
+                    <div className="text-muted small mt-1 font-monospace" style={{ fontSize: "11px" }}>
+                      Ref: {viewSubmission.responses_json._stripe_payment_intent_id}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Submission Answers */}
             <div className="bg-slate-50 p-3 rounded-3 border border-slate-200 mb-4">
-              <h6 className="fw-bold text-slate-700 mb-3 border-bottom pb-2">Submitted Responses</h6>
-              {viewSubmission.responses_json && typeof viewSubmission.responses_json === "object" ? (
+              <div className="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                <h6 className="fw-bold text-slate-700 mb-0">Submitted Responses</h6>
+                {viewSubmission.submitted_at && (
+                  <span className="text-muted small">Received: {formatDate(viewSubmission.submitted_at)}</span>
+                )}
+              </div>
+              {viewSubmission.responses_json && typeof viewSubmission.responses_json === "object" && Object.keys(viewSubmission.responses_json).length > 0 ? (
                 Object.entries(viewSubmission.responses_json).map(([key, val]) => {
-                  if (key === "parent_signature") {
+                  if (key === "_stripe_payment_intent_id") return null;
+                  if (key === "parent_signature" || (typeof val === "string" && val.startsWith("data:image"))) {
                     return (
-                      <div key={key} className="mb-3">
-                        <strong className="text-slate-700 d-block mb-1">Parent Digital Signature:</strong>
-                        <div className="border rounded bg-white p-2 d-inline-block">
-                          <img src={val} alt="Parent Signature" style={{ maxHeight: "80px" }} />
+                      <div key={key} className="mb-3 pt-2">
+                        <strong className="text-slate-700 d-block mb-1">
+                          {getFieldLabel(key, viewSubmission.form_structure)}:
+                        </strong>
+                        <div className="border rounded bg-white p-2 d-inline-block shadow-sm">
+                          <img src={val} alt="Signature" style={{ maxHeight: "80px", maxWidth: "320px" }} />
                         </div>
                       </div>
                     );
                   }
                   return (
-                    <div key={key} className="d-flex justify-content-between py-1 border-bottom border-slate-200 text-slate-700 small">
-                      <span className="fw-semibold">{key.replace(/_/g, " ")}:</span>
-                      <span>{String(val)}</span>
+                    <div key={key} className="d-flex justify-content-between py-2 border-bottom border-slate-200 text-slate-700 small">
+                      <span className="fw-semibold text-slate-600">{getFieldLabel(key, viewSubmission.form_structure)}:</span>
+                      <span className="fw-medium text-slate-900 text-end ps-3">{String(val || "N/A")}</span>
                     </div>
                   );
                 })
+              ) : loadingDetail ? (
+                <div className="text-center py-4 text-muted small">
+                  <Spinner animation="border" size="sm" className="me-2" />
+                  Loading responses...
+                </div>
               ) : (
-                <p className="text-muted small mb-0">No response details recorded.</p>
+                <p className="text-muted small mb-0">No response details recorded yet. (The form link has been sent to the parent, awaiting completion).</p>
               )}
             </div>
           </Modal.Body>
           <Modal.Footer className="d-flex justify-content-between">
             <a 
-              href={`${baseStaticURL}/api/enrollment/submission/${viewSubmission.secure_token}/pdf`} 
+              href={`${getApiBaseUrl()}/api/enrollment/submission/${viewSubmission.secure_token}/pdf`} 
               target="_blank" 
               rel="noopener noreferrer"
               className="btn btn-outline-primary btn-sm d-flex align-items-center gap-1"

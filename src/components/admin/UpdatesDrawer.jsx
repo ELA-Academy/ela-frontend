@@ -1412,6 +1412,10 @@ const UpdatesDrawer = ({
   const fileInputRef = useRef(null);
   const descEditorRef = useRef(null);
   const titleTextareaRef = useRef(null);
+  const isTitleFocusedRef = useRef(false);
+  const prevTaskIdRef = useRef(task?.id);
+  const isDescEditingRef = useRef(false);
+  isDescEditingRef.current = editingDesc;
 
   useEffect(() => {
     if (titleTextareaRef.current) {
@@ -1438,15 +1442,14 @@ const UpdatesDrawer = ({
   }, [activeReactCommentId]);
 
   useEffect(() => {
+    const isDifferentTask = task?.id !== prevTaskIdRef.current;
+    prevTaskIdRef.current = task?.id;
+
     // Sync states when task changes
     setStatus(task.status || "Not Started");
-    setTaskTitle(task.title || "");
     setPriority(task.priority || "Normal");
     setStartDate(task.start_date || "");
     setDueDate(task.due_date || "");
-    setCategory(task.category || "");
-    setTagsInput(task.tags || "");
-    setDescriptionHtml(task.description_html || task.notes || "");
     setChecklist(task.checklist || []);
     setWatchers(task.watchers || []);
     setAttachments(task.attachments || []);
@@ -1468,6 +1471,18 @@ const UpdatesDrawer = ({
     setTimeEstimate(task.time_estimate_minutes || "");
     setTimeSpentSeconds(task.time_spent_seconds || 0);
     setTimeEntries(task.time_entries || []);
+
+    // Protect active editing: only overwrite title/category/tags/description if task ID changed OR user is not editing them
+    if (isDifferentTask || !isTitleFocusedRef.current) {
+      setTaskTitle(task.title || "");
+    }
+    if (isDifferentTask) {
+      setCategory(task.category || "");
+      setTagsInput(task.tags || "");
+    }
+    if (isDifferentTask || !isDescEditingRef.current) {
+      setDescriptionHtml(task.description_html || task.notes || "");
+    }
   }, [task]);
 
   const refreshHistoryLogs = async () => {
@@ -1824,8 +1839,11 @@ const UpdatesDrawer = ({
   const saveDescription = async () => {
     try {
       setSavingDesc(true);
-      await updateTask(taskId, { description_html: descriptionHtml.trim() || null });
-      if (onTaskUpdated) onTaskUpdated(taskId, { description_html: descriptionHtml.trim() || null });
+      const rawHtml = descEditorRef.current ? descEditorRef.current.innerHTML : descriptionHtml;
+      const cleanContent = (rawHtml || "").trim();
+      setDescriptionHtml(cleanContent);
+      await updateTask(taskId, { description_html: cleanContent || null });
+      if (onTaskUpdated) onTaskUpdated(taskId, { description_html: cleanContent || null });
       setEditingDesc(false);
       refreshHistoryLogs();
     } catch (err) {
@@ -2639,12 +2657,18 @@ const UpdatesDrawer = ({
                   ref={titleTextareaRef}
                   className="drawer-title-input"
                   value={taskTitle}
+                  onFocus={() => {
+                    isTitleFocusedRef.current = true;
+                  }}
                   onChange={(e) => {
                     setTaskTitle(e.target.value);
                     e.target.style.height = 'auto';
                     e.target.style.height = `${e.target.scrollHeight}px`;
                   }}
-                  onBlur={handleTitleBlur}
+                  onBlur={() => {
+                    isTitleFocusedRef.current = false;
+                    handleTitleBlur();
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();

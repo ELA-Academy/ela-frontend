@@ -1,11 +1,21 @@
-import api from "../utils/api";
+import api, { getApiBaseUrl } from "../utils/api";
 import axios from "axios";
 
 // This creates a separate axios instance for public routes
 const publicApi = axios.create({
-  baseURL: `${import.meta.env.VITE_API_BASE_URL}/api`,
+  baseURL: `${getApiBaseUrl()}/api`,
   headers: { "Content-Type": "application/json" },
 });
+
+export const getEnrollmentSubmissionDetail = async (token) => {
+  try {
+    const response = await publicApi.get(`/enrollment/public/submission/${token}/view`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching submission details:", error);
+    throw error;
+  }
+};
 
 export const getPublicEnrollmentForm = async (token) => {
   try {
@@ -19,11 +29,29 @@ export const getPublicEnrollmentForm = async (token) => {
   }
 };
 
-export const submitEnrollmentForm = async (token, responses) => {
+export const createEnrollmentPaymentIntent = async (token) => {
   try {
     const response = await publicApi.post(
+      `/enrollment/public/submission/${token}/create-payment-intent`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error creating enrollment payment intent:", error);
+    throw error;
+  }
+};
+
+export const submitEnrollmentForm = async (token, payloadOrResponses, paymentIntentId = null) => {
+  try {
+    let payload = {};
+    if (payloadOrResponses && typeof payloadOrResponses === "object" && payloadOrResponses.responses) {
+      payload = payloadOrResponses;
+    } else {
+      payload = { responses: payloadOrResponses, payment_intent_id: paymentIntentId };
+    }
+    const response = await publicApi.post(
       `/enrollment/public/submission/${token}`,
-      { responses }
+      payload
     );
     return response.data;
   } catch (error) {
