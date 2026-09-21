@@ -21,6 +21,7 @@ import {
   submitEnrollmentForm,
   createEnrollmentPaymentIntent,
 } from "../../services/enrollmentService";
+import { getApiBaseUrl } from "../../utils/api";
 import { STRIPE_ELEMENT_OPTIONS } from "../../utils/stripe";
 import "../../styles/MultiStepForm.css";
 
@@ -541,7 +542,7 @@ const PublicEnrollmentForm = () => {
 
           <div className="d-flex flex-column gap-2 mt-4">
             <a
-              href={`/api/enrollment/submission/${token}/pdf`}
+              href={`${getApiBaseUrl()}/api/enrollment/submission/${token}/pdf`}
               target="_blank"
               rel="noopener noreferrer"
               className="apply-btn primary text-decoration-none d-flex align-items-center justify-content-center gap-2"

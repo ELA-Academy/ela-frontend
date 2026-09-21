@@ -1,11 +1,21 @@
-import api from "../utils/api";
+import api, { getApiBaseUrl } from "../utils/api";
 import axios from "axios";
 
 // This creates a separate axios instance for public routes
 const publicApi = axios.create({
-  baseURL: `${import.meta.env.VITE_API_BASE_URL}/api`,
+  baseURL: `${getApiBaseUrl()}/api`,
   headers: { "Content-Type": "application/json" },
 });
+
+export const getEnrollmentSubmissionDetail = async (token) => {
+  try {
+    const response = await publicApi.get(`/enrollment/public/submission/${token}/view`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching submission details:", error);
+    throw error;
+  }
+};
 
 export const getPublicEnrollmentForm = async (token) => {
   try {
