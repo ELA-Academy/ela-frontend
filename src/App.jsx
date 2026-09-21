@@ -169,6 +169,14 @@ function App() {
                     path="accounting/registration/forms/:formId"
                     element={<EnrollmentFormBuilder />}
                   />
+                  <Route
+                    path="accounting/leads"
+                    element={<LeadsListPage />}
+                  />
+                  <Route
+                    path="accounting/leads/:token"
+                    element={<LeadDetailPage />}
+                  />
                 </Route>
 
                 {/* Legacy billing routes — redirect to accounting */}
