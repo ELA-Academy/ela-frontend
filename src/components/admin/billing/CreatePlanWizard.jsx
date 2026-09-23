@@ -353,13 +353,17 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
       let periodEnd = start_date;
 
       if (cycle === "Weekly") {
-        firstInvoiceDate = start_date;
-        firstDueDate = addDays(start_date, 6);
+        const genDay = Math.min(Math.max(invoice_generation_day || 1, 1), 7);
+        const dueD = Math.min(Math.max(due_day || 7, 1), 7);
+        firstInvoiceDate = addDays(start_date, genDay - 1);
+        firstDueDate = addDays(start_date, dueD - 1);
         periodStart = start_date;
         periodEnd = addDays(start_date, 6);
       } else if (cycle === "Bi-Weekly") {
-        firstInvoiceDate = start_date;
-        firstDueDate = addDays(start_date, 13);
+        const genDay = Math.min(Math.max(invoice_generation_day || 1, 1), 14);
+        const dueD = Math.min(Math.max(due_day || 14, 1), 14);
+        firstInvoiceDate = addDays(start_date, genDay - 1);
+        firstDueDate = addDays(start_date, dueD - 1);
         periodStart = start_date;
         periodEnd = addDays(start_date, 13);
       } else if (cycle === "Quarterly") {
@@ -432,7 +436,15 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
         return `${d}th`;
     }
   };
-  const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1);
+  const dayOptions = useMemo(() => {
+    if (planData.cycle === "Weekly") {
+      return Array.from({ length: 7 }, (_, i) => i + 1);
+    }
+    if (planData.cycle === "Bi-Weekly") {
+      return Array.from({ length: 14 }, (_, i) => i + 1);
+    }
+    return Array.from({ length: 28 }, (_, i) => i + 1);
+  }, [planData.cycle]);
 
   const renderStepContent = () => {
     if (loading)
@@ -572,20 +584,32 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
                       const cycle = e.target.value;
                       const start = new Date();
                       let end = new Date();
+                      let defaultGenDay = 1;
+                      let defaultDueDay = 15;
                       if (cycle === "Weekly") {
                         end = addDays(start, 7 * 52);
+                        defaultGenDay = 1;
+                        defaultDueDay = 7;
                       } else if (cycle === "Bi-Weekly") {
                         end = addDays(start, 14 * 26);
+                        defaultGenDay = 1;
+                        defaultDueDay = 14;
                       } else if (cycle === "Quarterly") {
                         end = addMonths(start, 12);
+                        defaultGenDay = 1;
+                        defaultDueDay = 15;
                       } else {
                         end = addMonths(start, 12);
+                        defaultGenDay = 1;
+                        defaultDueDay = 15;
                       }
                       setPlanData({
                         ...planData,
                         cycle,
                         start_date: start,
-                        end_date: end
+                        end_date: end,
+                        invoice_generation_day: defaultGenDay,
+                        due_day: defaultDueDay,
                       });
                     }}
                     style={{ fontSize: "0.8rem", padding: "6px 10px", borderRadius: "6px" }}
@@ -633,70 +657,58 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
               </Col>
             </Row>
 
-            {/* Inline generate options */}
-            {planData.cycle === "Weekly" ? (
-              <div className="d-flex align-items-center flex-wrap gap-2 px-3 py-2 mb-3 bg-light border rounded text-slate-700" style={{ fontSize: "0.8rem", borderColor: "#cbd5e1" }}>
-                <span className="fw-semibold text-primary">Weekly Cycle:</span>
-                <span>Invoices generated weekly on cycle start date (covers 1st to 7th day), due on the 7th day.</span>
-              </div>
-            ) : planData.cycle === "Bi-Weekly" ? (
-              <div className="d-flex align-items-center flex-wrap gap-2 px-3 py-2 mb-3 bg-light border rounded text-slate-700" style={{ fontSize: "0.8rem", borderColor: "#cbd5e1" }}>
-                <span className="fw-semibold text-primary">Bi-Weekly Cycle:</span>
-                <span>Invoices generated every 2 weeks on cycle start date (covers 1st to 14th day), due on the 14th day.</span>
-              </div>
-            ) : (
-              <div className="d-flex align-items-center flex-wrap gap-1 px-3 py-2 mb-3 bg-white border rounded text-slate-700" style={{ fontSize: "0.8rem", borderColor: "#cbd5e1" }}>
-                <span>Generate invoice on</span>
-                <Form.Select
-                  value={planData.invoice_generation_day}
-                  onChange={(e) =>
-                    setPlanData({
-                      ...planData,
-                      invoice_generation_day: parseInt(e.target.value),
-                    })
-                  }
-                  style={{ width: "95px", padding: "2px 6px", fontSize: "0.8rem", border: "1px solid #cbd5e1", borderRadius: "4px" }}
-                >
-                  {dayOptions.map((d) => (
-                    <option key={d} value={d}>
-                      {formatDay(d)} day
-                    </option>
-                  ))}
-                </Form.Select>
-                <span>, due on</span>
-                <Form.Select
-                  value={planData.due_day}
-                  onChange={(e) =>
-                    setPlanData({
-                      ...planData,
-                      due_day: parseInt(e.target.value),
-                    })
-                  }
-                  style={{ width: "95px", padding: "2px 6px", fontSize: "0.8rem", border: "1px solid #cbd5e1", borderRadius: "4px" }}
-                >
-                  {dayOptions.map((d) => (
-                    <option key={d} value={d}>
-                      {formatDay(d)} day
-                    </option>
-                  ))}
-                </Form.Select>
-                <span>for</span>
-                <Form.Select
-                  value={planData.billing_cycle_for}
-                  onChange={(e) =>
-                    setPlanData({
-                      ...planData,
-                      billing_cycle_for: e.target.value,
-                    })
-                  }
-                  style={{ width: "105px", padding: "2px 6px", fontSize: "0.8rem", border: "1px solid #cbd5e1", borderRadius: "4px" }}
-                >
-                  <option value="Current">Current</option>
-                  <option value="Previous">Previous</option>
-                </Form.Select>
-                <span>billing cycle.</span>
-              </div>
-            )}
+            {/* Inline generate options for ALL plan cycles */}
+            <div className="d-flex align-items-center flex-wrap gap-1 px-3 py-2 mb-3 bg-white border rounded text-slate-700" style={{ fontSize: "0.8rem", borderColor: "#cbd5e1" }}>
+              <span>Generate invoice on</span>
+              <Form.Select
+                value={planData.invoice_generation_day}
+                onChange={(e) =>
+                  setPlanData({
+                    ...planData,
+                    invoice_generation_day: parseInt(e.target.value),
+                  })
+                }
+                style={{ width: "95px", padding: "2px 6px", fontSize: "0.8rem", border: "1px solid #cbd5e1", borderRadius: "4px" }}
+              >
+                {dayOptions.map((d) => (
+                  <option key={d} value={d}>
+                    {formatDay(d)} day
+                  </option>
+                ))}
+              </Form.Select>
+              <span>, due on</span>
+              <Form.Select
+                value={planData.due_day}
+                onChange={(e) =>
+                  setPlanData({
+                    ...planData,
+                    due_day: parseInt(e.target.value),
+                  })
+                }
+                style={{ width: "95px", padding: "2px 6px", fontSize: "0.8rem", border: "1px solid #cbd5e1", borderRadius: "4px" }}
+              >
+                {dayOptions.map((d) => (
+                  <option key={d} value={d}>
+                    {formatDay(d)} day
+                  </option>
+                ))}
+              </Form.Select>
+              <span>for</span>
+              <Form.Select
+                value={planData.billing_cycle_for}
+                onChange={(e) =>
+                  setPlanData({
+                    ...planData,
+                    billing_cycle_for: e.target.value,
+                  })
+                }
+                style={{ width: "105px", padding: "2px 6px", fontSize: "0.8rem", border: "1px solid #cbd5e1", borderRadius: "4px" }}
+              >
+                <option value="Current">Current</option>
+                <option value="Previous">Previous</option>
+              </Form.Select>
+              <span>billing cycle.</span>
+            </div>
 
             {/* Date Alert Banner */}
             <div className="p-2 rounded mb-3 text-start fw-medium border-0" style={{ backgroundColor: "#f0fdf4", color: "#166534", fontSize: "0.78rem", border: "1px solid #dcfce7" }}>

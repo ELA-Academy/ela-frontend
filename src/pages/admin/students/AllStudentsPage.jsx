@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
-import { Table, Alert, Card, Badge } from "react-bootstrap";
-import { Search, Filter, RotateCcw, User, Eye } from "lucide-react";
+import { Table, Alert, Card, Badge, Form } from "react-bootstrap";
+import { Search, Filter, RotateCcw, User, Eye, X } from "lucide-react";
 import PageHeader from "../../../components/admin/PageHeader";
 import { getAllStudents } from "../../../services/studentService";
 import { TableSkeleton } from "../../../components/Skeleton";
@@ -11,8 +11,41 @@ const AllStudentsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [gradeFilter, setGradeFilter] = useState("all");
+  const [selectedStatuses, setSelectedStatuses] = useState([]);
+  const [selectedGrades, setSelectedGrades] = useState([]);
+  const [showFilterPopover, setShowFilterPopover] = useState(false);
+  const filterPopoverRef = useRef(null);
+
+  // Close filter popover on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (filterPopoverRef.current && !filterPopoverRef.current.contains(e.target)) {
+        setShowFilterPopover(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleToggleStatus = (status) => {
+    setSelectedStatuses((prev) =>
+      prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]
+    );
+  };
+
+  const handleToggleGrade = (grade) => {
+    setSelectedGrades((prev) =>
+      prev.includes(grade) ? prev.filter((g) => g !== grade) : [...prev, grade]
+    );
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm("");
+    setSelectedStatuses([]);
+    setSelectedGrades([]);
+  };
+
+  const activeFilterCount = selectedStatuses.length + selectedGrades.length;
 
   useEffect(() => {
     const fetchStudents = async () => {
@@ -48,30 +81,21 @@ const AllStudentsPage = () => {
         fullName.includes(searchTerm.toLowerCase()) ||
         idNumber.includes(searchTerm.toLowerCase());
 
-      // Status filter
+      // Status checkbox filter
       let matchesStatus = true;
-      if (statusFilter !== "all") {
-        matchesStatus =
-          (student.status || "").toLowerCase() === statusFilter.toLowerCase();
+      if (selectedStatuses.length > 0) {
+        matchesStatus = selectedStatuses.includes((student.status || "Active").toLowerCase());
       }
 
-      // Grade filter
+      // Grade checkbox filter
       let matchesGrade = true;
-      if (gradeFilter !== "all") {
-        matchesGrade = student.grade_level === gradeFilter;
+      if (selectedGrades.length > 0) {
+        matchesGrade = selectedGrades.includes(student.grade_level);
       }
 
       return matchesSearch && matchesStatus && matchesGrade;
     });
-  }, [students, searchTerm, statusFilter, gradeFilter]);
-
-  const hasActiveFilters = searchTerm !== "" || statusFilter !== "all" || gradeFilter !== "all";
-
-  const handleResetFilters = () => {
-    setSearchTerm("");
-    setStatusFilter("all");
-    setGradeFilter("all");
-  };
+  }, [students, searchTerm, selectedStatuses, selectedGrades]);
 
   const getStatusBadge = (status) => {
     const s = (status || "Active").toLowerCase();
@@ -154,114 +178,165 @@ const AllStudentsPage = () => {
 
       {error && <Alert variant="danger">{error}</Alert>}
 
-      {/* High-Visibility Filter & Search Toolbar */}
-      <Card
-        className="content-card shadow-sm border mb-4"
-        style={{ backgroundColor: "#f8fafc", borderColor: "#cbd5e1" }}
-      >
-        <Card.Body className="p-3">
-          <div className="row g-3 align-items-end">
-            {/* Search Input */}
-            <div className="col-md-5">
-              <label
-                className="form-label small fw-bold text-slate-700 text-uppercase mb-1"
-                style={{ fontSize: "11px", letterSpacing: "0.04em" }}
-              >
-                Search Students
-              </label>
-              <div className="input-group" style={{ borderColor: "#cbd5e1" }}>
-                <span
-                  className="input-group-text bg-white border-end-0"
-                  style={{ borderColor: "#cbd5e1" }}
-                >
-                  <Search size={15} className="text-muted" />
-                </span>
-                <input
-                  type="text"
-                  placeholder="Search by student name or ID..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="form-control border-start-0 bg-white"
-                  style={{ fontSize: "0.85rem", borderColor: "#cbd5e1" }}
-                />
-              </div>
-            </div>
-
-            {/* Status Filter */}
-            <div className="col-md-3">
-              <label
-                className="form-label small fw-bold text-slate-700 text-uppercase mb-1"
-                style={{ fontSize: "11px", letterSpacing: "0.04em" }}
-              >
-                Status
-              </label>
-              <select
-                className="form-select bg-white"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                style={{ fontSize: "0.85rem", borderColor: "#cbd5e1" }}
-              >
-                <option value="all">All Statuses</option>
-                <option value="active">Active</option>
-                <option value="enrolled">Enrolled</option>
-                <option value="inactive">Inactive</option>
-                <option value="graduated">Graduated</option>
-              </select>
-            </div>
-
-            {/* Grade Level Filter */}
-            <div className="col-md-2">
-              <label
-                className="form-label small fw-bold text-slate-700 text-uppercase mb-1"
-                style={{ fontSize: "11px", letterSpacing: "0.04em" }}
-              >
-                Grade Level
-              </label>
-              <select
-                className="form-select bg-white"
-                value={gradeFilter}
-                onChange={(e) => setGradeFilter(e.target.value)}
-                style={{ fontSize: "0.85rem", borderColor: "#cbd5e1" }}
-              >
-                <option value="all">All Grades</option>
-                {gradeOptions.map((grade) => (
-                  <option key={grade} value={grade}>
-                    {grade}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Reset Button */}
-            <div className="col-md-2 text-md-end">
-              {hasActiveFilters && (
+      {/* Sleek Search & Popover Filter Toolbar */}
+      <div className="content-card shadow-sm border mb-3 bg-white p-3 rounded-3" style={{ borderColor: "#cbd5e1" }}>
+        <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+          <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ maxWidth: "460px" }}>
+            <div className="position-relative flex-grow-1">
+              <Search
+                className="position-absolute text-muted"
+                size={15}
+                style={{ left: "12px", top: "50%", transform: "translateY(-50%)" }}
+              />
+              <Form.Control
+                type="text"
+                placeholder="Search by student name or ID..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{
+                  paddingLeft: "36px",
+                  paddingRight: searchTerm ? "32px" : "12px",
+                  fontSize: "0.85rem",
+                  borderColor: "#cbd5e1",
+                  height: "38px"
+                }}
+              />
+              {searchTerm && (
                 <button
                   type="button"
-                  onClick={handleResetFilters}
-                  className="btn btn-outline-secondary btn-sm w-100 d-inline-flex align-items-center justify-content-center gap-1"
-                  style={{ borderColor: "#cbd5e1", fontSize: "0.82rem" }}
+                  onClick={() => setSearchTerm("")}
+                  className="btn btn-link position-absolute p-0 text-muted"
+                  style={{ right: "10px", top: "50%", transform: "translateY(-50%)" }}
                 >
-                  <RotateCcw size={13} />
-                  <span>Reset Filters</span>
+                  <X size={14} />
                 </button>
+              )}
+            </div>
+
+            {/* Sleek Filter Popover Button */}
+            <div className="position-relative" ref={filterPopoverRef}>
+              <button
+                type="button"
+                onClick={() => setShowFilterPopover(!showFilterPopover)}
+                className={`btn d-inline-flex align-items-center gap-1.5 px-3 ${
+                  activeFilterCount > 0
+                    ? "btn-primary text-white"
+                    : "btn-outline-secondary bg-white text-slate-700"
+                }`}
+                style={{
+                  borderColor: activeFilterCount > 0 ? "#2563eb" : "#cbd5e1",
+                  height: "38px",
+                  fontSize: "0.83rem",
+                  fontWeight: "500",
+                  whiteSpace: "nowrap"
+                }}
+              >
+                <Filter size={15} />
+                <span>Filters</span>
+                {activeFilterCount > 0 && (
+                  <span
+                    className="badge rounded-pill bg-white text-primary ms-1 fw-bold"
+                    style={{ fontSize: "10px", padding: "2px 6px" }}
+                  >
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Floating Filter Popover */}
+              {showFilterPopover && (
+                <div
+                  className="shadow-lg border bg-white p-3 position-absolute"
+                  style={{
+                    left: 0,
+                    top: "45px",
+                    zIndex: 1050,
+                    width: "300px",
+                    maxHeight: "420px",
+                    overflowY: "auto",
+                    borderRadius: "10px",
+                    borderColor: "#cbd5e1",
+                  }}
+                >
+                  <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                    <span className="small fw-bold text-slate-800 text-uppercase" style={{ fontSize: "11px", letterSpacing: "0.04em" }}>
+                      Filter Students
+                    </span>
+                    {activeFilterCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearFilters}
+                        className="btn btn-link p-0 text-primary small text-decoration-none"
+                        style={{ fontSize: "11px" }}
+                      >
+                        Clear all
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Enrollment Status Checkboxes */}
+                  <div className="mb-3">
+                    <div className="small fw-semibold text-slate-500 text-uppercase mb-1.5" style={{ fontSize: "10px", letterSpacing: "0.04em" }}>
+                      Enrollment Status
+                    </div>
+                    {["active", "enrolled", "inactive", "graduated"].map((status) => (
+                      <Form.Check
+                        key={status}
+                        type="checkbox"
+                        id={`stud-filter-${status}`}
+                        label={status.charAt(0).toUpperCase() + status.slice(1)}
+                        checked={selectedStatuses.includes(status)}
+                        onChange={() => handleToggleStatus(status)}
+                        className="small text-slate-700 mb-1"
+                        style={{ fontSize: "0.82rem" }}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Grade Level Checkboxes */}
+                  {gradeOptions.length > 0 && (
+                    <div className="mb-1">
+                      <div className="small fw-semibold text-slate-500 text-uppercase mb-1.5" style={{ fontSize: "10px", letterSpacing: "0.04em" }}>
+                        Grade Level
+                      </div>
+                      <div style={{ maxHeight: "160px", overflowY: "auto" }}>
+                        {gradeOptions.map((grade) => (
+                          <Form.Check
+                            key={grade}
+                            type="checkbox"
+                            id={`stud-filter-grade-${grade}`}
+                            label={grade}
+                            checked={selectedGrades.includes(grade)}
+                            onChange={() => handleToggleGrade(grade)}
+                            className="small text-slate-700 mb-1"
+                            style={{ fontSize: "0.82rem" }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
 
-          {/* Result Count and Active Indicators */}
-          <div className="d-flex align-items-center justify-content-between mt-3 pt-2 border-top border-slate-200">
-            <div className="small text-muted">
-              Showing <strong className="text-dark">{filteredStudents.length}</strong> of{" "}
-              <strong>{students.length}</strong> students
-            </div>
-            {hasActiveFilters && (
-              <span className="badge bg-secondary-subtle text-secondary border">
-                Active filters applied
-              </span>
+          {/* Showing count indicator */}
+          <div className="small text-muted">
+            Showing <strong className="text-dark">{filteredStudents.length}</strong> of{" "}
+            <strong>{students.length}</strong> students
+            {(searchTerm || activeFilterCount > 0) && (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="btn btn-link btn-sm p-0 ms-2 text-primary text-decoration-none"
+                style={{ fontSize: "0.8rem" }}
+              >
+                Reset
+              </button>
             )}
           </div>
-        </Card.Body>
-      </Card>
+        </div>
+      </div>
 
       {/* Table Content */}
       <div className="content-card shadow-sm border" style={{ borderColor: "#cbd5e1" }}>

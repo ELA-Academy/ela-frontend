@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Table, Spinner, Alert, Button, Form, Nav } from "react-bootstrap";
 import {
   Search,
@@ -7,7 +7,9 @@ import {
   MoreHorizontal,
   ChevronLeft,
   ChevronRight,
-  Plus
+  Plus,
+  X,
+  RotateCcw
 } from "lucide-react";
 import AccountingNav from "../../../components/admin/billing/AccountingNav";
 import CreatePlanWizard from "../../../components/admin/billing/CreatePlanWizard";
@@ -28,10 +30,38 @@ const RecurringPlansPage = () => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [activeTab, setActiveTab] = useState("active-plans");
 
-  // Search & Pagination
+  // Search & Pagination & Filters
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCycles, setSelectedCycles] = useState([]);
+  const [showFilterPopover, setShowFilterPopover] = useState(false);
+  const filterPopoverRef = useRef(null);
   const [page, setPage] = useState(1);
   const limit = 30;
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (filterPopoverRef.current && !filterPopoverRef.current.contains(e.target)) {
+        setShowFilterPopover(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleToggleCycle = (cycle) => {
+    setSelectedCycles((prev) =>
+      prev.includes(cycle) ? prev.filter((c) => c !== cycle) : [...prev, cycle]
+    );
+    setPage(1);
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm("");
+    setSelectedCycles([]);
+    setPage(1);
+  };
+
+  const activeFilterCount = selectedCycles.length;
 
   const fetchData = useCallback(async () => {
     try {
@@ -64,11 +94,22 @@ const RecurringPlansPage = () => {
 
   // Filter and search active plans
   const filteredActivePlans = useMemo(() => {
-    return activePlans.filter((plan) =>
-      plan.student_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      plan.plan_name?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [activePlans, searchTerm]);
+    return activePlans.filter((plan) => {
+      const matchesSearch =
+        !searchTerm.trim() ||
+        plan.student_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        plan.plan_name?.toLowerCase().includes(searchTerm.toLowerCase());
+
+      let matchesCycle = true;
+      if (selectedCycles.length > 0) {
+        matchesCycle = selectedCycles.some((c) =>
+          (plan.cycle || "").toLowerCase().replace("-", "") === c.toLowerCase().replace("-", "")
+        );
+      }
+
+      return matchesSearch && matchesCycle;
+    });
+  }, [activePlans, searchTerm, selectedCycles]);
 
   // Paginated active plans
   const paginatedActivePlans = useMemo(() => {
@@ -192,27 +233,105 @@ const RecurringPlansPage = () => {
       {activeTab === "active-plans" ? (
         <>
           {/* Toolbar */}
-          <div className="content-card mb-3 bg-white p-3 border rounded-3" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+          <div className="content-card mb-3 bg-white p-3 border rounded-3" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.02)", borderColor: "#cbd5e1" }}>
             <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
-              <div className="d-flex align-items-center flex-grow-1" style={{ maxWidth: "380px" }}>
-                <div className="position-relative w-100">
-                  <Search className="position-absolute text-muted" size={16} style={{ left: "12px", top: "50%", transform: "translateY(-50%)" }} />
+              <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ maxWidth: "460px" }}>
+                <div className="position-relative flex-grow-1">
+                  <Search className="position-absolute text-muted" size={15} style={{ left: "12px", top: "50%", transform: "translateY(-50%)" }} />
                   <Form.Control
                     type="text"
-                    placeholder="Search Students"
+                    placeholder="Search students or plans..."
                     value={searchTerm}
                     onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
-                    style={{ paddingLeft: "36px", fontSize: "0.85rem", borderRadius: "6px" }}
+                    style={{ paddingLeft: "36px", paddingRight: searchTerm ? "32px" : "12px", fontSize: "0.85rem", height: "38px", borderColor: "#cbd5e1" }}
                   />
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => { setSearchTerm(""); setPage(1); }}
+                      className="btn btn-link position-absolute p-0 text-muted"
+                      style={{ right: "10px", top: "50%", transform: "translateY(-50%)" }}
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Sleek Filter Popover Button */}
+                <div className="position-relative" ref={filterPopoverRef}>
+                  <button
+                    type="button"
+                    onClick={() => setShowFilterPopover(!showFilterPopover)}
+                    className={`btn d-inline-flex align-items-center gap-1.5 px-3 ${
+                      activeFilterCount > 0
+                        ? "btn-primary text-white"
+                        : "btn-outline-secondary bg-white text-slate-700"
+                    }`}
+                    style={{
+                      borderColor: activeFilterCount > 0 ? "#2563eb" : "#cbd5e1",
+                      height: "38px",
+                      fontSize: "0.83rem",
+                      fontWeight: "500",
+                      whiteSpace: "nowrap"
+                    }}
+                  >
+                    <Filter size={15} />
+                    <span>Filters</span>
+                    {activeFilterCount > 0 && (
+                      <span
+                        className="badge rounded-pill bg-white text-primary ms-1 fw-bold"
+                        style={{ fontSize: "10px", padding: "2px 6px" }}
+                      >
+                        {activeFilterCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Floating Filter Popover */}
+                  {showFilterPopover && (
+                    <div
+                      className="shadow-lg border bg-white p-3 position-absolute"
+                      style={{
+                        right: 0,
+                        top: "45px",
+                        zIndex: 1050,
+                        width: "250px",
+                        borderRadius: "10px",
+                        borderColor: "#cbd5e1",
+                      }}
+                    >
+                      <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                        <span className="small fw-bold text-slate-800 text-uppercase" style={{ fontSize: "11px", letterSpacing: "0.04em" }}>
+                          Plan Cycle
+                        </span>
+                        {activeFilterCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={handleClearFilters}
+                            className="btn btn-link p-0 text-primary small text-decoration-none"
+                            style={{ fontSize: "11px" }}
+                          >
+                            Clear all
+                          </button>
+                        )}
+                      </div>
+
+                      {["Weekly", "Bi-Weekly", "Monthly", "Quarterly"].map((cycle) => (
+                        <Form.Check
+                          key={cycle}
+                          type="checkbox"
+                          id={`plan-cycle-${cycle}`}
+                          label={cycle}
+                          checked={selectedCycles.includes(cycle)}
+                          onChange={() => handleToggleCycle(cycle)}
+                          className="small text-slate-700 mb-1.5"
+                          style={{ fontSize: "0.82rem" }}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-              <Button
-                variant="outline-light"
-                className="d-inline-flex align-items-center justify-content-center p-2 rounded-2 border-slate-300 text-slate-600"
-                style={{ background: "#fff", border: "1px solid #cbd5e1" }}
-              >
-                <Filter size={18} />
-              </Button>
             </div>
           </div>
 
