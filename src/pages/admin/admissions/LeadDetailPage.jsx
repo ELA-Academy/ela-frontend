@@ -48,6 +48,92 @@ import {
 import "../../../styles/StudentProfile.css";
 import "../../../styles/AdminModern.css";
 
+const sleekSelectStyles = {
+  control: (base, state) => ({
+    ...base,
+    minHeight: "36px",
+    height: "auto",
+    fontSize: "12.5px",
+    backgroundColor: "#ffffff",
+    borderColor: state.isFocused ? "#673de6" : "#cbd5e1",
+    borderRadius: "8px",
+    boxShadow: state.isFocused ? "0 0 0 2px rgba(103, 61, 230, 0.15)" : "none",
+    "&:hover": {
+      borderColor: state.isFocused ? "#673de6" : "#94a3b8",
+    },
+    transition: "border-color 0.15s ease, box-shadow 0.15s ease",
+  }),
+  valueContainer: (base) => ({
+    ...base,
+    padding: "2px 8px",
+    fontSize: "12.5px",
+  }),
+  input: (base) => ({
+    ...base,
+    margin: "0px",
+    padding: "0px",
+    fontSize: "12.5px",
+    color: "#1e293b",
+  }),
+  placeholder: (base) => ({
+    ...base,
+    color: "#94a3b8",
+    fontSize: "12.5px",
+    fontWeight: "400",
+  }),
+  singleValue: (base) => ({
+    ...base,
+    color: "#1e293b",
+    fontSize: "12.5px",
+    fontWeight: "500",
+  }),
+  multiValue: (base) => ({
+    ...base,
+    backgroundColor: "#f1f5f9",
+    borderRadius: "5px",
+    border: "1px solid #e2e8f0",
+  }),
+  multiValueLabel: (base) => ({
+    ...base,
+    fontSize: "11.5px",
+    color: "#334155",
+    fontWeight: "500",
+    padding: "1px 6px",
+  }),
+  multiValueRemove: (base) => ({
+    ...base,
+    color: "#64748b",
+    borderRadius: "0 4px 4px 0",
+    "&:hover": {
+      backgroundColor: "#fee2e2",
+      color: "#ef4444",
+    },
+  }),
+  menu: (base) => ({
+    ...base,
+    borderRadius: "8px",
+    boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04)",
+    border: "1px solid #e2e8f0",
+    overflow: "hidden",
+    zIndex: 9999,
+  }),
+  option: (base, state) => ({
+    ...base,
+    fontSize: "12.5px",
+    padding: "6px 12px",
+    backgroundColor: state.isSelected
+      ? "#673de6"
+      : state.isFocused
+      ? "#f8fafc"
+      : "#ffffff",
+    color: state.isSelected ? "#ffffff" : "#1e293b",
+    cursor: "pointer",
+    "&:active": {
+      backgroundColor: "#ede9fe",
+    },
+  }),
+};
+
 const LeadDetailPage = () => {
   const { token } = useParams();
   const [lead, setLead] = useState(null);
@@ -68,10 +154,9 @@ const LeadDetailPage = () => {
   const [taskNote, setTaskNote] = useState("");
   const [assignedDepts, setAssignedDepts] = useState([]);
   const [assignedStaff, setAssignedStaff] = useState([]);
+  const [selectedBoard, setSelectedBoard] = useState(null);
   const [dueDate, setDueDate] = useState(null);
   const [boardsList, setBoardsList] = useState([]);
-  const [postToWorkspace, setPostToWorkspace] = useState(false);
-  const [selectedBoardId, setSelectedBoardId] = useState("");
 
   const [showEditOffcanvas, setShowEditOffcanvas] = useState(false);
   const [editableData, setEditableData] = useState(null);
@@ -152,7 +237,7 @@ const LeadDetailPage = () => {
       !taskTitle ||
       (assignedDepts.length === 0 &&
         assignedStaff.length === 0 &&
-        !(postToWorkspace && selectedBoardId))
+        !selectedBoard)
     ) {
       showWarning(
         "Please provide a title and assign the task to a department, staff member, or workspace space."
@@ -166,8 +251,7 @@ const LeadDetailPage = () => {
         lead_id: lead.id,
         assigned_department_ids: assignedDepts.map((d) => d.value),
         assigned_staff_ids: assignedStaff.map((s) => s.value),
-        workspace_board_id:
-          postToWorkspace && selectedBoardId ? selectedBoardId : null,
+        workspace_board_id: selectedBoard ? selectedBoard.value : null,
         due_date: dueDate ? dueDate.toISOString() : null,
       });
       showSuccess("Task created and assigned!");
@@ -176,8 +260,7 @@ const LeadDetailPage = () => {
       setTaskNote("");
       setAssignedDepts([]);
       setAssignedStaff([]);
-      setPostToWorkspace(false);
-      setSelectedBoardId("");
+      setSelectedBoard(null);
       setDueDate(null);
       fetchData();
     } catch (err) {
@@ -257,6 +340,11 @@ const LeadDetailPage = () => {
   const staffOptions = staffList.map((s) => ({
     value: s.id,
     label: `${s.name} (${s.department_names?.join(", ") || "No Department"})`,
+  }));
+
+  const boardOptions = boardsList.map((b) => ({
+    value: b.id,
+    label: b.name,
   }));
 
   const studentOne = lead.students && lead.students[0];
@@ -832,27 +920,62 @@ const LeadDetailPage = () => {
       {isTaskModalOpen && (
         <div className="modal-overlay">
           <div
-            className="modal-content"
-            style={{ borderRadius: "12px", border: "0" }}
+            className="modal-content p-4"
+            style={{
+              borderRadius: "14px",
+              border: "1px solid #e2e8f0",
+              maxWidth: "520px",
+              boxShadow: "0 20px 45px -10px rgba(15, 23, 42, 0.18)",
+            }}
           >
-            <h2 className="fw-bold text-slate-800 h5 mb-3">Create Task</h2>
+            <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+              <div>
+                <h5 className="fw-bold text-slate-800 mb-0" style={{ fontSize: "15px" }}>
+                  Create Task
+                </h5>
+                <span className="text-muted" style={{ fontSize: "12px" }}>
+                  Add a task for this prospective lead and optionally route to Workspace
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsTaskModalOpen(false)}
+                className="btn-close"
+                style={{ transform: "scale(0.8)" }}
+                aria-label="Close"
+              />
+            </div>
+
             <form onSubmit={handleCreateTask}>
-              <Form.Group className="mb-3">
-                <Form.Label className="fw-bold text-slate-600">
-                  Title
+              <Form.Group className="mb-2">
+                <Form.Label
+                  className="fw-semibold text-slate-700 mb-1"
+                  style={{ fontSize: "11.5px", textTransform: "uppercase", letterSpacing: "0.03em" }}
+                >
+                  Task Title *
                 </Form.Label>
                 <Form.Control
                   type="text"
                   value={taskTitle}
                   onChange={(e) => setTaskTitle(e.target.value)}
-                  placeholder="Task Name"
+                  placeholder="e.g. Schedule family campus tour"
                   required
+                  style={{
+                    fontSize: "12.5px",
+                    height: "36px",
+                    borderRadius: "8px",
+                    borderColor: "#cbd5e1",
+                  }}
                 />
               </Form.Group>
-              <div className="row">
+
+              <div className="row g-2 mb-2">
                 <div className="col-md-6">
-                  <Form.Group className="mb-3">
-                    <Form.Label className="fw-bold text-slate-600">
+                  <Form.Group>
+                    <Form.Label
+                      className="fw-semibold text-slate-700 mb-1"
+                      style={{ fontSize: "11.5px", textTransform: "uppercase", letterSpacing: "0.03em" }}
+                    >
                       Lead
                     </Form.Label>
                     <Form.Control
@@ -860,12 +983,23 @@ const LeadDetailPage = () => {
                       value={lead.students?.map((s) => s.first_name).join(", ")}
                       readOnly
                       disabled
+                      style={{
+                        fontSize: "12.5px",
+                        height: "36px",
+                        borderRadius: "8px",
+                        borderColor: "#e2e8f0",
+                        backgroundColor: "#f8fafc",
+                        color: "#64748b",
+                      }}
                     />
                   </Form.Group>
                 </div>
                 <div className="col-md-6">
-                  <Form.Group className="mb-3">
-                    <Form.Label className="fw-bold text-slate-600">
+                  <Form.Group>
+                    <Form.Label
+                      className="fw-semibold text-slate-700 mb-1"
+                      style={{ fontSize: "11.5px", textTransform: "uppercase", letterSpacing: "0.03em" }}
+                    >
                       Due Date
                     </Form.Label>
                     <DatePicker
@@ -874,91 +1008,108 @@ const LeadDetailPage = () => {
                       showTimeSelect
                       dateFormat="Pp"
                       className="form-control"
-                      placeholderText="Select date and time"
+                      placeholderText="Select date & time"
+                      customInput={
+                        <input
+                          style={{
+                            fontSize: "12.5px",
+                            height: "36px",
+                            borderRadius: "8px",
+                            borderColor: "#cbd5e1",
+                            width: "100%",
+                          }}
+                        />
+                      }
                     />
                   </Form.Group>
                 </div>
               </div>
-              <Form.Group className="mb-3">
-                <Form.Label className="fw-bold text-slate-600">Note</Form.Label>
+
+              <Form.Group className="mb-2">
+                <Form.Label
+                  className="fw-semibold text-slate-700 mb-1"
+                  style={{ fontSize: "11.5px", textTransform: "uppercase", letterSpacing: "0.03em" }}
+                >
+                  Notes & Details
+                </Form.Label>
                 <Form.Control
                   as="textarea"
-                  rows={3}
+                  rows={2}
                   value={taskNote}
                   onChange={(e) => setTaskNote(e.target.value)}
-                  placeholder="Task Details here"
+                  placeholder="Add specific instructions or context for this task..."
+                  style={{
+                    fontSize: "12.5px",
+                    borderRadius: "8px",
+                    borderColor: "#cbd5e1",
+                  }}
                 />
               </Form.Group>
+
               <Form.Group className="mb-3">
-                <Form.Label className="fw-bold text-slate-600">
+                <Form.Label
+                  className="fw-semibold text-slate-700 mb-1 d-block"
+                  style={{ fontSize: "11.5px", textTransform: "uppercase", letterSpacing: "0.03em" }}
+                >
                   Assigned To
                 </Form.Label>
-                <Select
-                  options={departmentOptions}
-                  isMulti
-                  value={assignedDepts}
-                  onChange={setAssignedDepts}
-                  placeholder="Select departments..."
-                  className="mb-2"
-                />
-                <Select
-                  options={staffOptions}
-                  isMulti
-                  value={assignedStaff}
-                  onChange={setAssignedStaff}
-                  placeholder="Select specific staff members..."
-                  className="mb-3"
-                />
-
-                <div className="p-3 bg-light rounded-3 border">
-                  <Form.Check
-                    type="checkbox"
-                    id="post-to-workspace-space"
-                    label={
-                      <span className="fw-semibold text-slate-700">
-                        Post task to a Workspace Space / Board
-                      </span>
-                    }
-                    checked={postToWorkspace}
-                    onChange={(e) => {
-                      setPostToWorkspace(e.target.checked);
-                      if (!e.target.checked) setSelectedBoardId("");
-                    }}
+                <div className="d-flex flex-column gap-2">
+                  <Select
+                    options={departmentOptions}
+                    isMulti
+                    value={assignedDepts}
+                    onChange={setAssignedDepts}
+                    placeholder="Select departments..."
+                    styles={sleekSelectStyles}
                   />
-                  {postToWorkspace && (
-                    <div className="mt-2 pt-2 border-top">
-                      <Form.Label className="small fw-bold text-slate-600 mb-1">
-                        Select Workspace Space
-                      </Form.Label>
-                      <Form.Select
-                        value={selectedBoardId}
-                        onChange={(e) => setSelectedBoardId(e.target.value)}
-                        size="sm"
-                        className="bg-white"
-                      >
-                        <option value="">-- Choose Workspace Board/Space --</option>
-                        {boardsList.map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.name}
-                          </option>
-                        ))}
-                      </Form.Select>
-                      <Form.Text className="text-muted small">
-                        This lead task will appear on the selected board in Workspace for cross-department coordination.
-                      </Form.Text>
-                    </div>
-                  )}
+                  <Select
+                    options={staffOptions}
+                    isMulti
+                    value={assignedStaff}
+                    onChange={setAssignedStaff}
+                    placeholder="Select specific staff members..."
+                    styles={sleekSelectStyles}
+                  />
+                  <Select
+                    options={boardOptions}
+                    value={selectedBoard}
+                    onChange={setSelectedBoard}
+                    isClearable
+                    placeholder="Select Workspace space / board (optional)..."
+                    styles={sleekSelectStyles}
+                  />
                 </div>
               </Form.Group>
-              <div className="modal-actions d-flex justify-content-end gap-2 mt-4">
+
+              <div className="d-flex justify-content-end gap-2 pt-2 border-top">
                 <Button
-                  variant="secondary"
+                  variant="light"
+                  size="sm"
                   onClick={() => setIsTaskModalOpen(false)}
+                  style={{
+                    fontSize: "12.5px",
+                    borderRadius: "7px",
+                    padding: "6px 14px",
+                    border: "1px solid #e2e8f0",
+                    color: "#475569",
+                  }}
                 >
                   Cancel
                 </Button>
-                <Button variant="primary" type="submit">
-                  Save
+                <Button
+                  variant="primary"
+                  size="sm"
+                  type="submit"
+                  style={{
+                    fontSize: "12.5px",
+                    borderRadius: "7px",
+                    padding: "6px 18px",
+                    backgroundColor: "#673de6",
+                    borderColor: "#673de6",
+                    fontWeight: "500",
+                  }}
+                >
+                  Save Task
                 </Button>
               </div>
             </form>
