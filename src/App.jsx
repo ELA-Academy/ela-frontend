@@ -177,6 +177,10 @@ function App() {
                     path="accounting/leads/:token"
                     element={<LeadDetailPage />}
                   />
+                  <Route
+                    path="accounting/parents"
+                    element={<ManageParents />}
+                  />
                 </Route>
 
                 {/* Legacy billing routes — redirect to accounting */}

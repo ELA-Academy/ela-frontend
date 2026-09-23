@@ -175,20 +175,44 @@ const ManageParents = () => {
     label: `${s.first_name} ${s.last_name} (${s.grade_level || "Student"})`
   }));
 
+  // Filtering States
+  const [portalStatusFilter, setPortalStatusFilter] = useState("all");
+  const [studentLinkFilter, setStudentLinkFilter] = useState("all");
+
   const filteredParents = parentsList.filter((p) => {
     const term = searchTerm.toLowerCase();
     const fullName = `${p.first_name} ${p.last_name}`.toLowerCase();
     const email = (p.email || "").toLowerCase();
     const childrenNames = (p.children || []).map((c) => c.name.toLowerCase()).join(" ");
-    return fullName.includes(term) || email.includes(term) || childrenNames.includes(term);
+    const matchesSearch = fullName.includes(term) || email.includes(term) || childrenNames.includes(term);
+
+    // Portal Status Filter
+    let matchesPortal = true;
+    if (portalStatusFilter === "active") {
+      matchesPortal = p.is_active !== false && p.has_password;
+    } else if (portalStatusFilter === "pending_setup") {
+      matchesPortal = p.is_active !== false && !p.has_password;
+    } else if (portalStatusFilter === "disabled") {
+      matchesPortal = p.is_active === false;
+    }
+
+    // Student Link Filter
+    let matchesLink = true;
+    if (studentLinkFilter === "linked") {
+      matchesLink = p.children && p.children.length > 0;
+    } else if (studentLinkFilter === "unlinked") {
+      matchesLink = !p.children || p.children.length === 0;
+    }
+
+    return matchesSearch && matchesPortal && matchesLink;
   });
 
   return (
     <div className="container-fluid p-0">
       <PageHeader
         title="Parent Accounts Database"
-        subtitle="Manage registered parent portal accounts, reset credentials, and link students"
-        badge="Administration & IT"
+        subtitle="Manage registered parent portal accounts, send invite links, and review portal access status"
+        badge="Administration & Accounting"
         actions={
           <button
             onClick={() => handleShowModal()}
@@ -202,31 +226,89 @@ const ManageParents = () => {
 
       {error && <Alert variant="danger">{error}</Alert>}
 
-      <Card className="content-card shadow-sm border-0 mb-4">
+      {/* High-Visibility Filter & Search Toolbar */}
+      <Card className="content-card shadow-sm border mb-4" style={{ backgroundColor: "#f8fafc", borderColor: "#cbd5e1" }}>
         <Card.Body className="p-3">
-          <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
-            <div className="input-group" style={{ maxWidth: "340px" }}>
-              <span className="input-group-text bg-light border-end-0">
-                <Search size={15} className="text-muted" />
-              </span>
-              <input
-                type="text"
-                placeholder="Search parents, emails, children..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="form-control border-start-0 bg-light"
-                style={{ fontSize: "0.85rem" }}
-              />
+          <div className="row g-3 align-items-end">
+            <div className="col-md-5">
+              <label className="form-label small fw-bold text-slate-700 text-uppercase mb-1" style={{ fontSize: "11px", letterSpacing: "0.04em" }}>
+                Search Database
+              </label>
+              <div className="input-group" style={{ borderColor: "#cbd5e1" }}>
+                <span className="input-group-text bg-white border-end-0" style={{ borderColor: "#cbd5e1" }}>
+                  <Search size={15} className="text-muted" />
+                </span>
+                <input
+                  type="text"
+                  placeholder="Search by parent name, email, or child..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="form-control border-start-0 bg-white"
+                  style={{ fontSize: "0.85rem", borderColor: "#cbd5e1" }}
+                />
+              </div>
             </div>
 
-            <span style={{ fontSize: "0.82rem", color: "#64748b", fontWeight: 600 }}>
-              Total Accounts: {parentsList.length}
+            <div className="col-md-3">
+              <label className="form-label small fw-bold text-slate-700 text-uppercase mb-1" style={{ fontSize: "11px", letterSpacing: "0.04em" }}>
+                Portal Status
+              </label>
+              <select
+                className="form-select bg-white"
+                value={portalStatusFilter}
+                onChange={(e) => setPortalStatusFilter(e.target.value)}
+                style={{ fontSize: "0.85rem", borderColor: "#cbd5e1" }}
+              >
+                <option value="all">All Portal Statuses</option>
+                <option value="active">Active (Password Set)</option>
+                <option value="pending_setup">Pending Activation (Invited)</option>
+                <option value="disabled">Disabled Accounts</option>
+              </select>
+            </div>
+
+            <div className="col-md-3">
+              <label className="form-label small fw-bold text-slate-700 text-uppercase mb-1" style={{ fontSize: "11px", letterSpacing: "0.04em" }}>
+                Student Links
+              </label>
+              <select
+                className="form-select bg-white"
+                value={studentLinkFilter}
+                onChange={(e) => setStudentLinkFilter(e.target.value)}
+                style={{ fontSize: "0.85rem", borderColor: "#cbd5e1" }}
+              >
+                <option value="all">All Accounts</option>
+                <option value="linked">Linked to Students</option>
+                <option value="unlinked">No Students Linked</option>
+              </select>
+            </div>
+
+            <div className="col-md-1 d-flex justify-content-end">
+              {(searchTerm || portalStatusFilter !== "all" || studentLinkFilter !== "all") && (
+                <button
+                  onClick={() => {
+                    setSearchTerm("");
+                    setPortalStatusFilter("all");
+                    setStudentLinkFilter("all");
+                  }}
+                  className="btn btn-outline-secondary btn-sm w-100"
+                  style={{ fontSize: "12px", height: "36px" }}
+                  title="Reset Filters"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="d-flex justify-content-between align-items-center mt-2 pt-2 border-top" style={{ borderColor: "#e2e8f0" }}>
+            <span style={{ fontSize: "0.78rem", color: "#64748b", fontWeight: 600 }}>
+              Showing {filteredParents.length} of {parentsList.length} accounts
             </span>
           </div>
         </Card.Body>
       </Card>
 
-      <Card className="content-card shadow-sm border-0">
+      <Card className="content-card shadow-sm border" style={{ borderColor: "#cbd5e1" }}>
         <Card.Body className="p-0">
           {loading ? (
             <TableSkeleton rows={5} columns={6} />
