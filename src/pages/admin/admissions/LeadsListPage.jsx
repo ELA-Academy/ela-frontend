@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Dropdown, Button, Modal, Form, Row, Col, Spinner } from "react-bootstrap";
 import { ThreeDotsVertical, PersonCheckFill } from "react-bootstrap-icons";
+import { Search, Filter, X, RotateCcw } from "lucide-react";
 import {
   getAllLeads,
   convertLeadToStudent,
@@ -149,6 +150,91 @@ const LeadsListPage = () => {
     }
   };
 
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedStatuses, setSelectedStatuses] = useState([]);
+  const [selectedGrades, setSelectedGrades] = useState([]);
+  const [showFilterPopover, setShowFilterPopover] = useState(false);
+  const filterPopoverRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (filterPopoverRef.current && !filterPopoverRef.current.contains(e.target)) {
+        setShowFilterPopover(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleToggleStatus = (status) => {
+    setSelectedStatuses((prev) =>
+      prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]
+    );
+  };
+
+  const handleToggleGrade = (grade) => {
+    setSelectedGrades((prev) =>
+      prev.includes(grade) ? prev.filter((g) => g !== grade) : [...prev, grade]
+    );
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm("");
+    setSelectedStatuses([]);
+    setSelectedGrades([]);
+  };
+
+  const activeFilterCount = selectedStatuses.length + selectedGrades.length;
+
+  // Available unique status options in leads
+  const availableStatuses = useMemo(() => {
+    const set = new Set(["Interested", "Waitlisted", "Toured", "Admitted", "Enrolled"]);
+    leads.forEach((l) => {
+      if (l.status) set.add(l.status);
+    });
+    return Array.from(set);
+  }, [leads]);
+
+  // Available unique grades
+  const availableGrades = useMemo(() => {
+    const set = new Set();
+    leads.forEach((l) => {
+      (l.students || []).forEach((s) => {
+        if (s.grade_level) set.add(s.grade_level);
+      });
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [leads]);
+
+  const filteredLeads = useMemo(() => {
+    return leads.filter((lead) => {
+      const term = searchTerm.toLowerCase();
+      const studentNames = (lead.students || []).map((s) => `${s.first_name} ${s.last_name}`).join(" ").toLowerCase();
+      const parentNames = (lead.parents || []).map((p) => `${p.first_name} ${p.last_name}`).join(" ").toLowerCase();
+      const parentEmails = (lead.parents || []).map((p) => p.email || "").join(" ").toLowerCase();
+      const parentPhones = (lead.parents || []).map((p) => p.phone || "").join(" ").toLowerCase();
+
+      const matchesSearch =
+        !searchTerm.trim() ||
+        studentNames.includes(term) ||
+        parentNames.includes(term) ||
+        parentEmails.includes(term) ||
+        parentPhones.includes(term);
+
+      let matchesStatus = true;
+      if (selectedStatuses.length > 0) {
+        matchesStatus = selectedStatuses.includes(lead.status);
+      }
+
+      let matchesGrade = true;
+      if (selectedGrades.length > 0) {
+        matchesGrade = (lead.students || []).some((s) => selectedGrades.includes(s.grade_level));
+      }
+
+      return matchesSearch && matchesStatus && matchesGrade;
+    });
+  }, [leads, searchTerm, selectedStatuses, selectedGrades]);
+
   const formatDate = (dateString) => {
     if (!dateString) return "-";
     const options = {
@@ -181,7 +267,168 @@ const LeadsListPage = () => {
         buttonText="Add New Lead"
         onButtonClick={() => setShowCreateModal(true)}
       />
-      <div className="content-card">
+
+      {/* Sleek Search & Popover Filter Toolbar */}
+      <div className="content-card shadow-sm border mb-3 bg-white p-3 rounded-3" style={{ borderColor: "#cbd5e1" }}>
+        <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+          <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ maxWidth: "460px" }}>
+            <div className="position-relative flex-grow-1">
+              <Search
+                className="position-absolute text-muted"
+                size={15}
+                style={{ left: "12px", top: "50%", transform: "translateY(-50%)" }}
+              />
+              <Form.Control
+                type="text"
+                placeholder="Search leads by student, parent, email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{
+                  paddingLeft: "36px",
+                  paddingRight: searchTerm ? "32px" : "12px",
+                  fontSize: "0.85rem",
+                  borderColor: "#cbd5e1",
+                  height: "38px"
+                }}
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  className="btn btn-link position-absolute p-0 text-muted"
+                  style={{ right: "10px", top: "50%", transform: "translateY(-50%)" }}
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            {/* Sleek Filter Popover Button */}
+            <div className="position-relative" ref={filterPopoverRef}>
+              <button
+                type="button"
+                onClick={() => setShowFilterPopover(!showFilterPopover)}
+                className={`btn d-inline-flex align-items-center gap-1.5 px-3 ${
+                  activeFilterCount > 0
+                    ? "btn-primary text-white"
+                    : "btn-outline-secondary bg-white text-slate-700"
+                }`}
+                style={{
+                  borderColor: activeFilterCount > 0 ? "#2563eb" : "#cbd5e1",
+                  height: "38px",
+                  fontSize: "0.83rem",
+                  fontWeight: "500",
+                  whiteSpace: "nowrap"
+                }}
+              >
+                <Filter size={15} />
+                <span>Filters</span>
+                {activeFilterCount > 0 && (
+                  <span
+                    className="badge rounded-pill bg-white text-primary ms-1 fw-bold"
+                    style={{ fontSize: "10px", padding: "2px 6px" }}
+                  >
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Floating Filter Popover */}
+              {showFilterPopover && (
+                <div
+                  className="shadow-lg border bg-white p-3 position-absolute"
+                  style={{
+                    left: 0,
+                    top: "45px",
+                    zIndex: 1050,
+                    width: "290px",
+                    maxHeight: "420px",
+                    overflowY: "auto",
+                    borderRadius: "10px",
+                    borderColor: "#cbd5e1",
+                  }}
+                >
+                  <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                    <span className="small fw-bold text-slate-800 text-uppercase" style={{ fontSize: "11px", letterSpacing: "0.04em" }}>
+                      Filter Leads
+                    </span>
+                    {activeFilterCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearFilters}
+                        className="btn btn-link p-0 text-primary small text-decoration-none"
+                        style={{ fontSize: "11px" }}
+                      >
+                        Clear all
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Lead Status Checkboxes */}
+                  <div className="mb-3">
+                    <div className="small fw-semibold text-slate-500 text-uppercase mb-1.5" style={{ fontSize: "10px", letterSpacing: "0.04em" }}>
+                      Lead Status
+                    </div>
+                    {availableStatuses.map((status) => (
+                      <Form.Check
+                        key={status}
+                        type="checkbox"
+                        id={`lead-filter-${status}`}
+                        label={status}
+                        checked={selectedStatuses.includes(status)}
+                        onChange={() => handleToggleStatus(status)}
+                        className="small text-slate-700 mb-1"
+                        style={{ fontSize: "0.82rem" }}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Grade Level Checkboxes */}
+                  {availableGrades.length > 0 && (
+                    <div className="mb-1">
+                      <div className="small fw-semibold text-slate-500 text-uppercase mb-1.5" style={{ fontSize: "10px", letterSpacing: "0.04em" }}>
+                        Grade Level
+                      </div>
+                      <div style={{ maxHeight: "150px", overflowY: "auto" }}>
+                        {availableGrades.map((grade) => (
+                          <Form.Check
+                            key={grade}
+                            type="checkbox"
+                            id={`lead-filter-grade-${grade}`}
+                            label={grade}
+                            checked={selectedGrades.includes(grade)}
+                            onChange={() => handleToggleGrade(grade)}
+                            className="small text-slate-700 mb-1"
+                            style={{ fontSize: "0.82rem" }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Showing count indicator */}
+          <div className="small text-muted">
+            Showing <strong className="text-dark">{filteredLeads.length}</strong> of{" "}
+            <strong>{leads.length}</strong> leads
+            {(searchTerm || activeFilterCount > 0) && (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="btn btn-link btn-sm p-0 ms-2 text-primary text-decoration-none"
+                style={{ fontSize: "0.8rem" }}
+              >
+                Reset
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="content-card shadow-sm border" style={{ borderColor: "#cbd5e1" }}>
         <table className="modern-table">
           <thead>
             <tr>
@@ -193,8 +440,8 @@ const LeadsListPage = () => {
             </tr>
           </thead>
           <tbody>
-            {leads.length > 0 ? (
-              leads.map((lead) => (
+            {filteredLeads.length > 0 ? (
+              filteredLeads.map((lead) => (
                 <tr key={lead.id}>
                   <td>{formatDate(lead.created_at)}</td>
                   <td>

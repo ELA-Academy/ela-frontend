@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Table,
   Button,
@@ -22,7 +22,10 @@ import {
   CheckCircle2,
   XCircle,
   Search,
-  UserCheck
+  UserCheck,
+  Filter,
+  X,
+  RotateCcw
 } from "lucide-react";
 import Select from "react-select";
 import api from "../../../utils/api";
@@ -176,32 +179,69 @@ const ManageParents = () => {
   }));
 
   // Filtering States
-  const [portalStatusFilter, setPortalStatusFilter] = useState("all");
-  const [studentLinkFilter, setStudentLinkFilter] = useState("all");
+  // Filtering States - Checkbox multi-select
+  const [selectedPortalStatuses, setSelectedPortalStatuses] = useState([]);
+  const [selectedLinkStatuses, setSelectedLinkStatuses] = useState([]);
+  const [showFilterPopover, setShowFilterPopover] = useState(false);
+  const filterPopoverRef = useRef(null);
+
+  // Close filter popover on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (filterPopoverRef.current && !filterPopoverRef.current.contains(e.target)) {
+        setShowFilterPopover(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleTogglePortalStatus = (status) => {
+    setSelectedPortalStatuses((prev) =>
+      prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]
+    );
+  };
+
+  const handleToggleLinkStatus = (status) => {
+    setSelectedLinkStatuses((prev) =>
+      prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]
+    );
+  };
+
+  const handleClearFilters = () => {
+    setSelectedPortalStatuses([]);
+    setSelectedLinkStatuses([]);
+    setSearchTerm("");
+  };
+
+  const activeFilterCount = selectedPortalStatuses.length + selectedLinkStatuses.length;
 
   const filteredParents = parentsList.filter((p) => {
     const term = searchTerm.toLowerCase();
     const fullName = `${p.first_name} ${p.last_name}`.toLowerCase();
     const email = (p.email || "").toLowerCase();
     const childrenNames = (p.children || []).map((c) => c.name.toLowerCase()).join(" ");
-    const matchesSearch = fullName.includes(term) || email.includes(term) || childrenNames.includes(term);
+    const matchesSearch = !searchTerm.trim() || fullName.includes(term) || email.includes(term) || childrenNames.includes(term);
 
-    // Portal Status Filter
+    // Portal Status Checkbox Filter
     let matchesPortal = true;
-    if (portalStatusFilter === "active") {
-      matchesPortal = p.is_active !== false && p.has_password;
-    } else if (portalStatusFilter === "pending_setup") {
-      matchesPortal = p.is_active !== false && !p.has_password;
-    } else if (portalStatusFilter === "disabled") {
-      matchesPortal = p.is_active === false;
+    if (selectedPortalStatuses.length > 0) {
+      matchesPortal = selectedPortalStatuses.some((status) => {
+        if (status === "active") return p.is_active !== false && p.has_password;
+        if (status === "pending_setup") return p.is_active !== false && !p.has_password;
+        if (status === "disabled") return p.is_active === false;
+        return false;
+      });
     }
 
-    // Student Link Filter
+    // Student Link Checkbox Filter
     let matchesLink = true;
-    if (studentLinkFilter === "linked") {
-      matchesLink = p.children && p.children.length > 0;
-    } else if (studentLinkFilter === "unlinked") {
-      matchesLink = !p.children || p.children.length === 0;
+    if (selectedLinkStatuses.length > 0) {
+      matchesLink = selectedLinkStatuses.some((status) => {
+        if (status === "linked") return p.children && p.children.length > 0;
+        if (status === "unlinked") return !p.children || p.children.length === 0;
+        return false;
+      });
     }
 
     return matchesSearch && matchesPortal && matchesLink;
@@ -226,87 +266,180 @@ const ManageParents = () => {
 
       {error && <Alert variant="danger">{error}</Alert>}
 
-      {/* High-Visibility Filter & Search Toolbar */}
-      <Card className="content-card shadow-sm border mb-4" style={{ backgroundColor: "#f8fafc", borderColor: "#cbd5e1" }}>
-        <Card.Body className="p-3">
-          <div className="row g-3 align-items-end">
-            <div className="col-md-5">
-              <label className="form-label small fw-bold text-slate-700 text-uppercase mb-1" style={{ fontSize: "11px", letterSpacing: "0.04em" }}>
-                Search Database
-              </label>
-              <div className="input-group" style={{ borderColor: "#cbd5e1" }}>
-                <span className="input-group-text bg-white border-end-0" style={{ borderColor: "#cbd5e1" }}>
-                  <Search size={15} className="text-muted" />
-                </span>
-                <input
-                  type="text"
-                  placeholder="Search by parent name, email, or child..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="form-control border-start-0 bg-white"
-                  style={{ fontSize: "0.85rem", borderColor: "#cbd5e1" }}
-                />
-              </div>
-            </div>
-
-            <div className="col-md-3">
-              <label className="form-label small fw-bold text-slate-700 text-uppercase mb-1" style={{ fontSize: "11px", letterSpacing: "0.04em" }}>
-                Portal Status
-              </label>
-              <select
-                className="form-select bg-white"
-                value={portalStatusFilter}
-                onChange={(e) => setPortalStatusFilter(e.target.value)}
-                style={{ fontSize: "0.85rem", borderColor: "#cbd5e1" }}
-              >
-                <option value="all">All Portal Statuses</option>
-                <option value="active">Active (Password Set)</option>
-                <option value="pending_setup">Pending Activation (Invited)</option>
-                <option value="disabled">Disabled Accounts</option>
-              </select>
-            </div>
-
-            <div className="col-md-3">
-              <label className="form-label small fw-bold text-slate-700 text-uppercase mb-1" style={{ fontSize: "11px", letterSpacing: "0.04em" }}>
-                Student Links
-              </label>
-              <select
-                className="form-select bg-white"
-                value={studentLinkFilter}
-                onChange={(e) => setStudentLinkFilter(e.target.value)}
-                style={{ fontSize: "0.85rem", borderColor: "#cbd5e1" }}
-              >
-                <option value="all">All Accounts</option>
-                <option value="linked">Linked to Students</option>
-                <option value="unlinked">No Students Linked</option>
-              </select>
-            </div>
-
-            <div className="col-md-1 d-flex justify-content-end">
-              {(searchTerm || portalStatusFilter !== "all" || studentLinkFilter !== "all") && (
+      {/* Sleek Search & Popover Filter Toolbar */}
+      <div className="content-card shadow-sm border mb-3 bg-white p-3 rounded-3" style={{ borderColor: "#cbd5e1" }}>
+        <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+          <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ maxWidth: "460px" }}>
+            <div className="position-relative flex-grow-1">
+              <Search
+                className="position-absolute text-muted"
+                size={15}
+                style={{ left: "12px", top: "50%", transform: "translateY(-50%)" }}
+              />
+              <Form.Control
+                type="text"
+                placeholder="Search parent name, email, or child..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{
+                  paddingLeft: "36px",
+                  paddingRight: searchTerm ? "32px" : "12px",
+                  fontSize: "0.85rem",
+                  borderColor: "#cbd5e1",
+                  height: "38px"
+                }}
+              />
+              {searchTerm && (
                 <button
-                  onClick={() => {
-                    setSearchTerm("");
-                    setPortalStatusFilter("all");
-                    setStudentLinkFilter("all");
-                  }}
-                  className="btn btn-outline-secondary btn-sm w-100"
-                  style={{ fontSize: "12px", height: "36px" }}
-                  title="Reset Filters"
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  className="btn btn-link position-absolute p-0 text-muted"
+                  style={{ right: "10px", top: "50%", transform: "translateY(-50%)" }}
                 >
-                  Reset
+                  <X size={14} />
                 </button>
+              )}
+            </div>
+
+            {/* Sleek Filter Popover Button */}
+            <div className="position-relative" ref={filterPopoverRef}>
+              <button
+                type="button"
+                onClick={() => setShowFilterPopover(!showFilterPopover)}
+                className={`btn d-inline-flex align-items-center gap-1.5 px-3 ${
+                  activeFilterCount > 0
+                    ? "btn-primary text-white"
+                    : "btn-outline-secondary bg-white text-slate-700"
+                }`}
+                style={{
+                  borderColor: activeFilterCount > 0 ? "#2563eb" : "#cbd5e1",
+                  height: "38px",
+                  fontSize: "0.83rem",
+                  fontWeight: "500",
+                  whiteSpace: "nowrap"
+                }}
+              >
+                <Filter size={15} />
+                <span>Filters</span>
+                {activeFilterCount > 0 && (
+                  <span
+                    className="badge rounded-pill bg-white text-primary ms-1 fw-bold"
+                    style={{ fontSize: "10px", padding: "2px 6px" }}
+                  >
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Floating Filter Popover */}
+              {showFilterPopover && (
+                <div
+                  className="shadow-lg border bg-white p-3 position-absolute"
+                  style={{
+                    left: 0,
+                    top: "45px",
+                    zIndex: 1050,
+                    width: "290px",
+                    borderRadius: "10px",
+                    borderColor: "#cbd5e1",
+                  }}
+                >
+                  <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                    <span className="small fw-bold text-slate-800 text-uppercase" style={{ fontSize: "11px", letterSpacing: "0.04em" }}>
+                      Filter Accounts
+                    </span>
+                    {activeFilterCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearFilters}
+                        className="btn btn-link p-0 text-primary small text-decoration-none"
+                        style={{ fontSize: "11px" }}
+                      >
+                        Clear all
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Portal Status Checkboxes */}
+                  <div className="mb-3">
+                    <div className="small fw-semibold text-slate-500 text-uppercase mb-1.5" style={{ fontSize: "10px", letterSpacing: "0.04em" }}>
+                      Portal Status
+                    </div>
+                    <Form.Check
+                      type="checkbox"
+                      id="mp-filter-active"
+                      label="Active (Password Set)"
+                      checked={selectedPortalStatuses.includes("active")}
+                      onChange={() => handleTogglePortalStatus("active")}
+                      className="small text-slate-700 mb-1"
+                      style={{ fontSize: "0.82rem" }}
+                    />
+                    <Form.Check
+                      type="checkbox"
+                      id="mp-filter-pending"
+                      label="Pending Activation (Invited)"
+                      checked={selectedPortalStatuses.includes("pending_setup")}
+                      onChange={() => handleTogglePortalStatus("pending_setup")}
+                      className="small text-slate-700 mb-1"
+                      style={{ fontSize: "0.82rem" }}
+                    />
+                    <Form.Check
+                      type="checkbox"
+                      id="mp-filter-disabled"
+                      label="Disabled Accounts"
+                      checked={selectedPortalStatuses.includes("disabled")}
+                      onChange={() => handleTogglePortalStatus("disabled")}
+                      className="small text-slate-700"
+                      style={{ fontSize: "0.82rem" }}
+                    />
+                  </div>
+
+                  {/* Student Link Checkboxes */}
+                  <div className="mb-1">
+                    <div className="small fw-semibold text-slate-500 text-uppercase mb-1.5" style={{ fontSize: "10px", letterSpacing: "0.04em" }}>
+                      Student Links
+                    </div>
+                    <Form.Check
+                      type="checkbox"
+                      id="mp-filter-linked"
+                      label="Linked to Student(s)"
+                      checked={selectedLinkStatuses.includes("linked")}
+                      onChange={() => handleToggleLinkStatus("linked")}
+                      className="small text-slate-700 mb-1"
+                      style={{ fontSize: "0.82rem" }}
+                    />
+                    <Form.Check
+                      type="checkbox"
+                      id="mp-filter-unlinked"
+                      label="No Students Linked"
+                      checked={selectedLinkStatuses.includes("unlinked")}
+                      onChange={() => handleToggleLinkStatus("unlinked")}
+                      className="small text-slate-700"
+                      style={{ fontSize: "0.82rem" }}
+                    />
+                  </div>
+                </div>
               )}
             </div>
           </div>
 
-          <div className="d-flex justify-content-between align-items-center mt-2 pt-2 border-top" style={{ borderColor: "#e2e8f0" }}>
-            <span style={{ fontSize: "0.78rem", color: "#64748b", fontWeight: 600 }}>
-              Showing {filteredParents.length} of {parentsList.length} accounts
-            </span>
+          {/* Showing count indicator */}
+          <div className="small text-muted">
+            Showing <strong className="text-dark">{filteredParents.length}</strong> of{" "}
+            <strong>{parentsList.length}</strong> accounts
+            {(searchTerm || activeFilterCount > 0) && (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="btn btn-link btn-sm p-0 ms-2 text-primary text-decoration-none"
+                style={{ fontSize: "0.8rem" }}
+              >
+                Reset
+              </button>
+            )}
           </div>
-        </Card.Body>
-      </Card>
+        </div>
+      </div>
 
       <Card className="content-card shadow-sm border" style={{ borderColor: "#cbd5e1" }}>
         <Card.Body className="p-0">

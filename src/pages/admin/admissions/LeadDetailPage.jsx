@@ -27,6 +27,7 @@ import {
   getActiveDepartments,
 } from "../../../services/admissionsService";
 import { getAllStaff } from "../../../services/staffService";
+import { getBoards } from "../../../services/boardService";
 import {
   User,
   Plus,
@@ -68,6 +69,9 @@ const LeadDetailPage = () => {
   const [assignedDepts, setAssignedDepts] = useState([]);
   const [assignedStaff, setAssignedStaff] = useState([]);
   const [dueDate, setDueDate] = useState(null);
+  const [boardsList, setBoardsList] = useState([]);
+  const [postToWorkspace, setPostToWorkspace] = useState(false);
+  const [selectedBoardId, setSelectedBoardId] = useState("");
 
   const [showEditOffcanvas, setShowEditOffcanvas] = useState(false);
   const [editableData, setEditableData] = useState(null);
@@ -100,18 +104,20 @@ const LeadDetailPage = () => {
   const fetchData = useCallback(async () => {
     try {
       setError("");
-      const [leadData, tasksData, departmentsData, staffData] =
+      const [leadData, tasksData, departmentsData, staffData, boardsData] =
         await Promise.all([
           getLeadByToken(token),
           getTasksForLead(token),
           getActiveDepartments(),
           getAllStaff(),
+          getBoards().catch(() => []),
         ]);
 
       setLead(leadData);
       setTasks(tasksData);
       setDepartments(departmentsData);
       setStaffList(staffData.filter((s) => s.is_active));
+      setBoardsList((boardsData || []).filter((b) => !b.is_folder && !b.is_archived));
       setNotes(leadData.internal_notes || "");
       setStatus(leadData.status);
     } catch (err) {
@@ -144,9 +150,13 @@ const LeadDetailPage = () => {
     e.preventDefault();
     if (
       !taskTitle ||
-      (assignedDepts.length === 0 && assignedStaff.length === 0)
+      (assignedDepts.length === 0 &&
+        assignedStaff.length === 0 &&
+        !(postToWorkspace && selectedBoardId))
     ) {
-      showWarning("Please provide a title and assign the task.");
+      showWarning(
+        "Please provide a title and assign the task to a department, staff member, or workspace space."
+      );
       return;
     }
     try {
@@ -156,6 +166,8 @@ const LeadDetailPage = () => {
         lead_id: lead.id,
         assigned_department_ids: assignedDepts.map((d) => d.value),
         assigned_staff_ids: assignedStaff.map((s) => s.value),
+        workspace_board_id:
+          postToWorkspace && selectedBoardId ? selectedBoardId : null,
         due_date: dueDate ? dueDate.toISOString() : null,
       });
       showSuccess("Task created and assigned!");
@@ -164,6 +176,8 @@ const LeadDetailPage = () => {
       setTaskNote("");
       setAssignedDepts([]);
       setAssignedStaff([]);
+      setPostToWorkspace(false);
+      setSelectedBoardId("");
       setDueDate(null);
       fetchData();
     } catch (err) {
@@ -893,7 +907,48 @@ const LeadDetailPage = () => {
                   value={assignedStaff}
                   onChange={setAssignedStaff}
                   placeholder="Select specific staff members..."
+                  className="mb-3"
                 />
+
+                <div className="p-3 bg-light rounded-3 border">
+                  <Form.Check
+                    type="checkbox"
+                    id="post-to-workspace-space"
+                    label={
+                      <span className="fw-semibold text-slate-700">
+                        Post task to a Workspace Space / Board
+                      </span>
+                    }
+                    checked={postToWorkspace}
+                    onChange={(e) => {
+                      setPostToWorkspace(e.target.checked);
+                      if (!e.target.checked) setSelectedBoardId("");
+                    }}
+                  />
+                  {postToWorkspace && (
+                    <div className="mt-2 pt-2 border-top">
+                      <Form.Label className="small fw-bold text-slate-600 mb-1">
+                        Select Workspace Space
+                      </Form.Label>
+                      <Form.Select
+                        value={selectedBoardId}
+                        onChange={(e) => setSelectedBoardId(e.target.value)}
+                        size="sm"
+                        className="bg-white"
+                      >
+                        <option value="">-- Choose Workspace Board/Space --</option>
+                        {boardsList.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.name}
+                          </option>
+                        ))}
+                      </Form.Select>
+                      <Form.Text className="text-muted small">
+                        This lead task will appear on the selected board in Workspace for cross-department coordination.
+                      </Form.Text>
+                    </div>
+                  )}
+                </div>
               </Form.Group>
               <div className="modal-actions d-flex justify-content-end gap-2 mt-4">
                 <Button
