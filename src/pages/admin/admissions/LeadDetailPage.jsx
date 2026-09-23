@@ -41,6 +41,8 @@ import {
   CheckCircle,
   PlusCircle,
   Settings,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import "../../../styles/StudentProfile.css";
 import "../../../styles/AdminModern.css";
@@ -56,6 +58,9 @@ const LeadDetailPage = () => {
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState("");
   const [activeTab, setActiveTab] = useState("profile");
+  const [isNotesExpanded, setIsNotesExpanded] = useState(false);
+  const [isEditingNotesCard, setIsEditingNotesCard] = useState(false);
+  const [tempNotesCard, setTempNotesCard] = useState("");
 
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [taskTitle, setTaskTitle] = useState("");
@@ -562,6 +567,165 @@ const LeadDetailPage = () => {
                       </Col>
                     ))}
                 </Row>
+              </div>
+
+              {/* Dedicated Additional Notes & Student Context Section */}
+              <div className="mt-4">
+                <Card
+                  className="shadow-sm border-0"
+                  style={{ borderRadius: "10px", overflow: "hidden" }}
+                >
+                  <div
+                    className="d-flex justify-content-between align-items-center px-4 py-3 bg-light border-bottom"
+                  >
+                    <div className="d-flex align-items-center gap-2">
+                      <FileText size={18} className="text-slate-500" />
+                      <h4
+                        className="fw-bold text-slate-800 m-0"
+                        style={{ fontSize: "15px" }}
+                      >
+                        Additional Notes & Student Context
+                      </h4>
+                    </div>
+
+                    <div>
+                      {!isEditingNotesCard ? (
+                        <button
+                          onClick={() => {
+                            setTempNotesCard(notes || "");
+                            setIsEditingNotesCard(true);
+                          }}
+                          className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
+                          style={{ fontSize: "12px", fontWeight: 600 }}
+                        >
+                          <PencilSquare size={13} /> {notes ? "Edit Notes" : "Add Notes"}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setIsEditingNotesCard(false)}
+                          className="btn btn-sm btn-link text-muted text-decoration-none"
+                          style={{ fontSize: "12px" }}
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <Card.Body className="p-4">
+                    {isEditingNotesCard ? (
+                      <div>
+                        <textarea
+                          className="form-control mb-3"
+                          rows="6"
+                          value={tempNotesCard}
+                          onChange={(e) => setTempNotesCard(e.target.value)}
+                          placeholder="Record intake notes, student history, special accommodations, phone call summaries, etc."
+                          style={{ fontSize: "13px", lineHeight: "1.6" }}
+                        />
+                        <div className="d-flex justify-content-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline-secondary"
+                            onClick={() => setIsEditingNotesCard(false)}
+                            disabled={updating}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            className="fw-bold"
+                            disabled={updating}
+                            onClick={async () => {
+                              try {
+                                setUpdating(true);
+                                await updateLead(token, { status, internal_notes: tempNotesCard });
+                                setNotes(tempNotesCard);
+                                setIsEditingNotesCard(false);
+                                showSuccess("Student notes updated successfully!");
+                                fetchData();
+                              } catch (err) {
+                                showError("Failed to save notes.");
+                              } finally {
+                                setUpdating(false);
+                              }
+                            }}
+                          >
+                            {updating ? <Spinner size="sm" animation="border" className="me-1" /> : null}
+                            Save Notes
+                          </Button>
+                        </div>
+                      </div>
+                    ) : notes && notes.trim() ? (
+                      <div>
+                        <div
+                          style={{
+                            fontSize: "13px",
+                            lineHeight: "1.7",
+                            color: "#334155",
+                            whiteSpace: "pre-wrap",
+                            maxHeight: isNotesExpanded ? "none" : "150px",
+                            overflow: "hidden",
+                            position: "relative"
+                          }}
+                        >
+                          {notes}
+                          {!isNotesExpanded && notes.length > 250 && (
+                            <div
+                              style={{
+                                position: "absolute",
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                                height: "50px",
+                                background: "linear-gradient(transparent, #ffffff)",
+                                pointerEvents: "none"
+                              }}
+                            />
+                          )}
+                        </div>
+
+                        {notes.length > 250 && (
+                          <div className="mt-2 pt-2 border-top">
+                            <button
+                              onClick={() => setIsNotesExpanded(!isNotesExpanded)}
+                              className="btn btn-sm btn-link text-decoration-none p-0 d-inline-flex align-items-center gap-1 text-primary fw-bold"
+                              style={{ fontSize: "12px" }}
+                            >
+                              {isNotesExpanded ? (
+                                <>
+                                  <ChevronUp size={14} /> Show Less
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronDown size={14} /> Read Full Note
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4 text-muted">
+                        <FileText size={32} className="text-slate-300 mb-2" />
+                        <p className="mb-2" style={{ fontSize: "13px" }}>
+                          No intake notes or context recorded yet for this prospective student.
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="outline-primary"
+                          onClick={() => {
+                            setTempNotesCard("");
+                            setIsEditingNotesCard(true);
+                          }}
+                        >
+                          + Add Student Note
+                        </Button>
+                      </div>
+                    )}
+                  </Card.Body>
+                </Card>
               </div>
             </div>
           )}

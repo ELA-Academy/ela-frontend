@@ -23,6 +23,19 @@ export const createLead = async (leadData) => {
   }
 };
 
+export const createManualLead = async (leadData) => {
+  try {
+    const response = await api.post("/admissions/admin/leads", leadData);
+    return response.data;
+  } catch (error) {
+    console.error(
+      "Error manually creating lead:",
+      error.response?.data || error.message
+    );
+    throw error;
+  }
+};
+
 export const submitLiveLookIn = async (formData, boardId = null) => {
   try {
     const url = `/admissions/live-look-in${boardId ? `?board_id=${boardId}` : ""}`;

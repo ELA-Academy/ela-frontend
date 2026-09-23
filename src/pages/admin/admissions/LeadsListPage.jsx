@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Dropdown, Button } from "react-bootstrap";
+import { Dropdown, Button, Modal, Form, Row, Col, Spinner } from "react-bootstrap";
 import { ThreeDotsVertical, PersonCheckFill } from "react-bootstrap-icons";
 import {
   getAllLeads,
   convertLeadToStudent,
+  createManualLead,
 } from "../../../services/admissionsService";
 import { showSuccess, showError } from "../../../utils/notificationService";
 import PageHeader from "../../../components/admin/PageHeader";
@@ -31,6 +32,46 @@ const LeadsListPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Create Lead Modal State
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creatingLead, setCreatingLead] = useState(false);
+  const [newLeadForm, setNewLeadForm] = useState({
+    student_first_name: "",
+    student_last_name: "",
+    date_of_birth: "",
+    grade_level: "Kindergarten",
+    city_state: "",
+    parent_first_name: "",
+    parent_last_name: "",
+    parent_email: "",
+    parent_phone: "",
+    status: "Interested",
+    internal_notes: "",
+  });
+
+  const gradeLevels = [
+    "Kindergarten",
+    "1st Grade",
+    "2nd Grade",
+    "3rd Grade",
+    "4th Grade",
+    "5th Grade",
+    "6th Grade",
+    "7th Grade",
+    "8th Grade",
+    "9th Grade",
+    "10th Grade",
+    "11th Grade",
+    "12th Grade",
+  ];
+
+  const leadStatusOptions = [
+    "Interested",
+    "Waitlisted",
+    "Toured",
+    "Admitted",
+  ];
+
   const fetchLeads = async () => {
     try {
       setLoading(true);
@@ -46,6 +87,43 @@ const LeadsListPage = () => {
   useEffect(() => {
     fetchLeads();
   }, []);
+
+  const handleCreateLeadSubmit = async (e) => {
+    e.preventDefault();
+    if (!newLeadForm.student_first_name.trim() || !newLeadForm.student_last_name.trim()) {
+      showError("Student first and last names are required.");
+      return;
+    }
+    if (!newLeadForm.parent_first_name.trim() || !newLeadForm.parent_last_name.trim() || !newLeadForm.parent_email.trim()) {
+      showError("Parent/Guardian name and email are required.");
+      return;
+    }
+
+    try {
+      setCreatingLead(true);
+      await createManualLead(newLeadForm);
+      showSuccess("Prospective lead created successfully!");
+      setShowCreateModal(false);
+      setNewLeadForm({
+        student_first_name: "",
+        student_last_name: "",
+        date_of_birth: "",
+        grade_level: "Kindergarten",
+        city_state: "",
+        parent_first_name: "",
+        parent_last_name: "",
+        parent_email: "",
+        parent_phone: "",
+        status: "Interested",
+        internal_notes: "",
+      });
+      fetchLeads();
+    } catch (err) {
+      showError(err.response?.data?.error || "Failed to create lead.");
+    } finally {
+      setCreatingLead(false);
+    }
+  };
 
   const [showPromoteModal, setShowPromoteModal] = useState(false);
   const [promoteTargetId, setPromoteTargetId] = useState(null);
@@ -98,7 +176,11 @@ const LeadsListPage = () => {
 
   return (
     <div>
-      <PageHeader title={`Manage Leads (${leads.length})`} />
+      <PageHeader
+        title={`Manage Leads (${leads.length})`}
+        buttonText="Add New Lead"
+        onButtonClick={() => setShowCreateModal(true)}
+      />
       <div className="content-card">
         <table className="modern-table">
           <thead>
@@ -176,6 +258,215 @@ const LeadsListPage = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Manual Add Lead Modal */}
+      <Modal
+        show={showCreateModal}
+        onHide={() => setShowCreateModal(false)}
+        size="lg"
+        centered
+      >
+        <Modal.Header closeButton className="border-bottom-0 pb-0">
+          <div>
+            <Modal.Title className="fw-bold fs-5 text-slate-800">Add Prospective Lead</Modal.Title>
+            <p className="text-muted small mb-0">
+              Record a new prospective student & parent inquiry from a phone call or in-person visit.
+            </p>
+          </div>
+        </Modal.Header>
+        <Modal.Body className="pt-3">
+          <Form onSubmit={handleCreateLeadSubmit}>
+            <div className="p-3 bg-light rounded-3 mb-3 border">
+              <h6 className="fw-bold text-slate-700 mb-2" style={{ fontSize: "0.85rem", letterSpacing: "0.03em" }}>
+                STUDENT DETAILS
+              </h6>
+              <Row className="g-2">
+                <Col md={6}>
+                  <Form.Group>
+                    <Form.Label className="small fw-semibold text-slate-600 mb-1">First Name *</Form.Label>
+                    <Form.Control
+                      size="sm"
+                      type="text"
+                      placeholder="e.g. Liam"
+                      value={newLeadForm.student_first_name}
+                      onChange={(e) => setNewLeadForm({ ...newLeadForm, student_first_name: e.target.value })}
+                      required
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group>
+                    <Form.Label className="small fw-semibold text-slate-600 mb-1">Last Name *</Form.Label>
+                    <Form.Control
+                      size="sm"
+                      type="text"
+                      placeholder="e.g. Johnson"
+                      value={newLeadForm.student_last_name}
+                      onChange={(e) => setNewLeadForm({ ...newLeadForm, student_last_name: e.target.value })}
+                      required
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className="small fw-semibold text-slate-600 mb-1">Date of Birth</Form.Label>
+                    <Form.Control
+                      size="sm"
+                      type="date"
+                      value={newLeadForm.date_of_birth}
+                      onChange={(e) => setNewLeadForm({ ...newLeadForm, date_of_birth: e.target.value })}
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className="small fw-semibold text-slate-600 mb-1">Grade Level</Form.Label>
+                    <Form.Select
+                      size="sm"
+                      value={newLeadForm.grade_level}
+                      onChange={(e) => setNewLeadForm({ ...newLeadForm, grade_level: e.target.value })}
+                    >
+                      {gradeLevels.map((lvl) => (
+                        <option key={lvl} value={lvl}>{lvl}</option>
+                      ))}
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label className="small fw-semibold text-slate-600 mb-1">City / State</Form.Label>
+                    <Form.Control
+                      size="sm"
+                      type="text"
+                      placeholder="e.g. Houston, TX"
+                      value={newLeadForm.city_state}
+                      onChange={(e) => setNewLeadForm({ ...newLeadForm, city_state: e.target.value })}
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+            </div>
+
+            <div className="p-3 bg-light rounded-3 mb-3 border">
+              <h6 className="fw-bold text-slate-700 mb-2" style={{ fontSize: "0.85rem", letterSpacing: "0.03em" }}>
+                PARENT / PRIMARY CONTACT
+              </h6>
+              <Row className="g-2">
+                <Col md={6}>
+                  <Form.Group>
+                    <Form.Label className="small fw-semibold text-slate-600 mb-1">First Name *</Form.Label>
+                    <Form.Control
+                      size="sm"
+                      type="text"
+                      placeholder="e.g. Sarah"
+                      value={newLeadForm.parent_first_name}
+                      onChange={(e) => setNewLeadForm({ ...newLeadForm, parent_first_name: e.target.value })}
+                      required
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group>
+                    <Form.Label className="small fw-semibold text-slate-600 mb-1">Last Name *</Form.Label>
+                    <Form.Control
+                      size="sm"
+                      type="text"
+                      placeholder="e.g. Johnson"
+                      value={newLeadForm.parent_last_name}
+                      onChange={(e) => setNewLeadForm({ ...newLeadForm, parent_last_name: e.target.value })}
+                      required
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group>
+                    <Form.Label className="small fw-semibold text-slate-600 mb-1">Email Address *</Form.Label>
+                    <Form.Control
+                      size="sm"
+                      type="email"
+                      placeholder="e.g. parent@example.com"
+                      value={newLeadForm.parent_email}
+                      onChange={(e) => setNewLeadForm({ ...newLeadForm, parent_email: e.target.value })}
+                      required
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group>
+                    <Form.Label className="small fw-semibold text-slate-600 mb-1">Phone Number</Form.Label>
+                    <Form.Control
+                      size="sm"
+                      type="text"
+                      placeholder="e.g. (555) 019-2834"
+                      value={newLeadForm.parent_phone}
+                      onChange={(e) => setNewLeadForm({ ...newLeadForm, parent_phone: e.target.value })}
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+            </div>
+
+            <div className="p-3 bg-light rounded-3 mb-3 border">
+              <Row className="g-2">
+                <Col md={6}>
+                  <Form.Group>
+                    <Form.Label className="small fw-semibold text-slate-600 mb-1">Initial Status</Form.Label>
+                    <Form.Select
+                      size="sm"
+                      value={newLeadForm.status}
+                      onChange={(e) => setNewLeadForm({ ...newLeadForm, status: e.target.value })}
+                    >
+                      {leadStatusOptions.map((st) => (
+                        <option key={st} value={st}>{st}</option>
+                      ))}
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+                <Col md={12}>
+                  <Form.Group className="mt-2">
+                    <Form.Label className="small fw-semibold text-slate-600 mb-1">Additional Intake Notes</Form.Label>
+                    <Form.Control
+                      as="textarea"
+                      rows={3}
+                      placeholder="Enter student background, special accommodations, reason for calling, etc."
+                      value={newLeadForm.internal_notes}
+                      onChange={(e) => setNewLeadForm({ ...newLeadForm, internal_notes: e.target.value })}
+                      style={{ fontSize: "0.85rem" }}
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+            </div>
+
+            <div className="d-flex justify-content-end gap-2 mt-4">
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                onClick={() => setShowCreateModal(false)}
+                disabled={creatingLead}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                type="submit"
+                disabled={creatingLead}
+                className="d-flex align-items-center gap-1 fw-bold"
+              >
+                {creatingLead ? (
+                  <>
+                    <Spinner size="sm" animation="border" /> Creating...
+                  </>
+                ) : (
+                  "Create Prospective Lead"
+                )}
+              </Button>
+            </div>
+          </Form>
+        </Modal.Body>
+      </Modal>
+
       <DeleteConfirmModal
         show={showPromoteModal}
         onHide={() => {

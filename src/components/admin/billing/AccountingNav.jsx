@@ -26,6 +26,11 @@ const AccountingNav = () => {
         </Nav.Link>
       </Nav.Item>
       <Nav.Item>
+        <Nav.Link as={NavLink} to="/admin/accounting/parents">
+          Parent Accounts
+        </Nav.Link>
+      </Nav.Item>
+      <Nav.Item>
         <Nav.Link as={NavLink} to="/admin/reports">
           Financial Reports
         </Nav.Link>
