@@ -179,14 +179,14 @@ const AllStudentsPage = () => {
       {error && <Alert variant="danger">{error}</Alert>}
 
       {/* Sleek Search & Popover Filter Toolbar */}
-      <div className="content-card shadow-sm border mb-3 bg-white p-3 rounded-3" style={{ borderColor: "#cbd5e1" }}>
+      <div className="content-card shadow-sm border mb-3 bg-white p-2.5 rounded-3" style={{ borderColor: "#e2e8f0" }}>
         <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
           <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ maxWidth: "460px" }}>
             <div className="position-relative flex-grow-1">
               <Search
                 className="position-absolute text-muted"
-                size={15}
-                style={{ left: "12px", top: "50%", transform: "translateY(-50%)" }}
+                size={14}
+                style={{ left: "10px", top: "50%", transform: "translateY(-50%)" }}
               />
               <Form.Control
                 type="text"
@@ -194,11 +194,12 @@ const AllStudentsPage = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={{
-                  paddingLeft: "36px",
-                  paddingRight: searchTerm ? "32px" : "12px",
-                  fontSize: "0.85rem",
+                  paddingLeft: "32px",
+                  paddingRight: searchTerm ? "30px" : "10px",
+                  fontSize: "12.5px",
                   borderColor: "#cbd5e1",
-                  height: "38px"
+                  borderRadius: "7px",
+                  height: "34px"
                 }}
               />
               {searchTerm && (
@@ -206,9 +207,9 @@ const AllStudentsPage = () => {
                   type="button"
                   onClick={() => setSearchTerm("")}
                   className="btn btn-link position-absolute p-0 text-muted"
-                  style={{ right: "10px", top: "50%", transform: "translateY(-50%)" }}
+                  style={{ right: "8px", top: "50%", transform: "translateY(-50%)" }}
                 >
-                  <X size={14} />
+                  <X size={13} />
                 </button>
               )}
             </div>
@@ -218,25 +219,27 @@ const AllStudentsPage = () => {
               <button
                 type="button"
                 onClick={() => setShowFilterPopover(!showFilterPopover)}
-                className={`btn d-inline-flex align-items-center gap-1.5 px-3 ${
+                className={`btn d-inline-flex align-items-center gap-1.5 px-2.5 ${
                   activeFilterCount > 0
                     ? "btn-primary text-white"
                     : "btn-outline-secondary bg-white text-slate-700"
                 }`}
                 style={{
-                  borderColor: activeFilterCount > 0 ? "#2563eb" : "#cbd5e1",
-                  height: "38px",
-                  fontSize: "0.83rem",
+                  borderColor: activeFilterCount > 0 ? "#673de6" : "#cbd5e1",
+                  backgroundColor: activeFilterCount > 0 ? "#673de6" : "#ffffff",
+                  height: "34px",
+                  fontSize: "12.5px",
+                  borderRadius: "7px",
                   fontWeight: "500",
                   whiteSpace: "nowrap"
                 }}
               >
-                <Filter size={15} />
+                <Filter size={13} />
                 <span>Filters</span>
                 {activeFilterCount > 0 && (
                   <span
                     className="badge rounded-pill bg-white text-primary ms-1 fw-bold"
-                    style={{ fontSize: "10px", padding: "2px 6px" }}
+                    style={{ fontSize: "10px", padding: "1px 5px" }}
                   >
                     {activeFilterCount}
                   </span>
@@ -249,13 +252,14 @@ const AllStudentsPage = () => {
                   className="shadow-lg border bg-white p-3 position-absolute"
                   style={{
                     left: 0,
-                    top: "45px",
+                    top: "40px",
                     zIndex: 1050,
-                    width: "300px",
+                    width: "280px",
                     maxHeight: "420px",
                     overflowY: "auto",
-                    borderRadius: "10px",
-                    borderColor: "#cbd5e1",
+                    borderRadius: "8px",
+                    borderColor: "#e2e8f0",
+                    fontSize: "12.5px",
                   }}
                 >
                   <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
