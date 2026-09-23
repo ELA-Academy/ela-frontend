@@ -10,6 +10,7 @@ import {
   Row,
   Col,
 } from "react-bootstrap";
+import { CardSkeleton, TableSkeleton } from "../../../components/Skeleton";
 import Select from "react-select";
 import DatePicker from "react-datepicker";
 import { PencilSquare } from "react-bootstrap-icons";
@@ -324,8 +325,9 @@ const LeadDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="text-center p-5">
-        <Spinner animation="border" />
+      <div className="py-4 px-3">
+        <CardSkeleton count={4} />
+        <TableSkeleton rows={4} cols={3} />
       </div>
     );
   }

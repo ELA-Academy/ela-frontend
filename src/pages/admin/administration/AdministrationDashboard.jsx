@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import PageHeader from "../../../components/admin/PageHeader";
 import StatCard from "../../../components/admin/StatCard";
 import { getAdministrationOverview } from "../../../services/administrationService";
-import { Spinner, Alert } from "react-bootstrap";
+import { CardSkeleton } from "../../../components/Skeleton";
+import { Alert } from "react-bootstrap";
 import {
   UserCheck,
   Calendar,
@@ -35,8 +36,9 @@ const AdministrationDashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-20">
-        <Spinner animation="border" />
+      <div className="space-y-6">
+        <PageHeader title="Administration Overview" />
+        <CardSkeleton count={4} />
       </div>
     );
   }

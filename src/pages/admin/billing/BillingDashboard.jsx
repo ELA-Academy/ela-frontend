@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Table, Alert, Card, Spinner } from "react-bootstrap";
+import { Table, Alert, Card } from "react-bootstrap";
 import { Search, RotateCcw, DollarSign, AlertCircle, CheckCircle, ArrowRight, User } from "lucide-react";
 import AccountingNav from "../../../components/admin/billing/AccountingNav";
+import { CardSkeleton, TableSkeleton } from "../../../components/Skeleton";
 import { getBillingAccounts } from "../../../services/billingService";
 
 const BillingDashboard = () => {
@@ -153,9 +154,8 @@ const BillingDashboard = () => {
       <div>
         <h1 className="page-title">Accounting</h1>
         <AccountingNav />
-        <div className="text-center p-5">
-          <Spinner />
-        </div>
+        <CardSkeleton count={3} />
+        <TableSkeleton rows={6} cols={6} />
       </div>
     );
 

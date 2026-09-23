@@ -11,6 +11,7 @@ import {
 import { Link } from "react-router-dom";
 import { MoreHorizontal, DollarSign, FileText, ArrowRight, CheckCircle2 } from "lucide-react";
 import AccountingNav from "../../../components/admin/billing/AccountingNav";
+import { TableSkeleton } from "../../../components/Skeleton";
 import {
   getSubsidies,
   createSubsidy,
@@ -173,9 +174,14 @@ const SubsidyAccountsPage = () => {
 
   if (loading)
     return (
-      <div className="text-center p-5">
-        <Spinner />
-      </div>
+      <>
+        <div className="d-flex justify-content-between align-items-center">
+          <h1 className="page-title">Accounting</h1>
+          <Button disabled>Create Subsidy</Button>
+        </div>
+        <AccountingNav />
+        <TableSkeleton rows={5} cols={5} />
+      </>
     );
   if (error) return <Alert variant="danger">{error}</Alert>;
 

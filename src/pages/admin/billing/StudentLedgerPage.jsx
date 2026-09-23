@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
-  Spinner,
   Alert,
   Table,
   Button,
@@ -12,6 +11,7 @@ import {
   Modal,
   Form
 } from "react-bootstrap";
+import { CardSkeleton, TableSkeleton } from "../../../components/Skeleton";
 import {
   ArrowLeft,
   CheckCircleFill,
@@ -184,8 +184,9 @@ const StudentLedgerPage = () => {
 
   if (loading)
     return (
-      <div className="text-center p-5">
-        <Spinner />
+      <div style={{ fontFamily: "Prompt", padding: "10px 20px" }}>
+        <CardSkeleton count={3} />
+        <TableSkeleton rows={6} cols={5} />
       </div>
     );
   if (error) return <Alert variant="danger">{error}</Alert>;

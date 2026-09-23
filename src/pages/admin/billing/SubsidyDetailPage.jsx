@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
-  Spinner,
   Alert,
   Tabs,
   Tab,
@@ -13,6 +12,7 @@ import {
   Dropdown,
 } from "react-bootstrap";
 import { ArrowLeft, ThreeDotsVertical } from "react-bootstrap-icons";
+import { CardSkeleton, TableSkeleton } from "../../../components/Skeleton";
 import { getSubsidyDetails } from "../../../services/subsidyService";
 import ReceiveSubsidyPaymentModal from "../../../components/admin/billing/ReceiveSubsidyPaymentModal";
 
@@ -61,8 +61,9 @@ const SubsidyDetailPage = () => {
 
   if (loading)
     return (
-      <div className="text-center p-5">
-        <Spinner />
+      <div className="py-3">
+        <CardSkeleton count={3} />
+        <TableSkeleton rows={5} cols={4} />
       </div>
     );
   if (error) return <Alert variant="danger">{error}</Alert>;
