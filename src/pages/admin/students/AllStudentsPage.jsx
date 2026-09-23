@@ -45,7 +45,9 @@ const AllStudentsPage = () => {
     setSelectedGrades([]);
   };
 
+  const handleResetFilters = handleClearFilters;
   const activeFilterCount = selectedStatuses.length + selectedGrades.length;
+  const hasActiveFilters = Boolean(searchTerm.trim() || activeFilterCount > 0);
 
   useEffect(() => {
     const fetchStudents = async () => {
