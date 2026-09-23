@@ -269,7 +269,7 @@ const LeadsListPage = () => {
       />
 
       {/* Sleek Search & Popover Filter Toolbar */}
-      <div className="content-card shadow-sm border mb-3 bg-white p-2.5 rounded-3" style={{ borderColor: "#e2e8f0" }}>
+      <div className="shadow-sm border mb-3 bg-white p-2.5 rounded-3 position-relative" style={{ borderColor: "#e2e8f0", zIndex: 100, overflow: "visible" }}>
         <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
           <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ maxWidth: "460px" }}>
             <div className="position-relative flex-grow-1">
@@ -305,7 +305,7 @@ const LeadsListPage = () => {
             </div>
 
             {/* Sleek Filter Popover Button */}
-            <div className="position-relative" ref={filterPopoverRef}>
+            <div className="position-relative" ref={filterPopoverRef} style={{ zIndex: 110 }}>
               <button
                 type="button"
                 onClick={() => setShowFilterPopover(!showFilterPopover)}

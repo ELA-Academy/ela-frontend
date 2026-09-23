@@ -13,6 +13,7 @@ import {
   deletePersonalTask 
 } from "../../services/taskService";
 import { Spinner, Alert, Tabs, Tab, Button, Form, Badge, Dropdown, Modal } from "react-bootstrap";
+import { ListSkeleton } from "../../components/Skeleton";
 import { Plus, Trash2, Edit3, Calendar, CheckSquare, Square, ChevronDown, ChevronRight, List, Lock, MoreHorizontal } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -324,8 +325,8 @@ const AllTasksPage = () => {
         >
           <Tab eventKey="assigned" title="Assigned to Me">
             {assignedLoading ? (
-              <div className="text-center p-5">
-                <Spinner animation="border" variant="primary" />
+              <div className="bg-white p-3 border rounded-3">
+                <ListSkeleton count={5} height="48px" />
               </div>
             ) : assignedError ? (
               <Alert variant="danger">{assignedError}</Alert>
@@ -356,8 +357,8 @@ const AllTasksPage = () => {
             </div>
 
             {personalLoading ? (
-              <div className="text-center p-5">
-                <Spinner animation="border" variant="primary" />
+              <div className="bg-white p-3 border rounded-3">
+                <ListSkeleton count={5} height="48px" />
               </div>
             ) : personalError ? (
               <Alert variant="danger">{personalError}</Alert>

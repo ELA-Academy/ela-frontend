@@ -15,6 +15,7 @@ import AccountingNav from "../../../components/admin/billing/AccountingNav";
 import CreatePlanWizard from "../../../components/admin/billing/CreatePlanWizard";
 import { getSubscriptions, getBillingPlans } from "../../../services/billingService";
 import { getAllStudents } from "../../../services/studentService";
+import { TableSkeleton } from "../../../components/Skeleton";
 import "../../../styles/AdminModern.css";
 
 import ProcareImportWizardModal from "../../../components/admin/billing/ProcareImportWizardModal";
@@ -154,9 +155,14 @@ const RecurringPlansPage = () => {
 
   if (loading)
     return (
-      <div className="text-center p-5 font-prompt">
-        <Spinner animation="border" variant="primary" />
-        <p className="text-muted mt-2 small">Loading recurring plans...</p>
+      <div className="recurring-plans-page font-prompt" style={{ fontFamily: '"Prompt", sans-serif' }}>
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <h2 className="fw-bold mb-1 fs-4 text-slate-800">Recurring Plans</h2>
+          </div>
+        </div>
+        <AccountingNav />
+        <TableSkeleton rows={6} cols={6} />
       </div>
     );
   if (error) return <Alert variant="danger" className="font-prompt">{error}</Alert>;
@@ -233,54 +239,56 @@ const RecurringPlansPage = () => {
       {activeTab === "active-plans" ? (
         <>
           {/* Toolbar */}
-          <div className="content-card mb-3 bg-white p-3 border rounded-3" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.02)", borderColor: "#cbd5e1" }}>
+          <div className="shadow-sm border mb-3 bg-white p-2.5 rounded-3 position-relative" style={{ borderColor: "#e2e8f0", zIndex: 100, overflow: "visible" }}>
             <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
               <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ maxWidth: "460px" }}>
                 <div className="position-relative flex-grow-1">
-                  <Search className="position-absolute text-muted" size={15} style={{ left: "12px", top: "50%", transform: "translateY(-50%)" }} />
+                  <Search className="position-absolute text-muted" size={14} style={{ left: "10px", top: "50%", transform: "translateY(-50%)" }} />
                   <Form.Control
                     type="text"
                     placeholder="Search students or plans..."
                     value={searchTerm}
                     onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
-                    style={{ paddingLeft: "36px", paddingRight: searchTerm ? "32px" : "12px", fontSize: "0.85rem", height: "38px", borderColor: "#cbd5e1" }}
+                    style={{ paddingLeft: "32px", paddingRight: searchTerm ? "30px" : "10px", fontSize: "12.5px", height: "34px", borderColor: "#cbd5e1", borderRadius: "7px" }}
                   />
                   {searchTerm && (
                     <button
                       type="button"
                       onClick={() => { setSearchTerm(""); setPage(1); }}
                       className="btn btn-link position-absolute p-0 text-muted"
-                      style={{ right: "10px", top: "50%", transform: "translateY(-50%)" }}
+                      style={{ right: "8px", top: "50%", transform: "translateY(-50%)" }}
                     >
-                      <X size={14} />
+                      <X size={13} />
                     </button>
                   )}
                 </div>
 
                 {/* Sleek Filter Popover Button */}
-                <div className="position-relative" ref={filterPopoverRef}>
+                <div className="position-relative" ref={filterPopoverRef} style={{ zIndex: 110 }}>
                   <button
                     type="button"
                     onClick={() => setShowFilterPopover(!showFilterPopover)}
-                    className={`btn d-inline-flex align-items-center gap-1.5 px-3 ${
+                    className={`btn d-inline-flex align-items-center gap-1.5 px-2.5 ${
                       activeFilterCount > 0
                         ? "btn-primary text-white"
                         : "btn-outline-secondary bg-white text-slate-700"
                     }`}
                     style={{
-                      borderColor: activeFilterCount > 0 ? "#2563eb" : "#cbd5e1",
-                      height: "38px",
-                      fontSize: "0.83rem",
+                      borderColor: activeFilterCount > 0 ? "#673de6" : "#cbd5e1",
+                      backgroundColor: activeFilterCount > 0 ? "#673de6" : "#ffffff",
+                      height: "34px",
+                      fontSize: "12.5px",
+                      borderRadius: "7px",
                       fontWeight: "500",
                       whiteSpace: "nowrap"
                     }}
                   >
-                    <Filter size={15} />
+                    <Filter size={13} />
                     <span>Filters</span>
                     {activeFilterCount > 0 && (
                       <span
                         className="badge rounded-pill bg-white text-primary ms-1 fw-bold"
-                        style={{ fontSize: "10px", padding: "2px 6px" }}
+                        style={{ fontSize: "10px", padding: "1px 5px" }}
                       >
                         {activeFilterCount}
                       </span>
@@ -292,12 +300,13 @@ const RecurringPlansPage = () => {
                     <div
                       className="shadow-lg border bg-white p-3 position-absolute"
                       style={{
-                        right: 0,
-                        top: "45px",
-                        zIndex: 1050,
+                        left: 0,
+                        top: "40px",
+                        zIndex: 1060,
                         width: "250px",
-                        borderRadius: "10px",
-                        borderColor: "#cbd5e1",
+                        borderRadius: "8px",
+                        borderColor: "#e2e8f0",
+                        fontSize: "12.5px",
                       }}
                     >
                       <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">

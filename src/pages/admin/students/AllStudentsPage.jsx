@@ -179,7 +179,7 @@ const AllStudentsPage = () => {
       {error && <Alert variant="danger">{error}</Alert>}
 
       {/* Sleek Search & Popover Filter Toolbar */}
-      <div className="content-card shadow-sm border mb-3 bg-white p-2.5 rounded-3" style={{ borderColor: "#e2e8f0" }}>
+      <div className="shadow-sm border mb-3 bg-white p-2.5 rounded-3 position-relative" style={{ borderColor: "#e2e8f0", zIndex: 100, overflow: "visible" }}>
         <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
           <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ maxWidth: "460px" }}>
             <div className="position-relative flex-grow-1">
@@ -190,7 +190,7 @@ const AllStudentsPage = () => {
               />
               <Form.Control
                 type="text"
-                placeholder="Search by student name or ID..."
+                placeholder="Search by student name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={{
@@ -215,7 +215,7 @@ const AllStudentsPage = () => {
             </div>
 
             {/* Sleek Filter Popover Button */}
-            <div className="position-relative" ref={filterPopoverRef}>
+            <div className="position-relative" ref={filterPopoverRef} style={{ zIndex: 110 }}>
               <button
                 type="button"
                 onClick={() => setShowFilterPopover(!showFilterPopover)}
@@ -348,7 +348,6 @@ const AllStudentsPage = () => {
           <thead>
             <tr style={{ backgroundColor: "#f8fafc" }}>
               <th style={{ color: "#334155", fontWeight: "600" }}>Student Name</th>
-              <th style={{ color: "#334155", fontWeight: "600" }}>Student ID</th>
               <th style={{ color: "#334155", fontWeight: "600" }}>Grade Level</th>
               <th style={{ color: "#334155", fontWeight: "600" }}>Status</th>
               <th style={{ color: "#334155", fontWeight: "600" }}>Parent(s)</th>
@@ -368,11 +367,6 @@ const AllStudentsPage = () => {
                       <User size={15} className="text-muted" />
                       <span>{student.last_name}, {student.first_name}</span>
                     </Link>
-                  </td>
-                  <td>
-                    <span className="badge bg-light text-dark border font-monospace" style={{ borderColor: "#e2e8f0" }}>
-                      {student.student_id_number || "—"}
-                    </span>
                   </td>
                   <td>
                     <span className="fw-medium text-slate-700">{student.grade_level || "—"}</span>
@@ -406,7 +400,7 @@ const AllStudentsPage = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="7" className="text-center py-5 text-muted">
+                <td colSpan="6" className="text-center py-5 text-muted">
                   <div className="py-3">
                     <User size={36} className="text-muted mb-2 opacity-50" />
                     <p className="mb-2 fw-medium">No students match your filter criteria.</p>

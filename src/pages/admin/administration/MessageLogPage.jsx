@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Spinner, Alert } from "react-bootstrap";
+import { ListSkeleton } from "../../../components/Skeleton";
 import { getMessageLogs } from "../../../services/administrationService";
 import { useAuth } from "../../../context/AuthContext";
 import { format, parseISO, isToday, isYesterday } from "date-fns";
@@ -128,8 +129,8 @@ const ConversationList = ({
 
   if (loading) {
     return (
-      <div className="text-center p-5">
-        <Spinner animation="border" />
+      <div className="p-3">
+        <ListSkeleton count={6} height="52px" />
       </div>
     );
   }
