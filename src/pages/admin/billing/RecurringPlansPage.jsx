@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Table, Spinner, Alert, Button, Form, Nav } from "react-bootstrap";
 import {
   Search,
@@ -7,12 +7,15 @@ import {
   MoreHorizontal,
   ChevronLeft,
   ChevronRight,
-  Plus
+  Plus,
+  X,
+  RotateCcw
 } from "lucide-react";
 import AccountingNav from "../../../components/admin/billing/AccountingNav";
 import CreatePlanWizard from "../../../components/admin/billing/CreatePlanWizard";
 import { getSubscriptions, getBillingPlans } from "../../../services/billingService";
 import { getAllStudents } from "../../../services/studentService";
+import { TableSkeleton } from "../../../components/Skeleton";
 import "../../../styles/AdminModern.css";
 
 import ProcareImportWizardModal from "../../../components/admin/billing/ProcareImportWizardModal";
@@ -28,10 +31,38 @@ const RecurringPlansPage = () => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [activeTab, setActiveTab] = useState("active-plans");
 
-  // Search & Pagination
+  // Search & Pagination & Filters
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCycles, setSelectedCycles] = useState([]);
+  const [showFilterPopover, setShowFilterPopover] = useState(false);
+  const filterPopoverRef = useRef(null);
   const [page, setPage] = useState(1);
   const limit = 30;
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (filterPopoverRef.current && !filterPopoverRef.current.contains(e.target)) {
+        setShowFilterPopover(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleToggleCycle = (cycle) => {
+    setSelectedCycles((prev) =>
+      prev.includes(cycle) ? prev.filter((c) => c !== cycle) : [...prev, cycle]
+    );
+    setPage(1);
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm("");
+    setSelectedCycles([]);
+    setPage(1);
+  };
+
+  const activeFilterCount = selectedCycles.length;
 
   const fetchData = useCallback(async () => {
     try {
@@ -64,11 +95,22 @@ const RecurringPlansPage = () => {
 
   // Filter and search active plans
   const filteredActivePlans = useMemo(() => {
-    return activePlans.filter((plan) =>
-      plan.student_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      plan.plan_name?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [activePlans, searchTerm]);
+    return activePlans.filter((plan) => {
+      const matchesSearch =
+        !searchTerm.trim() ||
+        plan.student_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        plan.plan_name?.toLowerCase().includes(searchTerm.toLowerCase());
+
+      let matchesCycle = true;
+      if (selectedCycles.length > 0) {
+        matchesCycle = selectedCycles.some((c) =>
+          (plan.cycle || "").toLowerCase().replace("-", "") === c.toLowerCase().replace("-", "")
+        );
+      }
+
+      return matchesSearch && matchesCycle;
+    });
+  }, [activePlans, searchTerm, selectedCycles]);
 
   // Paginated active plans
   const paginatedActivePlans = useMemo(() => {
@@ -113,9 +155,14 @@ const RecurringPlansPage = () => {
 
   if (loading)
     return (
-      <div className="text-center p-5 font-prompt">
-        <Spinner animation="border" variant="primary" />
-        <p className="text-muted mt-2 small">Loading recurring plans...</p>
+      <div className="recurring-plans-page font-prompt" style={{ fontFamily: '"Prompt", sans-serif' }}>
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <h2 className="fw-bold mb-1 fs-4 text-slate-800">Recurring Plans</h2>
+          </div>
+        </div>
+        <AccountingNav />
+        <TableSkeleton rows={6} cols={6} />
       </div>
     );
   if (error) return <Alert variant="danger" className="font-prompt">{error}</Alert>;
@@ -192,27 +239,108 @@ const RecurringPlansPage = () => {
       {activeTab === "active-plans" ? (
         <>
           {/* Toolbar */}
-          <div className="content-card mb-3 bg-white p-3 border rounded-3" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+          <div className="shadow-sm border mb-3 bg-white p-2.5 rounded-3 position-relative" style={{ borderColor: "#e2e8f0", zIndex: 100, overflow: "visible" }}>
             <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
-              <div className="d-flex align-items-center flex-grow-1" style={{ maxWidth: "380px" }}>
-                <div className="position-relative w-100">
-                  <Search className="position-absolute text-muted" size={16} style={{ left: "12px", top: "50%", transform: "translateY(-50%)" }} />
+              <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ maxWidth: "460px" }}>
+                <div className="position-relative flex-grow-1">
+                  <Search className="position-absolute text-muted" size={14} style={{ left: "10px", top: "50%", transform: "translateY(-50%)" }} />
                   <Form.Control
                     type="text"
-                    placeholder="Search Students"
+                    placeholder="Search students or plans..."
                     value={searchTerm}
                     onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
-                    style={{ paddingLeft: "36px", fontSize: "0.85rem", borderRadius: "6px" }}
+                    style={{ paddingLeft: "32px", paddingRight: searchTerm ? "30px" : "10px", fontSize: "12.5px", height: "34px", borderColor: "#cbd5e1", borderRadius: "7px" }}
                   />
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => { setSearchTerm(""); setPage(1); }}
+                      className="btn btn-link position-absolute p-0 text-muted"
+                      style={{ right: "8px", top: "50%", transform: "translateY(-50%)" }}
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Sleek Filter Popover Button */}
+                <div className="position-relative" ref={filterPopoverRef} style={{ zIndex: 110 }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowFilterPopover(!showFilterPopover)}
+                    className={`btn d-inline-flex align-items-center gap-1.5 px-2.5 ${
+                      activeFilterCount > 0
+                        ? "btn-primary text-white"
+                        : "btn-outline-secondary bg-white text-slate-700"
+                    }`}
+                    style={{
+                      borderColor: activeFilterCount > 0 ? "#673de6" : "#cbd5e1",
+                      backgroundColor: activeFilterCount > 0 ? "#673de6" : "#ffffff",
+                      height: "34px",
+                      fontSize: "12.5px",
+                      borderRadius: "7px",
+                      fontWeight: "500",
+                      whiteSpace: "nowrap"
+                    }}
+                  >
+                    <Filter size={13} />
+                    <span>Filters</span>
+                    {activeFilterCount > 0 && (
+                      <span
+                        className="badge rounded-pill bg-white text-primary ms-1 fw-bold"
+                        style={{ fontSize: "10px", padding: "1px 5px" }}
+                      >
+                        {activeFilterCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Floating Filter Popover */}
+                  {showFilterPopover && (
+                    <div
+                      className="shadow-lg border bg-white p-3 position-absolute"
+                      style={{
+                        left: 0,
+                        top: "40px",
+                        zIndex: 1060,
+                        width: "250px",
+                        borderRadius: "8px",
+                        borderColor: "#e2e8f0",
+                        fontSize: "12.5px",
+                      }}
+                    >
+                      <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                        <span className="small fw-bold text-slate-800 text-uppercase" style={{ fontSize: "11px", letterSpacing: "0.04em" }}>
+                          Plan Cycle
+                        </span>
+                        {activeFilterCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={handleClearFilters}
+                            className="btn btn-link p-0 text-primary small text-decoration-none"
+                            style={{ fontSize: "11px" }}
+                          >
+                            Clear all
+                          </button>
+                        )}
+                      </div>
+
+                      {["Weekly", "Bi-Weekly", "Monthly", "Quarterly"].map((cycle) => (
+                        <Form.Check
+                          key={cycle}
+                          type="checkbox"
+                          id={`plan-cycle-${cycle}`}
+                          label={cycle}
+                          checked={selectedCycles.includes(cycle)}
+                          onChange={() => handleToggleCycle(cycle)}
+                          className="small text-slate-700 mb-1.5"
+                          style={{ fontSize: "0.82rem" }}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-              <Button
-                variant="outline-light"
-                className="d-inline-flex align-items-center justify-content-center p-2 rounded-2 border-slate-300 text-slate-600"
-                style={{ background: "#fff", border: "1px solid #cbd5e1" }}
-              >
-                <Filter size={18} />
-              </Button>
             </div>
           </div>
 

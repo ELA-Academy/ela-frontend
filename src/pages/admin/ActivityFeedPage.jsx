@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import PageHeader from "../../components/admin/PageHeader";
 import { getActivityLogs } from "../../services/activityService";
-import { Spinner, Alert, Card, Form, Row, Col, Button, Table } from "react-bootstrap";
+import { ListSkeleton } from "../../components/Skeleton";
+import { Alert, Card, Form, Row, Col, Button, Table } from "react-bootstrap";
 import {
   PersonCircle,
   ClockHistory,
@@ -178,10 +179,9 @@ const ActivityFeedPage = () => {
       {error && <Alert variant="danger" className="rounded-2xl border-0 shadow-sm">{error}</Alert>}
 
       {loading ? (
-        <div className="text-center py-20">
-          <Spinner animation="border" variant="dark" />
-          <div className="text-xs text-slate-400 mt-2 font-medium">Loading audit history...</div>
-        </div>
+        <Card className="border-0 shadow-sm rounded-2xl bg-white border-slate-100 p-3">
+          <ListSkeleton count={7} height="56px" />
+        </Card>
       ) : (
         <Card className="border-0 shadow-sm rounded-2xl bg-white border-slate-100 overflow-hidden">
           <Card.Body className="p-0">

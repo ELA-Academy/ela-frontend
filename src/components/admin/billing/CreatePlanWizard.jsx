@@ -337,9 +337,9 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
 
   const firstInvoiceInfo = useMemo(() => {
     try {
-      const { start_date, invoice_generation_day, due_day, billing_cycle_for } =
+      const { start_date, invoice_generation_day, due_day, billing_cycle_for, cycle } =
         planData;
-      if (!start_date || !invoice_generation_day || !due_day)
+      if (!start_date)
         return {
           genDate: "N/A",
           dueDate: "N/A",
@@ -347,16 +347,45 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
           periodEnd: "N/A",
         };
 
-      let firstInvoiceDate = setDate(start_date, invoice_generation_day);
-      if (start_date.getDate() > invoice_generation_day)
-        firstInvoiceDate = addMonths(firstInvoiceDate, 1);
-      const firstDueDate = setDate(firstInvoiceDate, due_day);
-      const periodSourceDate =
-        billing_cycle_for === "Previous"
-          ? addMonths(firstInvoiceDate, -1)
-          : firstInvoiceDate;
-      const periodStart = startOfMonth(periodSourceDate);
-      const periodEnd = endOfMonth(periodSourceDate);
+      let firstInvoiceDate = start_date;
+      let firstDueDate = start_date;
+      let periodStart = start_date;
+      let periodEnd = start_date;
+
+      if (cycle === "Weekly") {
+        const genDay = Math.min(Math.max(invoice_generation_day || 1, 1), 7);
+        const dueD = Math.min(Math.max(due_day || 7, 1), 7);
+        firstInvoiceDate = addDays(start_date, genDay - 1);
+        firstDueDate = addDays(start_date, dueD - 1);
+        periodStart = start_date;
+        periodEnd = addDays(start_date, 6);
+      } else if (cycle === "Bi-Weekly") {
+        const genDay = Math.min(Math.max(invoice_generation_day || 1, 1), 14);
+        const dueD = Math.min(Math.max(due_day || 14, 1), 14);
+        firstInvoiceDate = addDays(start_date, genDay - 1);
+        firstDueDate = addDays(start_date, dueD - 1);
+        periodStart = start_date;
+        periodEnd = addDays(start_date, 13);
+      } else if (cycle === "Quarterly") {
+        firstInvoiceDate = setDate(start_date, invoice_generation_day || 1);
+        if (start_date.getDate() > (invoice_generation_day || 1))
+          firstInvoiceDate = addMonths(firstInvoiceDate, 3);
+        firstDueDate = setDate(firstInvoiceDate, due_day || 15);
+        periodStart = startOfMonth(firstInvoiceDate);
+        periodEnd = endOfMonth(addMonths(firstInvoiceDate, 2));
+      } else {
+        // Monthly
+        firstInvoiceDate = setDate(start_date, invoice_generation_day || 1);
+        if (start_date.getDate() > (invoice_generation_day || 1))
+          firstInvoiceDate = addMonths(firstInvoiceDate, 1);
+        firstDueDate = setDate(firstInvoiceDate, due_day || 15);
+        const periodSourceDate =
+          billing_cycle_for === "Previous"
+            ? addMonths(firstInvoiceDate, -1)
+            : firstInvoiceDate;
+        periodStart = startOfMonth(periodSourceDate);
+        periodEnd = endOfMonth(periodSourceDate);
+      }
 
       return {
         genDate: format(firstInvoiceDate, "MMM d, yyyy"),
@@ -377,6 +406,7 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
     planData.invoice_generation_day,
     planData.due_day,
     planData.billing_cycle_for,
+    planData.cycle,
   ]);
 
   const filteredStudents = students.filter((s) =>
@@ -406,7 +436,15 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
         return `${d}th`;
     }
   };
-  const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1);
+  const dayOptions = useMemo(() => {
+    if (planData.cycle === "Weekly") {
+      return Array.from({ length: 7 }, (_, i) => i + 1);
+    }
+    if (planData.cycle === "Bi-Weekly") {
+      return Array.from({ length: 14 }, (_, i) => i + 1);
+    }
+    return Array.from({ length: 28 }, (_, i) => i + 1);
+  }, [planData.cycle]);
 
   const renderStepContent = () => {
     if (loading)
@@ -546,20 +584,32 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
                       const cycle = e.target.value;
                       const start = new Date();
                       let end = new Date();
+                      let defaultGenDay = 1;
+                      let defaultDueDay = 15;
                       if (cycle === "Weekly") {
                         end = addDays(start, 7 * 52);
+                        defaultGenDay = 1;
+                        defaultDueDay = 7;
                       } else if (cycle === "Bi-Weekly") {
                         end = addDays(start, 14 * 26);
+                        defaultGenDay = 1;
+                        defaultDueDay = 14;
                       } else if (cycle === "Quarterly") {
                         end = addMonths(start, 12);
+                        defaultGenDay = 1;
+                        defaultDueDay = 15;
                       } else {
                         end = addMonths(start, 12);
+                        defaultGenDay = 1;
+                        defaultDueDay = 15;
                       }
                       setPlanData({
                         ...planData,
                         cycle,
                         start_date: start,
-                        end_date: end
+                        end_date: end,
+                        invoice_generation_day: defaultGenDay,
+                        due_day: defaultDueDay,
                       });
                     }}
                     style={{ fontSize: "0.8rem", padding: "6px 10px", borderRadius: "6px" }}
@@ -607,7 +657,7 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
               </Col>
             </Row>
 
-            {/* Inline generate options (Image 2 style) */}
+            {/* Inline generate options for ALL plan cycles */}
             <div className="d-flex align-items-center flex-wrap gap-1 px-3 py-2 mb-3 bg-white border rounded text-slate-700" style={{ fontSize: "0.8rem", borderColor: "#cbd5e1" }}>
               <span>Generate invoice on</span>
               <Form.Select
@@ -652,10 +702,10 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
                     billing_cycle_for: e.target.value,
                   })
                 }
-                style={{ width: "100px", padding: "2px 6px", fontSize: "0.8rem", border: "1px solid #cbd5e1", borderRadius: "4px" }}
+                style={{ width: "105px", padding: "2px 6px", fontSize: "0.8rem", border: "1px solid #cbd5e1", borderRadius: "4px" }}
               >
-                <option value="Previous">Previous</option>
                 <option value="Current">Current</option>
+                <option value="Previous">Previous</option>
               </Form.Select>
               <span>billing cycle.</span>
             </div>

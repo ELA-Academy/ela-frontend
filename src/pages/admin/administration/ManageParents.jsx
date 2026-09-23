@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Table,
   Button,
@@ -22,7 +22,10 @@ import {
   CheckCircle2,
   XCircle,
   Search,
-  UserCheck
+  UserCheck,
+  Filter,
+  X,
+  RotateCcw
 } from "lucide-react";
 import Select from "react-select";
 import api from "../../../utils/api";
@@ -175,20 +178,81 @@ const ManageParents = () => {
     label: `${s.first_name} ${s.last_name} (${s.grade_level || "Student"})`
   }));
 
+  // Filtering States
+  // Filtering States - Checkbox multi-select
+  const [selectedPortalStatuses, setSelectedPortalStatuses] = useState([]);
+  const [selectedLinkStatuses, setSelectedLinkStatuses] = useState([]);
+  const [showFilterPopover, setShowFilterPopover] = useState(false);
+  const filterPopoverRef = useRef(null);
+
+  // Close filter popover on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (filterPopoverRef.current && !filterPopoverRef.current.contains(e.target)) {
+        setShowFilterPopover(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleTogglePortalStatus = (status) => {
+    setSelectedPortalStatuses((prev) =>
+      prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]
+    );
+  };
+
+  const handleToggleLinkStatus = (status) => {
+    setSelectedLinkStatuses((prev) =>
+      prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]
+    );
+  };
+
+  const handleClearFilters = () => {
+    setSelectedPortalStatuses([]);
+    setSelectedLinkStatuses([]);
+    setSearchTerm("");
+  };
+
+  const activeFilterCount = selectedPortalStatuses.length + selectedLinkStatuses.length;
+
   const filteredParents = parentsList.filter((p) => {
     const term = searchTerm.toLowerCase();
     const fullName = `${p.first_name} ${p.last_name}`.toLowerCase();
     const email = (p.email || "").toLowerCase();
     const childrenNames = (p.children || []).map((c) => c.name.toLowerCase()).join(" ");
-    return fullName.includes(term) || email.includes(term) || childrenNames.includes(term);
+    const matchesSearch = !searchTerm.trim() || fullName.includes(term) || email.includes(term) || childrenNames.includes(term);
+
+    // Portal Status Checkbox Filter
+    let matchesPortal = true;
+    if (selectedPortalStatuses.length > 0) {
+      matchesPortal = selectedPortalStatuses.some((status) => {
+        if (status === "active") return p.is_active !== false && p.has_password;
+        if (status === "pending_setup") return p.is_active !== false && !p.has_password;
+        if (status === "disabled") return p.is_active === false;
+        return false;
+      });
+    }
+
+    // Student Link Checkbox Filter
+    let matchesLink = true;
+    if (selectedLinkStatuses.length > 0) {
+      matchesLink = selectedLinkStatuses.some((status) => {
+        if (status === "linked") return p.children && p.children.length > 0;
+        if (status === "unlinked") return !p.children || p.children.length === 0;
+        return false;
+      });
+    }
+
+    return matchesSearch && matchesPortal && matchesLink;
   });
 
   return (
     <div className="container-fluid p-0">
       <PageHeader
         title="Parent Accounts Database"
-        subtitle="Manage registered parent portal accounts, reset credentials, and link students"
-        badge="Administration & IT"
+        subtitle="Manage registered parent portal accounts, send invite links, and review portal access status"
+        badge="Administration & Accounting"
         actions={
           <button
             onClick={() => handleShowModal()}
@@ -202,31 +266,186 @@ const ManageParents = () => {
 
       {error && <Alert variant="danger">{error}</Alert>}
 
-      <Card className="content-card shadow-sm border-0 mb-4">
-        <Card.Body className="p-3">
-          <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
-            <div className="input-group" style={{ maxWidth: "340px" }}>
-              <span className="input-group-text bg-light border-end-0">
-                <Search size={15} className="text-muted" />
-              </span>
-              <input
+      {/* Sleek Search & Popover Filter Toolbar */}
+      <div className="shadow-sm border mb-3 bg-white p-2.5 rounded-3 position-relative" style={{ borderColor: "#e2e8f0", zIndex: 100, overflow: "visible" }}>
+        <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+          <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ maxWidth: "460px" }}>
+            <div className="position-relative flex-grow-1">
+              <Search
+                className="position-absolute text-muted"
+                size={14}
+                style={{ left: "10px", top: "50%", transform: "translateY(-50%)" }}
+              />
+              <Form.Control
                 type="text"
-                placeholder="Search parents, emails, children..."
+                placeholder="Search parent name, email, or child..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="form-control border-start-0 bg-light"
-                style={{ fontSize: "0.85rem" }}
+                style={{
+                  paddingLeft: "32px",
+                  paddingRight: searchTerm ? "30px" : "10px",
+                  fontSize: "12.5px",
+                  borderColor: "#cbd5e1",
+                  borderRadius: "7px",
+                  height: "34px"
+                }}
               />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  className="btn btn-link position-absolute p-0 text-muted"
+                  style={{ right: "8px", top: "50%", transform: "translateY(-50%)" }}
+                >
+                  <X size={13} />
+                </button>
+              )}
             </div>
 
-            <span style={{ fontSize: "0.82rem", color: "#64748b", fontWeight: 600 }}>
-              Total Accounts: {parentsList.length}
-            </span>
-          </div>
-        </Card.Body>
-      </Card>
+            {/* Sleek Filter Popover Button */}
+            <div className="position-relative" ref={filterPopoverRef} style={{ zIndex: 110 }}>
+              <button
+                type="button"
+                onClick={() => setShowFilterPopover(!showFilterPopover)}
+                className={`btn d-inline-flex align-items-center gap-1.5 px-2.5 ${
+                  activeFilterCount > 0
+                    ? "btn-primary text-white"
+                    : "btn-outline-secondary bg-white text-slate-700"
+                }`}
+                style={{
+                  borderColor: activeFilterCount > 0 ? "#673de6" : "#cbd5e1",
+                  backgroundColor: activeFilterCount > 0 ? "#673de6" : "#ffffff",
+                  height: "34px",
+                  fontSize: "12.5px",
+                  borderRadius: "7px",
+                  fontWeight: "500",
+                  whiteSpace: "nowrap"
+                }}
+              >
+                <Filter size={13} />
+                <span>Filters</span>
+                {activeFilterCount > 0 && (
+                  <span
+                    className="badge rounded-pill bg-white text-primary ms-1 fw-bold"
+                    style={{ fontSize: "10px", padding: "1px 5px" }}
+                  >
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
 
-      <Card className="content-card shadow-sm border-0">
+              {/* Floating Filter Popover */}
+              {showFilterPopover && (
+                <div
+                  className="shadow-lg border bg-white p-3 position-absolute"
+                  style={{
+                    left: 0,
+                    top: "40px",
+                    zIndex: 1050,
+                    width: "280px",
+                    borderRadius: "8px",
+                    borderColor: "#e2e8f0",
+                    fontSize: "12.5px",
+                  }}
+                >
+                  <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                    <span className="small fw-bold text-slate-800 text-uppercase" style={{ fontSize: "11px", letterSpacing: "0.04em" }}>
+                      Filter Accounts
+                    </span>
+                    {activeFilterCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearFilters}
+                        className="btn btn-link p-0 text-primary small text-decoration-none"
+                        style={{ fontSize: "11px" }}
+                      >
+                        Clear all
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Portal Status Checkboxes */}
+                  <div className="mb-3">
+                    <div className="small fw-semibold text-slate-500 text-uppercase mb-1.5" style={{ fontSize: "10px", letterSpacing: "0.04em" }}>
+                      Portal Status
+                    </div>
+                    <Form.Check
+                      type="checkbox"
+                      id="mp-filter-active"
+                      label="Active (Password Set)"
+                      checked={selectedPortalStatuses.includes("active")}
+                      onChange={() => handleTogglePortalStatus("active")}
+                      className="small text-slate-700 mb-1"
+                      style={{ fontSize: "0.82rem" }}
+                    />
+                    <Form.Check
+                      type="checkbox"
+                      id="mp-filter-pending"
+                      label="Pending Activation (Invited)"
+                      checked={selectedPortalStatuses.includes("pending_setup")}
+                      onChange={() => handleTogglePortalStatus("pending_setup")}
+                      className="small text-slate-700 mb-1"
+                      style={{ fontSize: "0.82rem" }}
+                    />
+                    <Form.Check
+                      type="checkbox"
+                      id="mp-filter-disabled"
+                      label="Disabled Accounts"
+                      checked={selectedPortalStatuses.includes("disabled")}
+                      onChange={() => handleTogglePortalStatus("disabled")}
+                      className="small text-slate-700"
+                      style={{ fontSize: "0.82rem" }}
+                    />
+                  </div>
+
+                  {/* Student Link Checkboxes */}
+                  <div className="mb-1">
+                    <div className="small fw-semibold text-slate-500 text-uppercase mb-1.5" style={{ fontSize: "10px", letterSpacing: "0.04em" }}>
+                      Student Links
+                    </div>
+                    <Form.Check
+                      type="checkbox"
+                      id="mp-filter-linked"
+                      label="Linked to Student(s)"
+                      checked={selectedLinkStatuses.includes("linked")}
+                      onChange={() => handleToggleLinkStatus("linked")}
+                      className="small text-slate-700 mb-1"
+                      style={{ fontSize: "0.82rem" }}
+                    />
+                    <Form.Check
+                      type="checkbox"
+                      id="mp-filter-unlinked"
+                      label="No Students Linked"
+                      checked={selectedLinkStatuses.includes("unlinked")}
+                      onChange={() => handleToggleLinkStatus("unlinked")}
+                      className="small text-slate-700"
+                      style={{ fontSize: "0.82rem" }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Showing count indicator */}
+          <div className="small text-muted">
+            Showing <strong className="text-dark">{filteredParents.length}</strong> of{" "}
+            <strong>{parentsList.length}</strong> accounts
+            {(searchTerm || activeFilterCount > 0) && (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="btn btn-link btn-sm p-0 ms-2 text-primary text-decoration-none"
+                style={{ fontSize: "0.8rem" }}
+              >
+                Reset
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <Card className="content-card shadow-sm border" style={{ borderColor: "#cbd5e1" }}>
         <Card.Body className="p-0">
           {loading ? (
             <TableSkeleton rows={5} columns={6} />
