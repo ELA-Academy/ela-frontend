@@ -259,4 +259,29 @@ export const getStudentParentPaymentMethods = async (studentId) => {
   }
 };
 
+export const previewProcarePlans = async (formDataOrPayload) => {
+  try {
+    const isFormData = formDataOrPayload instanceof FormData;
+    const config = isFormData ? { headers: { "Content-Type": "multipart/form-data" } } : {};
+    const response = await api.post("/billing/preview-procare-plans", formDataOrPayload, config);
+    return response.data;
+  } catch (error) {
+    console.error("Error previewing Procare plans:", error);
+    throw error;
+  }
+};
+
+export const importProcarePlans = async (formDataOrPayload) => {
+  try {
+    const isFormData = formDataOrPayload instanceof FormData;
+    const config = isFormData ? { headers: { "Content-Type": "multipart/form-data" } } : {};
+    const response = await api.post("/billing/import-procare-plans", formDataOrPayload, config);
+    return response.data;
+  } catch (error) {
+    console.error("Error importing Procare plans:", error);
+    throw error;
+  }
+};
+
+
 
