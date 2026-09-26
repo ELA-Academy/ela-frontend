@@ -115,7 +115,7 @@ const Login = () => {
         
         <div className="login-form-wrapper">
           <div className="login-logo-container">
-            <img src="/images/ELA-logo.png" alt="ELA Academy Logo" className="login-logo-img" />
+            <img src="/images/ela-app-logo.png" alt="ELA Academy Logo" className="login-logo-img" />
           </div>
           {otpRequired ? (
             <>
@@ -364,7 +364,7 @@ const Login = () => {
               </div>
               <div style={{ flexGrow: 1 }} />
               <div className="mock-logo-badge">
-                E
+                <img src="/images/ela-app-logo.png" alt="ELA" />
               </div>
             </div>
             
@@ -376,7 +376,7 @@ const Login = () => {
               </div>
               
               <div className="mock-card-logo">
-                <img src="/images/ELA-logo.png" alt="School logo" />
+                <img src="/images/ela-app-logo.png" alt="ELA Academy" />
               </div>
               
               <div className="mock-stats-label">Total Enrollment</div>
