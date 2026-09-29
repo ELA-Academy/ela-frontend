@@ -26,13 +26,14 @@ const ProcareImportWizardModal = ({ show, handleClose, onImportSuccess }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [importResults, setImportResults] = useState(null);
 
-  // Import options
   const [options, setOptions] = useState({
     create_missing_students: true,
     import_templates: true,
     import_presets: true,
     import_subscriptions: true,
-    all_students: false
+    all_students: false,
+    schedule_preset: "1st",
+    next_invoice_date: "2026-10-26"
   });
 
   // Reset when modal opens
@@ -461,6 +462,42 @@ const ProcareImportWizardModal = ({ show, handleClose, onImportSuccess }) => {
                 checked={options.import_subscriptions}
                 onChange={(e) => setOptions({ ...options, import_subscriptions: e.target.checked })}
               />
+
+              {/* Schedule Configuration for Imported Plans */}
+              {options.import_subscriptions && (
+                <div className="p-3 bg-white rounded-3 border mt-3">
+                  <div className="fw-bold text-slate-800 small mb-1">
+                    Default Due Date & Invoice Generation Schedule
+                  </div>
+                  <div className="text-muted small mb-2.5" style={{ fontSize: "0.75rem" }}>
+                    Tuition invoices will be set to generate <strong>5 days prior</strong> to the due date.
+                  </div>
+                  <Row className="g-2">
+                    <Col md={6}>
+                      <div
+                        onClick={() => setOptions({ ...options, schedule_preset: "1st", next_invoice_date: "2026-10-26" })}
+                        className={`p-2.5 rounded-2 border cursor-pointer transition-all ${
+                          options.schedule_preset === "1st" ? "border-primary bg-primary bg-opacity-10 fw-semibold" : "bg-light"
+                        }`}
+                      >
+                        <div className="small text-slate-800">1st of the Month Due Date</div>
+                        <div className="text-muted" style={{ fontSize: "11px" }}>Generate on 26th of previous month</div>
+                      </div>
+                    </Col>
+                    <Col md={6}>
+                      <div
+                        onClick={() => setOptions({ ...options, schedule_preset: "15th", next_invoice_date: "2026-10-10" })}
+                        className={`p-2.5 rounded-2 border cursor-pointer transition-all ${
+                          options.schedule_preset === "15th" ? "border-primary bg-primary bg-opacity-10 fw-semibold" : "bg-light"
+                        }`}
+                      >
+                        <div className="small text-slate-800">15th of the Month Due Date</div>
+                        <div className="text-muted" style={{ fontSize: "11px" }}>Generate on 10th of the month</div>
+                      </div>
+                    </Col>
+                  </Row>
+                </div>
+              )}
             </div>
           </div>
         )}
