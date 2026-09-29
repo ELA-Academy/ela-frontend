@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Table, Spinner, Alert, Button, Form, Nav } from "react-bootstrap";
+import { Table, Spinner, Alert, Button, Form, Nav, Dropdown } from "react-bootstrap";
 import {
   Search,
   Filter,
@@ -9,17 +9,61 @@ import {
   ChevronRight,
   Plus,
   X,
-  RotateCcw
+  RotateCcw,
+  Edit3,
+  Layers,
+  Calendar,
+  Trash2,
+  CheckSquare
 } from "lucide-react";
 import AccountingNav from "../../../components/admin/billing/AccountingNav";
 import CreatePlanWizard from "../../../components/admin/billing/CreatePlanWizard";
-import { getSubscriptions, getBillingPlans } from "../../../services/billingService";
+import BulkEditPlansModal from "../../../components/admin/billing/BulkEditPlansModal";
+import EditPlanModal from "../../../components/admin/billing/EditPlanModal";
+import { getSubscriptions, getBillingPlans, deleteSubscription } from "../../../services/billingService";
 import { getAllStudents } from "../../../services/studentService";
 import { TableSkeleton } from "../../../components/Skeleton";
 import "../../../styles/AdminModern.css";
 
 import ProcareImportWizardModal from "../../../components/admin/billing/ProcareImportWizardModal";
 import { Upload } from "lucide-react";
+
+// Safe date formatter to prevent UTC timezone offset issues (e.g. Sep 1 showing as Aug 31)
+const formatDateSafe = (dateStr) => {
+  if (!dateStr) return "N/A";
+  const str = String(dateStr).split("T")[0].trim();
+  const parts = str.split("-");
+  if (parts.length === 3) {
+    const [year, month, day] = parts.map(Number);
+    if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+      const d = new Date(year, month - 1, day);
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    }
+  }
+  return dateStr;
+};
+
+const getPlanNextDueDate = (plan) => {
+  if (plan.next_due_date) {
+    return formatDateSafe(plan.next_due_date);
+  }
+  if (!plan.next_invoice_date) return "N/A";
+  const parts = String(plan.next_invoice_date).split("T")[0].split("-").map(Number);
+  if (parts.length !== 3) return "N/A";
+  const [y, m, d] = parts;
+  const dueDay = plan.due_day != null && plan.due_day > 0 ? Number(plan.due_day) : 1;
+  let dueYear = y;
+  let dueMonth = m;
+  if (d > dueDay) {
+    dueMonth = m + 1;
+    if (dueMonth > 12) {
+      dueMonth = 1;
+      dueYear += 1;
+    }
+  }
+  const dObj = new Date(dueYear, dueMonth - 1, dueDay);
+  return dObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+};
 
 const RecurringPlansPage = () => {
   const [activePlans, setActivePlans] = useState([]);
@@ -30,6 +74,12 @@ const RecurringPlansPage = () => {
   const [showWizard, setShowWizard] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [activeTab, setActiveTab] = useState("active-plans");
+
+  // Selection & Bulk Edit State
+  const [selectedPlanIds, setSelectedPlanIds] = useState(new Set());
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false);
+  const [editingPlan, setEditingPlan] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   // Search & Pagination & Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -117,6 +167,70 @@ const RecurringPlansPage = () => {
     const start = (page - 1) * limit;
     return filteredActivePlans.slice(start, start + limit);
   }, [filteredActivePlans, page]);
+
+  // Selected plans objects
+  const selectedPlansList = useMemo(() => {
+    return activePlans.filter((p) => selectedPlanIds.has(p.id));
+  }, [activePlans, selectedPlanIds]);
+
+  const allCurrentPageSelected =
+    paginatedActivePlans.length > 0 &&
+    paginatedActivePlans.every((p) => selectedPlanIds.has(p.id));
+
+  const toggleSelectAllCurrentPage = () => {
+    setSelectedPlanIds((prev) => {
+      const next = new Set(prev);
+      if (allCurrentPageSelected) {
+        paginatedActivePlans.forEach((p) => next.delete(p.id));
+      } else {
+        paginatedActivePlans.forEach((p) => next.add(p.id));
+      }
+      return next;
+    });
+  };
+
+  const selectAllFiltered = () => {
+    const next = new Set(filteredActivePlans.map((p) => p.id));
+    setSelectedPlanIds(next);
+  };
+
+  const clearSelection = () => {
+    setSelectedPlanIds(new Set());
+  };
+
+  const toggleSelectPlan = (id) => {
+    setSelectedPlanIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleDeletePlan = async (plan) => {
+    if (
+      !window.confirm(
+        `Are you sure you want to delete recurring plan '${plan.plan_name}' for ${plan.student_name}?`
+      )
+    ) {
+      return;
+    }
+    try {
+      await deleteSubscription(plan.id);
+      setSelectedPlanIds((prev) => {
+        const next = new Set(prev);
+        next.delete(plan.id);
+        return next;
+      });
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      alert(err?.response?.data?.error || "Failed to delete recurring plan.");
+    }
+  };
 
   // Compute number of students without a plan
   const studentsWithoutPlan = useMemo(() => {
@@ -344,6 +458,66 @@ const RecurringPlansPage = () => {
             </div>
           </div>
 
+          {/* Sticky Bulk Actions Bar when items are selected */}
+          {selectedPlanIds.size > 0 && (
+            <div
+              className="d-flex align-items-center justify-content-between p-2.5 px-3 mb-3 rounded-3 shadow-sm transition-all"
+              style={{
+                backgroundColor: "#1e1b4b",
+                color: "#ffffff",
+                position: "sticky",
+                top: "12px",
+                zIndex: 1040,
+                border: "1px solid #312e81"
+              }}
+            >
+              <div className="d-flex align-items-center gap-2">
+                <span
+                  className="badge bg-primary px-2.5 py-1.5 fw-bold d-flex align-items-center gap-1"
+                  style={{ fontSize: "12px" }}
+                >
+                  <CheckSquare size={13} />
+                  <span>{selectedPlanIds.size}</span>
+                </span>
+                <span className="small fw-semibold">
+                  recurring plan{selectedPlanIds.size > 1 ? "s" : ""} selected
+                </span>
+                {selectedPlanIds.size < filteredActivePlans.length && (
+                  <button
+                    type="button"
+                    onClick={selectAllFiltered}
+                    className="btn btn-link btn-sm text-white text-decoration-underline p-0 ms-2"
+                    style={{ fontSize: "12px" }}
+                  >
+                    Select all {filteredActivePlans.length} plans
+                  </button>
+                )}
+              </div>
+
+              <div className="d-flex align-items-center gap-2">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setShowBulkEditModal(true)}
+                  className="d-inline-flex align-items-center gap-1.5 fw-semibold px-3 shadow-sm"
+                  style={{ height: "32px", fontSize: "12.5px" }}
+                >
+                  <Layers size={14} />
+                  <span>Bulk Edit Dates & Schedule</span>
+                </Button>
+                <Button
+                  variant="outline-light"
+                  size="sm"
+                  onClick={clearSelection}
+                  className="py-1 px-2.5"
+                  style={{ height: "32px", fontSize: "12px" }}
+                >
+                  Clear
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Subtitle / summary info */}
           <div className="d-flex justify-content-between align-items-center mb-2 px-1">
             <div className="small fw-bold text-slate-600 text-uppercase" style={{ letterSpacing: "0.03em", fontSize: "0.72rem" }}>
@@ -390,43 +564,59 @@ const RecurringPlansPage = () => {
               <thead>
                 <tr style={{ background: "#fafafa" }}>
                   <th style={{ width: "3%", padding: "12px", textAlign: "center" }}>
-                    <Form.Check type="checkbox" />
+                    <Form.Check
+                      type="checkbox"
+                      checked={allCurrentPageSelected}
+                      onChange={toggleSelectAllCurrentPage}
+                    />
                   </th>
                   <th style={{ width: "25%", fontSize: "0.78rem", fontWeight: "600", textTransform: "none", color: "#64748b", padding: "12px" }}>
                     NAME
                   </th>
-                  <th style={{ width: "25%", fontSize: "0.78rem", fontWeight: "600", textTransform: "none", color: "#64748b", padding: "12px" }}>
+                  <th style={{ width: "23%", fontSize: "0.78rem", fontWeight: "600", textTransform: "none", color: "#64748b", padding: "12px" }}>
                     PLAN NAME
                   </th>
                   <th style={{ width: "20%", fontSize: "0.78rem", fontWeight: "600", textTransform: "none", color: "#64748b", padding: "12px" }}>
                     PLAN PERIOD
                   </th>
-                  <th style={{ width: "12%", fontSize: "0.78rem", fontWeight: "600", textTransform: "none", color: "#64748b", padding: "12px" }}>
+                  <th style={{ width: "13%", fontSize: "0.78rem", fontWeight: "600", textTransform: "none", color: "#64748b", padding: "12px" }}>
                     NEXT INVOICE DATE
                   </th>
-                  <th style={{ width: "12%", fontSize: "0.78rem", fontWeight: "600", textTransform: "none", color: "#64748b", padding: "12px" }}>
+                  <th style={{ width: "13%", fontSize: "0.78rem", fontWeight: "600", textTransform: "none", color: "#64748b", padding: "12px" }}>
                     NEXT DUE DATE
                   </th>
                   <th className="text-end" style={{ width: "10%", fontSize: "0.78rem", fontWeight: "600", textTransform: "none", color: "#64748b", padding: "12px" }}>
                     AMOUNT
                   </th>
-                  <th style={{ width: "3%", padding: "12px" }}></th>
+                  <th style={{ width: "4%", padding: "12px", textAlign: "center" }}></th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedActivePlans.map((plan) => {
                   const avatarColor = getAvatarBg(plan.student_name || "A");
-                  const nextDueDate = new Date(new Date(plan.next_invoice_date).getTime() + 14 * 24 * 60 * 60 * 1000); // Default to +14 days due
-                  
+                  const isSelected = selectedPlanIds.has(plan.id);
+
                   return (
-                    <tr key={plan.id} className="workspace-row" style={{ borderBottom: "1px solid #f1f5f9", fontSize: "0.85rem" }}>
-                      <td style={{ padding: "12px", textAlign: "center" }}>
-                        <Form.Check type="checkbox" />
+                    <tr
+                      key={plan.id}
+                      className="workspace-row"
+                      style={{
+                        borderBottom: "1px solid #f1f5f9",
+                        fontSize: "0.85rem",
+                        backgroundColor: isSelected ? "#f5f3ff" : undefined
+                      }}
+                    >
+                      <td style={{ padding: "12px", textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+                        <Form.Check
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelectPlan(plan.id)}
+                        />
                       </td>
                       <td style={{ padding: "12px" }}>
                         <div className="d-flex align-items-center gap-2">
                           <div
-                            className="d-flex align-items-center justify-content-center text-white fw-bold rounded-circle"
+                            className="d-flex align-items-center justify-content-center text-white fw-bold rounded-circle flex-shrink-0"
                             style={{
                               width: "30px",
                               height: "30px",
@@ -437,43 +627,84 @@ const RecurringPlansPage = () => {
                             {getInitials(plan.student_name)}
                           </div>
                           <div className="d-flex flex-column">
-                            <span className="text-primary fw-bold cursor-pointer">
+                            <span
+                              className="text-primary fw-bold cursor-pointer"
+                              onClick={() => { setEditingPlan(plan); setShowEditModal(true); }}
+                            >
                               {plan.student_name}
                             </span>
                             <span className="text-muted small" style={{ fontSize: "0.72rem" }}>
-                              Home Room 1st
+                              {plan.grade_level || "Student"}
                             </span>
                           </div>
                         </div>
                       </td>
                       <td style={{ padding: "12px", color: "#1f2937" }}>
                         <div className="d-flex align-items-center gap-1">
-                          <FileText size={14} className="text-warning" />
+                          <FileText size={14} className="text-warning flex-shrink-0" />
                           <span className="fw-semibold">{plan.plan_name}</span>
                         </div>
                       </td>
                       <td className="text-slate-600" style={{ padding: "12px" }}>
                         <div>
-                          {new Date(plan.start_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} -{" "}
-                          {plan.end_date
-                            ? new Date(plan.end_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-                            : "Ongoing"}
+                          {formatDateSafe(plan.start_date)} -{" "}
+                          {plan.end_date ? formatDateSafe(plan.end_date) : "Ongoing"}
                         </div>
-                        <div className="text-muted small" style={{ fontSize: "0.72rem" }}>{plan.cycle}</div>
+                        <div className="d-flex align-items-center gap-1.5 mt-0.5">
+                          <span className="text-muted small" style={{ fontSize: "0.72rem" }}>{plan.cycle}</span>
+                          <span
+                            className={`badge border ${
+                              plan.due_day === 15 ? "bg-info-subtle text-info-emphasis" : "bg-primary-subtle text-primary-emphasis"
+                            }`}
+                            style={{ fontSize: "10px", padding: "1px 5px" }}
+                          >
+                            {plan.due_day === 15 ? "15th Due" : "1st Due"}
+                          </span>
+                        </div>
                       </td>
                       <td style={{ padding: "12px" }}>
-                        <span className="text-primary fw-semibold cursor-pointer">
-                          {new Date(plan.next_invoice_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        <span
+                          className="text-primary fw-semibold cursor-pointer d-inline-flex align-items-center gap-1"
+                          onClick={() => { setEditingPlan(plan); setShowEditModal(true); }}
+                          title="Click to edit schedule"
+                        >
+                          {formatDateSafe(plan.next_invoice_date)}
+                          <Edit3 size={11} className="opacity-50" />
                         </span>
+                        <div className="text-muted" style={{ fontSize: "10.5px" }}>
+                          Generates 5d prior
+                        </div>
                       </td>
-                      <td className="text-slate-700" style={{ padding: "12px" }}>
-                        {nextDueDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      <td className="text-slate-800 fw-semibold" style={{ padding: "12px" }}>
+                        {getPlanNextDueDate(plan)}
                       </td>
                       <td className="text-end fw-bold text-slate-800" style={{ padding: "12px" }}>
                         {formatCurrency(plan.total_amount)}
                       </td>
-                      <td style={{ padding: "12px" }}>
-                        <MoreHorizontal size={16} className="text-muted cursor-pointer" />
+                      <td style={{ padding: "12px", textAlign: "center" }}>
+                        <Dropdown align="end">
+                          <Dropdown.Toggle
+                            as="button"
+                            className="btn btn-sm btn-link text-muted p-0 border-0"
+                            style={{ boxShadow: "none" }}
+                          >
+                            <MoreHorizontal size={16} />
+                          </Dropdown.Toggle>
+                          <Dropdown.Menu className="shadow-sm border-0 py-1" style={{ fontSize: "12.5px" }}>
+                            <Dropdown.Item onClick={() => { setEditingPlan(plan); setShowEditModal(true); }}>
+                              <Edit3 size={13} className="me-2 text-primary" />
+                              Edit Plan Dates & Details
+                            </Dropdown.Item>
+                            <Dropdown.Divider className="my-1" />
+                            <Dropdown.Item
+                              className="text-danger"
+                              onClick={() => handleDeletePlan(plan)}
+                            >
+                              <Trash2 size={13} className="me-2" />
+                              Delete Plan
+                            </Dropdown.Item>
+                          </Dropdown.Menu>
+                        </Dropdown>
                       </td>
                     </tr>
                   );
@@ -547,6 +778,26 @@ const RecurringPlansPage = () => {
         show={showImportModal}
         handleClose={() => setShowImportModal(false)}
         onImportSuccess={fetchData}
+      />
+
+      <BulkEditPlansModal
+        show={showBulkEditModal}
+        onHide={() => setShowBulkEditModal(false)}
+        selectedPlans={selectedPlansList}
+        onSuccess={() => {
+          clearSelection();
+          fetchData();
+        }}
+      />
+
+      <EditPlanModal
+        show={showEditModal}
+        onHide={() => {
+          setShowEditModal(false);
+          setEditingPlan(null);
+        }}
+        plan={editingPlan}
+        onSuccess={fetchData}
       />
       
       <style>{`

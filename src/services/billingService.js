@@ -88,6 +88,36 @@ export const createSubscriptions = async (subscriptionData) => {
   }
 };
 
+export const updateSubscription = async (subId, updateData) => {
+  try {
+    const response = await api.put(`/billing/subscriptions/${subId}`, updateData);
+    return response.data;
+  } catch (error) {
+    console.error(`Error updating subscription ${subId}:`, error);
+    throw error;
+  }
+};
+
+export const bulkUpdateSubscriptions = async (bulkData) => {
+  try {
+    const response = await api.post("/billing/subscriptions/bulk-update", bulkData);
+    return response.data;
+  } catch (error) {
+    console.error("Error bulk updating subscriptions:", error);
+    throw error;
+  }
+};
+
+export const deleteSubscription = async (subId) => {
+  try {
+    const response = await api.delete(`/billing/subscriptions/${subId}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error deleting subscription ${subId}:`, error);
+    throw error;
+  }
+};
+
 export const receivePayment = async (studentId, paymentData) => {
   try {
     const response = await api.post(
