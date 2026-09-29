@@ -27,3 +27,40 @@ export const getMessageLogs = async () => {
     throw error;
   }
 };
+
+// Preview family directory import
+export const previewFamilyImport = async (payloadOrFormData) => {
+  try {
+    let response;
+    if (payloadOrFormData instanceof FormData) {
+      response = await api.post("/parent/admin/preview-family-import", payloadOrFormData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+    } else {
+      response = await api.post("/parent/admin/preview-family-import", payloadOrFormData || { use_default_file: true });
+    }
+    return response.data;
+  } catch (error) {
+    console.error("Error previewing family import:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// Execute family directory import
+export const importFamilies = async (payloadOrFormData) => {
+  try {
+    let response;
+    if (payloadOrFormData instanceof FormData) {
+      response = await api.post("/parent/admin/import-families", payloadOrFormData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+    } else {
+      response = await api.post("/parent/admin/import-families", payloadOrFormData || { use_default_file: true });
+    }
+    return response.data;
+  } catch (error) {
+    console.error("Error executing family import:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
