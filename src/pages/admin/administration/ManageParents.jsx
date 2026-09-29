@@ -25,13 +25,15 @@ import {
   UserCheck,
   Filter,
   X,
-  RotateCcw
+  RotateCcw,
+  FileSpreadsheet
 } from "lucide-react";
 import Select from "react-select";
 import api from "../../../utils/api";
 import PageHeader from "../../../components/admin/PageHeader";
 import { TableSkeleton } from "../../../components/Skeleton";
 import DeleteConfirmModal from "../../../components/admin/DeleteConfirmModal";
+import FamilyImportWizardModal from "../../../components/admin/administration/FamilyImportWizardModal";
 import { toast } from "react-toastify";
 
 const ManageParents = () => {
@@ -43,6 +45,7 @@ const ManageParents = () => {
 
   // Modal States
   const [showModal, setShowModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [resendingId, setResendingId] = useState(null);
@@ -254,13 +257,24 @@ const ManageParents = () => {
         subtitle="Manage registered parent portal accounts, send invite links, and review portal access status"
         badge="Administration & Accounting"
         actions={
-          <button
-            onClick={() => handleShowModal()}
-            className="btn btn-primary d-inline-flex align-items-center gap-2"
-          >
-            <Plus size={16} />
-            <span>Create Parent Account</span>
-          </button>
+          <div className="d-flex align-items-center gap-2">
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="btn btn-outline-primary d-inline-flex align-items-center gap-2 shadow-sm"
+              style={{ fontWeight: 500 }}
+            >
+              <FileSpreadsheet size={16} />
+              <span>Import Families & Students</span>
+            </button>
+            <button
+              onClick={() => handleShowModal()}
+              className="btn btn-primary d-inline-flex align-items-center gap-2 shadow-sm"
+              style={{ fontWeight: 500 }}
+            >
+              <Plus size={16} />
+              <span>Create Parent Account</span>
+            </button>
+          </div>
         }
       />
 
@@ -769,6 +783,15 @@ const ManageParents = () => {
         title="Delete Parent Account"
         message={`Are you sure you want to delete the parent account for "${parentToDelete?.first_name} ${parentToDelete?.last_name}" (${parentToDelete?.email})?`}
         deleting={deleting}
+      />
+
+      {/* FAMILY DIRECTORY IMPORT & RECONCILIATION MODAL */}
+      <FamilyImportWizardModal
+        show={showImportModal}
+        onHide={() => setShowImportModal(false)}
+        onSuccess={() => {
+          fetchData();
+        }}
       />
     </div>
   );

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Table, Alert, Card, Badge, Form } from "react-bootstrap";
-import { Search, Filter, RotateCcw, User, Eye, X } from "lucide-react";
+import { Search, Filter, RotateCcw, User, Eye, X, FileSpreadsheet } from "lucide-react";
 import PageHeader from "../../../components/admin/PageHeader";
 import { getAllStudents } from "../../../services/studentService";
 import { TableSkeleton } from "../../../components/Skeleton";
+import FamilyImportWizardModal from "../../../components/admin/administration/FamilyImportWizardModal";
 
 const AllStudentsPage = () => {
   const [students, setStudents] = useState([]);
@@ -14,6 +15,7 @@ const AllStudentsPage = () => {
   const [selectedStatuses, setSelectedStatuses] = useState([]);
   const [selectedGrades, setSelectedGrades] = useState([]);
   const [showFilterPopover, setShowFilterPopover] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const filterPopoverRef = useRef(null);
 
   // Close filter popover on click outside
@@ -49,18 +51,19 @@ const AllStudentsPage = () => {
   const activeFilterCount = selectedStatuses.length + selectedGrades.length;
   const hasActiveFilters = Boolean(searchTerm.trim() || activeFilterCount > 0);
 
+  const fetchStudents = async () => {
+    try {
+      setLoading(true);
+      const data = await getAllStudents();
+      setStudents(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError("Failed to load students.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        setLoading(true);
-        const data = await getAllStudents();
-        setStudents(Array.isArray(data) ? data : []);
-      } catch (err) {
-        setError("Failed to load students.");
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchStudents();
   }, []);
 
@@ -176,6 +179,16 @@ const AllStudentsPage = () => {
         title="All Students"
         subtitle="Manage student records, enrollment status, and parent linkages"
         badge={`${students.length} Total Registered`}
+        actions={
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="btn btn-outline-primary d-inline-flex align-items-center gap-2 shadow-sm"
+            style={{ fontWeight: 500 }}
+          >
+            <FileSpreadsheet size={16} />
+            <span>Import Student & Family Directory</span>
+          </button>
+        }
       />
 
       {error && <Alert variant="danger">{error}</Alert>}
@@ -421,6 +434,15 @@ const AllStudentsPage = () => {
           </tbody>
         </Table>
       </div>
+
+      {/* FAMILY DIRECTORY IMPORT & RECONCILIATION MODAL */}
+      <FamilyImportWizardModal
+        show={showImportModal}
+        onHide={() => setShowImportModal(false)}
+        onSuccess={() => {
+          fetchStudents();
+        }}
+      />
     </div>
   );
 };
