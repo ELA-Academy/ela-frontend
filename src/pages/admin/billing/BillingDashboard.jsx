@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Table, Alert, Card } from "react-bootstrap";
-import { Search, RotateCcw, DollarSign, AlertCircle, CheckCircle, ArrowRight, User } from "lucide-react";
+import { Search, RotateCcw, DollarSign, AlertCircle, CheckCircle, ArrowRight, User, FileSpreadsheet } from "lucide-react";
 import AccountingNav from "../../../components/admin/billing/AccountingNav";
 import { CardSkeleton, TableSkeleton } from "../../../components/Skeleton";
 import { getBillingAccounts } from "../../../services/billingService";
+import FamilyImportWizardModal from "../../../components/admin/administration/FamilyImportWizardModal";
 
 const BillingDashboard = () => {
   const [accounts, setAccounts] = useState([]);
@@ -13,19 +14,21 @@ const BillingDashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [balanceFilter, setBalanceFilter] = useState("all"); // 'all', 'due', 'paid', 'credit'
   const [gradeFilter, setGradeFilter] = useState("all");
+  const [showImportModal, setShowImportModal] = useState(false);
+
+  const fetchAccounts = async () => {
+    try {
+      setLoading(true);
+      const data = await getBillingAccounts();
+      setAccounts(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError("Failed to load billing accounts.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchAccounts = async () => {
-      try {
-        setLoading(true);
-        const data = await getBillingAccounts();
-        setAccounts(Array.isArray(data) ? data : []);
-      } catch (err) {
-        setError("Failed to load billing accounts.");
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchAccounts();
   }, []);
 
@@ -170,7 +173,17 @@ const BillingDashboard = () => {
 
   return (
     <div>
-      <h1 className="page-title">Accounting</h1>
+      <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <h1 className="page-title mb-0">Accounting</h1>
+        <button
+          onClick={() => setShowImportModal(true)}
+          className="btn btn-outline-primary d-inline-flex align-items-center gap-2 shadow-sm"
+          style={{ fontWeight: 500 }}
+        >
+          <FileSpreadsheet size={16} />
+          <span>Import Families & Students</span>
+        </button>
+      </div>
       <AccountingNav />
 
       {/* Metric Highlights */}
@@ -454,6 +467,15 @@ const BillingDashboard = () => {
           </tbody>
         </Table>
       </div>
+
+      {/* FAMILY DIRECTORY IMPORT & RECONCILIATION MODAL */}
+      <FamilyImportWizardModal
+        show={showImportModal}
+        onHide={() => setShowImportModal(false)}
+        onSuccess={() => {
+          fetchAccounts();
+        }}
+      />
     </div>
   );
 };

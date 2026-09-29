@@ -26,7 +26,11 @@ import {
   Filter,
   X,
   RotateCcw,
-  FileSpreadsheet
+  FileSpreadsheet,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
 } from "lucide-react";
 import Select from "react-select";
 import api from "../../../utils/api";
@@ -42,6 +46,8 @@ const ManageParents = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 25;
 
   // Modal States
   const [showModal, setShowModal] = useState(false);
@@ -250,6 +256,33 @@ const ManageParents = () => {
     return matchesSearch && matchesPortal && matchesLink;
   });
 
+  // Reset pagination on filter or search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedPortalStatuses, selectedLinkStatuses]);
+
+  // Pagination calculation
+  const totalPages = Math.ceil(filteredParents.length / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedParents = filteredParents.slice(startIndex, endIndex);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, "...", totalPages);
+      } else if (currentPage >= totalPages - 3) {
+        pages.push(1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages);
+      }
+    }
+    return pages;
+  };
+
   return (
     <div className="container-fluid p-0">
       <PageHeader
@@ -443,8 +476,11 @@ const ManageParents = () => {
 
           {/* Showing count indicator */}
           <div className="small text-muted">
-            Showing <strong className="text-dark">{filteredParents.length}</strong> of{" "}
-            <strong>{parentsList.length}</strong> accounts
+            Showing <strong className="text-dark">{filteredParents.length > 0 ? startIndex + 1 : 0}</strong> - <strong className="text-dark">{Math.min(endIndex, filteredParents.length)}</strong> of{" "}
+            <strong>{filteredParents.length}</strong> accounts
+            {filteredParents.length !== parentsList.length && (
+              <span className="ms-1 text-muted">({parentsList.length} total)</span>
+            )}
             {(searchTerm || activeFilterCount > 0) && (
               <button
                 type="button"
@@ -464,8 +500,9 @@ const ManageParents = () => {
           {loading ? (
             <TableSkeleton rows={5} columns={6} />
           ) : filteredParents.length > 0 ? (
-            <div className="table-responsive">
-              <Table hover className="modern-table mb-0 align-middle">
+            <>
+              <div className="table-responsive">
+                <Table hover className="modern-table mb-0 align-middle">
                 <thead>
                   <tr>
                     <th>PARENT NAME</th>
@@ -477,7 +514,7 @@ const ManageParents = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredParents.map((parent) => (
+                  {paginatedParents.map((parent) => (
                     <tr key={parent.id}>
                       <td>
                         <div className="d-flex align-items-center gap-2">
@@ -612,7 +649,86 @@ const ManageParents = () => {
                 </tbody>
               </Table>
             </div>
-          ) : (
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="d-flex align-items-center justify-content-between p-3 border-top bg-light flex-wrap gap-2">
+                <div className="small text-muted">
+                  Showing <strong>{startIndex + 1}</strong> to <strong>{Math.min(endIndex, filteredParents.length)}</strong> of <strong>{filteredParents.length}</strong> accounts (25 per page)
+                </div>
+
+                <div className="d-flex align-items-center gap-1">
+                  <Button
+                    variant="outline-secondary"
+                    size="sm"
+                    className="p-1 px-2 border bg-white"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(1)}
+                    title="First Page"
+                  >
+                    <ChevronsLeft size={15} />
+                  </Button>
+                  <Button
+                    variant="outline-secondary"
+                    size="sm"
+                    className="p-1 px-2 border bg-white"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    title="Previous Page"
+                  >
+                    <ChevronLeft size={15} />
+                  </Button>
+
+                  <div className="d-flex align-items-center gap-1 mx-1">
+                    {getPageNumbers().map((pageNum, idx) =>
+                      pageNum === "..." ? (
+                        <span key={`ellipsis-${idx}`} className="px-1 text-muted">
+                          …
+                        </span>
+                      ) : (
+                        <Button
+                          key={pageNum}
+                          variant={currentPage === pageNum ? "primary" : "outline-secondary"}
+                          size="sm"
+                          className="px-2.5 py-1"
+                          style={{
+                            minWidth: "32px",
+                            fontSize: "12px",
+                            fontWeight: currentPage === pageNum ? 700 : 500
+                          }}
+                          onClick={() => setCurrentPage(pageNum)}
+                        >
+                          {pageNum}
+                        </Button>
+                      )
+                    )}
+                  </div>
+
+                  <Button
+                    variant="outline-secondary"
+                    size="sm"
+                    className="p-1 px-2 border bg-white"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    title="Next Page"
+                  >
+                    <ChevronRight size={15} />
+                  </Button>
+                  <Button
+                    variant="outline-secondary"
+                    size="sm"
+                    className="p-1 px-2 border bg-white"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(totalPages)}
+                    title="Last Page"
+                  >
+                    <ChevronsRight size={15} />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
             <div className="text-center py-5 text-muted">
               <Users size={40} className="mb-2 text-secondary opacity-50" />
               <p className="mb-0" style={{ fontSize: "0.9rem" }}>No parent accounts found matching your search.</p>
