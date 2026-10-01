@@ -4028,7 +4028,7 @@ const BoardDetailPage = () => {
     const taskIds = new Set(allTasks.map(t => t.id));
     const groupIds = new Set((board?.groups || []).map(g => g.id));
     const spaceActivities = activityLogs.filter(log => {
-      if (log.target_type === "Board" && log.target_id === Number(boardId)) return true;
+      if (log.target_type === "Board" && (log.target_id === board?.id || String(log.target_id) === String(boardId))) return true;
       if (log.target_type === "Group" && groupIds.has(log.target_id)) return true;
       if (log.target_type === "Task" && taskIds.has(log.target_id)) return true;
       return false;
@@ -8283,7 +8283,7 @@ const BoardDetailPage = () => {
         {currentViewType === "table" && renderTableView()}
         {currentViewType === "calendar" && (
           <CalendarView
-            boardId={Number(boardId)}
+            boardId={board?.id || boardId}
             onTaskClick={handleTaskClickFromView}
             assignees={assignees}
             refreshWorkspace={refreshWorkspace}
@@ -8297,35 +8297,35 @@ const BoardDetailPage = () => {
         )}
         {currentViewType === "docs" && (
           <DocsView
-            boardId={Number(boardId)}
+            boardId={board?.id || boardId}
             assignees={assignees}
             departments={departments}
           />
         )}
         {currentViewType === "custom_fields" && (
           <CustomFieldsView
-            boardId={Number(boardId)}
+            boardId={board?.id || boardId}
           />
         )}
         {currentViewType === "milestones" && (
           <MilestonesView
-            boardId={Number(boardId)}
+            boardId={board?.id || boardId}
           />
         )}
         {currentViewType === "files" && (
           <FilesView
-            boardId={Number(boardId)}
+            boardId={board?.id || boardId}
           />
         )}
         {currentViewType === "form" && (
           <FormView
-            boardId={Number(boardId)}
+            boardId={board?.id || boardId}
             boardCustomFields={boardCustomFields}
           />
         )}
         {currentViewType === "timesheets" && (
           <TimesheetsView
-            boardId={Number(boardId)}
+            boardId={board?.id || boardId}
             groups={board?.groups}
           />
         )}
@@ -8497,7 +8497,7 @@ const BoardDetailPage = () => {
         <UpdatesDrawer
           taskId={activeTaskId}
           task={activeTask}
-          boardId={Number(boardId)}
+          boardId={board?.id || boardId}
           boardCustomFields={boardCustomFields}
           onOpenCustomFields={handleOpenCustomFieldsOffcanvas}
           onRefreshWorkspace={() => fetchWorkspace(false)}
@@ -9380,7 +9380,7 @@ const BoardDetailPage = () => {
       <SpreadsheetImportModal
         show={showSpreadsheetImportModal}
         onHide={() => setShowSpreadsheetImportModal(false)}
-        boardId={Number(boardId)}
+        boardId={board?.id || boardId}
         groups={board?.groups || []}
         existingCustomFields={boardCustomFields}
         onImportComplete={() => fetchWorkspace(false)}
