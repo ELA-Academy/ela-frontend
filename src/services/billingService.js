@@ -118,6 +118,18 @@ export const deleteSubscription = async (subId) => {
   }
 };
 
+export const bulkDeleteSubscriptions = async (subscriptionIds) => {
+  try {
+    const response = await api.post("/billing/subscriptions/bulk-delete", {
+      subscription_ids: subscriptionIds
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error bulk deleting subscriptions:", error);
+    throw error;
+  }
+};
+
 export const receivePayment = async (studentId, paymentData) => {
   try {
     const response = await api.post(
