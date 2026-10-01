@@ -67,6 +67,7 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
   };
 
   const fetchForms = async () => {
+    if (!boardId || String(boardId) === "NaN" || boardId === "undefined") return;
     try {
       setLoading(true);
       const res = await api.get(`/board-extensions/boards/${boardId}/forms`);
@@ -91,7 +92,7 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
   };
 
   useEffect(() => {
-    if (boardId) {
+    if (boardId && String(boardId) !== "NaN" && boardId !== "undefined") {
       fetchForms();
     }
   }, [boardId]);
@@ -173,6 +174,11 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
       return;
     }
 
+    if (!editingFormId && (!boardId || String(boardId) === "NaN" || boardId === "undefined")) {
+      showError("Invalid or missing board identifier.");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const fullStructure = [
@@ -198,7 +204,7 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
       setIsEditing(false);
       fetchForms();
     } catch (err) {
-      showError("Failed to save form config.");
+      showError(err.response?.data?.error || "Failed to save form config.");
     } finally {
       setSubmitting(false);
     }
