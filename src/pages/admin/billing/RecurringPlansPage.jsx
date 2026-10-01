@@ -7,6 +7,7 @@ import {
   MoreHorizontal,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Plus,
   X,
   RotateCcw,
@@ -19,6 +20,7 @@ import {
 import AccountingNav from "../../../components/admin/billing/AccountingNav";
 import CreatePlanWizard from "../../../components/admin/billing/CreatePlanWizard";
 import BulkEditPlansModal from "../../../components/admin/billing/BulkEditPlansModal";
+import BulkDeletePlansModal from "../../../components/admin/billing/BulkDeletePlansModal";
 import EditPlanModal from "../../../components/admin/billing/EditPlanModal";
 import { getSubscriptions, getBillingPlans, deleteSubscription } from "../../../services/billingService";
 import { getAllStudents } from "../../../services/studentService";
@@ -78,6 +80,7 @@ const RecurringPlansPage = () => {
   // Selection & Bulk Edit State
   const [selectedPlanIds, setSelectedPlanIds] = useState(new Set());
   const [showBulkEditModal, setShowBulkEditModal] = useState(false);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const [editingPlan, setEditingPlan] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
 
@@ -502,8 +505,18 @@ const RecurringPlansPage = () => {
                   className="d-inline-flex align-items-center gap-1.5 fw-semibold px-3 shadow-sm"
                   style={{ height: "32px", fontSize: "12.5px" }}
                 >
-                  <Layers size={14} />
+                  <Calendar size={14} />
                   <span>Bulk Edit Dates & Schedule</span>
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => setShowBulkDeleteModal(true)}
+                  className="d-inline-flex align-items-center gap-1.5 fw-semibold px-3 shadow-sm bg-danger border-0"
+                  style={{ height: "32px", fontSize: "12.5px" }}
+                >
+                  <Trash2 size={14} />
+                  <span>Bulk Delete ({selectedPlanIds.size})</span>
                 </Button>
                 <Button
                   variant="outline-light"
@@ -563,12 +576,40 @@ const RecurringPlansPage = () => {
             <Table responsive hover className="workspace-table align-middle m-0" style={{ borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "#fafafa" }}>
-                  <th style={{ width: "3%", padding: "12px", textAlign: "center" }}>
-                    <Form.Check
-                      type="checkbox"
-                      checked={allCurrentPageSelected}
-                      onChange={toggleSelectAllCurrentPage}
-                    />
+                  <th style={{ width: "4%", padding: "12px 6px", textAlign: "center" }}>
+                    <div className="d-flex align-items-center justify-content-center gap-1">
+                      <Form.Check
+                        type="checkbox"
+                        checked={allCurrentPageSelected}
+                        onChange={toggleSelectAllCurrentPage}
+                        title={allCurrentPageSelected ? "Deselect page" : "Select page"}
+                      />
+                      <Dropdown align="start">
+                        <Dropdown.Toggle
+                          as="button"
+                          className="btn btn-link p-0 text-muted border-0 shadow-none"
+                          style={{ fontSize: "10px", lineHeight: 1 }}
+                        >
+                          <ChevronDown size={12} />
+                        </Dropdown.Toggle>
+                        <Dropdown.Menu className="shadow-sm border py-1" style={{ fontSize: "12px", minWidth: "180px" }}>
+                          <Dropdown.Item onClick={toggleSelectAllCurrentPage}>
+                            {allCurrentPageSelected ? "Deselect this page" : `Select this page (${paginatedActivePlans.length})`}
+                          </Dropdown.Item>
+                          <Dropdown.Item onClick={selectAllFiltered}>
+                            Select all {filteredActivePlans.length} plans
+                          </Dropdown.Item>
+                          {selectedPlanIds.size > 0 && (
+                            <>
+                              <Dropdown.Divider className="my-1" />
+                              <Dropdown.Item onClick={clearSelection} className="text-danger">
+                                Clear selection
+                              </Dropdown.Item>
+                            </>
+                          )}
+                        </Dropdown.Menu>
+                      </Dropdown>
+                    </div>
                   </th>
                   <th style={{ width: "25%", fontSize: "0.78rem", fontWeight: "600", textTransform: "none", color: "#64748b", padding: "12px" }}>
                     NAME
@@ -783,6 +824,16 @@ const RecurringPlansPage = () => {
       <BulkEditPlansModal
         show={showBulkEditModal}
         onHide={() => setShowBulkEditModal(false)}
+        selectedPlans={selectedPlansList}
+        onSuccess={() => {
+          clearSelection();
+          fetchData();
+        }}
+      />
+
+      <BulkDeletePlansModal
+        show={showBulkDeleteModal}
+        onHide={() => setShowBulkDeleteModal(false)}
         selectedPlans={selectedPlansList}
         onSuccess={() => {
           clearSelection();
