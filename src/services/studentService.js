@@ -63,3 +63,35 @@ export const updateStudentDocument = async (docId, docData) => {
     throw error;
   }
 };
+
+export const deleteStudent = async (studentId) => {
+  try {
+    const response = await api.delete(`/students/${studentId}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error deleting student ${studentId}:`, error);
+    throw error;
+  }
+};
+
+export const bulkDeleteStudents = async (studentIds) => {
+  try {
+    const response = await api.post("/students/bulk-delete", {
+      student_ids: studentIds
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error bulk deleting students:", error);
+    throw error;
+  }
+};
+
+export const cleanSlateWipe = async () => {
+  try {
+    const response = await api.post("/students/clean-slate");
+    return response.data;
+  } catch (error) {
+    console.error("Error executing clean slate wipe:", error);
+    throw error;
+  }
+};

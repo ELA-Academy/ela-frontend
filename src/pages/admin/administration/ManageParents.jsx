@@ -30,7 +30,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
-  ChevronsRight
+  ChevronsRight,
+  CheckSquare
 } from "lucide-react";
 import Select from "react-select";
 import api from "../../../utils/api";
@@ -38,6 +39,8 @@ import PageHeader from "../../../components/admin/PageHeader";
 import { TableSkeleton } from "../../../components/Skeleton";
 import DeleteConfirmModal from "../../../components/admin/DeleteConfirmModal";
 import FamilyImportWizardModal from "../../../components/admin/administration/FamilyImportWizardModal";
+import BulkDeleteParentsModal from "../../../components/admin/administration/BulkDeleteParentsModal";
+import CleanSlateModal from "../../../components/admin/CleanSlateModal";
 import { toast } from "react-toastify";
 
 const ManageParents = () => {
@@ -48,6 +51,11 @@ const ManageParents = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 25;
+
+  // Selection & Bulk Delete States
+  const [selectedParentIds, setSelectedParentIds] = useState(new Set());
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [showCleanSlateModal, setShowCleanSlateModal] = useState(false);
 
   // Modal States
   const [showModal, setShowModal] = useState(false);
@@ -283,6 +291,46 @@ const ManageParents = () => {
     return pages;
   };
 
+  const selectedParentsList = useMemo(() => {
+    return parentsList.filter((p) => selectedParentIds.has(p.id));
+  }, [parentsList, selectedParentIds]);
+
+  const allCurrentPageSelected =
+    paginatedParents.length > 0 &&
+    paginatedParents.every((p) => selectedParentIds.has(p.id));
+
+  const toggleSelectAllCurrentPage = () => {
+    setSelectedParentIds((prev) => {
+      const next = new Set(prev);
+      if (allCurrentPageSelected) {
+        paginatedParents.forEach((p) => next.delete(p.id));
+      } else {
+        paginatedParents.forEach((p) => next.add(p.id));
+      }
+      return next;
+    });
+  };
+
+  const selectAllParents = () => {
+    setSelectedParentIds(new Set(filteredParents.map((p) => p.id)));
+  };
+
+  const clearSelection = () => {
+    setSelectedParentIds(new Set());
+  };
+
+  const toggleSelectParent = (id) => {
+    setSelectedParentIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
   return (
     <div className="container-fluid p-0">
       <PageHeader
@@ -291,6 +339,15 @@ const ManageParents = () => {
         badge="Administration & Accounting"
         actions={
           <div className="d-flex align-items-center gap-2">
+            <button
+              onClick={() => setShowCleanSlateModal(true)}
+              className="btn btn-outline-danger d-inline-flex align-items-center gap-1.5 shadow-sm"
+              style={{ fontWeight: 500 }}
+              title="Reset test data and start on a clean slate"
+            >
+              <RotateCcw size={15} />
+              <span>Clean Slate (Reset Data)</span>
+            </button>
             <button
               onClick={() => setShowImportModal(true)}
               className="btn btn-outline-primary d-inline-flex align-items-center gap-2 shadow-sm"
@@ -495,6 +552,66 @@ const ManageParents = () => {
         </div>
       </div>
 
+      {/* Sticky Bulk Actions Bar when parents are selected */}
+      {selectedParentIds.size > 0 && (
+        <div
+          className="d-flex align-items-center justify-content-between p-2.5 px-3 mb-3 rounded-3 shadow-sm transition-all"
+          style={{
+            backgroundColor: "#1e1b4b",
+            color: "#ffffff",
+            position: "sticky",
+            top: "12px",
+            zIndex: 1040,
+            border: "1px solid #312e81"
+          }}
+        >
+          <div className="d-flex align-items-center gap-2">
+            <span
+              className="badge bg-primary px-2.5 py-1.5 fw-bold d-flex align-items-center gap-1"
+              style={{ fontSize: "12px" }}
+            >
+              <CheckSquare size={13} />
+              <span>{selectedParentIds.size}</span>
+            </span>
+            <span className="small fw-semibold">
+              parent account{selectedParentIds.size > 1 ? "s" : ""} selected
+            </span>
+            {selectedParentIds.size < filteredParents.length && (
+              <button
+                type="button"
+                onClick={selectAllParents}
+                className="btn btn-link btn-sm text-white text-decoration-underline p-0 ms-2"
+                style={{ fontSize: "12px" }}
+              >
+                Select all {filteredParents.length} parents
+              </button>
+            )}
+          </div>
+
+          <div className="d-flex align-items-center gap-2">
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => setShowBulkDeleteModal(true)}
+              className="d-inline-flex align-items-center gap-1.5 fw-semibold px-3 shadow-sm bg-danger border-0"
+              style={{ height: "32px", fontSize: "12.5px" }}
+            >
+              <Trash2 size={14} />
+              <span>Bulk Delete ({selectedParentIds.size})</span>
+            </Button>
+            <Button
+              variant="outline-light"
+              size="sm"
+              onClick={clearSelection}
+              className="py-1 px-2.5"
+              style={{ height: "32px", fontSize: "12px" }}
+            >
+              Clear
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Card className="content-card shadow-sm border" style={{ borderColor: "#cbd5e1" }}>
         <Card.Body className="p-0">
           {loading ? (
@@ -505,6 +622,14 @@ const ManageParents = () => {
                 <Table hover className="modern-table mb-0 align-middle">
                 <thead>
                   <tr>
+                    <th style={{ width: "4%", padding: "12px 8px", textAlign: "center" }}>
+                      <Form.Check
+                        type="checkbox"
+                        checked={allCurrentPageSelected}
+                        onChange={toggleSelectAllCurrentPage}
+                        title={allCurrentPageSelected ? "Deselect page" : "Select page"}
+                      />
+                    </th>
                     <th>PARENT NAME</th>
                     <th>EMAIL & CONTACT</th>
                     <th>LINKED STUDENTS</th>
@@ -515,7 +640,14 @@ const ManageParents = () => {
                 </thead>
                 <tbody>
                   {paginatedParents.map((parent) => (
-                    <tr key={parent.id}>
+                    <tr key={parent.id} style={{ backgroundColor: selectedParentIds.has(parent.id) ? "#f5f3ff" : undefined }}>
+                      <td style={{ textAlign: "center", padding: "12px 8px" }} onClick={(e) => e.stopPropagation()}>
+                        <Form.Check
+                          type="checkbox"
+                          checked={selectedParentIds.has(parent.id)}
+                          onChange={() => toggleSelectParent(parent.id)}
+                        />
+                      </td>
                       <td>
                         <div className="d-flex align-items-center gap-2">
                           <div
@@ -899,6 +1031,27 @@ const ManageParents = () => {
         title="Delete Parent Account"
         message={`Are you sure you want to delete the parent account for "${parentToDelete?.first_name} ${parentToDelete?.last_name}" (${parentToDelete?.email})?`}
         deleting={deleting}
+      />
+
+      {/* Bulk Delete Parents Modal */}
+      <BulkDeleteParentsModal
+        show={showBulkDeleteModal}
+        onHide={() => setShowBulkDeleteModal(false)}
+        selectedParents={selectedParentsList}
+        onSuccess={() => {
+          clearSelection();
+          fetchData();
+        }}
+      />
+
+      {/* Clean Slate Wipe Modal */}
+      <CleanSlateModal
+        show={showCleanSlateModal}
+        onHide={() => setShowCleanSlateModal(false)}
+        onSuccess={() => {
+          clearSelection();
+          fetchData();
+        }}
       />
 
       {/* FAMILY DIRECTORY IMPORT & RECONCILIATION MODAL */}
