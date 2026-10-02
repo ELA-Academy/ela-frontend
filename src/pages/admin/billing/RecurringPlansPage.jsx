@@ -21,6 +21,7 @@ import AccountingNav from "../../../components/admin/billing/AccountingNav";
 import CreatePlanWizard from "../../../components/admin/billing/CreatePlanWizard";
 import BulkEditPlansModal from "../../../components/admin/billing/BulkEditPlansModal";
 import BulkDeletePlansModal from "../../../components/admin/billing/BulkDeletePlansModal";
+import CleanSlateModal from "../../../components/admin/CleanSlateModal";
 import EditPlanModal from "../../../components/admin/billing/EditPlanModal";
 import { getSubscriptions, getBillingPlans, deleteSubscription } from "../../../services/billingService";
 import { getAllStudents } from "../../../services/studentService";
@@ -81,6 +82,7 @@ const RecurringPlansPage = () => {
   const [selectedPlanIds, setSelectedPlanIds] = useState(new Set());
   const [showBulkEditModal, setShowBulkEditModal] = useState(false);
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [showCleanSlateModal, setShowCleanSlateModal] = useState(false);
   const [editingPlan, setEditingPlan] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
 
@@ -302,6 +304,21 @@ const RecurringPlansPage = () => {
             className="d-flex align-items-center gap-1 shadow-sm bg-white"
           >
             <Upload size={15} /> IMPORT PROCARE PLANS
+          </Button>
+
+          <Button
+            variant="outline-danger"
+            onClick={() => setShowCleanSlateModal(true)}
+            style={{
+              borderRadius: "20px",
+              fontSize: "0.82rem",
+              fontWeight: "600",
+              padding: "6px 16px"
+            }}
+            className="d-flex align-items-center gap-1 shadow-sm"
+            title="Reset test data and start on a clean slate"
+          >
+            <RotateCcw size={14} /> CLEAN SLATE (RESET)
           </Button>
 
           <Button
@@ -835,6 +852,15 @@ const RecurringPlansPage = () => {
         show={showBulkDeleteModal}
         onHide={() => setShowBulkDeleteModal(false)}
         selectedPlans={selectedPlansList}
+        onSuccess={() => {
+          clearSelection();
+          fetchData();
+        }}
+      />
+
+      <CleanSlateModal
+        show={showCleanSlateModal}
+        onHide={() => setShowCleanSlateModal(false)}
         onSuccess={() => {
           clearSelection();
           fetchData();

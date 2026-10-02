@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
-import { Table, Alert, Card, Badge, Form } from "react-bootstrap";
-import { Search, Filter, RotateCcw, User, Eye, X, FileSpreadsheet } from "lucide-react";
+import { Table, Alert, Card, Badge, Form, Dropdown, Button } from "react-bootstrap";
+import { Search, Filter, RotateCcw, User, Eye, X, FileSpreadsheet, Trash2, CheckSquare, ChevronDown } from "lucide-react";
 import PageHeader from "../../../components/admin/PageHeader";
 import { getAllStudents } from "../../../services/studentService";
 import { TableSkeleton } from "../../../components/Skeleton";
 import FamilyImportWizardModal from "../../../components/admin/administration/FamilyImportWizardModal";
+import BulkDeleteStudentsModal from "../../../components/admin/students/BulkDeleteStudentsModal";
+import CleanSlateModal from "../../../components/admin/CleanSlateModal";
 
 const AllStudentsPage = () => {
   const [students, setStudents] = useState([]);
@@ -16,6 +18,9 @@ const AllStudentsPage = () => {
   const [selectedGrades, setSelectedGrades] = useState([]);
   const [showFilterPopover, setShowFilterPopover] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [showCleanSlateModal, setShowCleanSlateModal] = useState(false);
+  const [selectedStudentIds, setSelectedStudentIds] = useState(new Set());
   const filterPopoverRef = useRef(null);
 
   // Close filter popover on click outside
@@ -164,6 +169,46 @@ const AllStudentsPage = () => {
     );
   };
 
+  const selectedStudentsList = useMemo(() => {
+    return students.filter((s) => selectedStudentIds.has(s.id));
+  }, [students, selectedStudentIds]);
+
+  const allFilteredSelected =
+    filteredStudents.length > 0 &&
+    filteredStudents.every((s) => selectedStudentIds.has(s.id));
+
+  const toggleSelectAllFiltered = () => {
+    setSelectedStudentIds((prev) => {
+      const next = new Set(prev);
+      if (allFilteredSelected) {
+        filteredStudents.forEach((s) => next.delete(s.id));
+      } else {
+        filteredStudents.forEach((s) => next.add(s.id));
+      }
+      return next;
+    });
+  };
+
+  const selectAllStudents = () => {
+    setSelectedStudentIds(new Set(students.map((s) => s.id)));
+  };
+
+  const clearSelection = () => {
+    setSelectedStudentIds(new Set());
+  };
+
+  const toggleSelectStudent = (id) => {
+    setSelectedStudentIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
   if (loading) {
     return (
       <div>
@@ -180,14 +225,25 @@ const AllStudentsPage = () => {
         subtitle="Manage student records, enrollment status, and parent linkages"
         badge={`${students.length} Total Registered`}
         actions={
-          <button
-            onClick={() => setShowImportModal(true)}
-            className="btn btn-outline-primary d-inline-flex align-items-center gap-2 shadow-sm"
-            style={{ fontWeight: 500 }}
-          >
-            <FileSpreadsheet size={16} />
-            <span>Import Student & Family Directory</span>
-          </button>
+          <div className="d-flex align-items-center gap-2">
+            <button
+              onClick={() => setShowCleanSlateModal(true)}
+              className="btn btn-outline-danger d-inline-flex align-items-center gap-1.5 shadow-sm"
+              style={{ fontWeight: 500 }}
+              title="Reset test data and start on a clean slate"
+            >
+              <RotateCcw size={15} />
+              <span>Clean Slate (Reset Data)</span>
+            </button>
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="btn btn-outline-primary d-inline-flex align-items-center gap-2 shadow-sm"
+              style={{ fontWeight: 500 }}
+            >
+              <FileSpreadsheet size={16} />
+              <span>Import Student & Family Directory</span>
+            </button>
+          </div>
         }
       />
 
@@ -357,11 +413,79 @@ const AllStudentsPage = () => {
         </div>
       </div>
 
+      {/* Sticky Bulk Actions Bar when students are selected */}
+      {selectedStudentIds.size > 0 && (
+        <div
+          className="d-flex align-items-center justify-content-between p-2.5 px-3 mb-3 rounded-3 shadow-sm transition-all"
+          style={{
+            backgroundColor: "#1e1b4b",
+            color: "#ffffff",
+            position: "sticky",
+            top: "12px",
+            zIndex: 1040,
+            border: "1px solid #312e81"
+          }}
+        >
+          <div className="d-flex align-items-center gap-2">
+            <span
+              className="badge bg-primary px-2.5 py-1.5 fw-bold d-flex align-items-center gap-1"
+              style={{ fontSize: "12px" }}
+            >
+              <CheckSquare size={13} />
+              <span>{selectedStudentIds.size}</span>
+            </span>
+            <span className="small fw-semibold">
+              student{selectedStudentIds.size > 1 ? "s" : ""} selected
+            </span>
+            {selectedStudentIds.size < students.length && (
+              <button
+                type="button"
+                onClick={selectAllStudents}
+                className="btn btn-link btn-sm text-white text-decoration-underline p-0 ms-2"
+                style={{ fontSize: "12px" }}
+              >
+                Select all {students.length} students
+              </button>
+            )}
+          </div>
+
+          <div className="d-flex align-items-center gap-2">
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => setShowBulkDeleteModal(true)}
+              className="d-inline-flex align-items-center gap-1.5 fw-semibold px-3 shadow-sm bg-danger border-0"
+              style={{ height: "32px", fontSize: "12.5px" }}
+            >
+              <Trash2 size={14} />
+              <span>Bulk Delete ({selectedStudentIds.size})</span>
+            </Button>
+            <Button
+              variant="outline-light"
+              size="sm"
+              onClick={clearSelection}
+              className="py-1 px-2.5"
+              style={{ height: "32px", fontSize: "12px" }}
+            >
+              Clear
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Table Content */}
       <div className="content-card shadow-sm border" style={{ borderColor: "#cbd5e1" }}>
         <Table responsive className="modern-table mb-0 align-middle">
           <thead>
             <tr style={{ backgroundColor: "#f8fafc" }}>
+              <th style={{ width: "4%", padding: "12px 8px", textAlign: "center" }}>
+                <Form.Check
+                  type="checkbox"
+                  checked={allFilteredSelected}
+                  onChange={toggleSelectAllFiltered}
+                  title={allFilteredSelected ? "Deselect all" : "Select all"}
+                />
+              </th>
               <th style={{ color: "#334155", fontWeight: "600" }}>Student Name</th>
               <th style={{ color: "#334155", fontWeight: "600" }}>Grade Level</th>
               <th style={{ color: "#334155", fontWeight: "600" }}>Status</th>
@@ -373,7 +497,14 @@ const AllStudentsPage = () => {
           <tbody>
             {filteredStudents.length > 0 ? (
               filteredStudents.map((student) => (
-                <tr key={student.id}>
+                <tr key={student.id} style={{ backgroundColor: selectedStudentIds.has(student.id) ? "#f5f3ff" : undefined }}>
+                  <td style={{ textAlign: "center", padding: "12px 8px" }} onClick={(e) => e.stopPropagation()}>
+                    <Form.Check
+                      type="checkbox"
+                      checked={selectedStudentIds.has(student.id)}
+                      onChange={() => toggleSelectStudent(student.id)}
+                    />
+                  </td>
                   <td>
                     <Link
                       to={`/admin/students/${student.id}`}
@@ -415,7 +546,7 @@ const AllStudentsPage = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="6" className="text-center py-5 text-muted">
+                <td colSpan="7" className="text-center py-5 text-muted">
                   <div className="py-3">
                     <User size={36} className="text-muted mb-2 opacity-50" />
                     <p className="mb-2 fw-medium">No students match your filter criteria.</p>
@@ -434,6 +565,27 @@ const AllStudentsPage = () => {
           </tbody>
         </Table>
       </div>
+
+      {/* Bulk Delete Students Modal */}
+      <BulkDeleteStudentsModal
+        show={showBulkDeleteModal}
+        onHide={() => setShowBulkDeleteModal(false)}
+        selectedStudents={selectedStudentsList}
+        onSuccess={() => {
+          clearSelection();
+          fetchStudents();
+        }}
+      />
+
+      {/* Clean Slate Wipe Modal */}
+      <CleanSlateModal
+        show={showCleanSlateModal}
+        onHide={() => setShowCleanSlateModal(false)}
+        onSuccess={() => {
+          clearSelection();
+          fetchStudents();
+        }}
+      />
 
       {/* FAMILY DIRECTORY IMPORT & RECONCILIATION MODAL */}
       <FamilyImportWizardModal
