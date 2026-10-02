@@ -6,6 +6,7 @@ import AccountingNav from "../../../components/admin/billing/AccountingNav";
 import { CardSkeleton, TableSkeleton } from "../../../components/Skeleton";
 import { getBillingAccounts } from "../../../services/billingService";
 import FamilyImportWizardModal from "../../../components/admin/administration/FamilyImportWizardModal";
+import CleanSlateModal from "../../../components/admin/CleanSlateModal";
 
 const BillingDashboard = () => {
   const [accounts, setAccounts] = useState([]);
@@ -15,6 +16,7 @@ const BillingDashboard = () => {
   const [balanceFilter, setBalanceFilter] = useState("all"); // 'all', 'due', 'paid', 'credit'
   const [gradeFilter, setGradeFilter] = useState("all");
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showCleanSlateModal, setShowCleanSlateModal] = useState(false);
 
   const fetchAccounts = async () => {
     try {
@@ -175,14 +177,25 @@ const BillingDashboard = () => {
     <div>
       <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
         <h1 className="page-title mb-0">Accounting</h1>
-        <button
-          onClick={() => setShowImportModal(true)}
-          className="btn btn-outline-primary d-inline-flex align-items-center gap-2 shadow-sm"
-          style={{ fontWeight: 500 }}
-        >
-          <FileSpreadsheet size={16} />
-          <span>Import Families & Students</span>
-        </button>
+        <div className="d-flex align-items-center gap-2">
+          <button
+            onClick={() => setShowCleanSlateModal(true)}
+            className="btn btn-outline-danger d-inline-flex align-items-center gap-1.5 shadow-sm"
+            style={{ fontWeight: 500 }}
+            title="Reset test data and start on a clean slate"
+          >
+            <RotateCcw size={15} />
+            <span>Clean Slate (Reset Data)</span>
+          </button>
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="btn btn-outline-primary d-inline-flex align-items-center gap-2 shadow-sm"
+            style={{ fontWeight: 500 }}
+          >
+            <FileSpreadsheet size={16} />
+            <span>Import Families & Students</span>
+          </button>
+        </div>
       </div>
       <AccountingNav />
 
@@ -467,6 +480,15 @@ const BillingDashboard = () => {
           </tbody>
         </Table>
       </div>
+
+      {/* Clean Slate Wipe Modal */}
+      <CleanSlateModal
+        show={showCleanSlateModal}
+        onHide={() => setShowCleanSlateModal(false)}
+        onSuccess={() => {
+          fetchAccounts();
+        }}
+      />
 
       {/* FAMILY DIRECTORY IMPORT & RECONCILIATION MODAL */}
       <FamilyImportWizardModal
