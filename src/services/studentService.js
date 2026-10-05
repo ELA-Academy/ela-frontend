@@ -95,3 +95,13 @@ export const cleanSlateWipe = async () => {
     throw error;
   }
 };
+
+export const wipeAllParents = async () => {
+  try {
+    const response = await api.post("/parent/admin/wipe-all");
+    return response.data;
+  } catch (error) {
+    console.error("Error wiping all parents:", error);
+    throw error;
+  }
+};

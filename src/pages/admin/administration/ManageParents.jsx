@@ -56,6 +56,7 @@ const ManageParents = () => {
   const [selectedParentIds, setSelectedParentIds] = useState(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const [showCleanSlateModal, setShowCleanSlateModal] = useState(false);
+  const [cleanSlateMode, setCleanSlateMode] = useState("parents");
 
   // Modal States
   const [showModal, setShowModal] = useState(false);
@@ -340,13 +341,28 @@ const ManageParents = () => {
         actions={
           <div className="d-flex align-items-center gap-2">
             <button
-              onClick={() => setShowCleanSlateModal(true)}
+              onClick={() => {
+                setCleanSlateMode("parents");
+                setShowCleanSlateModal(true);
+              }}
               className="btn btn-outline-danger d-inline-flex align-items-center gap-1.5 shadow-sm"
               style={{ fontWeight: 500 }}
-              title="Reset test data and start on a clean slate"
+              title="Wipe all parent accounts to re-import fresh families"
+            >
+              <Trash2 size={15} />
+              <span>Wipe All Parents</span>
+            </button>
+            <button
+              onClick={() => {
+                setCleanSlateMode("full");
+                setShowCleanSlateModal(true);
+              }}
+              className="btn btn-outline-secondary d-inline-flex align-items-center gap-1.5 shadow-sm"
+              style={{ fontWeight: 500 }}
+              title="Reset all students, parents & plans to clean slate"
             >
               <RotateCcw size={15} />
-              <span>Clean Slate (Reset Data)</span>
+              <span>Full Clean Slate</span>
             </button>
             <button
               onClick={() => setShowImportModal(true)}
@@ -1048,6 +1064,7 @@ const ManageParents = () => {
       <CleanSlateModal
         show={showCleanSlateModal}
         onHide={() => setShowCleanSlateModal(false)}
+        initialMode={cleanSlateMode}
         onSuccess={() => {
           clearSelection();
           fetchData();
