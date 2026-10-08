@@ -11,7 +11,12 @@ import {
   Circle,
   Flag,
   Link2,
+  Link,
   List,
+  ListOrdered,
+  Bold,
+  Italic,
+  Underline,
   Pencil,
   Play,
   Save,
@@ -252,6 +257,8 @@ const UpdatesDrawer = ({
   const [ccEmail, setCcEmail] = useState("");
   const [emailSubject, setEmailSubject] = useState("");
   const [replyToUser, setReplyToUser] = useState(null);
+  const [emailHtmlContent, setEmailHtmlContent] = useState("");
+  const emailEditorRef = useRef(null);
 
   useEffect(() => {
     if (task) {
@@ -2219,18 +2226,22 @@ const UpdatesDrawer = ({
 
   const handlePostUpdate = async (e) => {
     e.preventDefault();
-    if (!content.trim() || posting) return;
+    const finalContent = commentSendMode === "email"
+      ? (emailEditorRef.current?.innerHTML || emailHtmlContent || content).trim()
+      : content.trim();
+
+    if (!finalContent || posting) return;
 
     try {
       setPosting(true);
       setError("");
       
       const activeMentions = trackedMentions.filter((m) =>
-        content.includes(`@${m.label}`)
+        finalContent.includes(`@${m.label}`)
       );
       
       const response = await createTaskUpdate(taskId, {
-        content: content.trim(),
+        content: finalContent,
         mentions: activeMentions.map((m) => ({ type: m.type, id: m.id })),
         send_via_email: commentSendMode === "email",
         to_email: commentSendMode === "email" ? toEmail : undefined,
@@ -2240,10 +2251,15 @@ const UpdatesDrawer = ({
       
       setUpdates((prev) => [response, ...prev]);
       setContent("");
+      setEmailHtmlContent("");
+      if (emailEditorRef.current) {
+        emailEditorRef.current.innerHTML = "";
+      }
       try {
         sessionStorage.removeItem(`draft_comment_${taskId}`);
       } catch {}
       setTrackedMentions([]);
+      toast.success(commentSendMode === "email" ? "Email sent successfully" : "Comment added");
     } catch (err) {
       setError("Failed to post task update discussion.");
     } finally {
@@ -2507,12 +2523,13 @@ const UpdatesDrawer = ({
 
     if (containsHtml) {
       const sanitized = DOMPurify.sanitize(text, {
-        ADD_ATTR: ['target', 'style', 'rel', 'class']
+        ADD_ATTR: ['target', 'style', 'rel', 'class', 'href', 'src', 'alt', 'width', 'height', 'border', 'cellpadding', 'cellspacing']
       });
       return (
-        <span
+        <div
+          className="rich-parsed-content"
           dangerouslySetInnerHTML={{ __html: sanitized }}
-          style={{ display: "inline", wordBreak: "break-word" }}
+          style={{ display: "block", wordBreak: "break-word", lineHeight: "1.6" }}
         />
       );
     }
@@ -3803,16 +3820,86 @@ const UpdatesDrawer = ({
                       </div>
                     )}
 
-                    <textarea
-                      ref={textareaRef}
-                      className="cu-comment-textarea border-0 w-100 bg-transparent text-slate-800"
-                      style={{ outline: "none", fontSize: "13px", resize: "none" }}
-                      placeholder={commentSendMode === "email" ? "Type your email message..." : "Write a comment..."}
-                      value={content}
-                      onChange={handleTextareaChange}
-                      onKeyDown={handleKeyDown}
-                      rows={commentSendMode === "email" ? 3 : 2}
-                    />
+                    {commentSendMode === "email" ? (
+                      <div className="email-rich-composer-wrapper mb-2">
+                        {/* Rich Formatting Toolbar */}
+                        <div className="d-flex align-items-center gap-1 mb-2 pb-1.5 border-bottom bg-slate-50 px-2 py-1 rounded-2">
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-light p-1 border-0 text-slate-700 hover:bg-slate-200 rounded"
+                            title="Bold"
+                            onClick={() => document.execCommand('bold', false, null)}
+                          >
+                            <Bold size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-light p-1 border-0 text-slate-700 hover:bg-slate-200 rounded"
+                            title="Italic"
+                            onClick={() => document.execCommand('italic', false, null)}
+                          >
+                            <Italic size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-light p-1 border-0 text-slate-700 hover:bg-slate-200 rounded"
+                            title="Underline"
+                            onClick={() => document.execCommand('underline', false, null)}
+                          >
+                            <Underline size={13} />
+                          </button>
+                          <div className="vr mx-1 my-auto" style={{ height: "14px" }} />
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-light p-1 border-0 text-slate-700 hover:bg-slate-200 rounded"
+                            title="Bullet List"
+                            onClick={() => document.execCommand('insertUnorderedList', false, null)}
+                          >
+                            <List size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-light p-1 border-0 text-slate-700 hover:bg-slate-200 rounded"
+                            title="Numbered List"
+                            onClick={() => document.execCommand('insertOrderedList', false, null)}
+                          >
+                            <ListOrdered size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-light p-1 border-0 text-slate-700 hover:bg-slate-200 rounded"
+                            title="Insert Link"
+                            onClick={() => {
+                              const url = prompt("Enter link URL (e.g. https://...):");
+                              if (url) document.execCommand('createLink', false, url);
+                            }}
+                          >
+                            <Link size={13} />
+                          </button>
+                        </div>
+
+                        {/* Rich ContentEditable area for Email */}
+                        <div
+                          ref={emailEditorRef}
+                          contentEditable
+                          className="cu-email-editor border rounded-2 p-2.5 bg-white text-slate-800"
+                          style={{ minHeight: "120px", maxHeight: "280px", overflowY: "auto", fontSize: "13px", outline: "none", lineHeight: "1.6" }}
+                          onInput={(e) => setEmailHtmlContent(e.currentTarget.innerHTML)}
+                          data-placeholder="Type your email message or paste formatted content from Outlook..."
+                        />
+                      </div>
+                    ) : (
+                      <textarea
+                        ref={textareaRef}
+                        className="cu-comment-textarea border-0 w-100 bg-transparent text-slate-800"
+                        style={{ outline: "none", fontSize: "13px", resize: "none" }}
+                        placeholder="Write a comment..."
+                        value={content}
+                        onChange={handleTextareaChange}
+                        onKeyDown={handleKeyDown}
+                        rows={2}
+                      />
+                    )}
 
                     {showAutocomplete && autocompleteSuggestions.length > 0 && (
                       <div className="autocomplete-dropdown position-absolute bg-white border rounded shadow-lg p-2" style={{ bottom: "100%", left: 0, right: 0, zIndex: 9999 }}>
@@ -3902,7 +3989,14 @@ const UpdatesDrawer = ({
                                 type="button"
                                 className={`w-100 text-start btn btn-sm border-0 d-flex align-items-center justify-content-between p-2 rounded ${commentSendMode === "comment" ? "bg-slate-100 font-semibold" : "hover:bg-slate-50"}`}
                                 style={{ fontSize: "13px" }}
-                                onClick={() => { setCommentSendMode("comment"); setShowSendModeDropdown(false); }}
+                                onClick={() => {
+                                  if (commentSendMode !== "comment" && emailEditorRef.current) {
+                                    const plain = emailEditorRef.current.innerText || "";
+                                    if (plain) setContent(plain);
+                                  }
+                                  setCommentSendMode("comment");
+                                  setShowSendModeDropdown(false);
+                                }}
                               >
                                 <div className="d-flex align-items-center gap-2">
                                   <FileText size={14} className="text-slate-600" />
@@ -3914,7 +4008,18 @@ const UpdatesDrawer = ({
                                 type="button"
                                 className={`w-100 text-start btn btn-sm border-0 d-flex align-items-center justify-content-between p-2 rounded ${commentSendMode === "email" ? "bg-slate-100 font-semibold" : "hover:bg-slate-50"}`}
                                 style={{ fontSize: "13px" }}
-                                onClick={() => { setCommentSendMode("email"); setShowSendModeDropdown(false); }}
+                                onClick={() => {
+                                  if (commentSendMode !== "email") {
+                                    setTimeout(() => {
+                                      if (emailEditorRef.current && content) {
+                                        emailEditorRef.current.innerHTML = content.replace(/\n/g, '<br/>');
+                                        setEmailHtmlContent(emailEditorRef.current.innerHTML);
+                                      }
+                                    }, 50);
+                                  }
+                                  setCommentSendMode("email");
+                                  setShowSendModeDropdown(false);
+                                }}
                               >
                                 <div className="d-flex align-items-center gap-2">
                                   <Mail size={14} className="text-primary" />
@@ -3932,7 +4037,7 @@ const UpdatesDrawer = ({
                           className="rounded-circle p-0 d-flex align-items-center justify-content-center text-white"
                           style={{ width: "28px", height: "28px", backgroundColor: commentSendMode === "email" ? "#2563eb" : "#1e1e24", border: "none" }}
                           onClick={handlePostUpdate}
-                          disabled={!content.trim() || posting}
+                          disabled={posting || (commentSendMode === "email" ? (!emailHtmlContent?.trim() && !content.trim()) : !content.trim())}
                           title={commentSendMode === "email" ? "Send Email" : "Send Comment"}
                         >
                           {posting ? (
