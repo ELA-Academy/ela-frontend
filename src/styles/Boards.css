@@ -3765,10 +3765,41 @@ th.zbot-sticky-col-right, th.zbot-sticky-table-col-right-1, th.zbot-sticky-table
   font-size: 13px;
   color: #334155;
   padding: 12px;
-  font-family: inherit;
   resize: none;
   min-height: 50px;
 }
+
+.cu-email-editor {
+  outline: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: #1e293b;
+  cursor: text;
+}
+
+.cu-email-editor:empty:before {
+  content: attr(data-placeholder);
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.rich-parsed-content p {
+  margin-bottom: 0.75rem;
+}
+
+.rich-parsed-content p:last-child {
+  margin-bottom: 0;
+}
+
+.rich-parsed-content ul,
+.rich-parsed-content ol {
+  padding-left: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.rich-parsed-content table {
+  border-collapse: collapse;
+}
+
 
 .cu-comment-footer {
   display: flex;

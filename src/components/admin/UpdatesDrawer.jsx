@@ -11,7 +11,12 @@ import {
   Circle,
   Flag,
   Link2,
+  Link,
   List,
+  ListOrdered,
+  Bold,
+  Italic,
+  Underline,
   Pencil,
   Play,
   Save,
@@ -252,15 +257,19 @@ const UpdatesDrawer = ({
   const [ccEmail, setCcEmail] = useState("");
   const [emailSubject, setEmailSubject] = useState("");
   const [replyToUser, setReplyToUser] = useState(null);
+  const [emailHtmlContent, setEmailHtmlContent] = useState("");
+  const emailEditorRef = useRef(null);
 
   useEffect(() => {
     if (task) {
-      if (task.submitter_email) {
-        setToEmail(task.submitter_email);
-      }
+      setToEmail(task.submitter_email || "");
       setEmailSubject(`Re: ${task.title || 'Form Submission'}`);
+      setEmailHtmlContent("");
+      if (emailEditorRef.current) {
+        emailEditorRef.current.innerHTML = "";
+      }
     }
-  }, [task]);
+  }, [task?.id]);
 
   const showToast = (message, type = "success") => {
     setCustomAlert({ show: true, message, type });
@@ -2217,20 +2226,71 @@ const UpdatesDrawer = ({
     }
   };
 
+  const handleEmailEditorPaste = (e) => {
+    e.preventDefault();
+    const html = e.clipboardData.getData("text/html");
+    const text = e.clipboardData.getData("text/plain");
+
+    if (html) {
+      // Clean up Word/Outlook specific comment wrappers while preserving full formatting & tables
+      let cleanHtml = html
+        .replace(/<!--[\s\S]*?-->/g, "")
+        .replace(/<style[\s\S]*?<\/style>/gi, "")
+        .replace(/<xml[\s\S]*?<\/xml>/gi, "")
+        .replace(/<\/?(html|body|meta|link)[^>]*>/gi, "");
+
+      document.execCommand("insertHTML", false, cleanHtml);
+    } else if (text) {
+      const formattedText = text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\r\n/g, "<br/>")
+        .replace(/[\r\n]/g, "<br/>");
+      document.execCommand("insertHTML", false, formattedText);
+    }
+
+    if (emailEditorRef.current) {
+      setEmailHtmlContent(emailEditorRef.current.innerHTML);
+    }
+  };
+
   const handlePostUpdate = async (e) => {
     e.preventDefault();
-    if (!content.trim() || posting) return;
+    if (posting) return;
+
+    let finalContent = "";
+    if (commentSendMode === "email") {
+      const editorEl = emailEditorRef.current;
+      const html = (editorEl ? editorEl.innerHTML : emailHtmlContent) || "";
+      const text = (editorEl ? editorEl.innerText : "") || "";
+      const hasMedia = editorEl ? !!editorEl.querySelector("img, table, a, hr") : false;
+
+      if (!text.trim() && !hasMedia) {
+        toast.warning("Please enter or paste an email message before sending.");
+        return;
+      }
+      finalContent = html.trim();
+    } else {
+      finalContent = content.trim();
+      if (!finalContent) {
+        toast.warning("Please enter a comment before posting.");
+        return;
+      }
+    }
+
+    if (!finalContent) return;
 
     try {
       setPosting(true);
       setError("");
       
       const activeMentions = trackedMentions.filter((m) =>
-        content.includes(`@${m.label}`)
+        finalContent.includes(`@${m.label}`)
       );
       
       const response = await createTaskUpdate(taskId, {
-        content: content.trim(),
+        content: finalContent,
         mentions: activeMentions.map((m) => ({ type: m.type, id: m.id })),
         send_via_email: commentSendMode === "email",
         to_email: commentSendMode === "email" ? toEmail : undefined,
@@ -2240,12 +2300,20 @@ const UpdatesDrawer = ({
       
       setUpdates((prev) => [response, ...prev]);
       setContent("");
+      setEmailHtmlContent("");
+      if (emailEditorRef.current) {
+        emailEditorRef.current.innerHTML = "";
+      }
       try {
         sessionStorage.removeItem(`draft_comment_${taskId}`);
       } catch {}
       setTrackedMentions([]);
+      toast.success(commentSendMode === "email" ? "Email sent successfully" : "Comment added");
     } catch (err) {
-      setError("Failed to post task update discussion.");
+      console.error("Error posting task update:", err);
+      const serverMsg = err?.response?.data?.error || err?.response?.data?.message || err?.message || "Failed to post task update discussion.";
+      setError(serverMsg);
+      toast.error(serverMsg);
     } finally {
       setPosting(false);
     }
@@ -2503,16 +2571,25 @@ const UpdatesDrawer = ({
   const renderParsedContent = (text) => {
     if (!text) return "";
 
-    const containsHtml = /<[a-z][\s\S]*>/i.test(text);
+    let processedText = text;
+    if (typeof processedText === "string" && processedText.includes("&lt;") && processedText.includes("&gt;")) {
+      const unescaped = processedText.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+      if (/<(p|div|table|tbody|thead|tr|td|th|ul|ol|li|h[1-6]|br|span|img|b|i|strong|em|a|font|hr)[\s>/]/i.test(unescaped)) {
+        processedText = unescaped;
+      }
+    }
+
+    const containsHtml = /<[a-z][\s\S]*>/i.test(processedText);
 
     if (containsHtml) {
-      const sanitized = DOMPurify.sanitize(text, {
-        ADD_ATTR: ['target', 'style', 'rel', 'class']
+      const sanitized = DOMPurify.sanitize(processedText, {
+        ADD_ATTR: ['target', 'style', 'rel', 'class', 'href', 'src', 'alt', 'width', 'height', 'border', 'cellpadding', 'cellspacing', 'role', 'align']
       });
       return (
-        <span
+        <div
+          className="rich-parsed-content"
           dangerouslySetInnerHTML={{ __html: sanitized }}
-          style={{ display: "inline", wordBreak: "break-word" }}
+          style={{ display: "block", wordBreak: "break-word", lineHeight: "1.6" }}
         />
       );
     }
@@ -3803,16 +3880,87 @@ const UpdatesDrawer = ({
                       </div>
                     )}
 
-                    <textarea
-                      ref={textareaRef}
-                      className="cu-comment-textarea border-0 w-100 bg-transparent text-slate-800"
-                      style={{ outline: "none", fontSize: "13px", resize: "none" }}
-                      placeholder={commentSendMode === "email" ? "Type your email message..." : "Write a comment..."}
-                      value={content}
-                      onChange={handleTextareaChange}
-                      onKeyDown={handleKeyDown}
-                      rows={commentSendMode === "email" ? 3 : 2}
-                    />
+                    {commentSendMode === "email" ? (
+                      <div className="email-rich-composer-wrapper mb-2">
+                        {/* Rich Formatting Toolbar */}
+                        <div className="d-flex align-items-center gap-1 mb-2 pb-1.5 border-bottom bg-slate-50 px-2 py-1 rounded-2">
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-light p-1 border-0 text-slate-700 hover:bg-slate-200 rounded"
+                            title="Bold"
+                            onClick={() => document.execCommand('bold', false, null)}
+                          >
+                            <Bold size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-light p-1 border-0 text-slate-700 hover:bg-slate-200 rounded"
+                            title="Italic"
+                            onClick={() => document.execCommand('italic', false, null)}
+                          >
+                            <Italic size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-light p-1 border-0 text-slate-700 hover:bg-slate-200 rounded"
+                            title="Underline"
+                            onClick={() => document.execCommand('underline', false, null)}
+                          >
+                            <Underline size={13} />
+                          </button>
+                          <div className="vr mx-1 my-auto" style={{ height: "14px" }} />
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-light p-1 border-0 text-slate-700 hover:bg-slate-200 rounded"
+                            title="Bullet List"
+                            onClick={() => document.execCommand('insertUnorderedList', false, null)}
+                          >
+                            <List size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-light p-1 border-0 text-slate-700 hover:bg-slate-200 rounded"
+                            title="Numbered List"
+                            onClick={() => document.execCommand('insertOrderedList', false, null)}
+                          >
+                            <ListOrdered size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-light p-1 border-0 text-slate-700 hover:bg-slate-200 rounded"
+                            title="Insert Link"
+                            onClick={() => {
+                              const url = prompt("Enter link URL (e.g. https://...):");
+                              if (url) document.execCommand('createLink', false, url);
+                            }}
+                          >
+                            <Link size={13} />
+                          </button>
+                        </div>
+
+                        {/* Rich ContentEditable area for Email */}
+                        <div
+                          ref={emailEditorRef}
+                          contentEditable
+                          className="cu-email-editor border rounded-2 p-2.5 bg-white text-slate-800"
+                          style={{ minHeight: "120px", maxHeight: "280px", overflowY: "auto", fontSize: "13px", outline: "none", lineHeight: "1.6" }}
+                          onInput={(e) => setEmailHtmlContent(e.currentTarget.innerHTML)}
+                          onPaste={handleEmailEditorPaste}
+                          data-placeholder="Type your email message or paste formatted content from Outlook..."
+                        />
+                      </div>
+                    ) : (
+                      <textarea
+                        ref={textareaRef}
+                        className="cu-comment-textarea border-0 w-100 bg-transparent text-slate-800"
+                        style={{ outline: "none", fontSize: "13px", resize: "none" }}
+                        placeholder="Write a comment..."
+                        value={content}
+                        onChange={handleTextareaChange}
+                        onKeyDown={handleKeyDown}
+                        rows={2}
+                      />
+                    )}
 
                     {showAutocomplete && autocompleteSuggestions.length > 0 && (
                       <div className="autocomplete-dropdown position-absolute bg-white border rounded shadow-lg p-2" style={{ bottom: "100%", left: 0, right: 0, zIndex: 9999 }}>
@@ -3902,7 +4050,14 @@ const UpdatesDrawer = ({
                                 type="button"
                                 className={`w-100 text-start btn btn-sm border-0 d-flex align-items-center justify-content-between p-2 rounded ${commentSendMode === "comment" ? "bg-slate-100 font-semibold" : "hover:bg-slate-50"}`}
                                 style={{ fontSize: "13px" }}
-                                onClick={() => { setCommentSendMode("comment"); setShowSendModeDropdown(false); }}
+                                onClick={() => {
+                                  if (commentSendMode !== "comment" && emailEditorRef.current) {
+                                    const plain = emailEditorRef.current.innerText || "";
+                                    if (plain) setContent(plain);
+                                  }
+                                  setCommentSendMode("comment");
+                                  setShowSendModeDropdown(false);
+                                }}
                               >
                                 <div className="d-flex align-items-center gap-2">
                                   <FileText size={14} className="text-slate-600" />
@@ -3914,7 +4069,18 @@ const UpdatesDrawer = ({
                                 type="button"
                                 className={`w-100 text-start btn btn-sm border-0 d-flex align-items-center justify-content-between p-2 rounded ${commentSendMode === "email" ? "bg-slate-100 font-semibold" : "hover:bg-slate-50"}`}
                                 style={{ fontSize: "13px" }}
-                                onClick={() => { setCommentSendMode("email"); setShowSendModeDropdown(false); }}
+                                onClick={() => {
+                                  if (commentSendMode !== "email") {
+                                    setTimeout(() => {
+                                      if (emailEditorRef.current && content) {
+                                        emailEditorRef.current.innerHTML = content.replace(/\n/g, '<br/>');
+                                        setEmailHtmlContent(emailEditorRef.current.innerHTML);
+                                      }
+                                    }, 50);
+                                  }
+                                  setCommentSendMode("email");
+                                  setShowSendModeDropdown(false);
+                                }}
                               >
                                 <div className="d-flex align-items-center gap-2">
                                   <Mail size={14} className="text-primary" />
@@ -3932,7 +4098,12 @@ const UpdatesDrawer = ({
                           className="rounded-circle p-0 d-flex align-items-center justify-content-center text-white"
                           style={{ width: "28px", height: "28px", backgroundColor: commentSendMode === "email" ? "#2563eb" : "#1e1e24", border: "none" }}
                           onClick={handlePostUpdate}
-                          disabled={!content.trim() || posting}
+                          disabled={
+                            posting ||
+                            (commentSendMode === "email"
+                              ? (!emailHtmlContent?.trim() || (emailEditorRef.current && !emailEditorRef.current.innerText?.trim() && !emailEditorRef.current.querySelector("img, table, a")))
+                              : !content.trim())
+                          }
                           title={commentSendMode === "email" ? "Send Email" : "Send Comment"}
                         >
                           {posting ? (
