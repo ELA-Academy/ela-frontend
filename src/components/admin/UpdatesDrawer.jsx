@@ -262,12 +262,14 @@ const UpdatesDrawer = ({
 
   useEffect(() => {
     if (task) {
-      if (task.submitter_email) {
-        setToEmail(task.submitter_email);
-      }
+      setToEmail(task.submitter_email || "");
       setEmailSubject(`Re: ${task.title || 'Form Submission'}`);
+      setEmailHtmlContent("");
+      if (emailEditorRef.current) {
+        emailEditorRef.current.innerHTML = "";
+      }
     }
-  }, [task]);
+  }, [task?.id]);
 
   const showToast = (message, type = "success") => {
     setCustomAlert({ show: true, message, type });
@@ -2224,13 +2226,60 @@ const UpdatesDrawer = ({
     }
   };
 
+  const handleEmailEditorPaste = (e) => {
+    e.preventDefault();
+    const html = e.clipboardData.getData("text/html");
+    const text = e.clipboardData.getData("text/plain");
+
+    if (html) {
+      // Clean up Word/Outlook specific comment wrappers while preserving full formatting & tables
+      let cleanHtml = html
+        .replace(/<!--[\s\S]*?-->/g, "")
+        .replace(/<style[\s\S]*?<\/style>/gi, "")
+        .replace(/<xml[\s\S]*?<\/xml>/gi, "")
+        .replace(/<\/?(html|body|meta|link)[^>]*>/gi, "");
+
+      document.execCommand("insertHTML", false, cleanHtml);
+    } else if (text) {
+      const formattedText = text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\r\n/g, "<br/>")
+        .replace(/[\r\n]/g, "<br/>");
+      document.execCommand("insertHTML", false, formattedText);
+    }
+
+    if (emailEditorRef.current) {
+      setEmailHtmlContent(emailEditorRef.current.innerHTML);
+    }
+  };
+
   const handlePostUpdate = async (e) => {
     e.preventDefault();
-    const finalContent = commentSendMode === "email"
-      ? (emailEditorRef.current?.innerHTML || emailHtmlContent || content).trim()
-      : content.trim();
+    if (posting) return;
 
-    if (!finalContent || posting) return;
+    let finalContent = "";
+    if (commentSendMode === "email") {
+      const editorEl = emailEditorRef.current;
+      const html = (editorEl ? editorEl.innerHTML : emailHtmlContent) || "";
+      const text = (editorEl ? editorEl.innerText : "") || "";
+      const hasMedia = editorEl ? !!editorEl.querySelector("img, table, a, hr") : false;
+
+      if (!text.trim() && !hasMedia) {
+        toast.warning("Please enter or paste an email message before sending.");
+        return;
+      }
+      finalContent = html.trim();
+    } else {
+      finalContent = content.trim();
+      if (!finalContent) {
+        toast.warning("Please enter a comment before posting.");
+        return;
+      }
+    }
+
+    if (!finalContent) return;
 
     try {
       setPosting(true);
@@ -2261,7 +2310,10 @@ const UpdatesDrawer = ({
       setTrackedMentions([]);
       toast.success(commentSendMode === "email" ? "Email sent successfully" : "Comment added");
     } catch (err) {
-      setError("Failed to post task update discussion.");
+      console.error("Error posting task update:", err);
+      const serverMsg = err?.response?.data?.error || err?.response?.data?.message || err?.message || "Failed to post task update discussion.";
+      setError(serverMsg);
+      toast.error(serverMsg);
     } finally {
       setPosting(false);
     }
@@ -2519,11 +2571,19 @@ const UpdatesDrawer = ({
   const renderParsedContent = (text) => {
     if (!text) return "";
 
-    const containsHtml = /<[a-z][\s\S]*>/i.test(text);
+    let processedText = text;
+    if (typeof processedText === "string" && processedText.includes("&lt;") && processedText.includes("&gt;")) {
+      const unescaped = processedText.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+      if (/<(p|div|table|tbody|thead|tr|td|th|ul|ol|li|h[1-6]|br|span|img|b|i|strong|em|a|font|hr)[\s>/]/i.test(unescaped)) {
+        processedText = unescaped;
+      }
+    }
+
+    const containsHtml = /<[a-z][\s\S]*>/i.test(processedText);
 
     if (containsHtml) {
-      const sanitized = DOMPurify.sanitize(text, {
-        ADD_ATTR: ['target', 'style', 'rel', 'class', 'href', 'src', 'alt', 'width', 'height', 'border', 'cellpadding', 'cellspacing']
+      const sanitized = DOMPurify.sanitize(processedText, {
+        ADD_ATTR: ['target', 'style', 'rel', 'class', 'href', 'src', 'alt', 'width', 'height', 'border', 'cellpadding', 'cellspacing', 'role', 'align']
       });
       return (
         <div
@@ -3885,6 +3945,7 @@ const UpdatesDrawer = ({
                           className="cu-email-editor border rounded-2 p-2.5 bg-white text-slate-800"
                           style={{ minHeight: "120px", maxHeight: "280px", overflowY: "auto", fontSize: "13px", outline: "none", lineHeight: "1.6" }}
                           onInput={(e) => setEmailHtmlContent(e.currentTarget.innerHTML)}
+                          onPaste={handleEmailEditorPaste}
                           data-placeholder="Type your email message or paste formatted content from Outlook..."
                         />
                       </div>
@@ -4037,7 +4098,12 @@ const UpdatesDrawer = ({
                           className="rounded-circle p-0 d-flex align-items-center justify-content-center text-white"
                           style={{ width: "28px", height: "28px", backgroundColor: commentSendMode === "email" ? "#2563eb" : "#1e1e24", border: "none" }}
                           onClick={handlePostUpdate}
-                          disabled={posting || (commentSendMode === "email" ? (!emailHtmlContent?.trim() && !content.trim()) : !content.trim())}
+                          disabled={
+                            posting ||
+                            (commentSendMode === "email"
+                              ? (!emailHtmlContent?.trim() || (emailEditorRef.current && !emailEditorRef.current.innerText?.trim() && !emailEditorRef.current.querySelector("img, table, a")))
+                              : !content.trim())
+                          }
                           title={commentSendMode === "email" ? "Send Email" : "Send Comment"}
                         >
                           {posting ? (
