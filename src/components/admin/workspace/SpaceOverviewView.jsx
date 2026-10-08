@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Modal, Form, Button, Spinner, Dropdown } from "react-bootstrap";
+import { Form, Button, Spinner } from "react-bootstrap";
 import {
   Plus,
   Settings,
@@ -12,13 +12,11 @@ import {
   FileText,
   Clock,
   ExternalLink,
-  PlusCircle,
   Download,
-  Layers,
   ChevronRight,
-  Sparkles,
-  BarChart3,
-  List
+  List,
+  Lock,
+  RotateCw
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { formatDistanceToNow } from "date-fns";
@@ -46,7 +44,7 @@ const SpaceOverviewView = ({ board, boards = [], assignees = [] }) => {
   // Overview data states
   const [cards, setCards] = useState([]);
   const [cardValues, setCardValues] = useState({});
-  const [recentItems, setRecentItems] = useState({ tasks: [], docs: [] });
+  const [recentItems, setRecentItems] = useState({ items: [], tasks: [], docs: [] });
   const [spaceDocs, setSpaceDocs] = useState([]);
   const [bookmarks, setBookmarks] = useState([]);
   const [spaceChildren, setSpaceChildren] = useState({ folders: [], lists: [] });
@@ -107,7 +105,7 @@ const SpaceOverviewView = ({ board, boards = [], assignees = [] }) => {
     try {
       const [cardsRes, recentRes, docsRes, bookmarksRes, childrenRes] = await Promise.all([
         getOverviewCards(spaceId).catch(() => ({ data: [] })),
-        getSpaceRecent(spaceId).catch(() => ({ data: { tasks: [], docs: [] } })),
+        getSpaceRecent(spaceId).catch(() => ({ data: { items: [], tasks: [], docs: [] } })),
         getSpaceDocs(spaceId).catch(() => ({ data: [] })),
         getBookmarks(spaceId).catch(() => ({ data: [] })),
         getSpaceChildren(spaceId).catch(() => ({ data: { folders: [], lists: [] } })),
@@ -115,7 +113,7 @@ const SpaceOverviewView = ({ board, boards = [], assignees = [] }) => {
 
       const fetchedCards = cardsRes.data || [];
       setCards(fetchedCards);
-      setRecentItems(recentRes.data || { tasks: [], docs: [] });
+      setRecentItems(recentRes.data || { items: [], tasks: [], docs: [] });
       setSpaceDocs(docsRes.data || []);
       setBookmarks(bookmarksRes.data || []);
       setSpaceChildren(childrenRes.data || { folders: [], lists: [] });
@@ -151,6 +149,13 @@ const SpaceOverviewView = ({ board, boards = [], assignees = [] }) => {
     loadOverviewData();
   }, [loadOverviewData]);
 
+  // Manual refresh
+  const handleManualRefresh = async () => {
+    setRefreshing(true);
+    await loadOverviewData();
+    setRefreshing(false);
+  };
+
   // Add a new calculation card
   const handleAddCard = async (type = "calculation") => {
     try {
@@ -168,7 +173,6 @@ const SpaceOverviewView = ({ board, boards = [], assignees = [] }) => {
       setCards((prev) => [...prev, newCard]);
 
       if (type === "calculation") {
-        // Automatically open settings modal for the newly created card
         setSelectedCardForModal(newCard);
         setModalTab("settings");
         setShowSettingsModal(true);
@@ -204,7 +208,6 @@ const SpaceOverviewView = ({ board, boards = [], assignees = [] }) => {
   // Callback when settings modal saves
   const handleCardSettingsSaved = async (updatedCard) => {
     setCards((prev) => prev.map((c) => (c.id === updatedCard.id ? updatedCard : c)));
-    // Refresh aggregate for this card
     try {
       const res = await getCardAggregate(spaceId, updatedCard.id);
       setCardValues((prev) => ({ ...prev, [updatedCard.id]: res.data }));
@@ -255,7 +258,6 @@ const SpaceOverviewView = ({ board, boards = [], assignees = [] }) => {
     try {
       const res = await generateReport(spaceId);
       toast.success("Overview Report generated into Space Docs!");
-      // Refresh docs
       const docsRes = await getSpaceDocs(spaceId);
       setSpaceDocs(docsRes.data || []);
       if (res.data?.doc_id) {
@@ -269,7 +271,6 @@ const SpaceOverviewView = ({ board, boards = [], assignees = [] }) => {
     }
   };
 
-  // Helper to format unit value
   const formatCardValue = (val, units) => {
     if (val === undefined || val === null) return "0";
     let formattedVal = typeof val === "number" ? val.toLocaleString("en-US", { maximumFractionDigits: 2 }) : val;
@@ -278,6 +279,46 @@ const SpaceOverviewView = ({ board, boards = [], assignees = [] }) => {
     if (units === "%") return `${formattedVal}%`;
     return formattedVal;
   };
+
+  // Combined recent items to show in Recent Card
+  const displayRecentItems = useMemo(() => {
+    if (recentItems?.items && recentItems.items.length > 0) {
+      return recentItems.items;
+    }
+    // Fallback: construct from spaceChildren if recentItems.items was empty
+    const items = [];
+    (spaceChildren?.folders || []).forEach((f) => {
+      items.push({
+        id: f.id,
+        name: f.name,
+        type: "folder",
+        is_folder: true,
+        parent_name: board?.name || "Space",
+        is_private: f.is_private
+      });
+      (f.children || []).forEach((sl) => {
+        items.push({
+          id: sl.id,
+          name: sl.name,
+          type: "list",
+          is_folder: false,
+          parent_name: f.name,
+          is_private: sl.is_private
+        });
+      });
+    });
+    (spaceChildren?.lists || []).forEach((l) => {
+      items.push({
+        id: l.id,
+        name: l.name,
+        type: "list",
+        is_folder: false,
+        parent_name: board?.name || "Space",
+        is_private: l.is_private
+      });
+    });
+    return items;
+  }, [recentItems, spaceChildren, board]);
 
   if (loading) {
     return (
@@ -290,14 +331,32 @@ const SpaceOverviewView = ({ board, boards = [], assignees = [] }) => {
 
   return (
     <div className="space-overview-container">
-      {/* Top Header Controls Bar */}
-      <div className="overview-header-toolbar d-flex align-items-center justify-content-between mb-4">
+      {/* Top Header Controls Bar - ClickUp Style */}
+      <div className="overview-header-toolbar d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
         <div>
           <h2 className="overview-title fw-bold text-slate-800 m-0">Overview</h2>
-          <span className="text-muted small">Aggregated metrics, key cards, and location assets for this space</span>
+          <span className="text-muted small">Aggregated metrics, recent items, and location assets for this space</span>
         </div>
 
-        <div className="d-flex align-items-center gap-2">
+        <div className="d-flex align-items-center gap-3">
+          <button
+            type="button"
+            className="btn btn-sm btn-link text-decoration-none d-flex align-items-center gap-1.5 text-muted p-0 border-0"
+            style={{ fontSize: "12px" }}
+            onClick={handleManualRefresh}
+            title="Refresh overview data"
+          >
+            <RotateCw size={13} className={`text-slate-400 ${refreshing ? "spin-animation" : ""}`} />
+            <span>Refreshed: just now</span>
+          </button>
+
+          <div
+            className="badge bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-pill fw-medium"
+            style={{ fontSize: "11px" }}
+          >
+            Auto refresh: On
+          </div>
+
           {/* Generate Report Button */}
           <Button
             variant="outline-secondary"
@@ -327,7 +386,7 @@ const SpaceOverviewView = ({ board, boards = [], assignees = [] }) => {
         </div>
       </div>
 
-      {/* Dynamic Calculation Cards Grid */}
+      {/* Dynamic Calculation Cards Grid (if user added any) */}
       {cards.filter((c) => c.card_type === "calculation").length > 0 && (
         <div className="overview-cards-grid mb-4">
           {cards.filter((c) => c.card_type === "calculation").map((card) => {
@@ -339,7 +398,6 @@ const SpaceOverviewView = ({ board, boards = [], assignees = [] }) => {
 
             return (
               <div key={card.id} className="overview-stat-card bg-white p-4 rounded-4 border border-slate-200 shadow-sm position-relative">
-                {/* Top Row: Title + Timestamp */}
                 <div className="d-flex align-items-start justify-content-between mb-3">
                   <div className="card-title-text fw-bold text-slate-700 uppercase tracking-wide flex-grow-1 me-2" style={{ fontSize: "13px" }}>
                     {editingCardId === card.id ? (
@@ -370,14 +428,12 @@ const SpaceOverviewView = ({ board, boards = [], assignees = [] }) => {
                   </span>
                 </div>
 
-                {/* Center Row: Big Metric Value */}
                 <div className="metric-display-container py-3">
                   <div className="metric-big-number fw-bold text-slate-900" style={{ fontSize: "3.25rem", lineHeight: "1" }}>
                     {displayVal}
                   </div>
                 </div>
 
-                {/* Hover Action Overlay Icons */}
                 <div className="card-hover-actions position-absolute d-flex align-items-center gap-1.5 bg-white border border-slate-200 shadow-sm rounded-3 p-1">
                   <button
                     type="button"
@@ -418,21 +474,137 @@ const SpaceOverviewView = ({ board, boards = [], assignees = [] }) => {
         </div>
       )}
 
-      {/* Built-in Bottom Section (Bookmarks, Docs, Recents, Folders) */}
+      {/* Main 3-Column Section matching Image 1: Recent | Docs | Bookmarks */}
       <div className="row g-4 mb-4">
-        {/* Bookmarks Card */}
+        {/* Card 1: Recent (Lists, Folders, and Recent Activity) */}
         <div className="col-lg-4">
-          <div className="overview-builtin-card bg-white p-4 rounded-4 border border-slate-200 shadow-sm h-100 d-flex flex-column">
+          <div className="overview-builtin-card bg-white p-4 rounded-4 border border-slate-200 shadow-sm h-100 d-flex flex-column" style={{ minHeight: "320px" }}>
             <div className="d-flex align-items-center justify-content-between mb-3">
-              <div className="fw-bold text-slate-800 d-flex align-items-center gap-2">
-                <Bookmark size={16} className="text-indigo-600" /> Bookmarks
+              <div className="fw-bold text-slate-800" style={{ fontSize: "14px" }}>
+                Recent
               </div>
-              <span className="badge bg-slate-100 text-slate-600 rounded-pill">{bookmarks.length}</span>
             </div>
 
-            <div className="flex-grow-1 overflow-auto pe-1" style={{ maxHeight: "240px" }}>
+            <div className="flex-grow-1 overflow-auto pe-1" style={{ maxHeight: "280px" }}>
+              {displayRecentItems.length > 0 ? (
+                <div className="d-flex flex-column gap-1.5">
+                  {displayRecentItems.map((item, idx) => (
+                    <div
+                      key={`recent-item-${item.id || idx}`}
+                      className="recent-item-row p-2 rounded-3 border border-slate-100 cursor-pointer hover:bg-slate-50 d-flex align-items-center gap-2 transition-colors"
+                      onClick={() => navigate(`/admin/boards/${item.id}`)}
+                      title={`Open ${item.name}`}
+                    >
+                      {item.is_folder ? (
+                        <FolderOpen size={16} className="text-slate-600 flex-shrink-0" />
+                      ) : (
+                        <List size={16} className="text-slate-500 flex-shrink-0" />
+                      )}
+                      <div className="truncate flex-grow-1 text-slate-800" style={{ fontSize: "13px" }}>
+                        <span className="fw-medium">{item.name}</span>
+                        {item.parent_name && (
+                          <span className="text-muted ms-1.5" style={{ fontSize: "12px" }}>
+                            · in {item.parent_name}
+                          </span>
+                        )}
+                      </div>
+                      {item.is_private && <Lock size={12} className="text-slate-400 flex-shrink-0" />}
+                    </div>
+                  ))}
+
+                  {/* Also show recent tasks if any */}
+                  {(recentItems?.tasks || []).map((t) => (
+                    <div
+                      key={`recent-task-${t.id}`}
+                      className="recent-item-row p-2 rounded-3 border border-slate-100 cursor-pointer hover:bg-slate-50 d-flex align-items-center gap-2 transition-colors"
+                      onClick={() => navigate(`/admin/boards/${t.board_id || spaceId}?taskId=${t.id}`)}
+                      title={`Open task: ${t.title}`}
+                    >
+                      <Clock size={14} className="text-amber-500 flex-shrink-0" />
+                      <div className="truncate flex-grow-1" style={{ fontSize: "13px" }}>
+                        <span className="fw-medium text-slate-800">{t.title}</span>
+                        <span className="text-muted ms-1.5" style={{ fontSize: "12px" }}>• in {t.board_name || "Space"}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-5 text-muted small">
+                  No items or recent activity in this space yet.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Card 2: Docs (matching Image 1) */}
+        <div className="col-lg-4">
+          <div className="overview-builtin-card bg-white p-4 rounded-4 border border-slate-200 shadow-sm h-100 d-flex flex-column" style={{ minHeight: "320px" }}>
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <div className="fw-bold text-slate-800" style={{ fontSize: "14px" }}>
+                Docs
+              </div>
+              {spaceDocs.length > 0 && (
+                <span className="badge bg-slate-100 text-slate-600 rounded-pill">{spaceDocs.length}</span>
+              )}
+            </div>
+
+            <div className="flex-grow-1 d-flex flex-column justify-content-center">
+              {spaceDocs.length > 0 ? (
+                <div className="d-flex flex-column gap-2 overflow-auto pe-1" style={{ maxHeight: "260px" }}>
+                  {spaceDocs.map((doc) => (
+                    <div
+                      key={doc.id}
+                      className="doc-item-row p-2.5 rounded-3 border border-slate-100 bg-slate-50/70 cursor-pointer hover:bg-slate-100 d-flex align-items-center justify-content-between"
+                      onClick={() => navigate(`/admin/boards/${spaceId}?tab=docs&docId=${doc.id}`)}
+                    >
+                      <div className="truncate me-2">
+                        <div className="fw-medium text-slate-800" style={{ fontSize: "13px" }}>{doc.title}</div>
+                        <div className="text-muted" style={{ fontSize: "11px" }}>in {doc.board_name || board.name}</div>
+                      </div>
+                      <ChevronRight size={14} className="text-slate-400" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                /* Empty state matching Image 1 */
+                <div className="d-flex flex-column align-items-center justify-content-center text-center py-4 my-auto">
+                  <div className="rounded-circle p-3 bg-slate-100 text-slate-400 mb-3 d-inline-flex">
+                    <FileText size={32} />
+                  </div>
+                  <p className="text-muted mb-3" style={{ fontSize: "13px" }}>
+                    There are no Docs in this location yet.
+                  </p>
+                  <Button
+                    variant="dark"
+                    size="sm"
+                    className="rounded-pill px-3 py-1.5 fw-medium bg-slate-900 border-0 shadow-sm"
+                    style={{ fontSize: "12px" }}
+                    onClick={() => navigate(`/admin/boards/${spaceId}?tab=docs&new=1`)}
+                  >
+                    Add a Doc
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Card 3: Bookmarks (matching Image 1) */}
+        <div className="col-lg-4">
+          <div className="overview-builtin-card bg-white p-4 rounded-4 border border-slate-200 shadow-sm h-100 d-flex flex-column" style={{ minHeight: "320px" }}>
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <div className="fw-bold text-slate-800" style={{ fontSize: "14px" }}>
+                Bookmarks
+              </div>
+              {bookmarks.length > 0 && (
+                <span className="badge bg-slate-100 text-slate-600 rounded-pill">{bookmarks.length}</span>
+              )}
+            </div>
+
+            <div className="flex-grow-1 d-flex flex-column justify-content-center">
               {bookmarks.length > 0 ? (
-                <div className="d-flex flex-column gap-2">
+                <div className="d-flex flex-column gap-2 overflow-auto pe-1" style={{ maxHeight: "220px" }}>
                   {bookmarks.map((bm) => (
                     <div key={bm.id} className="bookmark-item-row p-2.5 rounded-3 border border-slate-100 bg-slate-50/70 d-flex align-items-center justify-content-between">
                       <a href={bm.url || "#"} target="_blank" rel="noreferrer" className="text-decoration-none text-slate-700 fw-medium truncate flex-grow-1 me-2" style={{ fontSize: "13px" }}>
@@ -446,14 +618,30 @@ const SpaceOverviewView = ({ board, boards = [], assignees = [] }) => {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-4 text-muted small">
-                  <p className="m-0 mb-1">Bookmarks make it easy to save items or any URL.</p>
+                /* Empty state matching Image 1 */
+                <div className="d-flex flex-column align-items-center justify-content-center text-center py-4 my-auto">
+                  <div className="rounded-circle p-3 bg-slate-100 text-slate-400 mb-3 d-inline-flex">
+                    <Bookmark size={32} />
+                  </div>
+                  <p className="text-muted mb-3 px-3" style={{ fontSize: "12px", lineHeight: "1.5" }}>
+                    Bookmarks make it easy to save ClickUp items or any URL from around the web.
+                  </p>
+                  <Button
+                    variant="dark"
+                    size="sm"
+                    className="rounded-pill px-3 py-1.5 fw-medium bg-slate-900 border-0 shadow-sm"
+                    style={{ fontSize: "12px" }}
+                    onClick={() => setShowAddBookmark(true)}
+                  >
+                    Add Bookmark
+                  </Button>
                 </div>
               )}
             </div>
 
-            <div className="mt-3 pt-2 border-top border-slate-100">
-              {showAddBookmark ? (
+            {/* Inline add bookmark form if toggled */}
+            {showAddBookmark && (
+              <div className="mt-3 pt-2 border-top border-slate-100">
                 <Form onSubmit={handleAddBookmarkSubmit} className="p-2 border rounded-3 bg-slate-50">
                   <Form.Control
                     type="text"
@@ -481,125 +669,39 @@ const SpaceOverviewView = ({ board, boards = [], assignees = [] }) => {
                     </Button>
                   </div>
                 </Form>
-              ) : (
-                <Button variant="light" size="sm" className="w-100 text-slate-700 fw-medium rounded-3 border" onClick={() => setShowAddBookmark(true)}>
-                  <Plus size={14} className="me-1" /> Add Bookmark
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Docs Card */}
-        <div className="col-lg-4">
-          <div className="overview-builtin-card bg-white p-4 rounded-4 border border-slate-200 shadow-sm h-100 d-flex flex-column">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <div className="fw-bold text-slate-800 d-flex align-items-center gap-2">
-                <FileText size={16} className="text-blue-600" /> Docs
               </div>
-              <span className="badge bg-slate-100 text-slate-600 rounded-pill">{spaceDocs.length}</span>
-            </div>
-
-            <div className="flex-grow-1 overflow-auto pe-1" style={{ maxHeight: "280px" }}>
-              {spaceDocs.length > 0 ? (
-                <div className="d-flex flex-column gap-2">
-                  {spaceDocs.map((doc) => (
-                    <div
-                      key={doc.id}
-                      className="doc-item-row p-2.5 rounded-3 border border-slate-100 bg-slate-50/70 cursor-pointer hover:bg-slate-100 d-flex align-items-center justify-content-between"
-                      onClick={() => navigate(`/admin/boards/${spaceId}?tab=docs&docId=${doc.id}`)}
-                    >
-                      <div className="truncate me-2">
-                        <div className="fw-medium text-slate-800" style={{ fontSize: "13px" }}>{doc.title}</div>
-                        <div className="text-muted" style={{ fontSize: "11px" }}>in {doc.board_name || board.name}</div>
-                      </div>
-                      <ChevronRight size={14} className="text-slate-400" />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-4 text-muted small">No documents in this space yet.</div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Recent Items Card */}
-        <div className="col-lg-4">
-          <div className="overview-builtin-card bg-white p-4 rounded-4 border border-slate-200 shadow-sm h-100 d-flex flex-column">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <div className="fw-bold text-slate-800 d-flex align-items-center gap-2">
-                <Clock size={16} className="text-amber-600" /> Recent Activity
-              </div>
-            </div>
-
-            <div className="flex-grow-1 overflow-auto pe-1" style={{ maxHeight: "280px" }}>
-              {(recentItems.tasks || []).length > 0 || (recentItems.docs || []).length > 0 ? (
-                <div className="d-flex flex-column gap-2">
-                  {(recentItems.tasks || []).map((t) => (
-                    <div
-                      key={`task-${t.id}`}
-                      className="recent-item-row p-2 rounded-3 border border-slate-100 cursor-pointer hover:bg-slate-50 d-flex align-items-center justify-content-between"
-                      onClick={() => navigate(`/admin/boards/${t.board_id || spaceId}?taskId=${t.id}`)}
-                    >
-                      <div className="truncate">
-                        <span className="fw-medium text-slate-800 me-1" style={{ fontSize: "12px" }}>{t.title}</span>
-                        <span className="text-muted" style={{ fontSize: "11px" }}>• in {t.board_name || "Space"}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-4 text-muted small">No recent activity recorded.</div>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Folders & Lists Structure Card */}
-      <div className="overview-builtin-card bg-white p-4 rounded-4 border border-slate-200 shadow-sm mb-4">
-        <div className="fw-bold text-slate-800 mb-3 d-flex align-items-center gap-2">
-          <FolderOpen size={16} className="text-indigo-600" /> Space Structure (Folders & Lists)
+      {/* Folders Section - Underneath the 3 Cards (matching Image 1) */}
+      <div className="overview-folders-section mb-4">
+        <div className="fw-bold text-slate-800 mb-3" style={{ fontSize: "15px" }}>
+          Folders
         </div>
 
-        <div className="row g-3">
-          {(spaceChildren.folders || []).map((folder) => (
-            <div key={folder.id} className="col-md-4">
-              <div className="folder-box p-3 border rounded-3 bg-slate-50/80">
-                <div className="fw-bold text-slate-800 d-flex align-items-center gap-2 mb-2">
-                  <FolderOpen size={16} className="text-amber-500" /> {folder.name}
-                </div>
-                <div className="ms-3 d-flex flex-column gap-1">
-                  {(folder.children || []).map((subList) => (
-                    <div
-                      key={subList.id}
-                      className="sublist-item cursor-pointer text-indigo-600 hover:underline d-flex align-items-center justify-content-between small"
-                      onClick={() => navigate(`/admin/boards/${subList.id}`)}
-                    >
-                      <span><List size={12} className="me-1" />{subList.name}</span>
-                      <span className="text-muted" style={{ fontSize: "10px" }}>{subList.tasks_count || 0} tasks</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ))}
-
-          {(spaceChildren.lists || []).map((list) => (
-            <div key={list.id} className="col-md-3">
+        <div className="d-flex flex-wrap gap-3">
+          {(spaceChildren.folders || []).length > 0 ? (
+            spaceChildren.folders.map((folder) => (
               <div
-                className="list-box p-3 border rounded-3 bg-white hover:border-indigo-300 cursor-pointer transition-all"
-                onClick={() => navigate(`/admin/boards/${list.id}`)}
+                key={folder.id}
+                className="folder-card-pill bg-white px-3.5 py-2.5 rounded-3 border border-slate-200 shadow-sm d-flex align-items-center gap-2 cursor-pointer hover:border-slate-400 hover:shadow transition-all"
+                onClick={() => navigate(`/admin/boards/${folder.id}`)}
+                title={`Open folder: ${folder.name}`}
               >
-                <div className="fw-semibold text-slate-800 d-flex align-items-center justify-content-between mb-1" style={{ fontSize: "13px" }}>
-                  <span><List size={14} className="me-1 text-slate-500" />{list.name}</span>
-                  <ChevronRight size={12} className="text-slate-400" />
-                </div>
-                <div className="text-muted small" style={{ fontSize: "11px" }}>{list.tasks_count || 0} tasks</div>
+                <FolderOpen size={16} className="text-slate-600" />
+                <span className="fw-medium text-slate-800" style={{ fontSize: "13.5px" }}>
+                  {folder.name}
+                </span>
+                {folder.is_private && <Lock size={12} className="text-slate-400" />}
               </div>
+            ))
+          ) : (
+            <div className="text-muted small py-2">
+              No folders created in this space yet.
             </div>
-          ))}
+          )}
         </div>
       </div>
 
@@ -611,8 +713,9 @@ const SpaceOverviewView = ({ board, boards = [], assignees = [] }) => {
           card={selectedCardForModal}
           spaceId={spaceId}
           childLists={childLists}
+          assignees={assignees}
           initialTab={modalTab}
-          onSave={handleCardSettingsSaved}
+          onSaved={handleCardSettingsSaved}
         />
       )}
     </div>

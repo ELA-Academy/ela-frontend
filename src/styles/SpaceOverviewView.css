@@ -69,3 +69,19 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.spin-animation {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.folder-card-pill {
+  min-width: 140px;
+  cursor: pointer;
+  user-select: none;
+}
+
