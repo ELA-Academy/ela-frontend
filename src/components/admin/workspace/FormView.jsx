@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Table, Button, Spinner, Row, Col, Card, Badge, Form as BootstrapForm, Modal, Dropdown } from "react-bootstrap";
-import { Plus, Trash2, Clipboard, Eye, Copy, ArrowLeft, ArrowUp, ArrowDown, Image as ImageIcon, Sparkles, Check, CheckSquare, Settings, Type, AlignJustify, Calendar, Paperclip, Hash, Mail } from "lucide-react";
+import { Plus, Trash2, Clipboard, Eye, Copy, ArrowLeft, ArrowUp, ArrowDown, Image as ImageIcon, Sparkles, Check, CheckSquare, Settings, Type, AlignJustify, Calendar, Paperclip, Hash, Mail, X } from "lucide-react";
 import api from "../../../utils/api";
 import { showSuccess, showError } from "../../../utils/notificationService";
 
@@ -41,6 +41,15 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
   const [thankYouTitle, setThankYouTitle] = useState("Submission Successful!");
   const [thankYouDesc, setThankYouDesc] = useState("Thank you for your submission. Your request has been registered.");
 
+  // Form Settings states
+  const [notificationEmails, setNotificationEmails] = useState([]);
+  const [notifyAllDeptMembers, setNotifyAllDeptMembers] = useState(false);
+  const [sendConfirmation, setSendConfirmation] = useState(true);
+  const [confirmationSenderEmail, setConfirmationSenderEmail] = useState("");
+  const [availableEmails, setAvailableEmails] = useState([]);
+  const [emailSearchQuery, setEmailSearchQuery] = useState("");
+  const [showEmailDropdown, setShowEmailDropdown] = useState(false);
+
   // Dropdown states for mapping new questions
   const [showAddQuestionDropdown, setShowAddQuestionDropdown] = useState(false);
   const [questionSearchQuery, setQuestionSearchQuery] = useState("");
@@ -56,6 +65,61 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
   const [previewSubmitting, setPreviewSubmitting] = useState(false);
 
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "";
+
+  useEffect(() => {
+    const fetchAvailableEmails = async () => {
+      try {
+        const res = await api.get("/board-extensions/forms/available-emails");
+        setAvailableEmails(res.data || []);
+      } catch (err) {
+        try {
+          const [deptRes, staffRes] = await Promise.all([
+            api.get("/departments"),
+            api.get("/staff")
+          ]);
+          const emails = [];
+          (deptRes.data || []).forEach(d => {
+            if (d.email) emails.push({ label: `${d.name} (${d.email})`, email: d.email, category: "Department Mailbox", is_admin: true });
+          });
+          (staffRes.data || []).forEach(s => {
+            if (s.email) emails.push({ label: `${s.name} (${s.email})`, email: s.email, category: "Staff Member", is_admin: false });
+          });
+          setAvailableEmails(emails);
+        } catch (fallbackErr) {
+          console.error("Failed to fetch available emails", fallbackErr);
+        }
+      }
+    };
+    fetchAvailableEmails();
+  }, []);
+
+  const handleAddNotificationEmail = (email) => {
+    if (!email || !email.includes("@")) return;
+    const clean = email.trim().toLowerCase();
+    if (!notificationEmails.includes(clean)) {
+      setNotificationEmails(prev => [...prev, clean]);
+    }
+    setEmailSearchQuery("");
+    setShowEmailDropdown(false);
+  };
+
+  const handleRemoveNotificationEmail = (email) => {
+    setNotificationEmails(prev => prev.filter(e => e !== email));
+  };
+
+  const handleAddCustomEmail = (customEmail) => {
+    if (!customEmail || !customEmail.includes("@")) {
+      showError("Please enter a valid email address.");
+      return;
+    }
+    handleAddNotificationEmail(customEmail);
+  };
+
+  const filteredAvailableEmails = availableEmails.filter(item => {
+    if (!emailSearchQuery.trim()) return true;
+    const q = emailSearchQuery.toLowerCase();
+    return item.label?.toLowerCase().includes(q) || item.email?.toLowerCase().includes(q);
+  });
 
   // Helper to format local file uploads/signatures with full backend port
   const getFullUrl = (path) => {
@@ -109,6 +173,12 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
     setBuilderTab("build");
     setSelectedPage("questions");
     setHeaderImageUrl(PRESET_BANNERS[0].url);
+    setNotificationEmails([]);
+    setNotifyAllDeptMembers(false);
+    setSendConfirmation(true);
+    setConfirmationSenderEmail("");
+    setEmailSearchQuery("");
+    setShowEmailDropdown(false);
     setQuestions([
       { id: 1, label: "Task Title", type: "text", mapping: "title", required: true }
     ]);
@@ -123,16 +193,24 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
     setSelectedPage("questions");
     setHeaderImageUrl(formConfig.header_image_url || PRESET_BANNERS[0].url);
 
-    // Parse welcome and thank you configurations from structure
+    // Parse welcome, thank you, and settings configurations from structure
     const welcome = formConfig.form_structure?.find(q => q.type === "welcome");
     const thankyou = formConfig.form_structure?.find(q => q.type === "thankyou");
+    const settings = formConfig.settings || formConfig.form_structure?.find(q => q.type === "settings") || {};
 
     setWelcomeTitle(welcome?.label || "Welcome to ELA Form");
     setWelcomeDesc(welcome?.description || "Please fill out this form to submit your request.");
     setThankYouTitle(thankyou?.label || "Submission Successful!");
     setThankYouDesc(thankyou?.description || "Thank you for your submission. Your request has been registered.");
 
-    setQuestions(formConfig.form_structure?.filter(q => q.type !== "welcome" && q.type !== "thankyou") || []);
+    setNotificationEmails(settings.notification_emails || []);
+    setNotifyAllDeptMembers(!!settings.notify_all_dept_members);
+    setSendConfirmation(settings.send_confirmation !== undefined ? settings.send_confirmation : true);
+    setConfirmationSenderEmail(settings.confirmation_sender_email || "");
+    setEmailSearchQuery("");
+    setShowEmailDropdown(false);
+
+    setQuestions(formConfig.form_structure?.filter(q => q.type !== "welcome" && q.type !== "thankyou" && q.type !== "settings") || []);
     setIsEditing(true);
   };
 
@@ -181,9 +259,19 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
 
     setSubmitting(true);
     try {
+      const settingsBlock = {
+        id: "settings",
+        type: "settings",
+        notification_emails: notificationEmails,
+        notify_all_dept_members: notifyAllDeptMembers,
+        send_confirmation: sendConfirmation,
+        confirmation_sender_email: confirmationSenderEmail
+      };
+
       const fullStructure = [
         { id: "welcome", type: "welcome", label: welcomeTitle, description: welcomeDesc },
         { id: "thankyou", type: "thankyou", label: thankYouTitle, description: thankYouDesc },
+        settingsBlock,
         ...questions
       ];
 
@@ -191,6 +279,7 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
         name: formName.trim(),
         description: formDesc.trim(),
         form_structure: fullStructure,
+        settings: settingsBlock,
         header_image_url: headerImageUrl
       };
 
@@ -293,6 +382,29 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
               </h5>
             </div>
           </div>
+
+          {/* Centered Tab Switcher: Build vs Settings */}
+          <div className="d-flex align-items-center bg-slate-100 p-1 rounded-pill">
+            <button
+              type="button"
+              className={`btn btn-sm rounded-pill px-3 py-1 d-flex align-items-center gap-1.5 transition-all border-0 ${builderTab === "build" ? "bg-white text-slate-900 shadow-sm font-semibold" : "text-slate-500 hover:text-slate-700 font-medium"}`}
+              style={{ fontSize: "12.5px" }}
+              onClick={() => setBuilderTab("build")}
+            >
+              <Sparkles size={13} className={builderTab === "build" ? "text-indigo-600" : ""} />
+              <span>Build</span>
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm rounded-pill px-3 py-1 d-flex align-items-center gap-1.5 transition-all border-0 ${builderTab === "settings" ? "bg-white text-slate-900 shadow-sm font-semibold" : "text-slate-500 hover:text-slate-700 font-medium"}`}
+              style={{ fontSize: "12.5px" }}
+              onClick={() => setBuilderTab("settings")}
+            >
+              <Settings size={13} className={builderTab === "settings" ? "text-indigo-600" : ""} />
+              <span>Settings</span>
+            </button>
+          </div>
+
           <div className="d-flex gap-2">
             <Button variant="light" size="sm" onClick={() => setShowPreviewModal(true)} className="border-0 bg-slate-50 text-slate-650 rounded-lg px-3">
               <Eye size={14} className="me-1" /> Preview Layout
@@ -303,7 +415,8 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
           </div>
         </div>
 
-        <Row className="g-0">
+        {builderTab === "build" ? (
+          <Row className="g-0">
           {/* Sleek Canvas */}
           <Col lg={9} className="p-4 bg-white border-end border-slate-100 overflow-auto" style={{ maxHeight: "calc(100vh - 160px)" }}>
             <div className="mx-auto" style={{ maxWidth: "620px" }}>
@@ -652,7 +765,249 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
               </div>
             )}
           </Col>
-        </Row>
+          </Row>
+        ) : (
+          <div className="p-4 bg-slate-50 min-vh-100 overflow-auto" style={{ maxHeight: "calc(100vh - 160px)" }}>
+            <div className="mx-auto bg-white border border-slate-200 rounded-3 shadow-sm p-4" style={{ maxWidth: "720px" }}>
+              <div className="border-bottom pb-3 mb-4">
+                <h5 className="fw-bold text-slate-900 mb-1" style={{ fontSize: "16px" }}>
+                  Form Notification & Email Settings
+                </h5>
+                <p className="text-muted small mb-0" style={{ fontSize: "12px" }}>
+                  Configure who receives submission notifications and control automatic confirmation emails sent to submitters.
+                </p>
+              </div>
+
+              {/* 1. Internal Submission Notifications */}
+              <div className="mb-4 pb-4 border-bottom">
+                <div className="d-flex align-items-start gap-2.5 mb-3">
+                  <div className="p-2 bg-indigo-50 text-indigo-600 rounded-2">
+                    <Mail size={18} />
+                  </div>
+                  <div>
+                    <h6 className="fw-bold text-slate-800 mb-0.5" style={{ fontSize: "14px" }}>
+                      Submission Notification Recipients
+                    </h6>
+                    <p className="text-muted small mb-0" style={{ fontSize: "12px" }}>
+                      Selected email addresses will automatically receive the submission details. By default, only the admin/department mailbox receives it so uninvolved department members are not disturbed.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Selected Email Badges */}
+                <div className="mb-2">
+                  <label className="form-label text-xs fw-semibold text-slate-700 mb-1.5">
+                    Notification Recipients ({notificationEmails.length})
+                  </label>
+                  <div className="d-flex flex-wrap gap-1.5 p-2 bg-slate-50 border rounded-2 min-h-[42px] align-items-center">
+                    {notificationEmails.length === 0 ? (
+                      <span className="text-muted small italic px-1" style={{ fontSize: "12px" }}>
+                        Default: Primary Department / Admin Mailbox only (no extra staff will be emailed)
+                      </span>
+                    ) : (
+                      notificationEmails.map((email) => (
+                        <Badge
+                          key={email}
+                          bg="white"
+                          className="text-slate-800 border shadow-2xs d-flex align-items-center gap-1.5 px-2.5 py-1.5 fw-medium"
+                          style={{ fontSize: "12px" }}
+                        >
+                          <Mail size={12} className="text-indigo-600" />
+                          <span>{email}</span>
+                          <button
+                            type="button"
+                            className="btn btn-link p-0 text-slate-400 hover:text-danger ms-1 border-0 d-flex align-items-center"
+                            onClick={() => handleRemoveNotificationEmail(email)}
+                            title="Remove recipient"
+                          >
+                            <X size={12} />
+                          </button>
+                        </Badge>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Search & Add Recipient Dropdown */}
+                <div className="position-relative mb-3">
+                  <div className="input-group input-group-sm">
+                    <span className="input-group-text bg-white border-end-0 text-slate-400">
+                      <Mail size={13} />
+                    </span>
+                    <input
+                      type="text"
+                      className="form-control border-start-0 ps-0 shadow-none text-xs"
+                      placeholder="Search directory or type email and press Enter to add..."
+                      value={emailSearchQuery}
+                      onChange={(e) => {
+                        setEmailSearchQuery(e.target.value);
+                        setShowEmailDropdown(true);
+                      }}
+                      onFocus={() => setShowEmailDropdown(true)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddCustomEmail(emailSearchQuery);
+                        }
+                      }}
+                    />
+                    {emailSearchQuery && (
+                      <Button
+                        variant="dark"
+                        size="sm"
+                        className="text-xs px-3"
+                        onClick={() => handleAddCustomEmail(emailSearchQuery)}
+                      >
+                        + Add Email
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Autocomplete / List Dropdown */}
+                  {showEmailDropdown && (
+                    <div
+                      className="position-absolute bg-white border rounded-3 shadow-lg w-100 p-2 mt-1 overflow-auto"
+                      style={{ zIndex: 1050, maxHeight: "250px", fontSize: "12px" }}
+                    >
+                      <div className="d-flex align-items-center justify-content-between px-2 pb-1.5 border-bottom mb-1">
+                        <span className="text-muted text-[10px] fw-bold uppercase">School Directory & Departments</span>
+                        <button
+                          type="button"
+                          className="btn btn-link text-slate-400 p-0 text-xs border-0"
+                          onClick={() => setShowEmailDropdown(false)}
+                        >
+                          Close
+                        </button>
+                      </div>
+
+                      {filteredAvailableEmails.length === 0 ? (
+                        <div className="p-3 text-center text-muted">
+                          <p className="mb-1 small">No matching email found in directory.</p>
+                          {emailSearchQuery.includes("@") && (
+                            <Button
+                              variant="light"
+                              size="sm"
+                              className="text-xs border mt-1"
+                              onClick={() => handleAddCustomEmail(emailSearchQuery)}
+                            >
+                              Add &ldquo;{emailSearchQuery}&rdquo; as recipient
+                            </Button>
+                          )}
+                        </div>
+                      ) : (
+                        filteredAvailableEmails.map((item, idx) => {
+                          const isSelected = notificationEmails.includes(item.email.toLowerCase());
+                          return (
+                            <div
+                              key={idx}
+                              className={`d-flex align-items-center justify-content-between p-2 rounded cursor-pointer ${isSelected ? "bg-slate-100 text-slate-500" : "hover:bg-slate-50"}`}
+                              onClick={() => {
+                                if (!isSelected) {
+                                  handleAddNotificationEmail(item.email);
+                                } else {
+                                  handleRemoveNotificationEmail(item.email.toLowerCase());
+                                }
+                              }}
+                            >
+                              <div className="d-flex flex-column">
+                                <span className="fw-semibold text-slate-800">{item.label}</span>
+                                <span className="text-muted text-[11px]">{item.email}</span>
+                              </div>
+                              <Badge bg={item.is_admin ? "primary" : "secondary"} className="text-[10px] uppercase">
+                                {item.category || (item.is_admin ? "Admin" : "Staff")}
+                              </Badge>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Checkbox: Also notify all department members */}
+                <div className="p-2.5 bg-slate-50 border rounded-2">
+                  <BootstrapForm.Check
+                    type="checkbox"
+                    id="notify-all-dept"
+                    label="Also notify all members of the target department"
+                    checked={notifyAllDeptMembers}
+                    onChange={(e) => setNotifyAllDeptMembers(e.target.checked)}
+                    className="text-xs text-slate-800 fw-medium"
+                  />
+                  <small className="text-muted d-block ms-4 mt-0.5" style={{ fontSize: "11px" }}>
+                    Leave unchecked so general department staff who have no business with this submission are not emailed.
+                  </small>
+                </div>
+              </div>
+
+              {/* 2. Submitter Confirmation Email */}
+              <div>
+                <div className="d-flex align-items-start gap-2.5 mb-3">
+                  <div className="p-2 bg-emerald-50 text-emerald-600 rounded-2">
+                    <CheckSquare size={18} />
+                  </div>
+                  <div>
+                    <h6 className="fw-bold text-slate-800 mb-0.5" style={{ fontSize: "14px" }}>
+                      Submitter Confirmation Email
+                    </h6>
+                    <p className="text-muted small mb-0" style={{ fontSize: "12px" }}>
+                      Choose whether a receipt email is automatically sent to the person who filled out the form, and pick which official email address sends it.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Enable / Disable Confirmation Toggle */}
+                <div className="p-3 bg-slate-50 rounded-2 border mb-3">
+                  <BootstrapForm.Check
+                    type="switch"
+                    id="send-confirmation-switch"
+                    label="Send confirmation email to the person who filled out the form"
+                    checked={sendConfirmation}
+                    onChange={(e) => setSendConfirmation(e.target.checked)}
+                    className="fw-semibold text-slate-800 text-xs"
+                  />
+                  <small className="text-muted d-block ms-4 mt-0.5" style={{ fontSize: "11px" }}>
+                    When enabled, the submitter receives an institutional confirmation email receipt containing their submitted answers.
+                  </small>
+                </div>
+
+                {/* If Confirmation is Enabled: Select Sender Email */}
+                {sendConfirmation && (
+                  <div className="ps-2">
+                    <label className="form-label text-xs fw-semibold text-slate-700 mb-1">
+                      Send Confirmation From (Sender Email)
+                    </label>
+                    <p className="text-muted text-[11px] mb-2">
+                      Select which official email address appears in the &ldquo;From&rdquo; header of the submitter&apos;s confirmation email.
+                    </p>
+
+                    <BootstrapForm.Select
+                      size="sm"
+                      className="text-xs mb-2"
+                      value={confirmationSenderEmail}
+                      onChange={(e) => setConfirmationSenderEmail(e.target.value)}
+                    >
+                      <option value="">Default (Department / School Default Sender)</option>
+                      {availableEmails.map((item, idx) => (
+                        <option key={idx} value={item.email}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </BootstrapForm.Select>
+
+                    {confirmationSenderEmail && (
+                      <div className="d-flex align-items-center gap-2 text-xs text-slate-600 bg-slate-50 p-2 border rounded">
+                        <span className="text-muted">Selected Sender Mailbox:</span>
+                        <span className="badge bg-indigo-50 text-indigo-700 border border-indigo-200">{confirmationSenderEmail}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+            </div>
+          </div>
+        )}
 
         {/* Live Simulator Modal */}
         {showPreviewModal && (
