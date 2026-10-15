@@ -289,7 +289,7 @@ const PublicFormFiller = () => {
   }
 
   const welcomePage = formConfig.form_structure?.find(q => q.type === "welcome");
-  const formQuestions = formConfig.form_structure?.filter(q => q.type !== "welcome" && q.type !== "thankyou") || [];
+  const formQuestions = formConfig.form_structure?.filter(q => q.type !== "welcome" && q.type !== "thankyou" && q.type !== "settings") || [];
 
   return (
     <div className="min-vh-100 bg-slate-50 py-5">

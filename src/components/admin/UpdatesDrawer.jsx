@@ -278,6 +278,13 @@ const UpdatesDrawer = ({
     }, 5000);
   };
 
+  const toast = useMemo(() => ({
+    success: (msg) => showToast(msg, "success"),
+    error: (msg) => showToast(msg, "danger"),
+    warning: (msg) => showToast(msg, "warning"),
+    info: (msg) => showToast(msg, "info"),
+  }), []);
+
   // Custom Fields Editing states
   const [editingFieldId, setEditingFieldId] = useState(null);
   const [editFieldName, setEditFieldName] = useState("");
