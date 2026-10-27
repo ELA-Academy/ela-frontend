@@ -18,7 +18,8 @@ import {
   UserCheck,
   UserPlus,
   Users,
-  AlertCircle
+  AlertCircle,
+  Clock
 } from "lucide-react";
 import api from "../../utils/api";
 import { useAuth } from "../../context/AuthContext";
@@ -287,9 +288,9 @@ const DashboardOverview = () => {
             <FolderKanban className="w-4 h-4" />
             Open Workspaces
           </Link>
-          <Link to="/admin/tasks" className="dashboard-top-action dashboard-top-action-dark">
-            <ClipboardCheck className="w-4 h-4" />
-            View My Tasks
+          <Link to="/time-tracking" className="dashboard-top-action dashboard-top-action-dark">
+            <Clock className="w-4 h-4" />
+            Track Time
           </Link>
         </div>
       </div>

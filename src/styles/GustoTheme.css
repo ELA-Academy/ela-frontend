@@ -1,0 +1,850 @@
+/* ==========================================================================
+   Gusto-Style Time Tracking Theme — ELA Academy Edition
+   Preserves Gusto's exact proportions, rounded layout, and typography style
+   while utilizing ELA Academy's signature brand purple (#673de6)
+   ========================================================================== */
+
+:root {
+  --gusto-primary: #673de6;
+  --gusto-primary-hover: #5025d1;
+  --gusto-primary-light: #f3efff;
+  --gusto-primary-soft: #eae3ff;
+  --gusto-text-dark: #192024;
+  --gusto-text-muted: #5e6972;
+  --gusto-text-light: #8895a0;
+  --gusto-bg-main: #fbfbfa;
+  --gusto-sidebar-bg: #ffffff;
+  --gusto-card-bg: #ffffff;
+  --gusto-border: #e6e8eb;
+  --gusto-border-light: #f0f2f5;
+  --gusto-font: "Prompt", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --gusto-radius-card: 16px;
+  --gusto-radius-btn: 8px;
+}
+
+/* Base Container */
+.gusto-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--gusto-bg-main);
+  font-family: var(--gusto-font);
+  color: var(--gusto-text-dark);
+}
+
+/* Sidebar */
+.gusto-sidebar {
+  width: 230px;
+  min-width: 230px;
+  background-color: var(--gusto-sidebar-bg);
+  border-right: 1px solid var(--gusto-border);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1.25rem 0.85rem;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  box-sizing: border-box;
+}
+
+.gusto-logo-area {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.25rem 0.65rem 1.75rem;
+  border-bottom: 1px solid var(--gusto-border-light);
+  margin-bottom: 1rem;
+}
+
+.gusto-logo-img {
+  height: 32px;
+  width: auto;
+  object-fit: contain;
+}
+
+.gusto-logo-text {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--gusto-primary);
+  letter-spacing: -0.02em;
+}
+
+.gusto-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.gusto-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.85rem;
+  font-size: 0.925rem;
+  font-weight: 500;
+  color: var(--gusto-text-muted);
+  text-decoration: none;
+  border-radius: 8px;
+  transition: all 0.15s ease-in-out;
+}
+
+.gusto-nav-link:hover {
+  background-color: #f6f7f9;
+  color: var(--gusto-text-dark);
+}
+
+.gusto-nav-link.active {
+  background-color: var(--gusto-primary-light);
+  color: var(--gusto-primary);
+  font-weight: 600;
+}
+
+.gusto-nav-link svg {
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
+}
+
+.gusto-sidebar-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-top: 1px solid var(--gusto-border-light);
+  padding-top: 1rem;
+}
+
+.gusto-admin-switch-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.gusto-admin-switch-btn:hover {
+  background-color: #e2e8f0;
+  color: #1e293b;
+}
+
+/* Main Area */
+.gusto-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background-color: var(--gusto-bg-main);
+}
+
+/* Top Header */
+.gusto-header {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 2.5rem;
+  background-color: transparent;
+  gap: 1.5rem;
+}
+
+.gusto-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.gusto-icon-btn {
+  background: none;
+  border: none;
+  color: var(--gusto-text-muted);
+  cursor: pointer;
+  padding: 0.4rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s;
+}
+
+.gusto-icon-btn:hover {
+  background-color: #f0f2f5;
+  color: var(--gusto-text-dark);
+}
+
+.gusto-user-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  padding: 0.35rem 0.6rem;
+  border-radius: 20px;
+  transition: background-color 0.15s;
+  position: relative;
+}
+
+.gusto-user-pill:hover {
+  background-color: #f0f2f5;
+}
+
+.gusto-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background-color: var(--gusto-primary);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.gusto-user-details {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.gusto-user-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--gusto-text-dark);
+}
+
+.gusto-user-company {
+  font-size: 0.75rem;
+  color: var(--gusto-text-muted);
+}
+
+/* Page Content Body */
+.gusto-content {
+  flex: 1;
+  padding: 1.5rem 2.5rem 3.5rem;
+  max-width: 1100px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Page Title Section */
+.gusto-page-header {
+  margin-bottom: 2rem;
+}
+
+.gusto-page-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--gusto-text-dark);
+  margin: 0 0 0.35rem;
+  letter-spacing: -0.015em;
+}
+
+.gusto-page-subtitle {
+  font-size: 0.95rem;
+  color: var(--gusto-text-muted);
+  margin: 0;
+}
+
+/* Grid Layout for Home */
+.gusto-home-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .gusto-home-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Standard Gusto Cards */
+.gusto-card {
+  background-color: var(--gusto-card-bg);
+  border: 1px solid var(--gusto-border);
+  border-radius: var(--gusto-radius-card);
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.gusto-card-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--gusto-text-dark);
+  margin-bottom: 1rem;
+}
+
+/* Empty Tasks Card */
+.gusto-empty-tasks {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3.5rem 1.5rem;
+  text-align: center;
+}
+
+.gusto-empty-mug {
+  font-size: 2.75rem;
+  margin-bottom: 1rem;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.06));
+}
+
+.gusto-empty-heading {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--gusto-text-dark);
+  margin: 0 0 0.5rem;
+}
+
+.gusto-empty-subtext {
+  font-size: 0.9rem;
+  color: var(--gusto-text-muted);
+  margin: 0;
+  max-width: 320px;
+}
+
+/* Clock In / Out Card (Picture 2) */
+.gusto-clock-card {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--gusto-card-bg);
+  border: 1px solid var(--gusto-border);
+  border-radius: var(--gusto-radius-card);
+  padding: 1.5rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+}
+
+.gusto-clock-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--gusto-text-muted);
+  margin-bottom: 1.75rem;
+}
+
+.gusto-clock-time {
+  font-weight: 600;
+  color: var(--gusto-text-dark);
+}
+
+.gusto-clock-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.gusto-wave-hand {
+  font-size: 3rem;
+  margin-bottom: 0.75rem;
+  animation: gentle-wave 3s infinite;
+}
+
+@keyframes gentle-wave {
+  0%, 100% { transform: rotate(0deg); }
+  20%, 60% { transform: rotate(14deg); }
+  40%, 80% { transform: rotate(-8deg); }
+}
+
+.gusto-clock-status {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--gusto-text-dark);
+  margin: 0 0 1.25rem;
+}
+
+.gusto-btn-clock {
+  width: 100%;
+  padding: 0.85rem 1.25rem;
+  background-color: var(--gusto-primary);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  box-shadow: 0 2px 4px rgba(103, 61, 230, 0.2);
+}
+
+.gusto-btn-clock:hover {
+  background-color: var(--gusto-primary-hover);
+  transform: translateY(-1px);
+}
+
+.gusto-btn-clock.clocked-in {
+  background-color: #e11d48;
+  box-shadow: 0 2px 4px rgba(225, 29, 72, 0.2);
+}
+
+.gusto-btn-clock.clocked-in:hover {
+  background-color: #be123c;
+}
+
+/* Clock Card Footer Row */
+.gusto-clock-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 1.25rem 0;
+  border-top: 1px solid var(--gusto-border-light);
+  border-bottom: 1px solid var(--gusto-border-light);
+  margin: 1.5rem 0 1rem;
+}
+
+.gusto-stat-block {
+  text-align: center;
+}
+
+.gusto-stat-val {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--gusto-text-dark);
+  margin-bottom: 0.2rem;
+}
+
+.gusto-stat-lbl {
+  font-size: 0.775rem;
+  color: var(--gusto-text-light);
+}
+
+.gusto-clock-links {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.5rem;
+}
+
+.gusto-link-btn {
+  background: none;
+  border: none;
+  color: var(--gusto-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.gusto-link-btn:hover {
+  color: var(--gusto-primary-hover);
+}
+
+/* ==========================================================================
+   TIME TRACKING PAGE (Pictures 4 & 5)
+   ========================================================================== */
+
+/* Sub Tabs */
+.gusto-tabs-bar {
+  display: flex;
+  gap: 2rem;
+  border-bottom: 2px solid var(--gusto-border-light);
+  margin-bottom: 2rem;
+}
+
+.gusto-tab-item {
+  background: none;
+  border: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--gusto-text-muted);
+  padding: 0.65rem 0;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.15s;
+}
+
+.gusto-tab-item:hover {
+  color: var(--gusto-text-dark);
+}
+
+.gusto-tab-item.active {
+  color: var(--gusto-primary);
+}
+
+.gusto-tab-item.active::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: var(--gusto-primary);
+  border-radius: 2px 2px 0 0;
+}
+
+/* Week Selector */
+.gusto-week-select-container {
+  margin-bottom: 1.5rem;
+}
+
+.gusto-week-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--gusto-text-light);
+  margin-bottom: 0.4rem;
+}
+
+.gusto-week-dropdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  background-color: #ffffff;
+  border: 1px solid var(--gusto-border);
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  font-size: 0.925rem;
+  font-weight: 600;
+  color: var(--gusto-text-dark);
+  cursor: pointer;
+}
+
+/* Total Box */
+.gusto-total-card {
+  background-color: #ffffff;
+  border: 1px solid var(--gusto-border);
+  border-radius: var(--gusto-radius-card);
+  padding: 1.25rem 1.75rem;
+  margin-bottom: 2rem;
+}
+
+.gusto-total-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--gusto-text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.gusto-total-number {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--gusto-text-dark);
+}
+
+/* Table */
+.gusto-schedule-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background-color: #ffffff;
+  border: 1px solid var(--gusto-border);
+  border-radius: var(--gusto-radius-card);
+  overflow: hidden;
+}
+
+.gusto-schedule-table th {
+  background-color: #fbfbfa;
+  padding: 0.85rem 1.5rem;
+  font-size: 0.825rem;
+  font-weight: 600;
+  color: var(--gusto-text-muted);
+  text-align: left;
+  border-bottom: 1px solid var(--gusto-border);
+}
+
+.gusto-schedule-table th:last-child {
+  text-align: right;
+}
+
+.gusto-schedule-row {
+  border-bottom: 1px solid var(--gusto-border-light);
+}
+
+.gusto-schedule-row:last-child td {
+  border-bottom: none;
+}
+
+.gusto-schedule-row td {
+  padding: 1.25rem 1.5rem;
+  vertical-align: top;
+  border-bottom: 1px solid var(--gusto-border-light);
+}
+
+.gusto-day-col {
+  width: 160px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--gusto-text-dark);
+}
+
+.gusto-shifts-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.gusto-shift-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #ffffff;
+  border: 1px solid var(--gusto-border);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--gusto-text-dark);
+  max-width: 320px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+}
+
+.gusto-shift-edit-btn {
+  background: none;
+  border: none;
+  color: var(--gusto-primary);
+  font-size: 0.825rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 1.5rem;
+}
+
+.gusto-shift-edit-btn:hover {
+  text-decoration: underline;
+}
+
+.gusto-add-shift-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: none;
+  border: none;
+  color: var(--gusto-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.35rem 0;
+  width: fit-content;
+}
+
+.gusto-add-shift-btn:hover {
+  text-decoration: underline;
+}
+
+.gusto-future-text {
+  font-size: 0.875rem;
+  color: var(--gusto-text-light);
+  font-style: normal;
+}
+
+.gusto-hours-col {
+  text-align: right;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--gusto-text-dark);
+}
+
+/* ==========================================================================
+   DRAWER / MODAL: ADD SHIFT (Picture 3)
+   ========================================================================== */
+.gusto-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(2px);
+  z-index: 1050;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.gusto-drawer {
+  width: 440px;
+  max-width: 90vw;
+  background-color: #ffffff;
+  height: 100%;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  padding: 1.75rem 2rem;
+  box-sizing: border-box;
+  animation: slide-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slide-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.gusto-drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.gusto-drawer-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--gusto-text-dark);
+  margin: 0;
+}
+
+.gusto-drawer-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--gusto-text-muted);
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+}
+
+.gusto-form-group {
+  margin-bottom: 1.5rem;
+}
+
+.gusto-form-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--gusto-text-dark);
+  margin-bottom: 0.4rem;
+}
+
+.gusto-input-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.gusto-input-with-icon input {
+  width: 100%;
+  padding: 0.65rem 2.5rem 0.65rem 0.85rem;
+  border: 1px solid var(--gusto-border);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  color: var(--gusto-text-dark);
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.gusto-input-with-icon input:focus {
+  outline: none;
+  border-color: var(--gusto-primary);
+  box-shadow: 0 0 0 3px var(--gusto-primary-soft);
+}
+
+.gusto-input-with-icon .input-icon {
+  position: absolute;
+  right: 0.85rem;
+  color: var(--gusto-text-muted);
+  pointer-events: none;
+}
+
+.gusto-calculated-total {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--gusto-text-muted);
+  margin-top: -0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.gusto-section-subtitle {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--gusto-text-dark);
+  margin-bottom: 0.75rem;
+}
+
+.gusto-textarea {
+  width: 100%;
+  height: 110px;
+  padding: 0.75rem;
+  border: 1px solid var(--gusto-border);
+  border-radius: 8px;
+  font-size: 0.925rem;
+  color: var(--gusto-text-dark);
+  box-sizing: border-box;
+  font-family: inherit;
+  resize: none;
+}
+
+.gusto-textarea:focus {
+  outline: none;
+  border-color: var(--gusto-primary);
+  box-shadow: 0 0 0 3px var(--gusto-primary-soft);
+}
+
+.gusto-drawer-footer {
+  margin-top: auto;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 1.5rem;
+}
+
+.gusto-btn-primary {
+  background-color: var(--gusto-primary);
+  color: #ffffff;
+  padding: 0.65rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.925rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.gusto-btn-primary:hover {
+  background-color: var(--gusto-primary-hover);
+}
+
+.gusto-btn-secondary {
+  background: #ffffff;
+  color: var(--gusto-text-dark);
+  padding: 0.65rem 1.25rem;
+  border: 1px solid var(--gusto-border);
+  border-radius: 8px;
+  font-size: 0.925rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.gusto-btn-secondary:hover {
+  background: #f8fafc;
+}
+
+/* ==========================================================================
+   SETTINGS TAB (Picture 5)
+   ========================================================================== */
+.gusto-settings-box {
+  background-color: #ffffff;
+  border: 1px solid var(--gusto-border);
+  border-radius: var(--gusto-radius-card);
+  padding: 2rem;
+  max-width: 600px;
+}
+
+.gusto-select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--gusto-border);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  color: var(--gusto-text-dark);
+  font-family: inherit;
+  background-color: #ffffff;
+}
+
+.gusto-select:focus {
+  outline: none;
+  border-color: var(--gusto-primary);
+  box-shadow: 0 0 0 3px var(--gusto-primary-soft);
+}

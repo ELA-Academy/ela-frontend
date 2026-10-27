@@ -67,6 +67,18 @@ import AdmissionsLayout from "./components/admin/admissions/AdmissionsLayout";
 import AccountingLayout from "./components/admin/accounting/AccountingLayout";
 import AdministrationLayout from "./components/admin/administration/AdministrationLayout";
 
+
+// Gusto Time Tracking Portal
+import GustoLayout from "./components/timetracking/GustoLayout";
+import GustoHomePage from "./pages/timetracking/GustoHomePage";
+import GustoTimeTrackingPage from "./pages/timetracking/GustoTimeTrackingPage";
+import GustoProfilePage from "./pages/timetracking/GustoProfilePage";
+import GustoPayPage from "./pages/timetracking/GustoPayPage";
+import GustoBenefitsPage from "./pages/timetracking/GustoBenefitsPage";
+import GustoDocumentsPage from "./pages/timetracking/GustoDocumentsPage";
+import GustoPerformancePage from "./pages/timetracking/GustoPerformancePage";
+import GustoSettingsPage from "./pages/timetracking/GustoSettingsPage";
+
 // Parent Portal
 import ParentRoute from "./components/ParentRoute";
 import ParentLayout from "./components/parent/ParentLayout";
@@ -211,6 +223,21 @@ function App() {
                 </Route>
                 <Route path="my-dashboard" element={<GenericDashboard />} />
                 <Route path="*" element={<NotFound />} />
+              </Route>
+            </Route>
+
+            
+            {/* Gusto Time Tracking Portal */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/time-tracking" element={<GustoLayout />}>
+                <Route index element={<GustoHomePage />} />
+                <Route path="hours" element={<GustoTimeTrackingPage />} />
+                <Route path="profile" element={<GustoProfilePage />} />
+                <Route path="pay" element={<GustoPayPage />} />
+                <Route path="benefits" element={<GustoBenefitsPage />} />
+                <Route path="documents" element={<GustoDocumentsPage />} />
+                <Route path="performance" element={<GustoPerformancePage />} />
+                <Route path="settings" element={<GustoSettingsPage />} />
               </Route>
             </Route>
 
