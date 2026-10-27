@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import { Outlet, useNavigate, useLocation, Navigate } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { useAuth } from "../../context/AuthContext";
@@ -11,6 +11,11 @@ import "../../styles/mobile.css";
 
 const AdminLayout = () => {
   const { user, isAuthenticated } = useAuth();
+  // If the user has a teacher role, they are restricted from the administrative workspace
+  if (user?.role === "teacher") {
+    return <Navigate to="/time-tracking" replace />;
+  }
+
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
