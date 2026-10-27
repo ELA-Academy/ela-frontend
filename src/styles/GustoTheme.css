@@ -63,7 +63,7 @@
 }
 
 .gusto-logo-text {
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 700;
   color: var(--gusto-primary);
   letter-spacing: -0.02em;
@@ -166,17 +166,29 @@
   border: none;
   color: var(--gusto-text-muted);
   cursor: pointer;
-  padding: 0.4rem;
+  padding: 0.5rem;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: background-color 0.15s;
+  position: relative;
 }
 
 .gusto-icon-btn:hover {
   background-color: #f0f2f5;
   color: var(--gusto-text-dark);
+}
+
+.gusto-noti-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  background-color: #ef4444;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
 }
 
 .gusto-user-pill {
@@ -446,7 +458,7 @@
 }
 
 /* ==========================================================================
-   TIME TRACKING PAGE (Pictures 4 & 5)
+   TIME TRACKING PAGE (Images 1, 2, 3)
    ========================================================================== */
 
 /* Sub Tabs */
@@ -502,10 +514,7 @@
   margin-bottom: 0.4rem;
 }
 
-.gusto-week-dropdown {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.75rem;
+.gusto-week-select {
   background-color: #ffffff;
   border: 1px solid var(--gusto-border);
   padding: 0.55rem 1rem;
@@ -514,6 +523,47 @@
   font-weight: 600;
   color: var(--gusto-text-dark);
   cursor: pointer;
+  font-family: inherit;
+  min-width: 280px;
+}
+
+.gusto-week-select:focus {
+  outline: none;
+  border-color: var(--gusto-primary);
+  box-shadow: 0 0 0 3px var(--gusto-primary-soft);
+}
+
+/* Blue Synced Notification Banner (Image 2) */
+.gusto-sync-banner {
+  background-color: #f1f4fe;
+  border: 1px solid #d9e2fd;
+  border-radius: 12px;
+  padding: 1.15rem 1.35rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  margin-bottom: 1.75rem;
+}
+
+.gusto-sync-banner-icon {
+  width: 20px;
+  height: 20px;
+  color: #3b82f6;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.gusto-sync-banner-title {
+  font-size: 0.925rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 0.2rem;
+}
+
+.gusto-sync-banner-sub {
+  font-size: 0.825rem;
+  color: #64748b;
+  margin: 0;
 }
 
 /* Total Box */
@@ -591,18 +641,32 @@
 }
 
 .gusto-shift-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: space-between;
+  display: flex;
+  flex-direction: column;
   background-color: #ffffff;
   border: 1px solid var(--gusto-border);
   border-radius: 8px;
-  padding: 0.5rem 1rem;
+  padding: 0.55rem 1rem;
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--gusto-text-dark);
-  max-width: 320px;
+  max-width: 360px;
   box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+}
+
+.gusto-shift-pill-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gusto-shift-note-line {
+  margin-top: 0.45rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid #f1f5f9;
+  font-size: 0.8rem;
+  color: #64748b;
+  font-style: italic;
 }
 
 .gusto-shift-edit-btn {
@@ -638,10 +702,10 @@
   text-decoration: underline;
 }
 
-.gusto-future-text {
+.gusto-future-text,
+.gusto-synced-day-text {
   font-size: 0.875rem;
   color: var(--gusto-text-light);
-  font-style: normal;
 }
 
 .gusto-hours-col {
@@ -652,7 +716,7 @@
 }
 
 /* ==========================================================================
-   DRAWER / MODAL: ADD SHIFT (Picture 3)
+   DRAWER / MODAL: ADD SHIFT (Image 3)
    ========================================================================== */
 .gusto-drawer-overlay {
   position: fixed;
@@ -822,14 +886,278 @@
 }
 
 /* ==========================================================================
-   SETTINGS TAB (Picture 5)
+   PROFILE PAGE (Image 4)
+   ========================================================================== */
+.gusto-profile-header-card {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.gusto-profile-avatar-box {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background-color: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.gusto-avatar-edit-icon {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: #0f766e;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+  cursor: pointer;
+}
+
+.gusto-profile-title-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--gusto-text-dark);
+  margin: 0;
+}
+
+.gusto-profile-title-role {
+  font-size: 0.875rem;
+  color: var(--gusto-text-muted);
+  margin-top: 0.2rem;
+}
+
+.gusto-profile-layout {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 2.5rem;
+  align-items: start;
+}
+
+.gusto-profile-subnav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.gusto-profile-subnav-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--gusto-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+}
+
+.gusto-profile-subnav-btn {
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--gusto-text-muted);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.gusto-profile-subnav-btn:hover {
+  background-color: #f1f5f9;
+  color: var(--gusto-text-dark);
+}
+
+.gusto-profile-subnav-btn.active {
+  background-color: #f1f5f9;
+  color: var(--gusto-text-dark);
+  font-weight: 700;
+}
+
+/* Pay Subtab inside Profile */
+.gusto-profile-card {
+  background-color: #ffffff;
+  border: 1px solid var(--gusto-border);
+  border-radius: var(--gusto-radius-card);
+  padding: 1.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.gusto-profile-card-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--gusto-text-dark);
+  margin: 0 0 1.25rem;
+}
+
+.gusto-profile-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1rem 0;
+  border-top: 1px solid var(--gusto-border-light);
+}
+
+.gusto-profile-detail-row:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.gusto-profile-detail-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--gusto-text-dark);
+}
+
+.gusto-profile-detail-value {
+  font-size: 0.9rem;
+  color: var(--gusto-text-dark);
+  margin-top: 0.25rem;
+}
+
+.gusto-add-method-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  color: #0f766e;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.75rem 0 0;
+}
+
+.gusto-add-method-btn:hover {
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   PAY HISTORY PAGE (Image 5)
+   ========================================================================== */
+.gusto-pay-search-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  gap: 1rem;
+}
+
+.gusto-pay-search-input {
+  width: 320px;
+  padding: 0.6rem 0.85rem 0.6rem 2.25rem;
+  border: 1px solid var(--gusto-border);
+  border-radius: 8px;
+  font-size: 0.925rem;
+  font-family: inherit;
+  color: var(--gusto-text-dark);
+}
+
+.gusto-pay-search-input:focus {
+  outline: none;
+  border-color: var(--gusto-primary);
+  box-shadow: 0 0 0 3px var(--gusto-primary-soft);
+}
+
+.gusto-columns-btn {
+  background: none;
+  border: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #192024;
+  cursor: pointer;
+}
+
+.gusto-columns-btn:hover {
+  text-decoration: underline;
+}
+
+.gusto-pay-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background-color: #ffffff;
+  border: 1px solid var(--gusto-border);
+  border-radius: var(--gusto-radius-card);
+  overflow: hidden;
+}
+
+.gusto-pay-table th {
+  background-color: #fbfbfa;
+  padding: 0.85rem 1.25rem;
+  font-size: 0.825rem;
+  font-weight: 600;
+  color: var(--gusto-text-muted);
+  text-align: left;
+  border-bottom: 1px solid var(--gusto-border);
+}
+
+.gusto-pay-table td {
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid var(--gusto-border-light);
+  font-size: 0.9rem;
+  color: var(--gusto-text-dark);
+  vertical-align: middle;
+}
+
+.gusto-pay-table tr:last-child td {
+  border-bottom: none;
+}
+
+.gusto-payday-link {
+  color: var(--gusto-text-dark);
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.gusto-payday-link:hover {
+  color: var(--gusto-primary);
+}
+
+.gusto-status-complete {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+  color: #192024;
+}
+
+.gusto-status-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #16a34a;
+  border-radius: 50%;
+}
+
+.gusto-pay-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0.5rem;
+  font-size: 0.85rem;
+  color: var(--gusto-text-muted);
+}
+
+/* ==========================================================================
+   SETTINGS TAB
    ========================================================================== */
 .gusto-settings-box {
   background-color: #ffffff;
   border: 1px solid var(--gusto-border);
   border-radius: var(--gusto-radius-card);
   padding: 2rem;
-  max-width: 600px;
+  max-width: 650px;
 }
 
 .gusto-select {
