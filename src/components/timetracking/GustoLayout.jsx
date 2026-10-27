@@ -10,19 +10,21 @@ import {
   Star,
   Settings,
   Bell,
-  Gift,
   ChevronDown,
   ArrowLeft,
   LogOut,
-  ShieldCheck
+  ShieldCheck,
+  CheckCircle,
+  AlertCircle
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import "../../styles/GustoTheme.css";
 
 const GustoLayout = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, unreadCount } = useAuth();
   const navigate = useNavigate();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notiOpen, setNotiOpen] = useState(false);
 
   // Teaching staff are locked to Gusto, while admins/other depts can toggle back to /admin
   const isTeacher = user?.role === "teacher";
@@ -41,6 +43,30 @@ const GustoLayout = () => {
     navigate("/login");
   };
 
+  const sampleNotifications = [
+    {
+      id: 1,
+      title: "Pay period synced",
+      desc: "Your hours for week Sep 20 – Sep 26 have been approved and synced.",
+      time: "2 hours ago",
+      read: false
+    },
+    {
+      id: 2,
+      title: "Direct deposit verified",
+      desc: "Your primary checking account (••••1036) is verified and ready for payroll.",
+      time: "Yesterday",
+      read: true
+    },
+    {
+      id: 3,
+      title: "Upcoming holiday schedule",
+      desc: "Please submit your timecards by Friday 5:00 PM for the upcoming break.",
+      time: "3 days ago",
+      read: true
+    }
+  ];
+
   return (
     <div className="gusto-container">
       {/* Sidebar Navigation */}
@@ -53,11 +79,10 @@ const GustoLayout = () => {
               alt="ELA Academy"
               className="gusto-logo-img"
               onError={(e) => {
-                // fallback if image not found
                 e.target.style.display = "none";
               }}
             />
-            <span className="gusto-logo-text">ELA Gusto</span>
+            <span className="gusto-logo-text">ELA Time Tracking</span>
           </Link>
 
           {/* Nav Items */}
@@ -146,12 +171,63 @@ const GustoLayout = () => {
         {/* Top Header */}
         <header className="gusto-header">
           <div className="gusto-header-actions">
-            <button className="gusto-icon-btn" title="Rewards & Perks">
-              <Gift className="w-5 h-5" />
-            </button>
-            <button className="gusto-icon-btn" title="Notifications">
-              <Bell className="w-5 h-5" />
-            </button>
+            {/* Notification Bell (Unique to Gusto / Time Tracking) */}
+            <div style={{ position: "relative" }}>
+              <button
+                className="gusto-icon-btn"
+                title="Notifications"
+                onClick={() => setNotiOpen(!notiOpen)}
+              >
+                <Bell className="w-5 h-5 text-slate-600" />
+                <span className="gusto-noti-badge" />
+              </button>
+
+              {notiOpen && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "120%",
+                    right: 0,
+                    width: "320px",
+                    backgroundColor: "#ffffff",
+                    borderRadius: "12px",
+                    boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)",
+                    border: "1px solid #e2e8f0",
+                    zIndex: 110,
+                    overflow: "hidden"
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div style={{ padding: "0.85rem 1rem", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "#0f172a" }}>Notifications</span>
+                    <span style={{ fontSize: "0.75rem", color: "#673de6", fontWeight: 600 }}>Mark all read</span>
+                  </div>
+                  <div style={{ maxHeight: "280px", overflowY: "auto" }}>
+                    {sampleNotifications.map((noti) => (
+                      <div
+                        key={noti.id}
+                        style={{
+                          padding: "0.75rem 1rem",
+                          borderBottom: "1px solid #f8fafc",
+                          backgroundColor: noti.read ? "#ffffff" : "#fbfbfe"
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                          {!noti.read && <div style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#673de6" }} />}
+                          <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>{noti.title}</span>
+                        </div>
+                        <p style={{ margin: "0.2rem 0 0", fontSize: "0.775rem", color: "#64748b", lineHeight: 1.3 }}>
+                          {noti.desc}
+                        </p>
+                        <span style={{ fontSize: "0.7rem", color: "#94a3b8", marginTop: "0.25rem", display: "block" }}>
+                          {noti.time}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* User Profile Pill */}
             <div
