@@ -57,6 +57,10 @@ const Login = () => {
               navigate("/parent/payments");
               return;
             }
+            if (decoded.role === 'teacher') {
+              navigate("/time-tracking");
+              return;
+            }
           } catch (e) {}
         }
         navigate("/admin");
@@ -102,6 +106,9 @@ const Login = () => {
   if (!loading && isAuthenticated) {
     if (user?.role === 'parent') {
       return <Navigate to="/parent/payments" replace />;
+    }
+    if (user?.role === 'teacher') {
+      return <Navigate to="/time-tracking" replace />;
     }
     return <Navigate to="/admin" replace />;
   }

@@ -65,6 +65,7 @@ const ManageStaff = () => {
       setIsEditing(true);
       setCurrentStaff({
         ...staff,
+        role: staff.role || "staff",
         department_ids: staff.department_ids || (staff.departments ? staff.departments.map((d) => d.id) : []),
         password: "",
       });
@@ -75,6 +76,7 @@ const ManageStaff = () => {
         name: "",
         email: "",
         password: "",
+        role: "staff",
         department_ids: [],
         is_active: true,
       });
@@ -152,6 +154,7 @@ const ManageStaff = () => {
                 <tr>
                   <th>Name</th>
                   <th>Email</th>
+                  <th>Role</th>
                   <th>Departments</th>
                   <th>Status</th>
                   <th className="text-end">Actions</th>
@@ -164,6 +167,11 @@ const ManageStaff = () => {
                       <strong>{staff.name}</strong>
                     </td>
                     <td>{staff.email}</td>
+                    <td>
+                      <Badge bg={staff.role === "teacher" ? "info" : "secondary"}>
+                        {staff.role === "teacher" ? "Teacher" : "Staff"}
+                      </Badge>
+                    </td>
                     <td>{staff.department_names.join(", ")}</td>
                     <td>
                       <Badge bg={staff.is_active ? "success" : "secondary"}>
@@ -218,6 +226,24 @@ const ManageStaff = () => {
                 required
               />
             </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Staff Role</Form.Label>
+              <Form.Select
+                value={currentStaff.role || "staff"}
+                onChange={(e) =>
+                  setCurrentStaff({ ...currentStaff, role: e.target.value })
+                }
+              >
+                <option value="staff">Administrative Staff (Standard Workspace)</option>
+                <option value="teacher">Teacher (Gusto Time Tracking Only)</option>
+              </Form.Select>
+              <Form.Text className="text-muted">
+                {currentStaff.role === "teacher"
+                  ? "Teachers will log into the Gusto time tracking portal upon login."
+                  : "Administrative staff can access departments and use the Track Time shortcut."}
+              </Form.Text>
+            </Form.Group>
+
             <Form.Group className="mb-3">
               <Form.Label>Email Address</Form.Label>
               <Form.Control
