@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { Form, Button, Card, Spinner, Container, Modal, Tab, Tabs } from "react-bootstrap";
-import { ClipboardCheck, AlertTriangle, FileText, Check, Trash2, Edit2 } from "lucide-react";
+import { Form, Button, Card, Spinner, Container, Modal, Tab, Tabs, Badge } from "react-bootstrap";
+import { ClipboardCheck, AlertTriangle, Trash2, ArrowLeft, ArrowRight, CircleDot } from "lucide-react";
 import axios from "axios";
 import { getApiBaseUrl } from "../../utils/api";
 
@@ -13,7 +13,9 @@ const PublicFormFiller = () => {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
-  const [currentStep, setCurrentStep] = useState(0); // 0 = welcome page, 1 = questions page
+  const [pageError, setPageError] = useState("");
+  const [currentStep, setCurrentStep] = useState(0); // 0 = welcome page (if exists), 1 = questions
+  const [activePageIndex, setActivePageIndex] = useState(0); // multi-page section navigation
 
   // Signature modal state
   const [showSigModal, setShowSigModal] = useState(false);
@@ -51,6 +53,7 @@ const PublicFormFiller = () => {
         setFormConfig(res.data);
         const hasWelcome = res.data?.form_structure?.some(q => q.type === "welcome");
         setCurrentStep(hasWelcome ? 0 : 1);
+        setActivePageIndex(0);
       } catch (err) {
         console.error("Failed to load form:", err);
         setError("This form does not exist, has been deleted, or is currently unavailable.");
@@ -152,7 +155,7 @@ const PublicFormFiller = () => {
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = "#0f172a";
-      ctx.font = "italic 46px Georgia, serif"; // Calligraphy styling
+      ctx.font = "italic 46px Georgia, serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(typedName, canvas.width / 2, canvas.height / 2);
@@ -203,9 +206,95 @@ const PublicFormFiller = () => {
     return String(parentAnswer || "").toLowerCase() === String(q.depends_value).toLowerCase();
   };
 
+  const handleInputChange = (questionId, value) => {
+    setAnswers((prev) => ({
+      ...prev,
+      [questionId]: value
+    }));
+  };
+
+  // Group form items into pages separated by 'section' elements
+  const rawStructure = formConfig?.form_structure || [];
+  const formSettings = formConfig?.settings || rawStructure.find(q => q.type === "settings") || {};
+  const showQuestionNumbers = formSettings.show_question_numbers !== undefined ? !!formSettings.show_question_numbers : true;
+
+  // Build sequential continuous numbering map
+  let runningNumber = 0;
+  const questionNumberMap = {};
+  rawStructure.forEach((item) => {
+    if (item.type !== "welcome" && item.type !== "thankyou" && item.type !== "settings" && item.type !== "section") {
+      runningNumber++;
+      questionNumberMap[item.id] = runningNumber;
+    }
+  });
+
+  // Group questions into pages
+  const pages = [];
+  let currentPage = {
+    title: formConfig?.name || "Form",
+    description: formConfig?.description || "",
+    cover_image_url: formConfig?.header_image_url || formSettings.header_image_url || "",
+    isFirstPage: true,
+    questions: []
+  };
+
+  rawStructure.forEach((item) => {
+    if (item.type === "welcome" || item.type === "thankyou" || item.type === "settings") {
+      return;
+    }
+    if (item.type === "section") {
+      pages.push(currentPage);
+      currentPage = {
+        title: item.label || "",
+        description: item.description || "",
+        cover_image_url: item.cover_image_url || "",
+        isFirstPage: false,
+        questions: []
+      };
+    } else {
+      currentPage.questions.push(item);
+    }
+  });
+  pages.push(currentPage);
+
+  const activePage = pages[activePageIndex] || pages[0] || { questions: [] };
+  const isFirstPage = activePageIndex === 0;
+  const isLastPage = activePageIndex === pages.length - 1;
+
+  // Validate current page required fields before advancing
+  const validateCurrentPage = () => {
+    for (const q of activePage.questions) {
+      if (!evaluateCondition(q, answers)) continue;
+      if (q.required) {
+        const ans = answers[q.id];
+        if (ans === undefined || ans === null || String(ans).trim() === "") {
+          const qNum = questionNumberMap[q.id];
+          setPageError(`Please complete required field: ${showQuestionNumbers && qNum ? `Question ${qNum} - ` : ""}"${q.label}"`);
+          return false;
+        }
+      }
+    }
+    setPageError("");
+    return true;
+  };
+
+  const handleNextPage = () => {
+    if (!validateCurrentPage()) return;
+    setActivePageIndex((prev) => Math.min(pages.length - 1, prev + 1));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handlePrevPage = () => {
+    setPageError("");
+    setActivePageIndex((prev) => Math.max(0, prev - 1));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formConfig) return;
+
+    if (!validateCurrentPage()) return;
 
     setSubmitting(true);
     setError("");
@@ -223,15 +312,9 @@ const PublicFormFiller = () => {
     }
   };
 
-  const handleInputChange = (questionId, value) => {
-    setAnswers((prev) => ({
-      ...prev,
-      [questionId]: value
-    }));
-  };
-
-  const backgroundImageUrl = formConfig?.background_image_url || formConfig?.settings?.background_image_url || "";
-  const headerImageUrl = formConfig?.header_image_url || formConfig?.settings?.header_image_url || "";
+  const backgroundImageUrl = formConfig?.background_image_url || formSettings.background_image_url || "";
+  // Display section-specific cover image if present; otherwise default to form header image
+  const displayCoverImage = activePage.cover_image_url || (isFirstPage ? (formConfig?.header_image_url || formSettings.header_image_url || "") : "");
 
   if (loading) {
     return (
@@ -294,6 +377,7 @@ const PublicFormFiller = () => {
                 onClick={() => {
                   setAnswers({});
                   setSuccess(false);
+                  setActivePageIndex(0);
                   const hasWelcome = formConfig?.form_structure?.some(q => q.type === "welcome");
                   setCurrentStep(hasWelcome ? 0 : 1);
                 }}
@@ -310,7 +394,6 @@ const PublicFormFiller = () => {
   }
 
   const welcomePage = formConfig?.form_structure?.find(q => q.type === "welcome");
-  const formQuestions = formConfig?.form_structure?.filter(q => q.type !== "welcome" && q.type !== "thankyou" && q.type !== "settings") || [];
 
   return (
     <div 
@@ -335,12 +418,12 @@ const PublicFormFiller = () => {
       <Container style={{ maxWidth: "760px", position: "relative", zIndex: 1 }}>
         
         {/* Cover image banner if configured */}
-        {headerImageUrl && (
+        {displayCoverImage && (
           <div 
             className="w-100 shadow-md border border-slate-200/80" 
             style={{ 
               height: "180px", 
-              backgroundImage: `url(${getFullUrl(headerImageUrl)})`, 
+              backgroundImage: `url(${getFullUrl(displayCoverImage)})`, 
               backgroundSize: "cover", 
               backgroundPosition: "center",
               borderRadius: "16px 16px 0 0",
@@ -352,9 +435,9 @@ const PublicFormFiller = () => {
         <Card 
           className="border-slate-200/80 shadow-2xl p-0 overflow-hidden bg-white"
           style={{ 
-            borderRadius: headerImageUrl ? "0 0 16px 16px" : "16px",
+            borderRadius: displayCoverImage ? "0 0 16px 16px" : "16px",
             border: "1px solid #e2e8f0",
-            borderTop: headerImageUrl ? "none" : "1px solid #e2e8f0"
+            borderTop: displayCoverImage ? "none" : "1px solid #e2e8f0"
           }}
         >
           <Card.Body className="p-4 p-md-5">
@@ -380,41 +463,94 @@ const PublicFormFiller = () => {
               </div>
             ) : (
               <>
-                {/* Clean MS Forms Header Section */}
+                {/* Header Section */}
                 <div className="mb-4 pb-3 border-bottom border-slate-100">
-                  <h1 className="fw-bold text-slate-900 mb-2" style={{ fontSize: "24px", lineHeight: "1.3" }}>
-                    {formConfig.name}
-                  </h1>
-                  
-                  {formConfig.description && (
-                    <div className="text-slate-600 mt-2 mb-3" style={{ fontSize: "14px", lineHeight: "1.65", whiteSpace: "pre-wrap" }}>
-                      {formConfig.description}
+                  {pages.length > 1 && (
+                    <div className="mb-2">
+                      <Badge bg="light" className="text-indigo-700 border border-indigo-200 px-2.5 py-1 text-xs rounded-pill fw-bold">
+                        Page {activePageIndex + 1} of {pages.length}
+                      </Badge>
                     </div>
                   )}
 
-                  <div className="text-slate-400 mt-2" style={{ fontSize: "12.5px", lineHeight: "1.5" }}>
-                    When you submit this form, it will not automatically collect your details like name and email address unless you provide it yourself.
-                  </div>
+                  <h1 className="fw-bold text-slate-900 mb-2" style={{ fontSize: "24px", lineHeight: "1.3" }}>
+                    {activePage.title || formConfig.name}
+                  </h1>
+                  
+                  {activePage.description && (
+                    <div className="text-slate-600 mt-2 mb-3" style={{ fontSize: "14px", lineHeight: "1.65", whiteSpace: "pre-wrap" }}>
+                      {activePage.description}
+                    </div>
+                  )}
+
+                  {isFirstPage && (
+                    <div className="text-slate-400 mt-2" style={{ fontSize: "12.5px", lineHeight: "1.5" }}>
+                      When you submit this form, it will not automatically collect your details like name and email address unless you provide it yourself.
+                    </div>
+                  )}
 
                   <div className="text-danger fw-semibold mt-2.5" style={{ fontSize: "12.5px" }}>
                     * Required
                   </div>
                 </div>
 
+                {pageError && (
+                  <div className="alert alert-danger text-xs py-2.5 px-3 rounded-3 mb-4 d-flex align-items-center gap-2">
+                    <AlertTriangle size={15} className="flex-shrink-0" />
+                    <span>{pageError}</span>
+                  </div>
+                )}
+
                 <Form onSubmit={handleSubmit}>
-                  {formQuestions.map((q, idx) => {
+                  {activePage.questions.map((q) => {
                     if (!evaluateCondition(q, answers)) return null;
                     const signatureImage = answers[q.id];
+                    const qNumber = questionNumberMap[q.id];
 
                     return (
                       <div key={q.id} className="mb-4 p-3.5 p-md-4 rounded-3 bg-white border border-slate-200/90 shadow-2xs">
                         <Form.Group>
                           <Form.Label className="fw-bold text-slate-800 small mb-2 d-flex align-items-baseline">
-                            <span style={{ fontSize: "14px" }}>{idx + 1}. {q.label}</span>
+                            <span style={{ fontSize: "14px" }}>
+                              {showQuestionNumbers && qNumber ? `${qNumber}. ` : ""}{q.label}
+                            </span>
                             {q.required && <span className="text-danger ms-1 fw-bold">*</span>}
                           </Form.Label>
                           
-                          {q.type === "textarea" ? (
+                          {/* Multiple Choice Question with radio cards */}
+                          {q.type === "multiple_choice" ? (
+                            <div className="d-flex flex-column gap-2 mt-2">
+                              {(q.options || ["Option 1", "Option 2"]).map((opt, oIdx) => {
+                                const isSelected = answers[q.id] === opt;
+                                return (
+                                  <div
+                                    key={oIdx}
+                                    onClick={() => handleInputChange(q.id, opt)}
+                                    className={`d-flex align-items-center gap-3 p-3 rounded-2 border cursor-pointer transition-all ${
+                                      isSelected
+                                        ? "border-indigo-600 bg-indigo-50/50 text-indigo-950 shadow-2xs"
+                                        : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                                    }`}
+                                  >
+                                    <input
+                                      type="radio"
+                                      id={`q_${q.id}_opt_${oIdx}`}
+                                      name={`question_${q.id}`}
+                                      checked={isSelected}
+                                      onChange={() => handleInputChange(q.id, opt)}
+                                      className="form-check-input mt-0 cursor-pointer"
+                                    />
+                                    <label
+                                      htmlFor={`q_${q.id}_opt_${oIdx}`}
+                                      className="form-check-label text-sm fw-medium mb-0 cursor-pointer flex-grow-1"
+                                    >
+                                      {opt}
+                                    </label>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : q.type === "textarea" ? (
                             <Form.Control
                               as="textarea"
                               rows={4}
@@ -555,20 +691,52 @@ const PublicFormFiller = () => {
                     </div>
                   )}
 
-                  <Button 
-                    variant="primary" 
-                    type="submit" 
-                    disabled={submitting}
-                    className="w-100 py-3 fw-bold rounded-3 mt-4 shadow-sm border-0 transition-all"
-                    style={{ 
-                      backgroundColor: "#0f172a", 
-                      color: "#ffffff",
-                      fontSize: "15px"
-                    }}
-                  >
-                    {submitting ? <Spinner animation="border" size="sm" className="me-2" /> : null}
-                    Submit
-                  </Button>
+                  {/* Multi-page Navigation Footer */}
+                  <div className="d-flex justify-content-between align-items-center mt-4 pt-2">
+                    {!isFirstPage ? (
+                      <Button
+                        variant="outline-secondary"
+                        type="button"
+                        onClick={handlePrevPage}
+                        className="py-2.5 px-4 rounded-3 d-flex align-items-center gap-2 border-slate-300 text-slate-700"
+                        style={{ fontSize: "14px" }}
+                      >
+                        <ArrowLeft size={16} /> Back
+                      </Button>
+                    ) : <div />}
+
+                    {!isLastPage ? (
+                      <Button
+                        variant="primary"
+                        type="button"
+                        onClick={handleNextPage}
+                        className="py-2.5 px-4 fw-bold rounded-3 shadow-sm border-0 transition-all d-flex align-items-center gap-2"
+                        style={{ 
+                          backgroundColor: "#0f172a", 
+                          color: "#ffffff",
+                          fontSize: "14px"
+                        }}
+                      >
+                        <span>Next</span>
+                        <ArrowRight size={16} />
+                      </Button>
+                    ) : (
+                      <Button 
+                        variant="primary" 
+                        type="submit" 
+                        disabled={submitting}
+                        className="py-2.5 px-5 fw-bold rounded-3 shadow-sm border-0 transition-all"
+                        style={{ 
+                          backgroundColor: "#0f172a", 
+                          color: "#ffffff",
+                          fontSize: "14px"
+                        }}
+                      >
+                        {submitting ? <Spinner animation="border" size="sm" className="me-2" /> : null}
+                        Submit
+                      </Button>
+                    )}
+                  </div>
                 </Form>
               </>
             )}
