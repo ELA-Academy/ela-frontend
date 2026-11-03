@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Table, Button, Spinner, Row, Col, Card, Badge, Form as BootstrapForm, Modal, Dropdown } from "react-bootstrap";
-import { Plus, Trash2, Clipboard, Eye, Copy, ArrowLeft, ArrowUp, ArrowDown, Image as ImageIcon, Sparkles, Check, CheckSquare, Settings, Type, AlignJustify, Calendar, Paperclip, Hash, Mail, X, Upload, Palette, RefreshCw } from "lucide-react";
+import { Plus, Trash2, Clipboard, Eye, Copy, ArrowLeft, ArrowUp, ArrowDown, Image as ImageIcon, Sparkles, Check, CheckSquare, Settings, Type, AlignJustify, Calendar, Paperclip, Hash, Mail, X, Upload, Palette, RefreshCw, ListChecks, Layers, CircleDot } from "lucide-react";
 import api, { getApiBaseUrl } from "../../../utils/api";
 import { showSuccess, showError } from "../../../utils/notificationService";
 
@@ -59,6 +59,7 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
   const [availableEmails, setAvailableEmails] = useState([]);
   const [emailSearchQuery, setEmailSearchQuery] = useState("");
   const [showEmailDropdown, setShowEmailDropdown] = useState(false);
+  const [showQuestionNumbers, setShowQuestionNumbers] = useState(true);
 
   // Theme & Images design panel state
   const [showThemePanel, setShowThemePanel] = useState(false);
@@ -68,6 +69,11 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
   const coverFileRef = useRef(null);
   const bgFileRef = useRef(null);
 
+  // Section specific image upload
+  const sectionFileRef = useRef(null);
+  const [activeUploadSectionId, setActiveUploadSectionId] = useState(null);
+  const [uploadingSectionCover, setUploadingSectionCover] = useState(false);
+
   // Dropdown states for mapping new questions
   const [showAddQuestionDropdown, setShowAddQuestionDropdown] = useState(false);
   const [questionSearchQuery, setQuestionSearchQuery] = useState("");
@@ -76,6 +82,8 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
   // Preview simulator inside builder
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewAnswers, setPreviewAnswers] = useState({});
+  const [previewActivePage, setPreviewActivePage] = useState(0);
+  const [previewPageError, setPreviewPageError] = useState("");
 
   // Helper to format local file uploads/signatures with full backend port
   const getFullUrl = (path) => {
@@ -186,6 +194,7 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
     setHeaderImageUrl(PRESET_BANNERS[0].url);
     setBackgroundImageUrl("");
     setShowThemePanel(false);
+    setShowQuestionNumbers(true);
     setNotificationEmails([]);
     setNotifyAllDeptMembers(false);
     setSendConfirmation(true);
@@ -224,6 +233,7 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
     setNotifyAllDeptMembers(!!settings.notify_all_dept_members);
     setSendConfirmation(settings.send_confirmation !== undefined ? settings.send_confirmation : true);
     setConfirmationSenderEmail(settings.confirmation_sender_email || "");
+    setShowQuestionNumbers(settings.show_question_numbers !== undefined ? !!settings.show_question_numbers : true);
     setEmailSearchQuery("");
     setShowEmailDropdown(false);
 
@@ -232,11 +242,55 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
   };
 
   const handleAddQuestion = (type = "text", label = "New Question", mapping = "") => {
-    const nextId = questions.length > 0 ? Math.max(...questions.map(q => q.id)) + 1 : 1;
-    setQuestions([
-      ...questions,
-      { id: nextId, label, type, mapping, required: false }
-    ]);
+    const nextId = questions.length > 0 ? Math.max(...questions.map(q => typeof q.id === 'number' ? q.id : 0)) + 1 : 1;
+    const newQ = { 
+      id: nextId, 
+      label, 
+      type, 
+      mapping, 
+      required: false 
+    };
+    if (type === "multiple_choice") {
+      newQ.options = ["Option 1", "Option 2"];
+    }
+    setQuestions([...questions, newQ]);
+  };
+
+  const handleAddSection = () => {
+    const nextId = questions.length > 0 ? Math.max(...questions.map(q => typeof q.id === 'number' ? q.id : 0)) + 1 : 1;
+    const existingSections = questions.filter(q => q.type === 'section').length;
+    const newSection = {
+      id: nextId,
+      type: "section",
+      label: `Section ${existingSections + 2}`,
+      description: "",
+      cover_image_url: "",
+      mapping: ""
+    };
+    setQuestions([...questions, newSection]);
+    showSuccess(`Section ${existingSections + 2} added.`);
+  };
+
+  const handleDeleteSection = (sectionId) => {
+    const secIndex = questions.findIndex(q => q.id === sectionId);
+    if (secIndex === -1) return;
+
+    if (!window.confirm("Are you sure you want to delete this section? All questions inside this section will also be deleted.")) {
+      return;
+    }
+
+    // Find next section index or end of array
+    let nextSecIndex = questions.findIndex((q, idx) => idx > secIndex && q.type === 'section');
+    if (nextSecIndex === -1) {
+      nextSecIndex = questions.length;
+    }
+
+    const updated = [
+      ...questions.slice(0, secIndex),
+      ...questions.slice(nextSecIndex)
+    ];
+    setQuestions(updated);
+    showSuccess("Section and all its questions deleted.");
   };
 
   const handleRemoveQuestion = (id) => {
@@ -244,7 +298,48 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
   };
 
   const handleQuestionChange = (id, field, value) => {
-    setQuestions(questions.map(q => q.id === id ? { ...q, [field]: value } : q));
+    setQuestions(questions.map(q => {
+      if (q.id !== id) return q;
+      const updated = { ...q, [field]: value };
+      if (field === 'type' && value === 'multiple_choice' && (!q.options || q.options.length === 0)) {
+        updated.options = ["Option 1", "Option 2"];
+      }
+      return updated;
+    }));
+  };
+
+  // Multiple Choice Option Handlers
+  const handleAddOption = (questionId) => {
+    setQuestions(questions.map(q => {
+      if (q.id !== questionId) return q;
+      const currentOpts = Array.isArray(q.options) ? q.options : ["Option 1"];
+      return {
+        ...q,
+        options: [...currentOpts, `Option ${currentOpts.length + 1}`]
+      };
+    }));
+  };
+
+  const handleOptionChange = (questionId, optionIndex, newValue) => {
+    setQuestions(questions.map(q => {
+      if (q.id !== questionId) return q;
+      const currentOpts = Array.isArray(q.options) ? [...q.options] : ["Option 1"];
+      currentOpts[optionIndex] = newValue;
+      return { ...q, options: currentOpts };
+    }));
+  };
+
+  const handleRemoveOption = (questionId, optionIndex) => {
+    setQuestions(questions.map(q => {
+      if (q.id !== questionId) return q;
+      const currentOpts = Array.isArray(q.options) ? [...q.options] : ["Option 1"];
+      if (currentOpts.length <= 1) {
+        showError("A multiple choice question must have at least one option.");
+        return q;
+      }
+      currentOpts.splice(optionIndex, 1);
+      return { ...q, options: currentOpts };
+    }));
   };
 
   const moveQuestion = (index, direction) => {
@@ -301,12 +396,43 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
     }
   };
 
+  const handleSectionCoverUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeUploadSectionId) return;
+
+    if (!file.type.startsWith("image/")) {
+      showError("Please select a valid image file.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    setUploadingSectionCover(true);
+    try {
+      const res = await api.post("/board-extensions/public/forms/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      if (res.data?.file_url) {
+        setQuestions(questions.map(q => q.id === activeUploadSectionId ? { ...q, cover_image_url: res.data.file_url } : q));
+        showSuccess("Section cover image uploaded successfully!");
+      }
+    } catch (err) {
+      showError("Failed to upload section cover image.");
+    } finally {
+      setUploadingSectionCover(false);
+      setActiveUploadSectionId(null);
+      e.target.value = "";
+    }
+  };
+
   const handleSaveForm = async () => {
     if (!formName.trim()) {
       showError("Form title cannot be empty.");
       return;
     }
-    if (questions.length === 0) {
+    const realQuestions = questions.filter(q => q.type !== 'section');
+    if (realQuestions.length === 0) {
       showError("Please add at least one question.");
       return;
     }
@@ -326,7 +452,8 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
         send_confirmation: sendConfirmation,
         confirmation_sender_email: confirmationSenderEmail,
         background_image_url: backgroundImageUrl,
-        header_image_url: headerImageUrl
+        header_image_url: headerImageUrl,
+        show_question_numbers: showQuestionNumbers
       };
 
       const fullStructure = [
@@ -401,6 +528,42 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
     return String(parentAnswer || "").toLowerCase() === String(q.depends_value).toLowerCase();
   };
 
+  // Compute question numbering mapping across all sections
+  let runningQNumber = 0;
+  const questionNumberMap = {};
+  questions.forEach(q => {
+    if (q.type !== 'section') {
+      runningQNumber++;
+      questionNumberMap[q.id] = runningQNumber;
+    }
+  });
+
+  const totalSectionsCount = questions.filter(q => q.type === 'section').length + 1;
+  let sectionCounter = 1;
+
+  // Simulator multi-page grouping
+  const previewPages = [];
+  let currentSimPage = {
+    title: formName || "Form",
+    description: formDesc || "",
+    header_image_url: headerImageUrl || "",
+    questions: []
+  };
+  questions.forEach(q => {
+    if (q.type === 'section') {
+      previewPages.push(currentSimPage);
+      currentSimPage = {
+        title: q.label || "",
+        description: q.description || "",
+        header_image_url: q.cover_image_url || "",
+        questions: []
+      };
+    } else {
+      currentSimPage.questions.push(q);
+    }
+  });
+  previewPages.push(currentSimPage);
+
   if (isEditing) {
     return (
       <div className="bg-white min-vh-100 p-0 mt-3 rounded-4 shadow-sm border border-slate-100 overflow-hidden">
@@ -418,6 +581,13 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
           accept="image/*" 
           onChange={(e) => handleImageUpload(e, "background")} 
           className="d-none" 
+        />
+        <input
+          type="file"
+          ref={sectionFileRef}
+          accept="image/*"
+          onChange={handleSectionCoverUpload}
+          className="d-none"
         />
 
         {/* Sleek Header */}
@@ -469,7 +639,16 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
           </div>
 
           <div className="d-flex gap-2">
-            <Button variant="light" size="sm" onClick={() => setShowPreviewModal(true)} className="border-0 bg-slate-50 text-slate-650 rounded-lg px-3">
+            <Button 
+              variant="light" 
+              size="sm" 
+              onClick={() => {
+                setPreviewActivePage(0);
+                setPreviewPageError("");
+                setShowPreviewModal(true);
+              }} 
+              className="border-0 bg-slate-50 text-slate-650 rounded-lg px-3"
+            >
               <Eye size={14} className="me-1" /> Preview Form
             </Button>
             <Button variant="primary" size="sm" onClick={handleSaveForm} disabled={submitting} className="border-0 bg-slate-900 hover:bg-slate-800 text-white rounded-lg px-3 fw-semibold">
@@ -645,7 +824,7 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
           <Col lg={9} className="p-4 bg-slate-50/60 border-end border-slate-100 overflow-auto" style={{ maxHeight: "calc(100vh - 160px)" }}>
             <div className="mx-auto" style={{ maxWidth: "680px" }}>
               
-              {/* Optional Header Cover area */}
+              {/* Optional Section 1 / Header Cover area */}
               {headerImageUrl && (
                 <div 
                   className="position-relative bg-slate-100 overflow-hidden rounded-t-3 shadow-xs border border-slate-200" 
@@ -682,13 +861,20 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
                 </div>
               )}
 
-              {/* Clean MS Forms Style Form Header Card */}
+              {/* Section 1 / Main Form Header Card */}
               <div 
                 className="bg-white border border-slate-200 p-4 shadow-sm mb-4"
                 style={{ 
                   borderRadius: headerImageUrl ? "0 0 16px 16px" : "16px" 
                 }}
               >
+                {totalSectionsCount > 1 && (
+                  <div className="mb-2">
+                    <Badge bg="light" className="text-indigo-700 border border-indigo-200 text-[11px] font-semibold px-2 py-1 rounded-pill">
+                      Section 1 of {totalSectionsCount}
+                    </Badge>
+                  </div>
+                )}
                 <div className="mb-3">
                   <label className="form-label text-[11px] fw-bold text-slate-400 uppercase tracking-wider mb-1">
                     Form Title
@@ -699,7 +885,7 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
                     style={{ fontSize: "20px" }}
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
-                    placeholder="Enter form title (e.g. Exceptional Learning and Arts Academy Job Application Form)"
+                    placeholder="Enter form title..."
                   />
                 </div>
 
@@ -713,7 +899,7 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
                     style={{ lineHeight: "1.6" }}
                     value={formDesc}
                     onChange={(e) => setFormDesc(e.target.value)}
-                    placeholder="Please complete this form to apply for a position at ELA Academy. Ensure all information provided is accurate."
+                    placeholder="Enter form description..."
                   />
                 </div>
 
@@ -723,7 +909,7 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
                 </div>
               </div>
 
-              {/* Form Fields In Canvas */}
+              {/* Form Elements / Sections in Canvas */}
               {questions.length === 0 ? (
                 <div className="text-center py-5 border border-dashed border-slate-200 rounded-xl text-slate-400 bg-white">
                   <Sparkles size={24} className="mb-2 text-slate-350" />
@@ -732,114 +918,284 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
                 </div>
               ) : (
                 <div className="d-flex flex-column gap-3">
-                  {questions.map((q, idx) => (
-                    <div key={q.id} className="p-3.5 bg-white border border-slate-200 rounded-3 shadow-2xs transition-all hover:border-slate-350">
-                      <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom border-slate-100">
-                        <div className="d-flex align-items-center gap-2">
-                          <span className="badge bg-slate-100 text-slate-700 font-bold px-2 py-1 text-xs rounded-pill">
-                            Question {idx + 1}
-                          </span>
-                          <span className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">
-                            {q.type.toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="d-flex align-items-center gap-1">
-                          <Button variant="link" size="sm" className="p-1 text-slate-400 hover:text-slate-700" onClick={() => moveQuestion(idx, "up")} title="Move Up">
-                            <ArrowUp size={13} />
-                          </Button>
-                          <Button variant="link" size="sm" className="p-1 text-slate-400 hover:text-slate-700" onClick={() => moveQuestion(idx, "down")} title="Move Down">
-                            <ArrowDown size={13} />
-                          </Button>
-                          <Button variant="link" size="sm" className="p-1 text-danger hover:text-red-700 ms-1" onClick={() => handleRemoveQuestion(q.id)} title="Delete Question">
-                            <Trash2 size={13} />
-                          </Button>
-                        </div>
-                      </div>
+                  {questions.map((q, idx) => {
+                    if (q.type === 'section') {
+                      sectionCounter++;
+                      const currentSecNum = sectionCounter;
 
-                      <Row className="g-2 mb-2">
-                        <Col md={6}>
-                          <label className="text-[10px] fw-bold uppercase text-slate-400 mb-1 d-block">Question Label</label>
-                          <input
-                            type="text"
-                            className="form-control form-control-sm border-slate-200 rounded-2 text-sm fw-medium text-slate-800"
-                            value={q.label}
-                            onChange={(e) => handleQuestionChange(q.id, "label", e.target.value)}
-                            placeholder="Enter question title..."
-                            required
-                          />
-                        </Col>
-                        <Col md={3}>
-                          <label className="text-[10px] fw-bold uppercase text-slate-400 mb-1 d-block">Input Type</label>
-                          <BootstrapForm.Select
-                            size="sm"
-                            className="border-slate-200 rounded-2 text-xs font-semibold text-slate-700"
-                            value={q.type}
-                            onChange={(e) => handleQuestionChange(q.id, "type", e.target.value)}
-                          >
-                            <option value="text">Short Text</option>
-                            <option value="email">Email Address</option>
-                            <option value="textarea">Paragraph</option>
-                            <option value="number">Numeric Value</option>
-                            <option value="date">Date</option>
-                            <option value="file">File Upload</option>
-                            <option value="signature">Signature Pad</option>
-                          </BootstrapForm.Select>
-                        </Col>
-                        <Col md={3}>
-                          <label className="text-[10px] fw-bold uppercase text-slate-400 mb-1 d-block">Task Field Map</label>
-                          <BootstrapForm.Select
-                            size="sm"
-                            className="border-slate-200 rounded-2 text-xs font-semibold text-indigo-650"
-                            value={q.mapping || ""}
-                            onChange={(e) => handleQuestionChange(q.id, "mapping", e.target.value)}
-                          >
-                            <option value="">Default / None</option>
-                            <optgroup label="Default Fields">
-                              <option value="title">Task Title</option>
-                              <option value="submitter_email">Submitter Email</option>
-                              <option value="notes">Description / Notes</option>
-                              <option value="start_date">Start Date</option>
-                              <option value="due_date">End Date / Due Date</option>
-                              <option value="priority">Priority</option>
-                              <option value="status">Status</option>
-                            </optgroup>
-                            {customFields.length > 0 && (
-                              <optgroup label="Custom Fields">
-                                {customFields.map(cf => (
-                                  <option key={cf.id} value={`custom_field_${cf.id}`}>{cf.name}</option>
-                                ))}
+                      return (
+                        <div key={q.id} className="mt-4 p-4 bg-white border-2 border-indigo-200 rounded-4 shadow-sm position-relative">
+                          {/* Section Header Controls */}
+                          <div className="d-flex align-items-center justify-content-between mb-3 pb-2.5 border-indigo-100 border-bottom">
+                            <div className="d-flex align-items-center gap-2">
+                              <Badge bg="primary" className="text-white px-2.5 py-1 text-xs rounded-pill fw-bold" style={{ backgroundColor: "#4f46e5" }}>
+                                Section {currentSecNum} of {totalSectionsCount} — Page Break
+                              </Badge>
+                            </div>
+                            <div className="d-flex align-items-center gap-1.5">
+                              <Button variant="link" size="sm" className="p-1 text-slate-400 hover:text-slate-700" onClick={() => moveQuestion(idx, "up")} title="Move Section Up">
+                                <ArrowUp size={14} />
+                              </Button>
+                              <Button variant="link" size="sm" className="p-1 text-slate-400 hover:text-slate-700" onClick={() => moveQuestion(idx, "down")} title="Move Section Down">
+                                <ArrowDown size={14} />
+                              </Button>
+                              <Button 
+                                variant="outline-danger" 
+                                size="sm" 
+                                className="py-0.5 px-2 text-xs d-flex align-items-center gap-1 border-danger-subtle rounded-2 ms-2"
+                                onClick={() => handleDeleteSection(q.id)}
+                                title="Delete Section (deletes section and all its questions)"
+                              >
+                                <Trash2 size={12} /> Delete Section
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Optional Section Cover Image */}
+                          {q.cover_image_url ? (
+                            <div 
+                              className="position-relative bg-slate-100 overflow-hidden rounded-3 mb-3 border border-slate-200"
+                              style={{ 
+                                height: "130px", 
+                                backgroundImage: `url(${getFullUrl(q.cover_image_url)})`, 
+                                backgroundSize: "cover", 
+                                backgroundPosition: "center" 
+                              }}
+                            >
+                              <div className="position-absolute top-0 end-0 p-2 d-flex gap-1.5">
+                                <Button 
+                                  variant="light" 
+                                  size="sm" 
+                                  onClick={() => {
+                                    setActiveUploadSectionId(q.id);
+                                    sectionFileRef.current?.click();
+                                  }}
+                                  className="border-0 bg-white/90 hover:bg-white text-slate-700 shadow-sm rounded-lg text-xs py-1 px-2.5 fw-medium"
+                                >
+                                  Change Cover
+                                </Button>
+                                <Button 
+                                  variant="light" 
+                                  size="sm" 
+                                  onClick={() => handleQuestionChange(q.id, "cover_image_url", "")}
+                                  className="border-0 bg-white/90 hover:bg-white text-danger shadow-sm rounded-lg text-xs py-1 px-2"
+                                  title="Remove Section Cover"
+                                >
+                                  <Trash2 size={13} />
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="mb-3">
+                              <Button
+                                variant="outline-secondary"
+                                size="sm"
+                                onClick={() => {
+                                  setActiveUploadSectionId(q.id);
+                                  sectionFileRef.current?.click();
+                                }}
+                                disabled={uploadingSectionCover}
+                                className="text-xs py-1 px-2.5 border-dashed d-flex align-items-center gap-1.5 text-slate-600 rounded-2"
+                              >
+                                <Upload size={12} />
+                                <span>+ Add Section Cover Banner</span>
+                              </Button>
+                            </div>
+                          )}
+
+                          {/* Section Title & Description */}
+                          <div className="mb-2.5">
+                            <label className="text-[10px] fw-bold uppercase text-slate-400 mb-1 d-block">Section Title (Optional)</label>
+                            <input
+                              type="text"
+                              className="form-control form-control-sm border-slate-200 rounded-2 text-sm fw-bold text-slate-800"
+                              value={q.label || ""}
+                              onChange={(e) => handleQuestionChange(q.id, "label", e.target.value)}
+                              placeholder="Enter section title..."
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] fw-bold uppercase text-slate-400 mb-1 d-block">Section Description (Optional)</label>
+                            <textarea
+                              rows={2}
+                              className="form-control form-control-sm border-slate-200 rounded-2 text-xs text-slate-600"
+                              value={q.description || ""}
+                              onChange={(e) => handleQuestionChange(q.id, "description", e.target.value)}
+                              placeholder="Enter section description..."
+                            />
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Regular Question Card
+                    const qNumber = questionNumberMap[q.id];
+
+                    return (
+                      <div key={q.id} className="p-3.5 bg-white border border-slate-200 rounded-3 shadow-2xs transition-all hover:border-slate-350">
+                        <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom border-slate-100">
+                          <div className="d-flex align-items-center gap-2">
+                            <span className="badge bg-slate-100 text-slate-700 font-bold px-2 py-1 text-xs rounded-pill">
+                              {showQuestionNumbers ? `Question ${qNumber}` : 'Question'}
+                            </span>
+                            <span className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">
+                              {q.type === 'multiple_choice' ? 'MULTIPLE CHOICE' : q.type.toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="d-flex align-items-center gap-1">
+                            <Button variant="link" size="sm" className="p-1 text-slate-400 hover:text-slate-700" onClick={() => moveQuestion(idx, "up")} title="Move Up">
+                              <ArrowUp size={13} />
+                            </Button>
+                            <Button variant="link" size="sm" className="p-1 text-slate-400 hover:text-slate-700" onClick={() => moveQuestion(idx, "down")} title="Move Down">
+                              <ArrowDown size={13} />
+                            </Button>
+                            <Button variant="link" size="sm" className="p-1 text-danger hover:text-red-700 ms-1" onClick={() => handleRemoveQuestion(q.id)} title="Delete Question">
+                              <Trash2 size={13} />
+                            </Button>
+                          </div>
+                        </div>
+
+                        <Row className="g-2 mb-2">
+                          <Col md={6}>
+                            <label className="text-[10px] fw-bold uppercase text-slate-400 mb-1 d-block">Question Label</label>
+                            <input
+                              type="text"
+                              className="form-control form-control-sm border-slate-200 rounded-2 text-sm fw-medium text-slate-800"
+                              value={q.label}
+                              onChange={(e) => handleQuestionChange(q.id, "label", e.target.value)}
+                              placeholder="Enter question title..."
+                              required
+                            />
+                          </Col>
+                          <Col md={3}>
+                            <label className="text-[10px] fw-bold uppercase text-slate-400 mb-1 d-block">Input Type</label>
+                            <BootstrapForm.Select
+                              size="sm"
+                              className="border-slate-200 rounded-2 text-xs font-semibold text-slate-700"
+                              value={q.type}
+                              onChange={(e) => handleQuestionChange(q.id, "type", e.target.value)}
+                            >
+                              <option value="text">Short Text</option>
+                              <option value="email">Email Address</option>
+                              <option value="textarea">Paragraph</option>
+                              <option value="number">Numeric Value</option>
+                              <option value="multiple_choice">Multiple Choice</option>
+                              <option value="date">Date</option>
+                              <option value="file">File Upload</option>
+                              <option value="signature">Signature Pad</option>
+                            </BootstrapForm.Select>
+                          </Col>
+                          <Col md={3}>
+                            <label className="text-[10px] fw-bold uppercase text-slate-400 mb-1 d-block">Task Field Map</label>
+                            <BootstrapForm.Select
+                              size="sm"
+                              className="border-slate-200 rounded-2 text-xs font-semibold text-indigo-650"
+                              value={q.mapping || ""}
+                              onChange={(e) => handleQuestionChange(q.id, "mapping", e.target.value)}
+                            >
+                              <option value="">Default / None</option>
+                              <optgroup label="Default Fields">
+                                <option value="title">Task Title</option>
+                                <option value="submitter_email">Submitter Email</option>
+                                <option value="notes">Description / Notes</option>
+                                <option value="start_date">Start Date</option>
+                                <option value="due_date">End Date / Due Date</option>
+                                <option value="priority">Priority</option>
+                                <option value="status">Status</option>
                               </optgroup>
+                              {customFields.length > 0 && (
+                                <optgroup label="Custom Fields">
+                                  {customFields.map(cf => (
+                                    <option key={cf.id} value={`custom_field_${cf.id}`}>{cf.name}</option>
+                                  ))}
+                                </optgroup>
+                              )}
+                            </BootstrapForm.Select>
+                          </Col>
+                        </Row>
+
+                        {/* Multiple Choice Options Editor */}
+                        {q.type === "multiple_choice" && (
+                          <div className="p-3 bg-slate-50/80 rounded-2 border border-slate-200/80 mb-2.5">
+                            <div className="d-flex align-items-center justify-content-between mb-2">
+                              <span className="text-[10px] fw-bold uppercase text-slate-500 tracking-wider">
+                                Answer Options ({q.options?.length || 0})
+                              </span>
+                              <Button
+                                variant="link"
+                                size="sm"
+                                onClick={() => handleAddOption(q.id)}
+                                className="p-0 text-indigo-600 fw-bold text-xs d-flex align-items-center gap-1"
+                              >
+                                <Plus size={12} /> Add Option
+                              </Button>
+                            </div>
+
+                            <div className="d-flex flex-column gap-2">
+                              {(q.options || ["Option 1", "Option 2"]).map((opt, optIdx) => (
+                                <div key={optIdx} className="d-flex align-items-center gap-2">
+                                  <CircleDot size={14} className="text-slate-400 flex-shrink-0" />
+                                  <input
+                                    type="text"
+                                    className="form-control form-control-sm border-slate-200 bg-white text-xs rounded-2"
+                                    value={opt}
+                                    onChange={(e) => handleOptionChange(q.id, optIdx, e.target.value)}
+                                    placeholder={`Option ${optIdx + 1}`}
+                                  />
+                                  <Button
+                                    variant="link"
+                                    size="sm"
+                                    className="p-1 text-slate-350 hover:text-danger border-0"
+                                    onClick={() => handleRemoveOption(q.id, optIdx)}
+                                    title="Remove Option"
+                                  >
+                                    <X size={13} />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="d-flex align-items-center justify-content-between pt-2 border-top border-slate-100">
+                          {/* Live Input Preview */}
+                          <div className="flex-grow-1 me-3">
+                            {q.type === "multiple_choice" ? (
+                              <div className="d-flex flex-wrap gap-2">
+                                {(q.options || ["Option 1", "Option 2"]).map((opt, oIdx) => (
+                                  <div key={oIdx} className="px-2.5 py-1 bg-slate-100 rounded-pill text-[11px] text-slate-600 d-flex align-items-center gap-1.5 border border-slate-200">
+                                    <div className="rounded-circle border border-slate-400" style={{ width: "8px", height: "8px" }} />
+                                    <span>{opt}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <input 
+                                type="text" 
+                                disabled 
+                                className="form-control form-control-sm border-dashed border-slate-250 bg-slate-50/50 text-slate-400 text-xs rounded-2" 
+                                placeholder={q.type === "signature" ? "Draw/Type signature pad" : q.type === "file" ? "Upload file button" : "Enter your answer"} 
+                              />
                             )}
-                          </BootstrapForm.Select>
-                        </Col>
-                      </Row>
+                          </div>
 
-                      <div className="d-flex align-items-center justify-content-between pt-2 border-top border-slate-100">
-                        {/* Live Input Preview */}
-                        <div className="flex-grow-1 me-3">
-                          <input 
-                            type="text" 
-                            disabled 
-                            className="form-control form-control-sm border-dashed border-slate-250 bg-slate-50/50 text-slate-400 text-xs rounded-2" 
-                            placeholder={q.type === "signature" ? "Draw/Type signature pad" : q.type === "file" ? "Upload file button" : "Enter your answer"} 
-                          />
-                        </div>
-
-                        {/* Required toggle */}
-                        <div className="d-flex align-items-center gap-1.5 flex-shrink-0">
-                          <span className="text-xs text-slate-500 font-medium">Required</span>
-                          <BootstrapForm.Check
-                            type="switch"
-                            id={`req-${q.id}`}
-                            label=""
-                            className="mb-0"
-                            checked={!!q.required}
-                            onChange={(e) => handleQuestionChange(q.id, "required", e.target.checked)}
-                          />
+                          {/* Required toggle */}
+                          <div className="d-flex align-items-center gap-1.5 flex-shrink-0">
+                            <span className="text-xs text-slate-500 font-medium">Required</span>
+                            <BootstrapForm.Check
+                              type="switch"
+                              id={`req-${q.id}`}
+                              label=""
+                              className="mb-0"
+                              checked={!!q.required}
+                              onChange={(e) => handleQuestionChange(q.id, "required", e.target.checked)}
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -870,6 +1226,16 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
               >
                 <span className="p-1 bg-emerald-50 text-emerald-650 rounded-md d-inline-flex"><Mail size={11} /></span>
                 Email Address
+              </Button>
+              <Button 
+                variant="light" 
+                size="sm" 
+                className="text-start d-flex align-items-center gap-2 py-2 border-0 bg-slate-50 text-slate-700 hover:bg-slate-100 rounded-xl transition-all"
+                style={{ fontSize: "12.5px" }}
+                onClick={() => handleAddQuestion("multiple_choice", "Multiple Choice Question")}
+              >
+                <span className="p-1 bg-violet-50 text-violet-650 rounded-md d-inline-flex"><ListChecks size={11} /></span>
+                Multiple Choice
               </Button>
               <Button 
                 variant="light" 
@@ -920,6 +1286,21 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
               >
                 <span className="p-1 bg-purple-50 text-purple-650 rounded-md d-inline-flex"><CheckSquare size={11} /></span>
                 Signature Pad
+              </Button>
+            </div>
+
+            {/* Page Breaks & Sections */}
+            <div className="d-flex flex-column gap-2 mb-4">
+              <span className="small text-muted font-bold tracking-wider uppercase mb-1" style={{ fontSize: "9px" }}>Page Breaks & Sections</span>
+              <Button 
+                variant="light" 
+                size="sm" 
+                className="text-start d-flex align-items-center gap-2 py-2 border-0 bg-indigo-50/70 text-indigo-700 hover:bg-indigo-100 rounded-xl transition-all fw-semibold"
+                style={{ fontSize: "12.5px" }}
+                onClick={handleAddSection}
+              >
+                <span className="p-1 bg-white text-indigo-600 rounded-md d-inline-flex shadow-2xs"><Layers size={12} /></span>
+                Add Section (New Page)
               </Button>
             </div>
 
@@ -1123,7 +1504,7 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
               </div>
 
               {/* 2. Submitter Confirmation Email */}
-              <div>
+              <div className="mb-4 pb-4 border-bottom">
                 <div className="d-flex align-items-start gap-2.5 mb-3">
                   <div className="p-2 bg-emerald-50 text-emerald-600 rounded-2">
                     <CheckSquare size={18} />
@@ -1187,6 +1568,37 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
                 )}
               </div>
 
+              {/* 3. Question Numbering Settings */}
+              <div>
+                <div className="d-flex align-items-start gap-2.5 mb-3">
+                  <div className="p-2 bg-indigo-50 text-indigo-600 rounded-2">
+                    <Hash size={18} />
+                  </div>
+                  <div>
+                    <h6 className="fw-bold text-slate-800 mb-0.5" style={{ fontSize: "14px" }}>
+                      Question Numbering
+                    </h6>
+                    <p className="text-muted small mb-0" style={{ fontSize: "12px" }}>
+                      Choose whether questions are automatically numbered sequentially across all sections and pages.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded-2 border">
+                  <BootstrapForm.Check
+                    type="switch"
+                    id="show-question-numbers-switch"
+                    label="Number questions sequentially (1, 2, 3...)"
+                    checked={showQuestionNumbers}
+                    onChange={(e) => setShowQuestionNumbers(e.target.checked)}
+                    className="fw-semibold text-slate-800 text-xs"
+                  />
+                  <small className="text-muted d-block ms-4 mt-0.5" style={{ fontSize: "11px" }}>
+                    When enabled, questions are numbered continuously across all pages (even on next pages). If turned off, numbers are removed.
+                  </small>
+                </div>
+              </div>
+
             </div>
           </div>
         )}
@@ -1209,56 +1621,148 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
                   backgroundPosition: "center"
                 }}
               >
-                <div className="mx-auto bg-white rounded-4 shadow-xl overflow-hidden border border-slate-200" style={{ maxWidth: "620px" }}>
-                  {headerImageUrl && (
-                    <div style={{ height: "140px", backgroundImage: `url(${getFullUrl(headerImageUrl)})`, backgroundSize: "cover", backgroundPosition: "center" }} />
-                  )}
-                  <div className="p-4 border-bottom border-slate-100">
-                    <h3 className="fw-bold text-slate-900 mb-2" style={{ fontSize: "22px" }}>{formName}</h3>
-                    {formDesc && (
-                      <p className="text-slate-600 mb-3" style={{ fontSize: "14px", lineHeight: "1.6", whiteSpace: "pre-wrap" }}>{formDesc}</p>
-                    )}
-                    <div className="text-slate-400 mt-2" style={{ fontSize: "12px" }}>
-                      When you submit this form, it will not automatically collect your details like name and email address unless you provide it yourself.
-                    </div>
-                    <div className="text-danger fw-semibold mt-1" style={{ fontSize: "12px" }}>* Required</div>
-                  </div>
+                {(() => {
+                  const currentSim = previewPages[previewActivePage] || previewPages[0];
+                  const isFirstSimPage = previewActivePage === 0;
+                  const isLastSimPage = previewActivePage === previewPages.length - 1;
 
-                  <div className="p-4 d-flex flex-column gap-3">
-                    {questions.map((q, idx) => {
-                      if (!evaluateCondition(q, previewAnswers)) return null;
-                      return (
-                        <div key={q.id} className="p-3 rounded-3 bg-white border border-slate-200 shadow-2xs">
-                          <BootstrapForm.Group className="mb-0">
-                            <BootstrapForm.Label className="fw-bold text-slate-800 small mb-2 d-flex align-items-baseline">
-                              <span>{idx + 1}. {q.label}</span>
-                              {q.required && <span className="text-danger ms-1 fw-bold">*</span>}
-                            </BootstrapForm.Label>
-                            {q.type === "textarea" ? (
-                              <BootstrapForm.Control as="textarea" rows={3} placeholder="Enter your answer" required={q.required} className="rounded-2 text-sm bg-slate-50/50" />
-                            ) : q.type === "date" ? (
-                              <BootstrapForm.Control type="date" required={q.required} className="rounded-2 text-sm bg-slate-50/50" />
-                            ) : q.type === "number" ? (
-                              <BootstrapForm.Control type="number" placeholder="Enter your answer" required={q.required} className="rounded-2 text-sm bg-slate-50/50" />
-                            ) : q.type === "file" ? (
-                              <BootstrapForm.Control type="file" required={q.required} className="rounded-2 text-sm" />
-                            ) : q.type === "signature" ? (
-                              <div className="border border-slate-200 rounded p-3 text-center cursor-pointer bg-slate-50 hover:bg-slate-100" style={{ borderStyle: "dashed" }}>
-                                <span className="text-slate-400 italic small">Sign Here (Simulation Pad)</span>
-                              </div>
-                            ) : (
-                              <BootstrapForm.Control type="text" placeholder="Enter your answer" required={q.required} className="rounded-2 text-sm bg-slate-50/50" />
-                            )}
-                          </BootstrapForm.Group>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                  return (
+                    <div className="mx-auto bg-white rounded-4 shadow-xl overflow-hidden border border-slate-200" style={{ maxWidth: "620px" }}>
+                      {currentSim.header_image_url && (
+                        <div style={{ height: "140px", backgroundImage: `url(${getFullUrl(currentSim.header_image_url)})`, backgroundSize: "cover", backgroundPosition: "center" }} />
+                      )}
+                      <div className="p-4 border-bottom border-slate-100">
+                        {previewPages.length > 1 && (
+                          <div className="badge bg-slate-100 text-slate-700 fw-semibold px-2.5 py-1 text-xs rounded-pill mb-2">
+                            Page {previewActivePage + 1} of {previewPages.length}
+                          </div>
+                        )}
+                        <h3 className="fw-bold text-slate-900 mb-2" style={{ fontSize: "22px" }}>
+                          {currentSim.title || (isFirstSimPage ? formName : "Section")}
+                        </h3>
+                        {currentSim.description && (
+                          <p className="text-slate-600 mb-3" style={{ fontSize: "14px", lineHeight: "1.6", whiteSpace: "pre-wrap" }}>
+                            {currentSim.description}
+                          </p>
+                        )}
+                        {isFirstSimPage && (
+                          <div className="text-slate-400 mt-2" style={{ fontSize: "12px" }}>
+                            When you submit this form, it will not automatically collect your details like name and email address unless you provide it yourself.
+                          </div>
+                        )}
+                        <div className="text-danger fw-semibold mt-1" style={{ fontSize: "12px" }}>* Required</div>
+                      </div>
+
+                      <div className="p-4 d-flex flex-column gap-3">
+                        {previewPageError && (
+                          <div className="alert alert-danger text-xs py-2 px-3 rounded-2 mb-2">
+                            {previewPageError}
+                          </div>
+                        )}
+
+                        {currentSim.questions.map((q) => {
+                          if (!evaluateCondition(q, previewAnswers)) return null;
+                          const qNumber = questionNumberMap[q.id];
+
+                          return (
+                            <div key={q.id} className="p-3 rounded-3 bg-white border border-slate-200 shadow-2xs">
+                              <BootstrapForm.Group className="mb-0">
+                                <BootstrapForm.Label className="fw-bold text-slate-800 small mb-2 d-flex align-items-baseline">
+                                  <span>{showQuestionNumbers ? `${qNumber}. ` : ""}{q.label}</span>
+                                  {q.required && <span className="text-danger ms-1 fw-bold">*</span>}
+                                </BootstrapForm.Label>
+                                {q.type === "multiple_choice" ? (
+                                  <div className="d-flex flex-column gap-2 mt-2">
+                                    {(q.options || ["Option 1", "Option 2"]).map((opt, oIdx) => (
+                                      <div 
+                                        key={oIdx} 
+                                        onClick={() => setPreviewAnswers({ ...previewAnswers, [q.id]: opt })}
+                                        className={`d-flex align-items-center gap-2.5 p-2 px-3 rounded-2 border cursor-pointer transition-all ${
+                                          previewAnswers[q.id] === opt 
+                                            ? "border-indigo-600 bg-indigo-50/50 text-indigo-950 shadow-2xs" 
+                                            : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                                        }`}
+                                      >
+                                        <input
+                                          type="radio"
+                                          name={`sim_q_${q.id}`}
+                                          id={`sim_q_${q.id}_${oIdx}`}
+                                          checked={previewAnswers[q.id] === opt}
+                                          onChange={() => setPreviewAnswers({ ...previewAnswers, [q.id]: opt })}
+                                          className="form-check-input mt-0 cursor-pointer"
+                                        />
+                                        <label htmlFor={`sim_q_${q.id}_${oIdx}`} className="form-check-label text-xs fw-medium mb-0 cursor-pointer flex-grow-1">
+                                          {opt}
+                                        </label>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : q.type === "textarea" ? (
+                                  <BootstrapForm.Control as="textarea" rows={3} placeholder="Enter your answer" required={q.required} className="rounded-2 text-sm bg-slate-50/50" />
+                                ) : q.type === "date" ? (
+                                  <BootstrapForm.Control type="date" required={q.required} className="rounded-2 text-sm bg-slate-50/50" />
+                                ) : q.type === "number" ? (
+                                  <BootstrapForm.Control type="number" placeholder="Enter your answer" required={q.required} className="rounded-2 text-sm bg-slate-50/50" />
+                                ) : q.type === "file" ? (
+                                  <BootstrapForm.Control type="file" required={q.required} className="rounded-2 text-sm" />
+                                ) : q.type === "signature" ? (
+                                  <div className="border border-slate-200 rounded p-3 text-center cursor-pointer bg-slate-50 hover:bg-slate-100" style={{ borderStyle: "dashed" }}>
+                                    <span className="text-slate-400 italic small">Sign Here (Simulation Pad)</span>
+                                  </div>
+                                ) : (
+                                  <BootstrapForm.Control type="text" placeholder="Enter your answer" required={q.required} className="rounded-2 text-sm bg-slate-50/50" />
+                                )}
+                              </BootstrapForm.Group>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Simulator Footer Navigation */}
+                      <div className="p-3 bg-slate-50 border-top d-flex justify-content-between align-items-center">
+                        {previewActivePage > 0 ? (
+                          <Button 
+                            variant="outline-secondary" 
+                            size="sm" 
+                            onClick={() => {
+                              setPreviewPageError("");
+                              setPreviewActivePage(prev => Math.max(0, prev - 1));
+                            }} 
+                            className="rounded-lg text-xs"
+                          >
+                            ← Previous Page
+                          </Button>
+                        ) : <div />}
+
+                        {!isLastSimPage ? (
+                          <Button 
+                            variant="primary" 
+                            size="sm" 
+                            onClick={() => {
+                              setPreviewPageError("");
+                              setPreviewActivePage(prev => Math.min(previewPages.length - 1, prev + 1));
+                            }} 
+                            className="bg-slate-900 border-0 rounded-lg px-4 text-xs"
+                          >
+                            Next Page →
+                          </Button>
+                        ) : (
+                          <Button 
+                            variant="primary" 
+                            size="sm" 
+                            type="submit" 
+                            className="bg-slate-900 border-0 rounded-lg px-4 text-xs"
+                          >
+                            Submit
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </Modal.Body>
-              <Modal.Footer className="border-top-0">
-                <Button variant="light" size="sm" onClick={() => setShowPreviewModal(false)} className="rounded-lg">Close</Button>
-                <Button variant="primary" size="sm" type="submit" className="bg-slate-900 border-0 rounded-lg px-4">Submit</Button>
+              <Modal.Footer className="border-top-0 pt-0">
+                <Button variant="light" size="sm" onClick={() => setShowPreviewModal(false)} className="rounded-lg">Close Simulator</Button>
               </Modal.Footer>
             </BootstrapForm>
           </Modal>
@@ -1439,6 +1943,7 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
             </div>
             <div className="border rounded bg-light p-3">
               {activeForm?.form_structure?.map((q) => {
+                if (q.type === 'section' || q.type === 'welcome' || q.type === 'thankyou' || q.type === 'settings') return null;
                 const ans = selectedResponse.response[q.id];
                 const isSignature = q.type === "signature" && ans;
                 const isFile = q.type === "file" && ans && ans.file_url;
