@@ -515,8 +515,8 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
     }
   };
 
-  const handleCopyLink = (formId) => {
-    const link = `${window.location.origin}/public/forms/${formId}`;
+  const handleCopyLink = (identifier) => {
+    const link = `${window.location.origin}/public/forms/${identifier}`;
     navigator.clipboard.writeText(link);
     showSuccess("Public form link copied to clipboard!");
   };
@@ -1787,7 +1787,7 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
               <Button variant="outline-primary" size="sm" onClick={() => handleStartEdit(activeForm)} className="d-flex align-items-center gap-1">
                 <Settings size={14} /> Design Form
               </Button>
-              <Button variant="outline-secondary" size="sm" onClick={() => handleCopyLink(activeForm.id)} className="d-flex align-items-center gap-1">
+              <Button variant="outline-secondary" size="sm" onClick={() => handleCopyLink(activeForm.uuid || activeForm.id)} className="d-flex align-items-center gap-1">
                 <Copy size={14} /> Copy Link
               </Button>
             </div>
@@ -1885,7 +1885,7 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
                             <Button 
                               variant="outline-secondary" 
                               size="sm" 
-                              onClick={() => handleCopyLink(f.id)} 
+                              onClick={() => handleCopyLink(f.uuid || f.id)} 
                               title="Copy Public Link"
                               className="p-1 px-2 d-flex align-items-center justify-content-center border-slate-350 text-slate-700"
                             >
@@ -1894,7 +1894,7 @@ const FormView = ({ boardId, boardCustomFields = [] }) => {
                             <Button 
                               variant="outline-secondary" 
                               size="sm" 
-                              onClick={() => window.open(`/public/forms/${f.id}`, "_blank")} 
+                              onClick={() => window.open(`/public/forms/${f.uuid || f.id}`, "_blank")} 
                               title="Preview Public Form"
                               className="p-1 px-2 d-flex align-items-center justify-content-center border-slate-350 text-slate-700"
                             >
