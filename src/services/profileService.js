@@ -14,6 +14,20 @@ export const getMyProfile = async () => {
   }
 };
 
+// Update user direct deposit payment method
+export const updatePaymentMethod = async (paymentData) => {
+  try {
+    const response = await api.put("/profile/payment-method", paymentData);
+    return response.data;
+  } catch (error) {
+    console.error(
+      "Error updating payment method:",
+      error.response?.data || error.message
+    );
+    throw error;
+  }
+};
+
 // Update the current user's password
 export const changePassword = async (passwordData) => {
   try {
@@ -41,4 +55,3 @@ export const updateProfile = async (profileData) => {
     throw error;
   }
 };
-

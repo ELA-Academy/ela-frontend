@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Outlet, NavLink, Link, useNavigate } from "react-router-dom";
 import {
   Home,
@@ -14,13 +14,10 @@ import {
   ArrowLeft,
   LogOut,
   ShieldCheck,
-  Gift,
-  HelpCircle,
-  MessageSquare,
-  Menu,
-  X
+  Menu
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { getMyProfile } from "../../services/profileService";
 import "../../styles/GustoTheme.css";
 
 const GustoLayout = () => {
@@ -29,13 +26,21 @@ const GustoLayout = () => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notiOpen, setNotiOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [dynamicProfile, setDynamicProfile] = useState(null);
 
-  // Teaching staff are locked to Gusto, while admins/other depts can toggle back to /admin
+  // Teaching staff are locked to ELA TT, while admins/other depts can toggle back to /admin
   const isTeacher = user?.role === "teacher";
   const canAccessAdmin = !isTeacher;
 
-  const staffName = user?.name || "Murrisa Rigsby";
-  const companyName = "Cooper Galvis Enterprises LLC";
+  useEffect(() => {
+    getMyProfile()
+      .then((res) => setDynamicProfile(res))
+      .catch((err) => console.log("Profile load fallback:", err));
+  }, []);
+
+  const staffName = dynamicProfile?.preferred_name || dynamicProfile?.name || user?.name || "Staff Member";
+  const staffEmail = dynamicProfile?.work_email || dynamicProfile?.email || user?.email || "staff@elaaschool.org";
+  const companyName = "ELA Academy LLC";
   const userInitials = staffName
     .split(" ")
     .map((n) => n[0])
@@ -52,22 +57,15 @@ const GustoLayout = () => {
     {
       id: 1,
       title: "Pay period synced",
-      desc: "Your hours for week Sep 20 â€“ Sep 26 have been approved and synced.",
+      desc: "Your weekly hours have been approved and synced with Stripe payroll.",
       time: "2 hours ago",
       read: false
     },
     {
       id: 2,
       title: "Direct deposit verified",
-      desc: "Your primary checking account (â€¢â€¢â€¢â€¢1036) is verified and ready for payroll.",
+      desc: `Your primary account ending in ${dynamicProfile?.bank_account_last4 || "7600"} is active for direct deposit.`,
       time: "Yesterday",
-      read: true
-    },
-    {
-      id: 3,
-      title: "Upcoming holiday schedule",
-      desc: "Please submit your timecards by Friday 5:00 PM for the upcoming break.",
-      time: "3 days ago",
       read: true
     }
   ];
@@ -77,7 +75,7 @@ const GustoLayout = () => {
       {/* Sidebar Navigation */}
       <aside className={`gusto-sidebar ${mobileMenuOpen ? "open" : ""}`}>
         <div style={{ display: "flex", flexDirection: "column" }}>
-          {/* Logo matching exact Gusto red brand mark */}
+          {/* Logo matching ELA TT branding */}
           <div
             style={{
               display: "flex",
@@ -94,19 +92,32 @@ const GustoLayout = () => {
                 textDecoration: "none",
                 display: "inline-flex",
                 alignItems: "center",
-                gap: "0.4rem"
+                gap: "0.5rem"
               }}
             >
+              <div
+                style={{
+                  backgroundColor: "#0d5c46",
+                  color: "#ffffff",
+                  fontWeight: 800,
+                  fontSize: "0.85rem",
+                  padding: "0.25rem 0.55rem",
+                  borderRadius: "6px",
+                  letterSpacing: "0.5px"
+                }}
+              >
+                ELA
+              </div>
               <span
                 style={{
-                  color: "#e84e38",
+                  color: "#0f172a",
                   fontWeight: 800,
-                  fontSize: "1.65rem",
-                  letterSpacing: "-0.04em",
+                  fontSize: "1.45rem",
+                  letterSpacing: "-0.03em",
                   fontFamily: "system-ui, -apple-system, sans-serif"
                 }}
               >
-                gusto
+                TT
               </span>
             </Link>
           </div>
@@ -172,28 +183,8 @@ const GustoLayout = () => {
           </nav>
         </div>
 
-        {/* Bottom Nav Area (Refer & earn, Help, Settings, Admin Portal switch) */}
+        {/* Bottom Nav Area: Refer and Help removed as requested */}
         <div className="gusto-sidebar-bottom">
-          <button
-            type="button"
-            className="gusto-nav-link"
-            style={{ width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
-            onClick={() => alert("Invite other contractors or colleagues to ELA Academy Time Tracking.")}
-          >
-            <Gift className="w-5 h-5" />
-            <span>Refer &amp; earn</span>
-          </button>
-
-          <button
-            type="button"
-            className="gusto-nav-link"
-            style={{ width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
-            onClick={() => alert("Help Center: Need assistance? Contact admin or support.")}
-          >
-            <HelpCircle className="w-5 h-5" />
-            <span>Help</span>
-          </button>
-
           <NavLink
             to="/time-tracking/settings"
             className={({ isActive }) => `gusto-nav-link ${isActive ? "active" : ""}`}
@@ -234,26 +225,6 @@ const GustoLayout = () => {
           <div style={{ flex: 1 }} />
 
           <div className="gusto-header-actions">
-            {/* Refer & earn gift icon */}
-            <button
-              type="button"
-              className="gusto-icon-btn"
-              title="Refer & earn"
-              onClick={() => alert("Refer & earn: Earn rewards when you refer colleagues.")}
-            >
-              <Gift className="w-4 h-4 text-slate-600" />
-            </button>
-
-            {/* Help / Feedback chat icon */}
-            <button
-              type="button"
-              className="gusto-icon-btn"
-              title="Help & Feedback"
-              onClick={() => alert("Gusto Assistant: Help center & direct messaging.")}
-            >
-              <MessageSquare className="w-4 h-4 text-slate-600" />
-            </button>
-
             {/* Notification Bell */}
             <div style={{ position: "relative" }}>
               <button
@@ -261,7 +232,7 @@ const GustoLayout = () => {
                 title="Notifications"
                 onClick={() => setNotiOpen(!notiOpen)}
               >
-                <Bell className="w-4 h-4 text-slate-600" />
+                <Bell className="w-5 h-5 text-slate-600" />
                 <span className="gusto-noti-badge" />
               </button>
 
@@ -335,7 +306,7 @@ const GustoLayout = () => {
               )}
             </div>
 
-            {/* User Profile Pill matching Image 1 & Image 5 */}
+            {/* User Profile Pill */}
             <div
               className="gusto-user-pill"
               onClick={() => setUserMenuOpen(!userMenuOpen)}
@@ -349,7 +320,7 @@ const GustoLayout = () => {
               </div>
               <ChevronDown className="w-4 h-4 text-slate-400" />
 
-              {/* User Menu Dropdown: includes "My account" as requested */}
+              {/* User Menu Dropdown */}
               {userMenuOpen && (
                 <div
                   style={{
@@ -369,11 +340,10 @@ const GustoLayout = () => {
                   <div style={{ padding: "0.6rem 1rem", borderBottom: "1px solid #f1f5f9" }}>
                     <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "#0f172a" }}>{staffName}</div>
                     <div style={{ fontSize: "0.75rem", color: "#64748b" }}>
-                      {user?.email || "murrisarigsby@gmail.com"}
+                      {staffEmail}
                     </div>
                   </div>
 
-                  {/* My Account Option (Image 5 link) */}
                   <Link
                     to="/time-tracking/my-account"
                     style={{
@@ -457,7 +427,7 @@ const GustoLayout = () => {
 
         {/* Nested Page Content */}
         <main className="gusto-content">
-          <Outlet />
+          <Outlet context={{ dynamicProfile, setDynamicProfile }} />
         </main>
       </div>
     </div>

@@ -29,7 +29,7 @@ const GustoSettingsPage = () => {
 
   // Notifications state
   const [emailPrefs, setEmailPrefs] = useState(
-    "New features and updates, Offers and promotions, Feedback and surveys, Gusto sales representative communications"
+    "New features and updates, Offers and promotions, Feedback and surveys, ELA TT staff communications"
   );
   const [pushPrefs, setPushPrefs] = useState("Account information, All marketing notifications");
   const [textPrefs, setTextPrefs] = useState("Account information");
@@ -706,7 +706,7 @@ const GustoSettingsPage = () => {
                 <label style={{ display: "flex", alignItems: "center", gap: "0.75rem", cursor: "pointer" }}>
                   <input type="checkbox" defaultChecked style={{ width: "16px", height: "16px", accentColor: "#0f766e" }} />
                   <span style={{ fontSize: "0.875rem", color: "#374151" }}>
-                    Enable product analytics to help improve Gusto time tracking and reporting features.
+                    Enable product analytics to help improve ELA TT time tracking and reporting features.
                   </span>
                 </label>
                 <label style={{ display: "flex", alignItems: "center", gap: "0.75rem", cursor: "pointer" }}>
@@ -737,7 +737,7 @@ const GustoSettingsPage = () => {
                   Electronic Delivery Consent (Form 1099 / W-2)
                 </div>
                 <p style={{ fontSize: "0.825rem", color: "#64748b", margin: "0 0 1rem", lineHeight: 1.5 }}>
-                  You have consented to receive all tax forms and employment contracts electronically in your Gusto portal. You may revoke consent at any time to receive paper mailings.
+                  You have consented to receive all tax forms and employment contracts electronically in your ELA TT portal. You may revoke consent at any time to receive paper mailings.
                 </p>
                 <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.85rem", color: "#16a34a", fontWeight: 600 }}>
                   <Check className="w-4 h-4" /> Paperless tax delivery active
