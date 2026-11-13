@@ -78,6 +78,7 @@ import GustoBenefitsPage from "./pages/timetracking/GustoBenefitsPage";
 import GustoDocumentsPage from "./pages/timetracking/GustoDocumentsPage";
 import GustoPerformancePage from "./pages/timetracking/GustoPerformancePage";
 import GustoSettingsPage from "./pages/timetracking/GustoSettingsPage";
+import GustoMyAccountPage from "./pages/timetracking/GustoMyAccountPage";
 
 // Parent Portal
 import ParentRoute from "./components/ParentRoute";
@@ -238,6 +239,7 @@ function App() {
                 <Route path="documents" element={<GustoDocumentsPage />} />
                 <Route path="performance" element={<GustoPerformancePage />} />
                 <Route path="settings" element={<GustoSettingsPage />} />
+                <Route path="my-account" element={<GustoMyAccountPage />} />
               </Route>
             </Route>
 
