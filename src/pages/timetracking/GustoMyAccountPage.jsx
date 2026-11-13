@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   MoreVertical,
@@ -10,13 +10,20 @@ import {
   DollarSign
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { getMyProfile } from "../../services/profileService";
 import "../../styles/GustoTheme.css";
 
 const GustoMyAccountPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const staffName = user?.name || "Murrisa Rigsby";
-  const companyName = "Cooper Galvis Enterprises LLC";
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    getMyProfile().then(data => setProfile(data)).catch(() => {});
+  }, []);
+
+  const staffName = profile?.preferred_name || profile?.name || user?.name || "Murrisa Rigsby";
+  const companyName = "ELA Academy LLC";
 
   const [activeMenu, setActiveMenu] = useState(null);
 
@@ -464,7 +471,7 @@ const GustoMyAccountPage = () => {
         </div>
       </div>
 
-      {/* Footer matching Image 5 */}
+      {/* Footer matching ELA TT */}
       <footer
         style={{
           marginTop: "4rem",
@@ -477,7 +484,7 @@ const GustoMyAccountPage = () => {
           color: "#6b7280"
         }}
       >
-        <div>Gusto Â© 2026</div>
+        <div>ELA TT © 2026 • ELA Academy</div>
         <div style={{ display: "flex", gap: "1.25rem", alignItems: "center" }}>
           <a href="#help" style={{ color: "#6b7280", textDecoration: "none" }}>Help center</a>
           <a href="#terms" style={{ color: "#6b7280", textDecoration: "none" }}>Terms</a>
