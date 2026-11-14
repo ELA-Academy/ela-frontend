@@ -249,7 +249,7 @@ const GustoMyAccountPage = () => {
                     <button
                       type="button"
                       style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: "4px" }}
-                      onClick={() => alert(`Direct deposit via Stripe transferred for ${p.date}: ${p.amount}`)}
+                      onClick={() => setSuccessMsg(`Payment details for ${p.date}: ${p.amount} disbursed via Stripe`)}
                       title="Payment details"
                     >
                       <MoreVertical className="w-4 h-4" />

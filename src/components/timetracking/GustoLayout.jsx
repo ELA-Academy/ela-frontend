@@ -97,7 +97,7 @@ const GustoLayout = () => {
             >
               <div
                 style={{
-                  backgroundColor: "#0d5c46",
+                  backgroundColor: "#1d4ed8",
                   color: "#ffffff",
                   fontWeight: 800,
                   fontSize: "0.85rem",
@@ -110,7 +110,7 @@ const GustoLayout = () => {
               </div>
               <span
                 style={{
-                  color: "#0f172a",
+                  color: "#1e3a8a",
                   fontWeight: 800,
                   fontSize: "1.45rem",
                   letterSpacing: "-0.03em",
@@ -264,7 +264,7 @@ const GustoLayout = () => {
                     <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "#0f172a" }}>
                       Notifications
                     </span>
-                    <span style={{ fontSize: "0.75rem", color: "#0f766e", fontWeight: 600, cursor: "pointer" }}>
+                    <span style={{ fontSize: "0.75rem", color: "#2563eb", fontWeight: 600, cursor: "pointer" }}>
                       Mark all read
                     </span>
                   </div>
@@ -285,7 +285,7 @@ const GustoLayout = () => {
                                 width: "6px",
                                 height: "6px",
                                 borderRadius: "50%",
-                                backgroundColor: "#0f766e"
+                                backgroundColor: "#2563eb"
                               }}
                             />
                           )}
@@ -313,7 +313,9 @@ const GustoLayout = () => {
               tabIndex={0}
               style={{ position: "relative" }}
             >
-              <div className="gusto-avatar">{userInitials}</div>
+              <div className="gusto-avatar" style={{ backgroundColor: "#eff6ff", border: "1px solid #bfdbfe", padding: "2px", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <img src="/images/ELA-logo.png" alt="ELA" style={{ width: "100%", height: "100%", objectFit: "contain", borderRadius: "50%" }} />
+              </div>
               <div className="gusto-user-details">
                 <span className="gusto-user-name">{staffName}</span>
                 <span className="gusto-user-company">{companyName}</span>
@@ -359,7 +361,7 @@ const GustoLayout = () => {
                     }}
                     onClick={() => setUserMenuOpen(false)}
                   >
-                    <User className="w-4 h-4 text-emerald-700" />
+                    <User className="w-4 h-4 text-blue-600" />
                     <span>My account</span>
                   </Link>
 

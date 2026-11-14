@@ -13,8 +13,10 @@ import {
   ShieldCheck,
   Building,
   MoreVertical,
-  X
+  X,
+  Check
 } from "lucide-react";
+import { Modal, Button } from "react-bootstrap";
 import { useAuth } from "../../../context/AuthContext";
 import "../../../styles/GustoTheme.css";
 
@@ -23,6 +25,13 @@ const PayrollHomePage = () => {
   const navigate = useNavigate();
   const adminName = user?.name ? user.name.split(" ")[0] : "Caitlin";
   const [showHires, setShowHires] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [infoModal, setInfoModal] = useState({ show: false, title: "", body: "" });
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(""), 4000);
+  };
 
   return (
     <div style={{ maxWidth: "1140px", margin: "0 auto", paddingBottom: "4rem" }}>
@@ -83,7 +92,7 @@ const PayrollHomePage = () => {
                     gap: "0.35rem",
                     background: "none",
                     border: "none",
-                    color: "#0d5c46",
+                    color: "#2563eb",
                     fontSize: "0.85rem",
                     fontWeight: 600,
                     cursor: "pointer",
@@ -144,8 +153,8 @@ const PayrollHomePage = () => {
               </h2>
               <button
                 type="button"
-                style={{ background: "none", border: "none", color: "#0d5c46", fontSize: "0.85rem", fontWeight: 600, textDecoration: "underline", cursor: "pointer" }}
-                onClick={() => alert("All recent payroll activities")}
+                style={{ background: "none", border: "none", color: "#2563eb", fontSize: "0.85rem", fontWeight: 600, textDecoration: "underline", cursor: "pointer" }}
+                onClick={() => setInfoModal({ show: true, title: "All Recent Payroll Activities", body: "Recent activities include contractor direct deposit debit confirmations, automated invoice receipts, and compliance syncs." })}
               >
                 View all activity
               </button>
@@ -197,8 +206,8 @@ const PayrollHomePage = () => {
                     {act.text}{" "}
                     <button
                       type="button"
-                      style={{ background: "none", border: "none", color: "#0d5c46", fontWeight: 600, textDecoration: "underline", cursor: "pointer", padding: 0 }}
-                      onClick={() => alert(`Opening details for ${act.linkText}`)}
+                      style={{ background: "none", border: "none", color: "#2563eb", fontWeight: 600, textDecoration: "underline", cursor: "pointer", padding: 0 }}
+                      onClick={() => setInfoModal({ show: true, title: act.linkText, body: `Details for ${act.linkText}: Transaction verified via ELA Academy Automated Treasury.` })}
                     >
                       {act.linkText}
                     </button>
@@ -206,7 +215,7 @@ const PayrollHomePage = () => {
                   <button
                     type="button"
                     style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", padding: "2px" }}
-                    onClick={() => alert("Activity dismissed")}
+                    onClick={() => showToast("Activity dismissed")}
                     title="Dismiss"
                   >
                     <X className="w-4 h-4" />
@@ -227,7 +236,7 @@ const PayrollHomePage = () => {
               </h2>
               <button
                 type="button"
-                style={{ background: "none", border: "none", color: "#0d5c46", fontSize: "0.85rem", fontWeight: 600, textDecoration: "underline", cursor: "pointer" }}
+                style={{ background: "none", border: "none", color: "#2563eb", fontSize: "0.85rem", fontWeight: 600, textDecoration: "underline", cursor: "pointer" }}
                 onClick={() => navigate("/admin/payroll/pay")}
               >
                 See history
@@ -256,8 +265,8 @@ const PayrollHomePage = () => {
               </h2>
               <button
                 type="button"
-                style={{ background: "none", border: "none", color: "#0d5c46", fontSize: "0.85rem", fontWeight: 600, textDecoration: "underline", cursor: "pointer" }}
-                onClick={() => alert("Syncing payroll events to Google/Outlook calendar")}
+                style={{ background: "none", border: "none", color: "#2563eb", fontSize: "0.85rem", fontWeight: 600, textDecoration: "underline", cursor: "pointer" }}
+                onClick={() => showToast("Payroll schedule synced with calendar.")}
               >
                 Sync calendar
               </button>
@@ -326,7 +335,7 @@ const PayrollHomePage = () => {
                     color: "#111827",
                     cursor: "pointer"
                   }}
-                  onClick={() => alert("Open global contractor onboarding")}
+                  onClick={() => navigate("/admin/payroll/pay")}
                 >
                   Pay your global contractors
                 </button>
@@ -362,7 +371,7 @@ const PayrollHomePage = () => {
                     color: "#111827",
                     cursor: "pointer"
                   }}
-                  onClick={() => alert("Connecting with ELA HR compliance advisor")}
+                  onClick={() => setInfoModal({ show: true, title: "HR Compliance Advisor", body: "Speak with an ELA HR advisor to audit Employee and Student handbooks for compliance." })}
                 >
                   Speak with a plan advisor
                 </button>
@@ -371,6 +380,42 @@ const PayrollHomePage = () => {
           </div>
         </div>
       </div>
+
+      {/* Info Modal (Replaces window.alert) */}
+      <Modal show={infoModal.show} onHide={() => setInfoModal({ show: false, title: "", body: "" })} centered>
+        <Modal.Header closeButton>
+          <Modal.Title style={{ fontSize: "1rem", fontWeight: 700 }}>{infoModal.title}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4 text-sm text-slate-700">
+          {infoModal.body}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" size="sm" onClick={() => setInfoModal({ show: false, title: "", body: "" })}>
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: "2rem",
+            right: "2rem",
+            backgroundColor: "#1e3a8a",
+            color: "#ffffff",
+            padding: "0.75rem 1.25rem",
+            borderRadius: "8px",
+            boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+            fontSize: "0.875rem",
+            fontWeight: 600,
+            zIndex: 9999
+          }}
+        >
+          {toastMessage}
+        </div>
+      )}
     </div>
   );
 };

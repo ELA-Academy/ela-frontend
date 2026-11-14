@@ -39,7 +39,7 @@ const GustoPerformancePage = () => {
               style={{
                 background: "none",
                 border: "none",
-                color: "#0f766e",
+                color: "#2563eb",
                 fontSize: "0.875rem",
                 fontWeight: 600,
                 cursor: "pointer",
@@ -47,7 +47,7 @@ const GustoPerformancePage = () => {
                 display: "inline-flex",
                 alignItems: "center"
               }}
-              onClick={() => alert("Navigating to Performance Goals dashboard")}
+              onClick={() => {}}
             >
               Go to dashboard &gt;
             </button>
@@ -171,7 +171,7 @@ const GustoPerformancePage = () => {
               style={{
                 background: "none",
                 border: "none",
-                color: "#0f766e",
+                color: "#2563eb",
                 fontSize: "0.875rem",
                 fontWeight: 600,
                 cursor: "pointer",
@@ -179,7 +179,7 @@ const GustoPerformancePage = () => {
                 display: "inline-flex",
                 alignItems: "center"
               }}
-              onClick={() => alert("Navigating to 360 Feedback dashboard")}
+              onClick={() => {}}
             >
               Go to dashboard &gt;
             </button>
