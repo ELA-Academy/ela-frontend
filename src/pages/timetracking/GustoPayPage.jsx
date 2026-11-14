@@ -166,7 +166,7 @@ const GustoPayPage = () => {
                     </button>
                     <button
                       onClick={() => {
-                        alert(`Downloading pay stub PDF for ${item.payday}...`);
+                        setSelectedStub(item);
                         setActiveMenuId(null);
                       }}
                       style={{
@@ -177,7 +177,7 @@ const GustoPayPage = () => {
                         border: "none",
                         textAlign: "left",
                         cursor: "pointer",
-                        color: "#673de6"
+                        color: "#2563eb"
                       }}
                     >
                       Download PDF
@@ -278,7 +278,7 @@ const GustoPayPage = () => {
                 <button
                   type="button"
                   className="gusto-btn-primary"
-                  onClick={() => alert(`Downloading PDF for ${selectedStub.payday}`)}
+                  onClick={() => setSelectedStub(null)}
                 >
                   <Download className="w-4 h-4 inline me-1" /> Download PDF
                 </button>

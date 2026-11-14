@@ -433,13 +433,13 @@ const GustoSettingsPage = () => {
                     style={{
                       background: "none",
                       border: "none",
-                      color: "#0f766e",
+                      color: "#2563eb",
                       fontSize: "0.875rem",
                       fontWeight: 600,
                       cursor: "pointer",
                       textDecoration: "underline"
                     }}
-                    onClick={() => alert("Showing all activity sessions")}
+                    onClick={() => setSavedMsg("All active security sessions displayed.")}
                   >
                     View all
                   </button>
@@ -467,8 +467,8 @@ const GustoSettingsPage = () => {
                         <td style={{ padding: "0.75rem 0.5rem", textAlign: "right" }}>
                           <button
                             type="button"
-                            style={{ background: "none", border: "none", color: "#0f766e", cursor: "pointer", textDecoration: "underline", fontSize: "0.8rem" }}
-                            onClick={() => alert("Activity verified safe.")}
+                            style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", textDecoration: "underline", fontSize: "0.8rem" }}
+                            onClick={() => setSavedMsg("Security event flagged and verified safe.")}
                           >
                             Report
                           </button>
@@ -482,8 +482,8 @@ const GustoSettingsPage = () => {
                         <td style={{ padding: "0.75rem 0.5rem", textAlign: "right" }}>
                           <button
                             type="button"
-                            style={{ background: "none", border: "none", color: "#0f766e", cursor: "pointer", textDecoration: "underline", fontSize: "0.8rem" }}
-                            onClick={() => alert("Activity verified safe.")}
+                            style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", textDecoration: "underline", fontSize: "0.8rem" }}
+                            onClick={() => setSavedMsg("Security event flagged and verified safe.")}
                           >
                             Report
                           </button>

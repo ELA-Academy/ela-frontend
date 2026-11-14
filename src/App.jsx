@@ -72,6 +72,7 @@ import PayrollLayout from "./components/admin/payroll/PayrollLayout";
 import PayrollHomePage from "./components/admin/payroll/PayrollHomePage";
 import PayrollPeoplePage from "./components/admin/payroll/PayrollPeoplePage";
 import PayrollStaffProfilePage from "./components/admin/payroll/PayrollStaffProfilePage";
+import PayrollPayPage from "./components/admin/payroll/PayrollPayPage";
 import PayrollSectionPlaceholder from "./components/admin/payroll/PayrollSectionPlaceholder";
 import { CircleDollarSign as IconPay, BarChart2 as IconReports, Landmark as IconTaxes, Clock as IconClock, FileText as IconDocs, DollarSign as IconMoney } from "lucide-react";
 
@@ -236,7 +237,7 @@ function App() {
                   <Route index element={<PayrollHomePage />} />
                   <Route path="people" element={<PayrollPeoplePage />} />
                   <Route path="people/:staffId" element={<PayrollStaffProfilePage />} />
-                  <Route path="pay" element={<PayrollSectionPlaceholder title="Pay" description="Run payroll batches, calculate hourly earnings, and disburse Stripe payments." icon={IconPay} />} />
+                  <Route path="pay" element={<PayrollPayPage />} />
                   <Route path="reports" element={<PayrollSectionPlaceholder title="Reports" description="Generate audit logs, wage summaries, and tax compliance exports." icon={IconReports} />} />
                   <Route path="taxes" element={<PayrollSectionPlaceholder title="Taxes & compliance" description="State and federal tax withholdings, unemployment insurance, and Form 1099-NEC." icon={IconTaxes} />} />
                   <Route path="time-attendance" element={<PayrollSectionPlaceholder title="Time & attendance" description="Review clocked hours, approved timesheets, and overtime tracking." icon={IconClock} />} />

@@ -134,7 +134,8 @@ const AdminLayout = () => {
     location.pathname.startsWith("/admin/docs") ||
     location.pathname.startsWith("/admin/admissions") ||
     location.pathname.startsWith("/admin/accounting") ||
-    location.pathname.startsWith("/admin/administration");
+    location.pathname.startsWith("/admin/administration") ||
+    location.pathname.startsWith("/admin/payroll");
 
   const formatTime = (totalSecs) => {
     const hrs = Math.floor(totalSecs / 3600);

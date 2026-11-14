@@ -89,7 +89,8 @@ const GustoProfilePage = () => {
       setTimeout(() => setSavedSuccess(false), 4000);
     } catch (err) {
       console.error("Failed to update bank account:", err);
-      alert("Failed to update banking details. Please try again.");
+      setSuccessMessage("Failed to update banking details. Please try again.");
+      setSavedSuccess(true);
     }
   };
 

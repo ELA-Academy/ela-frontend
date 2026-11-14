@@ -508,7 +508,9 @@ const GustoDocumentsPage = () => {
               <button
                 type="button"
                 className="gusto-btn-primary"
-                onClick={() => alert(`Downloading copy of ${selectedDoc.title}...`)}
+                onClick={() => {
+                  setSelectedDoc(null);
+                }}
                 style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
               >
                 <Download className="w-4 h-4" /> Download copy
