@@ -306,7 +306,8 @@ const PublicFormFiller = () => {
       setSuccess(true);
     } catch (err) {
       console.error("Failed to submit form:", err);
-      setError("Failed to submit your response. Please check your inputs and try again.");
+      const serverErr = err?.response?.data?.error;
+      setError(serverErr || "Failed to submit your response. Please check your inputs and try again.");
     } finally {
       setSubmitting(false);
     }
@@ -618,8 +619,16 @@ const PublicFormFiller = () => {
                                 style={{ fontSize: "13px" }}
                               />
                               {answers[q.id] && (
-                                <div className="text-success small mt-1.5 fw-medium">
-                                  ✓ {answers[q.id].filename} uploaded successfully
+                                <div className="d-flex align-items-center justify-content-between text-success small mt-1.5 fw-medium bg-emerald-50 px-2 py-1 rounded border border-emerald-200">
+                                  <span>✓ {answers[q.id].filename || "File"} uploaded successfully</span>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm text-danger p-0 ms-2 text-decoration-none border-0 bg-transparent fw-bold"
+                                    onClick={() => handleInputChange(q.id, null)}
+                                    title="Remove uploaded file"
+                                  >
+                                    ✕
+                                  </button>
                                 </div>
                               )}
                             </div>
