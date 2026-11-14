@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Outlet, NavLink, Link, useNavigate } from "react-router-dom";
 import {
   Home,
@@ -14,23 +14,33 @@ import {
   ArrowLeft,
   LogOut,
   ShieldCheck,
-  CheckCircle,
-  AlertCircle
+  Menu
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { getMyProfile } from "../../services/profileService";
 import "../../styles/GustoTheme.css";
 
 const GustoLayout = () => {
-  const { user, logout, unreadCount } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notiOpen, setNotiOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [dynamicProfile, setDynamicProfile] = useState(null);
 
-  // Teaching staff are locked to Gusto, while admins/other depts can toggle back to /admin
+  // Teaching staff are locked to ELA TT, while admins/other depts can toggle back to /admin
   const isTeacher = user?.role === "teacher";
   const canAccessAdmin = !isTeacher;
 
-  const staffName = user?.name || "Staff Member";
+  useEffect(() => {
+    getMyProfile()
+      .then((res) => setDynamicProfile(res))
+      .catch((err) => console.log("Profile load fallback:", err));
+  }, []);
+
+  const staffName = dynamicProfile?.preferred_name || dynamicProfile?.name || user?.name || "Staff Member";
+  const staffEmail = dynamicProfile?.work_email || dynamicProfile?.email || user?.email || "staff@elaaschool.org";
+  const companyName = "ELA Academy LLC";
   const userInitials = staffName
     .split(" ")
     .map((n) => n[0])
@@ -47,22 +57,15 @@ const GustoLayout = () => {
     {
       id: 1,
       title: "Pay period synced",
-      desc: "Your hours for week Sep 20 – Sep 26 have been approved and synced.",
+      desc: "Your weekly hours have been approved and synced with Stripe payroll.",
       time: "2 hours ago",
       read: false
     },
     {
       id: 2,
       title: "Direct deposit verified",
-      desc: "Your primary checking account (••••1036) is verified and ready for payroll.",
+      desc: `Your primary account ending in ${dynamicProfile?.bank_account_last4 || "7600"} is active for direct deposit.`,
       time: "Yesterday",
-      read: true
-    },
-    {
-      id: 3,
-      title: "Upcoming holiday schedule",
-      desc: "Please submit your timecards by Friday 5:00 PM for the upcoming break.",
-      time: "3 days ago",
       read: true
     }
   ];
@@ -70,20 +73,54 @@ const GustoLayout = () => {
   return (
     <div className="gusto-container">
       {/* Sidebar Navigation */}
-      <aside className="gusto-sidebar">
-        <div>
-          {/* Logo */}
-          <Link to="/time-tracking" className="gusto-logo-area" style={{ textDecoration: "none" }}>
-            <img
-              src="/images/ela-app-logo.png"
-              alt="ELA Academy"
-              className="gusto-logo-img"
-              onError={(e) => {
-                e.target.style.display = "none";
+      <aside className={`gusto-sidebar ${mobileMenuOpen ? "open" : ""}`}>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          {/* Logo matching ELA TT branding */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "0.25rem 0.5rem 1.25rem",
+              marginBottom: "0.5rem",
+              borderBottom: "1px solid #f0f2f5"
+            }}
+          >
+            <Link
+              to="/time-tracking"
+              style={{
+                textDecoration: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.5rem"
               }}
-            />
-            <span className="gusto-logo-text">ELA Time Tracking</span>
-          </Link>
+            >
+              <div
+                style={{
+                  backgroundColor: "#0d5c46",
+                  color: "#ffffff",
+                  fontWeight: 800,
+                  fontSize: "0.85rem",
+                  padding: "0.25rem 0.55rem",
+                  borderRadius: "6px",
+                  letterSpacing: "0.5px"
+                }}
+              >
+                ELA
+              </div>
+              <span
+                style={{
+                  color: "#0f172a",
+                  fontWeight: 800,
+                  fontSize: "1.45rem",
+                  letterSpacing: "-0.03em",
+                  fontFamily: "system-ui, -apple-system, sans-serif"
+                }}
+              >
+                TT
+              </span>
+            </Link>
+          </div>
 
           {/* Nav Items */}
           <nav className="gusto-nav-group">
@@ -92,7 +129,7 @@ const GustoLayout = () => {
               end
               className={({ isActive }) => `gusto-nav-link ${isActive ? "active" : ""}`}
             >
-              <Home />
+              <Home className="w-5 h-5" />
               <span>Home</span>
             </NavLink>
 
@@ -100,7 +137,7 @@ const GustoLayout = () => {
               to="/time-tracking/profile"
               className={({ isActive }) => `gusto-nav-link ${isActive ? "active" : ""}`}
             >
-              <User />
+              <User className="w-5 h-5" />
               <span>My profile</span>
             </NavLink>
 
@@ -108,7 +145,7 @@ const GustoLayout = () => {
               to="/time-tracking/pay"
               className={({ isActive }) => `gusto-nav-link ${isActive ? "active" : ""}`}
             >
-              <CircleDollarSign />
+              <CircleDollarSign className="w-5 h-5" />
               <span>Pay</span>
             </NavLink>
 
@@ -116,7 +153,7 @@ const GustoLayout = () => {
               to="/time-tracking/hours"
               className={({ isActive }) => `gusto-nav-link ${isActive ? "active" : ""}`}
             >
-              <Clock />
+              <Clock className="w-5 h-5" />
               <span>Time tracking</span>
             </NavLink>
 
@@ -124,7 +161,7 @@ const GustoLayout = () => {
               to="/time-tracking/benefits"
               className={({ isActive }) => `gusto-nav-link ${isActive ? "active" : ""}`}
             >
-              <Heart />
+              <Heart className="w-5 h-5" />
               <span>Benefits</span>
             </NavLink>
 
@@ -132,7 +169,7 @@ const GustoLayout = () => {
               to="/time-tracking/documents"
               className={({ isActive }) => `gusto-nav-link ${isActive ? "active" : ""}`}
             >
-              <FileText />
+              <FileText className="w-5 h-5" />
               <span>Documents</span>
             </NavLink>
 
@@ -140,25 +177,30 @@ const GustoLayout = () => {
               to="/time-tracking/performance"
               className={({ isActive }) => `gusto-nav-link ${isActive ? "active" : ""}`}
             >
-              <Star />
+              <Star className="w-5 h-5" />
               <span>Performance</span>
             </NavLink>
           </nav>
         </div>
 
-        {/* Bottom Area */}
+        {/* Bottom Nav Area: Refer and Help removed as requested */}
         <div className="gusto-sidebar-bottom">
           <NavLink
             to="/time-tracking/settings"
             className={({ isActive }) => `gusto-nav-link ${isActive ? "active" : ""}`}
           >
-            <Settings />
+            <Settings className="w-5 h-5" />
             <span>Settings</span>
           </NavLink>
 
           {/* Quick link back to admin workspace for non-teaching staff */}
           {canAccessAdmin && (
-            <Link to="/admin/dashboard" className="gusto-admin-switch-btn" title="Back to main administrative portal">
+            <Link
+              to="/admin/dashboard"
+              className="gusto-admin-switch-btn"
+              title="Back to main administrative portal"
+              style={{ marginTop: "0.5rem" }}
+            >
               <ArrowLeft className="w-4 h-4" />
               <span>Admin Portal</span>
             </Link>
@@ -170,8 +212,20 @@ const GustoLayout = () => {
       <div className="gusto-main">
         {/* Top Header */}
         <header className="gusto-header">
+          {/* Mobile Menu Toggle */}
+          <button
+            type="button"
+            className="gusto-icon-btn md:hidden"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            style={{ display: "none" }}
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+
+          <div style={{ flex: 1 }} />
+
           <div className="gusto-header-actions">
-            {/* Notification Bell (Unique to Gusto / Time Tracking) */}
+            {/* Notification Bell */}
             <div style={{ position: "relative" }}>
               <button
                 className="gusto-icon-btn"
@@ -198,9 +252,21 @@ const GustoLayout = () => {
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div style={{ padding: "0.85rem 1rem", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "#0f172a" }}>Notifications</span>
-                    <span style={{ fontSize: "0.75rem", color: "#673de6", fontWeight: 600 }}>Mark all read</span>
+                  <div
+                    style={{
+                      padding: "0.85rem 1rem",
+                      borderBottom: "1px solid #f1f5f9",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center"
+                    }}
+                  >
+                    <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "#0f172a" }}>
+                      Notifications
+                    </span>
+                    <span style={{ fontSize: "0.75rem", color: "#0f766e", fontWeight: 600, cursor: "pointer" }}>
+                      Mark all read
+                    </span>
                   </div>
                   <div style={{ maxHeight: "280px", overflowY: "auto" }}>
                     {sampleNotifications.map((noti) => (
@@ -213,8 +279,19 @@ const GustoLayout = () => {
                         }}
                       >
                         <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                          {!noti.read && <div style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#673de6" }} />}
-                          <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>{noti.title}</span>
+                          {!noti.read && (
+                            <div
+                              style={{
+                                width: "6px",
+                                height: "6px",
+                                borderRadius: "50%",
+                                backgroundColor: "#0f766e"
+                              }}
+                            />
+                          )}
+                          <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>
+                            {noti.title}
+                          </span>
                         </div>
                         <p style={{ margin: "0.2rem 0 0", fontSize: "0.775rem", color: "#64748b", lineHeight: 1.3 }}>
                           {noti.desc}
@@ -234,14 +311,16 @@ const GustoLayout = () => {
               className="gusto-user-pill"
               onClick={() => setUserMenuOpen(!userMenuOpen)}
               tabIndex={0}
+              style={{ position: "relative" }}
             >
               <div className="gusto-avatar">{userInitials}</div>
               <div className="gusto-user-details">
                 <span className="gusto-user-name">{staffName}</span>
-                <span className="gusto-user-company">ELA Academy LLC</span>
+                <span className="gusto-user-company">{companyName}</span>
               </div>
               <ChevronDown className="w-4 h-4 text-slate-400" />
 
+              {/* User Menu Dropdown */}
               {userMenuOpen && (
                 <div
                   style={{
@@ -252,51 +331,93 @@ const GustoLayout = () => {
                     borderRadius: "10px",
                     boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)",
                     border: "1px solid #e2e8f0",
-                    width: "200px",
+                    width: "220px",
                     zIndex: 100,
-                    padding: "0.5rem 0",
+                    padding: "0.5rem 0"
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div style={{ padding: "0.5rem 1rem", borderBottom: "1px solid #f1f5f9" }}>
-                    <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "#0f172a" }}>{staffName}</div>
-                    <div style={{ fontSize: "0.75rem", color: "#64748b" }}>{user?.email || "staff@elaaschool.org"}</div>
+                  <div style={{ padding: "0.6rem 1rem", borderBottom: "1px solid #f1f5f9" }}>
+                    <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "#0f172a" }}>{staffName}</div>
+                    <div style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                      {staffEmail}
+                    </div>
                   </div>
+
+                  <Link
+                    to="/time-tracking/my-account"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.6rem",
+                      padding: "0.65rem 1rem",
+                      fontSize: "0.875rem",
+                      color: "#1e293b",
+                      textDecoration: "none",
+                      fontWeight: 500,
+                      borderBottom: "1px solid #f1f5f9"
+                    }}
+                    onClick={() => setUserMenuOpen(false)}
+                  >
+                    <User className="w-4 h-4 text-emerald-700" />
+                    <span>My account</span>
+                  </Link>
+
+                  <Link
+                    to="/time-tracking/settings"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.6rem",
+                      padding: "0.65rem 1rem",
+                      fontSize: "0.85rem",
+                      color: "#334155",
+                      textDecoration: "none"
+                    }}
+                    onClick={() => setUserMenuOpen(false)}
+                  >
+                    <Settings className="w-4 h-4 text-slate-500" />
+                    <span>Settings</span>
+                  </Link>
+
                   {canAccessAdmin && (
                     <Link
                       to="/admin/dashboard"
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: "0.5rem",
-                        padding: "0.6rem 1rem",
+                        gap: "0.6rem",
+                        padding: "0.65rem 1rem",
                         fontSize: "0.85rem",
                         color: "#334155",
                         textDecoration: "none"
                       }}
+                      onClick={() => setUserMenuOpen(false)}
                     >
                       <ShieldCheck className="w-4 h-4 text-purple-600" />
-                      Switch to Admin
+                      <span>Switch to Admin</span>
                     </Link>
                   )}
+
                   <button
                     onClick={handleLogout}
                     style={{
                       width: "100%",
                       display: "flex",
                       alignItems: "center",
-                      gap: "0.5rem",
-                      padding: "0.6rem 1rem",
+                      gap: "0.6rem",
+                      padding: "0.65rem 1rem",
                       fontSize: "0.85rem",
                       color: "#dc2626",
                       background: "none",
                       border: "none",
                       cursor: "pointer",
-                      textAlign: "left"
+                      textAlign: "left",
+                      borderTop: "1px solid #f1f5f9"
                     }}
                   >
                     <LogOut className="w-4 h-4" />
-                    Sign Out
+                    <span>Sign Out</span>
                   </button>
                 </div>
               )}
@@ -306,7 +427,7 @@ const GustoLayout = () => {
 
         {/* Nested Page Content */}
         <main className="gusto-content">
-          <Outlet />
+          <Outlet context={{ dynamicProfile, setDynamicProfile }} />
         </main>
       </div>
     </div>

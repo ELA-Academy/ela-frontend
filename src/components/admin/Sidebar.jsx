@@ -17,7 +17,8 @@ import {
   DollarSign,
   BriefcaseBusiness,
   BarChart3,
-  Star
+  Star,
+  ReceiptText
 } from "lucide-react";
 
 const Sidebar = ({ collapsed, setCollapsed }) => {
@@ -72,6 +73,15 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
     )
   );
 
+  // Accounting Department + Super Admin access to Payroll & Time Tracking
+  const isAccountingOrSuperAdmin = user?.role === "superadmin" || (
+    user?.role === "staff" && (
+      (Array.isArray(user?.departmentNames) && user.departmentNames.some(name => /accounting/i.test(name.trim()))) ||
+      (Array.isArray(user?.department_names) && user.department_names.some(name => /accounting/i.test(name.trim()))) ||
+      (user?.department && /accounting/i.test(user.department))
+    )
+  );
+
   const managementLinks = [
     { path: "/admin/students", icon: GraduationCap, label: "Students", role: ["superadmin", "staff"] }
   ];
@@ -89,6 +99,16 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
       activeLinks.push(link);
     }
   });
+
+  // Payroll Dashboard for Accounting + Superadmin
+  if (isAccountingOrSuperAdmin) {
+    activeLinks.push({
+      path: "/admin/payroll",
+      icon: ReceiptText,
+      label: "Payroll",
+      role: ["superadmin", "staff"]
+    });
+  }
 
   // Department Dashboards
   departmentDashboardLinks.forEach((link) => {
