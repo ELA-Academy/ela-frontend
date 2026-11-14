@@ -10,8 +10,10 @@ import {
   Building,
   CheckSquare,
   Square,
-  ArrowRight
+  ArrowRight,
+  Download
 } from "lucide-react";
+import { Modal, Button } from "react-bootstrap";
 import { getAllStaff } from "../../../services/staffService";
 import "../../../styles/GustoTheme.css";
 
@@ -22,6 +24,13 @@ const PayrollPeoplePage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("Active"); // "Active" | "Onboarding" | "Offboarding" | "Dismissed"
   const [selectedIds, setSelectedIds] = useState([]);
+  const [peopleModal, setPeopleModal] = useState({ show: false, title: "", body: "" });
+  const [toastMessage, setToastMessage] = useState("");
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(""), 4000);
+  };
 
   useEffect(() => {
     fetchStaff();
@@ -94,7 +103,7 @@ const PayrollPeoplePage = () => {
               alignItems: "center",
               gap: "0.35rem"
             }}
-            onClick={() => alert("Options: Export staff roster, Bulk actions")}
+            onClick={() => setPeopleModal({ show: true, title: "Export Roster", body: "Staff directory roster exported as CSV." })}
           >
             More <ChevronDown className="w-3.5 h-3.5" />
           </button>
@@ -111,7 +120,7 @@ const PayrollPeoplePage = () => {
               color: "#374151",
               cursor: "pointer"
             }}
-            onClick={() => alert("Opening Organization Chart")}
+            onClick={() => setPeopleModal({ show: true, title: "Organization Chart", body: "Interactive organizational hierarchy view of ELA departments and personnel." })}
           >
             Org chart
           </button>
@@ -119,7 +128,7 @@ const PayrollPeoplePage = () => {
           <button
             type="button"
             style={{
-              backgroundColor: "#0d5c46",
+              backgroundColor: "#2563eb",
               border: "none",
               borderRadius: "6px",
               padding: "0.45rem 1rem",
@@ -161,8 +170,8 @@ const PayrollPeoplePage = () => {
                 padding: "0.6rem 0",
                 fontSize: "0.9rem",
                 fontWeight: isActive ? 600 : 500,
-                color: isActive ? "#0d5c46" : "#6b7280",
-                borderBottom: isActive ? "2px solid #0d5c46" : "2px solid transparent",
+                color: isActive ? "#1d4ed8" : "#6b7280",
+                borderBottom: isActive ? "2px solid #2563eb" : "2px solid transparent",
                 cursor: "pointer",
                 marginBottom: "-1px"
               }}
@@ -202,7 +211,7 @@ const PayrollPeoplePage = () => {
             type="checkbox"
             checked={selectedIds.length > 0 && selectedIds.length === filteredStaff.length}
             onChange={handleSelectAll}
-            style={{ accentColor: "#0d5c46", width: "15px", height: "15px" }}
+            style={{ accentColor: "#2563eb", width: "15px", height: "15px" }}
           />
           <span>Select all ({filteredStaff.length})</span>
         </label>
@@ -220,7 +229,7 @@ const PayrollPeoplePage = () => {
             alignItems: "center",
             gap: "0.35rem"
           }}
-          onClick={() => alert("Filters: Filter by department or job role")}
+          onClick={() => setPeopleModal({ show: true, title: "Filter Personnel", body: "Filter options: Department (Teacher, Accounting, HR, Admissions), Worker Type (Contractor, Employee)." })}
         >
           <Filter className="w-3.5 h-3.5" /> Filter
         </button>
@@ -281,7 +290,7 @@ const PayrollPeoplePage = () => {
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => handleToggleSelect(staff.id)}
-                        style={{ accentColor: "#0d5c46", width: "15px", height: "15px" }}
+                        style={{ accentColor: "#2563eb", width: "15px", height: "15px" }}
                       />
                     </td>
 
@@ -293,14 +302,14 @@ const PayrollPeoplePage = () => {
                             width: "32px",
                             height: "32px",
                             borderRadius: "50%",
-                            backgroundColor: "#f3f4f6",
-                            border: "1px solid #e5e7eb",
+                            backgroundColor: "#eff6ff",
+                            border: "1px solid #bfdbfe",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
                             fontSize: "0.8rem",
                             fontWeight: 700,
-                            color: "#374151"
+                            color: "#1d4ed8"
                           }}
                         >
                           {initial}
@@ -308,7 +317,7 @@ const PayrollPeoplePage = () => {
                         <span
                           style={{
                             fontWeight: 600,
-                            color: "#0f766e",
+                            color: "#1d4ed8",
                             textDecoration: "underline"
                           }}
                         >
@@ -318,12 +327,12 @@ const PayrollPeoplePage = () => {
                     </td>
 
                     {/* Department */}
-                    <td style={{ padding: "0.75rem 1rem", color: "#0f766e", textDecoration: "underline" }}>
+                    <td style={{ padding: "0.75rem 1rem", color: "#1d4ed8", textDecoration: "underline" }}>
                       {staff.department || staff.department_names?.join(", ") || "Teacher Department"}
                     </td>
 
                     {/* Job Title */}
-                    <td style={{ padding: "0.75rem 1rem", color: "#0f766e", textDecoration: "underline" }}>
+                    <td style={{ padding: "0.75rem 1rem", color: "#1d4ed8", textDecoration: "underline" }}>
                       {staff.job_title || "Teacher"}
                     </td>
 
@@ -338,6 +347,42 @@ const PayrollPeoplePage = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Info Modal replacing alert */}
+      <Modal show={peopleModal.show} onHide={() => setPeopleModal({ show: false, title: "", body: "" })} centered>
+        <Modal.Header closeButton>
+          <Modal.Title style={{ fontSize: "1rem", fontWeight: 700 }}>{peopleModal.title}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4 text-sm text-slate-700">
+          {peopleModal.body}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" size="sm" onClick={() => setPeopleModal({ show: false, title: "", body: "" })}>
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: "2rem",
+            right: "2rem",
+            backgroundColor: "#1e3a8a",
+            color: "#ffffff",
+            padding: "0.75rem 1.25rem",
+            borderRadius: "8px",
+            boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+            fontSize: "0.875rem",
+            fontWeight: 600,
+            zIndex: 9999
+          }}
+        >
+          {toastMessage}
+        </div>
+      )}
     </div>
   );
 };
