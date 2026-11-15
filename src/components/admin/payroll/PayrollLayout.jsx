@@ -12,6 +12,7 @@ import {
   Plus,
   Receipt,
   ChevronRight,
+  Calendar,
   X
 } from "lucide-react";
 import { Modal, Button, Form } from "react-bootstrap";
@@ -93,7 +94,16 @@ const PayrollLayout = () => {
     },
     { path: "/admin/payroll/reports", label: "Reports", icon: BarChart2 },
     { path: "/admin/payroll/taxes", label: "Taxes & compliance", icon: Landmark },
-    { path: "/admin/payroll/time-attendance", label: "Time & attendance", icon: Clock },
+    {
+      path: "/admin/payroll/time-attendance",
+      label: "Time & attendance",
+      icon: Clock,
+      children: [
+        { path: "/admin/payroll/time-attendance/time-off", label: "Time off", icon: Calendar },
+        { path: "/admin/payroll/time-attendance/time-tracking", label: "Time tracking", icon: Clock },
+        { path: "/admin/payroll/time-attendance/scheduling", label: "Scheduling", icon: Calendar }
+      ]
+    },
     { path: "/admin/payroll/documents", label: "Documents", icon: FileText },
     { path: "/admin/payroll/money", label: "Money", icon: DollarSign },
   ];
@@ -190,7 +200,9 @@ const PayrollLayout = () => {
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem", paddingLeft: "1.75rem", marginTop: "0.2rem" }}>
                       {item.children.map((child) => {
                         const ChildIcon = child.icon;
-                        const isChildActive = location.search.includes("tab=expenses");
+                        const isChildActive = child.path.includes("?")
+                          ? location.pathname === child.path.split("?")[0] && location.search.includes(child.path.split("?")[1])
+                          : location.pathname === child.path || (child.path.endsWith("/time-tracking") && (location.pathname.startsWith("/admin/payroll/time-attendance/time-tracking") || location.pathname.startsWith("/admin/payroll/time-attendance/timesheets")));
                         return (
                           <Link
                             key={child.path}

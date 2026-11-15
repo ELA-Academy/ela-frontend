@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import {
   Send,
   X,
@@ -22,6 +22,7 @@ import { Modal, Button, Form, Spinner, Badge, Table } from "react-bootstrap";
 import { getAllStaff } from "../../../services/staffService";
 
 const PayrollPayPage = () => {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const currentTab = searchParams.get("tab") || "pay";
 
@@ -175,7 +176,7 @@ const PayrollPayPage = () => {
           <Button
             variant="outline-secondary"
             size="sm"
-            onClick={() => setPayHistoryModal(true)}
+            onClick={() => navigate("/admin/payroll/pay/history")}
             style={{
               borderColor: "#d1d5db",
               color: "#374151",
