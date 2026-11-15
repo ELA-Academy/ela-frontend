@@ -22,7 +22,9 @@ import {
   FileText,
   Clock,
   History,
-  AlertCircle
+  AlertCircle,
+  Send,
+  Bell
 } from "lucide-react";
 import { Modal, Button, Form, Table } from "react-bootstrap";
 import { getStaffById, updateStaff, updateStaffCompensation, getAllStaff } from "../../../services/staffService";
@@ -92,6 +94,10 @@ const PayrollStaffProfilePage = () => {
   const [addDocModalOpen, setAddDocModalOpen] = useState(false);
   const [manage1099ModalOpen, setManage1099ModalOpen] = useState(false);
   const [previewDocModal, setPreviewDocModal] = useState(null);
+  const [reminderModalOpen, setReminderModalOpen] = useState(false);
+  const [selectedDocForReminder, setSelectedDocForReminder] = useState(null);
+  const [isBulkReminder, setIsBulkReminder] = useState(false);
+  const [sendingReminder, setSendingReminder] = useState(false);
 
   // New Document Form State
   const [newDocTitle, setNewDocTitle] = useState("");
@@ -99,6 +105,56 @@ const PayrollStaffProfilePage = () => {
   const [newDocRequiresAck, setNewDocRequiresAck] = useState(true);
 
   const [documentsList, setDocumentsList] = useState([
+    {
+      id: "doc-sched-2029",
+      name: "2029 Pay Schedule",
+      desc: "Employer provided document",
+      status: "Needs acknowledgement",
+      statusDate: "Aug 4, 2024",
+      type: "schedule",
+      canView: true,
+      hasMenu: false
+    },
+    {
+      id: "doc-sched-2028",
+      name: "2028 Pay Schedule",
+      desc: "Employer provided document",
+      status: "Needs acknowledgement",
+      statusDate: "Aug 4, 2024",
+      type: "schedule",
+      canView: true,
+      hasMenu: false
+    },
+    {
+      id: "doc-sched-2030",
+      name: "2030 Pay Schedule",
+      desc: "Employer provided document",
+      status: "Needs acknowledgement",
+      statusDate: "Aug 4, 2024",
+      type: "schedule",
+      canView: true,
+      hasMenu: false
+    },
+    {
+      id: "doc-sched-2027",
+      name: "2027 Pay Schedule",
+      desc: "Employer provided document",
+      status: "Needs acknowledgement",
+      statusDate: "Aug 4, 2024",
+      type: "schedule",
+      canView: true,
+      hasMenu: false
+    },
+    {
+      id: "doc-sched-2026",
+      name: "Pay Schedule 2026",
+      desc: "Employer provided document",
+      status: "Needs acknowledgement",
+      statusDate: "Aug 1, 2024",
+      type: "schedule",
+      canView: true,
+      hasMenu: false
+    },
     {
       id: "doc-1",
       name: "Form 1099: 2025",
@@ -120,12 +176,22 @@ const PayrollStaffProfilePage = () => {
       hasMenu: true
     },
     {
-      id: "doc-3",
-      name: "PTO/Leave Notification Form",
+      id: "doc-1099-2023",
+      name: "Form 1099: 2023",
+      desc: "Form 1099 records your annual income as a contractor.",
+      status: "Filed",
+      statusDate: "Jan 19, 2024",
+      type: "tax",
+      canView: false,
+      hasMenu: true
+    },
+    {
+      id: "doc-new-2023",
+      name: "New 2023 Pay Schedule",
       desc: "Employer provided document",
-      status: "Acknowledged",
-      statusDate: "Aug 20, 2024",
-      type: "policy",
+      status: "Uploaded",
+      statusDate: "Jul 7, 2023",
+      type: "schedule",
       canView: true,
       hasMenu: false
     },
@@ -136,56 +202,6 @@ const PayrollStaffProfilePage = () => {
       status: "Signed",
       statusDate: "Aug 14, 2024",
       type: "handbook",
-      canView: true,
-      hasMenu: false
-    },
-    {
-      id: "doc-5",
-      name: "Pay Schedule 2026",
-      desc: "Employer provided document",
-      status: "Acknowledged",
-      statusDate: "Aug 14, 2024",
-      type: "schedule",
-      canView: true,
-      hasMenu: false
-    },
-    {
-      id: "doc-6",
-      name: "2027 Pay Schedule",
-      desc: "Employer provided document",
-      status: "Acknowledged",
-      statusDate: "Aug 14, 2024",
-      type: "schedule",
-      canView: true,
-      hasMenu: false
-    },
-    {
-      id: "doc-7",
-      name: "2028 Pay Schedule",
-      desc: "Employer provided document",
-      status: "Acknowledged",
-      statusDate: "Aug 14, 2024",
-      type: "schedule",
-      canView: true,
-      hasMenu: false
-    },
-    {
-      id: "doc-8",
-      name: "2025 Pay Schedule",
-      desc: "Employer provided document",
-      status: "Acknowledged",
-      statusDate: "Aug 14, 2024",
-      type: "schedule",
-      canView: true,
-      hasMenu: false
-    },
-    {
-      id: "doc-9",
-      name: "2029 Pay Schedule",
-      desc: "Employer provided document",
-      status: "Acknowledged",
-      statusDate: "Aug 14, 2024",
-      type: "schedule",
       canView: true,
       hasMenu: false
     }
@@ -959,11 +975,54 @@ const PayrollStaffProfilePage = () => {
                   marginBottom: "1.5rem"
                 }}
               >
-                <h2 style={{ fontSize: "1.35rem", fontWeight: 700, color: "#111827", margin: 0 }}>
-                  Documents
-                </h2>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.85rem" }}>
+                  <h2 style={{ fontSize: "1.35rem", fontWeight: 700, color: "#111827", margin: 0 }}>
+                    Documents
+                  </h2>
+                  {documentsList.filter((d) => d.status === "Needs acknowledgement" || d.status === "Needs signature").length > 0 && (
+                    <span
+                      style={{
+                        backgroundColor: "#fef3c7",
+                        color: "#b45309",
+                        border: "1px solid #fde68a",
+                        padding: "0.2rem 0.6rem",
+                        borderRadius: "12px",
+                        fontSize: "0.75rem",
+                        fontWeight: 600
+                      }}
+                    >
+                      {documentsList.filter((d) => d.status === "Needs acknowledgement" || d.status === "Needs signature").length} need attention
+                    </span>
+                  )}
+                </div>
 
                 <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                  {documentsList.filter((d) => d.status === "Needs acknowledgement" || d.status === "Needs signature").length > 0 && (
+                    <Button
+                      variant="outline-primary"
+                      size="sm"
+                      onClick={() => {
+                        setIsBulkReminder(true);
+                        setSelectedDocForReminder(null);
+                        setReminderModalOpen(true);
+                      }}
+                      style={{
+                        borderColor: "#2563eb",
+                        color: "#1d4ed8",
+                        backgroundColor: "#eff6ff",
+                        fontWeight: 600,
+                        borderRadius: "8px",
+                        padding: "0.45rem 0.95rem",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.4rem"
+                      }}
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      Send reminders ({documentsList.filter((d) => d.status === "Needs acknowledgement" || d.status === "Needs signature").length})
+                    </Button>
+                  )}
+
                   <Button
                     variant="outline-secondary"
                     size="sm"
@@ -1084,65 +1143,106 @@ const PayrollStaffProfilePage = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredDocs.map((doc) => (
-                      <tr key={doc.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                        <td style={{ padding: "0.95rem 0.5rem" }}>
-                          <div style={{ fontWeight: 600, color: "#1d4ed8", textDecoration: "underline", cursor: "pointer" }} onClick={() => setPreviewDocModal(doc)}>
-                            {doc.name}
-                          </div>
-                          <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "0.15rem" }}>
-                            {doc.desc}
-                          </div>
-                        </td>
+                    {filteredDocs.map((doc) => {
+                      const isPending = doc.status === "Needs acknowledgement" || doc.status === "Needs signature";
+                      const dotColor = isPending
+                        ? "#d97706"
+                        : doc.status === "Filed"
+                        ? "#059669"
+                        : doc.status === "Signed"
+                        ? "#1d4ed8"
+                        : "#64748b";
 
-                        <td style={{ padding: "0.95rem 0.5rem", verticalAlign: "middle" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                            <span
-                              style={{
-                                width: "6px",
-                                height: "6px",
-                                borderRadius: "50%",
-                                backgroundColor: doc.status === "Filed" ? "#0284c7" : doc.status === "Signed" ? "#1d4ed8" : "#2563eb"
-                              }}
-                            />
-                            <span style={{ fontWeight: 600, color: "#1e293b", fontSize: "0.825rem" }}>
-                              {doc.status}
-                            </span>
-                          </div>
-                          <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginLeft: "14px", marginTop: "0.1rem" }}>
-                            {doc.statusDate}
-                          </div>
-                        </td>
+                      return (
+                        <tr key={doc.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                          <td style={{ padding: "0.95rem 0.5rem" }}>
+                            <div style={{ fontWeight: 600, color: "#1d4ed8", textDecoration: "underline", cursor: "pointer" }} onClick={() => setPreviewDocModal(doc)}>
+                              {doc.name}
+                            </div>
+                            <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "0.15rem" }}>
+                              {doc.desc}
+                            </div>
+                          </td>
 
-                        <td style={{ padding: "0.95rem 0.5rem", verticalAlign: "middle", textAlign: "right" }}>
-                          {doc.hasMenu ? (
-                            <button
-                              type="button"
-                              onClick={() => setPreviewDocModal(doc)}
-                              style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", padding: "4px" }}
-                            >
-                              <MoreVertical className="w-4 h-4" />
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setPreviewDocModal(doc)}
-                              style={{
-                                background: "none",
-                                border: "none",
-                                color: "#2563eb",
-                                fontWeight: 600,
-                                fontSize: "0.85rem",
-                                textDecoration: "underline",
-                                cursor: "pointer"
-                              }}
-                            >
-                              View
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                          <td style={{ padding: "0.95rem 0.5rem", verticalAlign: "middle" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                              <span
+                                style={{
+                                  width: "7px",
+                                  height: "7px",
+                                  borderRadius: "50%",
+                                  backgroundColor: dotColor
+                                }}
+                              />
+                              <span style={{ fontWeight: 600, color: isPending ? "#b45309" : "#1e293b", fontSize: "0.825rem" }}>
+                                {doc.status}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginLeft: "14px", marginTop: "0.1rem" }}>
+                              {doc.statusDate}
+                            </div>
+                          </td>
+
+                          <td style={{ padding: "0.95rem 0.5rem", verticalAlign: "middle", textAlign: "right" }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "0.85rem" }}>
+                              {isPending && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setIsBulkReminder(false);
+                                    setSelectedDocForReminder(doc);
+                                    setReminderModalOpen(true);
+                                  }}
+                                  style={{
+                                    background: "none",
+                                    border: "1px solid #bfdbfe",
+                                    color: "#1d4ed8",
+                                    backgroundColor: "#eff6ff",
+                                    padding: "0.2rem 0.55rem",
+                                    borderRadius: "6px",
+                                    fontSize: "0.775rem",
+                                    fontWeight: 600,
+                                    cursor: "pointer",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "0.25rem"
+                                  }}
+                                  title="Send reminder to staff"
+                                >
+                                  <Send className="w-3 h-3" /> Remind
+                                </button>
+                              )}
+
+                              {doc.hasMenu ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewDocModal(doc)}
+                                  style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", padding: "4px" }}
+                                >
+                                  <MoreVertical className="w-4 h-4" />
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewDocModal(doc)}
+                                  style={{
+                                    background: "none",
+                                    border: "none",
+                                    color: "#2563eb",
+                                    fontWeight: 600,
+                                    fontSize: "0.85rem",
+                                    textDecoration: "underline",
+                                    cursor: "pointer"
+                                  }}
+                                >
+                                  View
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </Table>
               </div>
@@ -1551,23 +1651,124 @@ const PayrollStaffProfilePage = () => {
         </Modal.Footer>
       </Modal>
 
-      {/* COMPENSATION HISTORY MODAL (Replaces window.alert) */}
-      <Modal show={compHistoryModalOpen} onHide={() => setCompHistoryModalOpen(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title style={{ fontSize: "1rem", fontWeight: 700 }}>Compensation Adjustments History</Modal.Title>
+      {/* COMPENSATION HISTORY MODAL (Exact Image 1 replica) */}
+      <Modal show={compHistoryModalOpen} onHide={() => setCompHistoryModalOpen(false)} centered size="lg">
+        <Modal.Header closeButton style={{ borderBottom: "none", padding: "1.25rem 1.5rem 0.5rem" }}>
+          <Modal.Title style={{ fontSize: "1.15rem", fontWeight: 700, color: "#111827" }}>
+            Compensation history
+          </Modal.Title>
         </Modal.Header>
-        <Modal.Body className="p-4 text-sm text-slate-700">
-          <div className="py-2 border-bottom">
-            <div className="fw-semibold text-slate-900">${parseFloat(staff.hourly_rate || 30).toFixed(2)}/hr</div>
-            <div className="text-xs text-slate-500">Effective Oct 6, 2026 • Annual Review adjustment</div>
+        <Modal.Body style={{ padding: "0.5rem 1.5rem 1.5rem" }}>
+          <div
+            style={{
+              border: "1px solid #e5e7eb",
+              borderRadius: "12px",
+              padding: "1.25rem 1.5rem",
+              backgroundColor: "#ffffff"
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "1rem" }}>
+              <span style={{ fontSize: "1.05rem", fontWeight: 700, color: "#111827" }}>
+                {staff?.job_title || "Accounting Manager"}
+              </span>
+              <span
+                style={{
+                  backgroundColor: "#ecfdf5",
+                  color: "#059669",
+                  border: "1px solid #a7f3d0",
+                  padding: "0.15rem 0.55rem",
+                  borderRadius: "12px",
+                  fontSize: "0.75rem",
+                  fontWeight: 600
+                }}
+              >
+                Primary
+              </span>
+            </div>
+
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid #e5e7eb", textAlign: "left", color: "#6b7280" }}>
+                  <th style={{ padding: "0.5rem 0", fontWeight: 600, width: "35%" }}>Effective date</th>
+                  <th style={{ padding: "0.5rem 0", fontWeight: 600, width: "35%" }}>Rate</th>
+                  <th style={{ padding: "0.5rem 0", fontWeight: 600 }}>Reason for change</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style={{ borderBottom: "1px solid #f3f4f6" }}>
+                  <td style={{ padding: "0.85rem 0", color: "#111827" }}>Oct 6, 2026</td>
+                  <td style={{ padding: "0.85rem 0", color: "#111827" }}>
+                    ${parseFloat(staff?.hourly_rate || 30).toFixed(2)}<br />
+                    <span style={{ fontSize: "0.775rem", color: "#6b7280" }}>per hour</span>
+                  </td>
+                  <td style={{ padding: "0.85rem 0", color: "#6b7280" }}>—</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-          <div className="py-2 text-xs text-slate-500">
-            Previous rate: $28.00/hr (Jan 22, 2023 – Oct 5, 2026).
+        </Modal.Body>
+      </Modal>
+
+      {/* SEND REMINDER MODAL (For Unsigned / Pending Documents) */}
+      <Modal show={reminderModalOpen} onHide={() => setReminderModalOpen(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title style={{ fontSize: "1.05rem", fontWeight: 700, color: "#111827", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <Bell className="w-4 h-4 text-amber-500" />
+            <span>Send Document Reminder</span>
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4" style={{ fontSize: "0.875rem", color: "#374151" }}>
+          {isBulkReminder ? (
+            <div>
+              <p style={{ margin: "0 0 0.85rem" }}>
+                Send automated email and in-app reminders to <strong>{staffName}</strong> for all pending unsigned documents?
+              </p>
+              <div style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "0.75rem 1rem", fontSize: "0.8rem", color: "#475569" }}>
+                <div style={{ fontWeight: 600, marginBottom: "0.35rem" }}>Pending Documents:</div>
+                <ul style={{ margin: 0, paddingLeft: "1.25rem" }}>
+                  {documentsList
+                    .filter((d) => d.status === "Needs acknowledgement" || d.status === "Needs signature")
+                    .map((d) => (
+                      <li key={d.id} style={{ margin: "0.2rem 0" }}>{d.name}</li>
+                    ))}
+                </ul>
+              </div>
+            </div>
+          ) : (
+            <p style={{ margin: 0 }}>
+              Send an email and in-app reminder to <strong>{staffName}</strong> ({staff?.personal_email || staff?.email}) asking them to review and acknowledge <strong>"{selectedDocForReminder?.name}"</strong>?
+            </p>
+          )}
+
+          <div style={{ marginTop: "1rem", fontSize: "0.8rem", color: "#64748b" }}>
+            The recipient will receive a direct link to sign and acknowledge the document on their Time Tracking / ELA TT portal.
           </div>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" size="sm" onClick={() => setCompHistoryModalOpen(false)}>
-            Close
+          <Button variant="light" size="sm" onClick={() => setReminderModalOpen(false)} disabled={sendingReminder}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              setSendingReminder(true);
+              setTimeout(() => {
+                setSendingReminder(false);
+                setReminderModalOpen(false);
+                if (isBulkReminder) {
+                  const pendingCount = documentsList.filter((d) => d.status === "Needs acknowledgement" || d.status === "Needs signature").length;
+                  setToastMessage(`Reminders dispatched to ${staffName} for ${pendingCount} pending documents.`);
+                } else {
+                  setToastMessage(`Reminder dispatched to ${staffName} for "${selectedDocForReminder?.name}".`);
+                }
+                setTimeout(() => setToastMessage(""), 5000);
+              }, 800);
+            }}
+            disabled={sendingReminder}
+            style={{ backgroundColor: "#2563eb", borderColor: "#2563eb", fontWeight: 600 }}
+          >
+            {sendingReminder ? "Sending..." : "Send Reminder"}
           </Button>
         </Modal.Footer>
       </Modal>
