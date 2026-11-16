@@ -10,7 +10,7 @@ import {
   ChevronRight,
   Eye
 } from "lucide-react";
-import { Button } from "react-bootstrap";
+import { Button, Modal } from "react-bootstrap";
 import { getAdminTimesheets, adminSyncTimesheets } from "../../../services/payrollService";
 import "../../../styles/GustoTheme.css";
 
@@ -32,8 +32,10 @@ const PayrollTimesheetsPage = () => {
   const [timesheets, setTimesheets] = useState([]);
   const [activeCount, setActiveCount] = useState(0);
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
+  const [lastSyncedRange, setLastSyncedRange] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncModalOpen, setSyncModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
 
   const showToast = (msg) => {
@@ -48,6 +50,9 @@ const PayrollTimesheetsPage = () => {
       setTimesheets(res.timesheets || []);
       setActiveCount(res.active_on_time_tracking || 0);
       setLastSyncedAt(res.last_synced_at);
+      if (res.last_synced_start && res.last_synced_end) {
+        setLastSyncedRange(`${res.last_synced_start} – ${res.last_synced_end}`);
+      }
     } catch (err) {
       console.error("Failed to load timesheets:", err);
     } finally {
@@ -64,7 +69,11 @@ const PayrollTimesheetsPage = () => {
     try {
       const res = await adminSyncTimesheets({ start_date: startDate, end_date: endDate });
       setLastSyncedAt(res.last_synced_at);
-      showToast(`Locked & synced ${res.synced_count} shift(s) to Payroll.`);
+      if (res.last_synced_start && res.last_synced_end) {
+        setLastSyncedRange(`${res.last_synced_start} – ${res.last_synced_end}`);
+      }
+      setSyncModalOpen(false);
+      showToast(`Locked & synced ${res.synced_count} shift(s) to contractor payments.`);
       loadTimesheets();
     } catch (err) {
       showToast("Failed to sync timesheets.");
@@ -114,12 +123,12 @@ const PayrollTimesheetsPage = () => {
           Time tracking
         </h1>
         <Button
-          onClick={handleSyncHours}
+          onClick={() => setSyncModalOpen(true)}
           disabled={isSyncing}
           style={{ backgroundColor: "#0f766e", border: "none", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "0.45rem" }}
         >
           <RefreshCw className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`} />
-          {isSyncing ? "Syncing..." : "Sync & Lock Timesheets to Payroll"}
+          Sync hours to contractor payments
         </Button>
       </div>
 
@@ -252,6 +261,12 @@ const PayrollTimesheetsPage = () => {
             onChange={(e) => setEndDate(e.target.value)}
             style={{ padding: "0.42rem 0.6rem", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "0.85rem" }}
           />
+          <Button variant="outline-secondary" size="sm" onClick={loadTimesheets}>Apply</Button>
+          {lastSyncedRange && (
+            <span style={{ fontSize: "0.78rem", color: "#0f766e", fontWeight: 600 }}>
+              Last dates synced: {lastSyncedRange}
+            </span>
+          )}
           <div style={{ position: "relative" }}>
             <Search className="w-4 h-4 text-gray-400" style={{ position: "absolute", left: "10px", top: "10px" }} />
             <input
@@ -329,6 +344,36 @@ const PayrollTimesheetsPage = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Bottom Sync CTA + Confirmation Modal (Image 8) */}
+      <div style={{ display: "flex", justifyContent: "center", marginTop: "1.5rem" }}>
+        <Button
+          onClick={() => setSyncModalOpen(true)}
+          style={{ backgroundColor: "#0f766e", border: "none", fontWeight: 600, padding: "0.6rem 1.5rem" }}
+        >
+          Sync hours to contractor payments
+        </Button>
+      </div>
+
+      <Modal show={syncModalOpen} onHide={() => setSyncModalOpen(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title style={{ fontSize: "1.05rem", fontWeight: 700 }}>Sync &amp; Lock Timesheets</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p style={{ fontSize: "0.9rem", color: "#374151" }}>
+            Syncing hours for <strong>{startDate}</strong> to <strong>{endDate}</strong> will lock all timesheets in this date range so contractors can no longer edit them on their sheet.
+          </p>
+          <p style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: 0 }}>
+            Admin edits (reimbursements, bonuses, invoices, memos) can still be made on the Pay page before submitting payment.
+          </p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="light" onClick={() => setSyncModalOpen(false)}>Cancel</Button>
+          <Button disabled={isSyncing} onClick={handleSyncHours} style={{ backgroundColor: "#0f766e", border: "none", fontWeight: 600 }}>
+            {isSyncing ? "Syncing..." : "Confirm Sync & Lock"}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };
