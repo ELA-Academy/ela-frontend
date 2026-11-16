@@ -34,6 +34,8 @@ const PayrollPayPage = () => {
   const [payDate, setPayDate] = useState(nextFriday.toISOString().slice(0, 10));
   const [workerGroup, setWorkerGroup] = useState("us_contractor");
   const [methodFilter, setMethodFilter] = useState("all");
+  const [contractorSearch, setContractorSearch] = useState("");
+  const [bulkInvoice, setBulkInvoice] = useState("072");
   const [rows, setRows] = useState([]);
   const [paidFrom, setPaidFrom] = useState("Checking XXXX3042");
   const [loading, setLoading] = useState(false);
@@ -550,11 +552,131 @@ const PayrollPayPage = () => {
   }
 
   // =========================================================================
-  // VIEW 5: CONTRACTOR PAYROLL (US / Non-US, Zero Taxes Withheld)
+  // VIEW 5B: CONTRACTOR PAYROLL STEP 2 OF 2 (Matches Image 6)
   // =========================================================================
-  const visibleRows = rows.filter((r) =>
-    methodFilter === "all" ? true : (r.payment_method || "").toLowerCase() === methodFilter.toLowerCase()
+  const directDepositWithdrawal = selectedRows
+    .filter((r) => (r.payment_method || "").toLowerCase() !== "check")
+    .reduce(
+      (sum, r) =>
+        sum +
+        Number(r.hours_worked || 0) * Number(r.hourly_rate || 0) +
+        Number(r.bonus || 0) +
+        Number(r.reimbursement || 0),
+      0
+    );
+
+  if (view === "contractor_step2") {
+    return (
+      <div style={{ maxWidth: "1050px", margin: "0 auto", paddingBottom: "4rem" }}>
+        <div style={{ fontSize: "0.85rem", marginBottom: "0.5rem" }}>
+          <button type="button" onClick={() => setView("home")} style={{ background: "none", border: "none", color: "#0f766e", fontWeight: 600, padding: 0, cursor: "pointer" }}>
+            Pay
+          </button>{" "}
+          / <span style={{ color: "#4b5563" }}>Pay contractors</span>
+        </div>
+
+        <h1 style={{ fontSize: "1.85rem", fontWeight: 700, color: "#111827", marginBottom: "0.25rem" }}>
+          Pay contractors
+        </h1>
+        <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "1.5rem" }}>
+          Review and submit • Step 2 of 2
+        </div>
+
+        <div style={{ backgroundColor: "#ffffff", border: "1px solid #e5e7eb", borderRadius: "10px", padding: "1.25rem 1.5rem", display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "1rem", marginBottom: "1.5rem" }}>
+          <div>
+            <div className="small text-muted">Total payments</div>
+            <div className="fw-bold fs-5">{fmtMoney(contractorTotal)}</div>
+          </div>
+          <div>
+            <div className="small text-muted">Withdrawal amount (Direct Deposit)</div>
+            <div className="fw-bold fs-5" style={{ color: "#0f766e" }}>{fmtMoney(directDepositWithdrawal)}</div>
+          </div>
+          <div><div className="small text-muted">Bank account</div><div className="fw-semibold">{paidFrom}</div></div>
+          <div><div className="small text-muted">Withdrawal date</div><div className="fw-semibold">{withdrawalDate}</div></div>
+          <div><div className="small text-muted">Payday</div><div className="fw-semibold">{payDate}</div></div>
+        </div>
+
+        <div style={{ backgroundColor: "#ffffff", border: "1px solid #e5e7eb", borderRadius: "10px", overflow: "hidden", marginBottom: "1.5rem" }}>
+          <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid #e5e7eb", fontWeight: 700 }}>
+            What your contractors worked ({selectedRows.length} contractors)
+          </div>
+          <Table size="sm" style={{ fontSize: "0.875rem", marginBottom: 0 }}>
+            <thead>
+              <tr style={{ backgroundColor: "#f9fafb" }}>
+                <th>Contractor</th>
+                <th>Method</th>
+                <th>Invoice #</th>
+                <th>Hours</th>
+                <th>Reimbursements</th>
+                <th>Bonus</th>
+                <th className="text-end">Total Pay</th>
+              </tr>
+            </thead>
+            <tbody>
+              {selectedRows.map((r) => {
+                const rowTotal =
+                  Number(r.hours_worked || 0) * Number(r.hourly_rate || 0) +
+                  Number(r.bonus || 0) +
+                  Number(r.reimbursement || 0);
+                return (
+                  <tr key={r.staff_id}>
+                    <td className="fw-semibold">{r.staff_name}</td>
+                    <td>{r.payment_method}</td>
+                    <td>#{r.invoice_number}</td>
+                    <td>{Number(r.hours_worked || 0).toFixed(2)}</td>
+                    <td>{Number(r.reimbursement || 0) > 0 ? fmtMoney(r.reimbursement) : "--"}</td>
+                    <td>{Number(r.bonus || 0) > 0 ? fmtMoney(r.bonus) : "--"}</td>
+                    <td className="text-end fw-bold">{fmtMoney(rowTotal)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </Table>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+          <Button variant="outline-secondary" onClick={() => setView("contractor")}>Back</Button>
+          <Button
+            disabled={submitting}
+            onClick={() => handleSubmitPayroll(workerGroup)}
+            style={{ backgroundColor: "#0f766e", border: "none", fontWeight: 600 }}
+          >
+            {submitting ? "Submitting..." : "Submit payments"}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // VIEW 5A: CONTRACTOR PAYROLL STEP 1 OF 2 (Matches Images 1-4)
+  // =========================================================================
+  const visibleRows = rows.filter((r) => {
+    const methodMatch = methodFilter === "all" ? true : (r.payment_method || "").toLowerCase() === methodFilter.toLowerCase();
+    const searchMatch = !contractorSearch.trim() || (r.staff_name || "").toLowerCase().includes(contractorSearch.trim().toLowerCase());
+    return methodMatch && searchMatch;
+  });
+
+  const contractorTotals = visibleRows.reduce(
+    (acc, r) => {
+      const hrs = Number(r.hours_worked || 0);
+      const bon = Number(r.bonus || 0);
+      const reimb = Number(r.reimbursement || 0);
+      const pay = hrs * Number(r.hourly_rate || 0) + bon + reimb;
+      acc.hours += hrs;
+      acc.bonus += bon;
+      acc.reimb += reimb;
+      acc.pay += pay;
+      return acc;
+    },
+    { hours: 0, bonus: 0, reimb: 0, pay: 0 }
   );
+
+  const applyInvoiceToAll = () => {
+    if (!bulkInvoice.trim()) return;
+    setRows((prev) => prev.map((r) => ({ ...r, invoice_number: bulkInvoice.trim() })));
+    showToast(`Applied invoice #${bulkInvoice.trim()} to all rows.`);
+  };
 
   return (
     <div style={{ maxWidth: "1180px", margin: "0 auto", paddingBottom: "4rem" }}>
@@ -562,24 +684,44 @@ const PayrollPayPage = () => {
         <ArrowLeft className="w-4 h-4" /> Back to Pay
       </button>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1.25rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1rem" }}>
         <div>
           <h1 style={{ fontSize: "1.85rem", fontWeight: 700, color: "#111827", margin: 0 }}>
-            {workerGroup === "us_contractor" ? "Pay US Contractors" : workerGroup === "non_us_contractor" ? "Pay Non-US Contractors" : "Pay All Contractors"}
+            Pay contractors
           </h1>
           <div style={{ fontSize: "0.875rem", color: "#6b7280" }}>
-            No taxes or fees withheld • Non-US contractors have no minimum payout • Dismissed staff with unpaid hours are included automatically.
+            Edit payments • Step 1 of 2 (No taxes or fees withheld)
           </div>
         </div>
         <div style={{ display: "flex", gap: "0.6rem", alignItems: "center" }}>
-          <Form.Label className="small fw-semibold mb-0">Pay Date:</Form.Label>
+          <Form.Label className="small fw-semibold mb-0">Payday:</Form.Label>
           <Form.Control type="date" size="sm" style={{ width: "150px" }} value={payDate} onChange={(e) => setPayDate(e.target.value)} />
         </div>
       </div>
 
+      {/* Summary Strip + Synced Banner matching Image 1 */}
+      <div style={{ backgroundColor: "#ffffff", border: "1px solid #e5e7eb", borderRadius: "10px", padding: "1rem 1.25rem", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1rem", marginBottom: "0.85rem" }}>
+        <div><div className="small text-muted">Debit date</div><div className="fw-bold">{withdrawalDate}</div></div>
+        <div><div className="small text-muted">Contractors paid</div><div className="fw-bold">{selectedRows.length}</div></div>
+        <div><div className="small text-muted">Total worked</div><div className="fw-bold">{contractorTotals.hours.toFixed(2)} hrs</div></div>
+        <div><div className="small text-muted">Total payments</div><div className="fw-bold" style={{ color: "#0f766e" }}>{fmtMoney(contractorTotal)}</div></div>
+      </div>
+
+      <div style={{ backgroundColor: "#ecfdf5", border: "1px solid #a7f3d0", borderRadius: "8px", padding: "0.75rem 1rem", fontSize: "0.875rem", color: "#065f46", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <CheckCircle2 className="w-4 h-4 shrink-0" />
+        <span>Below are the hours you synced for <strong>{payPeriodStart}</strong> – <strong>{payPeriodEnd}</strong>.</span>
+      </div>
+
       <div style={{ backgroundColor: "#ffffff", border: "1px solid #e5e7eb", borderRadius: "10px", padding: "1.25rem" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1rem" }}>
-          <div style={{ display: "flex", gap: "0.5rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem", marginBottom: "1rem" }}>
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+            <Form.Control
+              size="sm"
+              placeholder="Search people (e.g. denis, moses)..."
+              value={contractorSearch}
+              onChange={(e) => setContractorSearch(e.target.value)}
+              style={{ width: "220px" }}
+            />
             {[
               { id: "us_contractor", label: "US Contractors" },
               { id: "non_us_contractor", label: "Non-US Contractors" },
@@ -590,13 +732,13 @@ const PayrollPayPage = () => {
                 type="button"
                 onClick={() => openContractorPayroll(g.id)}
                 style={{
-                  padding: "0.4rem 0.85rem",
+                  padding: "0.38rem 0.75rem",
                   borderRadius: "6px",
                   border: workerGroup === g.id ? "1px solid #0f766e" : "1px solid #d1d5db",
                   backgroundColor: workerGroup === g.id ? "#f0fdfa" : "#ffffff",
                   color: workerGroup === g.id ? "#0f766e" : "#374151",
                   fontWeight: 600,
-                  fontSize: "0.83rem",
+                  fontSize: "0.82rem",
                   cursor: "pointer"
                 }}
               >
@@ -605,9 +747,19 @@ const PayrollPayPage = () => {
             ))}
           </div>
 
-          <div style={{ display: "flex", gap: "0.6rem", alignItems: "center" }}>
-            <Filter className="w-4 h-4 text-gray-500" />
-            <Form.Select size="sm" style={{ width: "180px" }} value={methodFilter} onChange={(e) => setMethodFilter(e.target.value)}>
+          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+            <Form.Control
+              size="sm"
+              style={{ width: "80px" }}
+              value={bulkInvoice}
+              onChange={(e) => setBulkInvoice(e.target.value)}
+              placeholder="072"
+            />
+            <Button size="sm" variant="outline-secondary" onClick={applyInvoiceToAll}>
+              Apply Invoice # to All
+            </Button>
+            <Filter className="w-4 h-4 text-gray-500 ms-1" />
+            <Form.Select size="sm" style={{ width: "165px" }} value={methodFilter} onChange={(e) => setMethodFilter(e.target.value)}>
               <option value="all">All Methods</option>
               <option value="Direct deposit">Direct deposit only</option>
               <option value="Check">Check only (Remitly)</option>
@@ -625,15 +777,15 @@ const PayrollPayPage = () => {
             <thead>
               <tr style={{ backgroundColor: "#f9fafb" }}>
                 <th>Pay</th>
-                <th>Contractor</th>
-                <th>Method</th>
-                <th>Invoice #</th>
+                <th>Contractors</th>
+                <th>Total pay</th>
                 <th>Rate</th>
                 <th>Hours</th>
                 <th>Bonus ($)</th>
-                <th>Reimb. ($)</th>
-                <th>Memo</th>
-                <th className="text-end">Total</th>
+                <th>Reimbursements ($)</th>
+                <th>Invoice</th>
+                <th>Note</th>
+                <th>Payment type</th>
               </tr>
             </thead>
             <tbody>
@@ -657,21 +809,33 @@ const PayrollPayPage = () => {
                           </span>
                         )}
                       </td>
+                      <td className="fw-bold">{fmtMoney(rowTotal)}</td>
+                      <td>{fmtMoney(r.hourly_rate)}/hr</td>
+                      <td style={{ width: "85px" }}><Form.Control size="sm" type="number" step="0.5" value={r.hours_worked} onChange={(e) => updateRow(r.staff_id, "hours_worked", e.target.value)} /></td>
+                      <td style={{ width: "85px" }}><Form.Control size="sm" type="number" step="1" value={r.bonus} onChange={(e) => updateRow(r.staff_id, "bonus", e.target.value)} /></td>
+                      <td style={{ width: "100px" }}><Form.Control size="sm" type="number" step="0.01" value={r.reimbursement} onChange={(e) => updateRow(r.staff_id, "reimbursement", e.target.value)} /></td>
+                      <td style={{ width: "80px" }}><Form.Control size="sm" value={r.invoice_number} onChange={(e) => updateRow(r.staff_id, "invoice_number", e.target.value)} /></td>
+                      <td style={{ minWidth: "160px" }}><Form.Control size="sm" placeholder="Tutor / sub / training note" value={r.memo} onChange={(e) => updateRow(r.staff_id, "memo", e.target.value)} /></td>
                       <td>
                         <span style={{ backgroundColor: r.payment_method === "Check" ? "#fef3c7" : "#dbeafe", color: r.payment_method === "Check" ? "#92400e" : "#1e40af", padding: "0.15rem 0.5rem", borderRadius: "9999px", fontSize: "0.75rem", fontWeight: 600 }}>
                           {r.payment_method}
                         </span>
                       </td>
-                      <td style={{ width: "85px" }}><Form.Control size="sm" value={r.invoice_number} onChange={(e) => updateRow(r.staff_id, "invoice_number", e.target.value)} /></td>
-                      <td>{fmtMoney(r.hourly_rate)}</td>
-                      <td style={{ width: "80px" }}><Form.Control size="sm" type="number" step="0.5" value={r.hours_worked} onChange={(e) => updateRow(r.staff_id, "hours_worked", e.target.value)} /></td>
-                      <td style={{ width: "85px" }}><Form.Control size="sm" type="number" step="1" value={r.bonus} onChange={(e) => updateRow(r.staff_id, "bonus", e.target.value)} /></td>
-                      <td style={{ width: "90px" }}><Form.Control size="sm" type="number" step="0.01" value={r.reimbursement} onChange={(e) => updateRow(r.staff_id, "reimbursement", e.target.value)} /></td>
-                      <td style={{ minWidth: "160px" }}><Form.Control size="sm" placeholder="Training / rate adj." value={r.memo} onChange={(e) => updateRow(r.staff_id, "memo", e.target.value)} /></td>
-                      <td className="text-end fw-bold">{fmtMoney(rowTotal)}</td>
                     </tr>
                   );
                 })
+              )}
+              {visibleRows.length > 0 && (
+                <tr className="fw-bold" style={{ backgroundColor: "#f9fafb", borderTop: "2px solid #e5e7eb" }}>
+                  <td></td>
+                  <td>Total ({visibleRows.length})</td>
+                  <td>{fmtMoney(contractorTotals.pay)}</td>
+                  <td></td>
+                  <td>{contractorTotals.hours.toFixed(2)} hrs</td>
+                  <td>{fmtMoney(contractorTotals.bonus)}</td>
+                  <td>{fmtMoney(contractorTotals.reimb)}</td>
+                  <td colSpan={3}></td>
+                </tr>
               )}
             </tbody>
           </Table>
@@ -679,14 +843,14 @@ const PayrollPayPage = () => {
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #e5e7eb" }}>
           <div style={{ fontSize: "0.9rem", color: "#4b5563" }}>Selected: <strong>{selectedRows.length}</strong></div>
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <div className="fw-bold fs-5">Total: {fmtMoney(contractorTotal)}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <Button variant="light" onClick={() => setView("home")}>Cancel</Button>
             <Button
-              disabled={submitting || selectedRows.length === 0}
-              onClick={() => handleSubmitPayroll(workerGroup)}
+              disabled={selectedRows.length === 0}
+              onClick={() => setView("contractor_step2")}
               style={{ backgroundColor: "#0f766e", border: "none", fontWeight: 600 }}
             >
-              {submitting ? "Submitting..." : "Submit Contractor Payments"}
+              Review summary
             </Button>
           </div>
         </div>
