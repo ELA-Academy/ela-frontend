@@ -13,8 +13,15 @@ import {
   ArrowRight,
   Download
 } from "lucide-react";
-import { Modal, Button } from "react-bootstrap";
+import { Modal, Button, Form } from "react-bootstrap";
 import { getAllStaff } from "../../../services/staffService";
+import { getAllDepartments } from "../../../services/departmentService";
+import {
+  onboardStaffMember,
+  dismissStaffMember,
+  reactivateStaffMember,
+  getAdminDocuments
+} from "../../../services/payrollService";
 import "../../../styles/GustoTheme.css";
 
 const PayrollPeoplePage = () => {
@@ -26,6 +33,37 @@ const PayrollPeoplePage = () => {
   const [selectedIds, setSelectedIds] = useState([]);
   const [peopleModal, setPeopleModal] = useState({ show: false, title: "", body: "" });
   const [toastMessage, setToastMessage] = useState("");
+  const [departments, setDepartments] = useState([]);
+  const [sharedDocs, setSharedDocs] = useState([]);
+
+  // Onboard Wizard Modal
+  const [onboardOpen, setOnboardOpen] = useState(false);
+  const [onboardStep, setOnboardStep] = useState(1);
+  const [onboardForm, setOnboardForm] = useState({
+    first_name: "",
+    middle_initial: "",
+    last_name: "",
+    preferred_name: "",
+    worker_type: "Contractor",
+    country: "United States of America",
+    personal_email: "",
+    work_email: "",
+    start_date: new Date().toISOString().slice(0, 10),
+    department_id: "",
+    new_department_name: "",
+    job_title: "Teacher",
+    manager_name: "Marcus Cooper",
+    supervisor_name: "Marcus Cooper",
+    hourly_rate: "25",
+    assign_time_tracking: true,
+    checkin_schedule: "30,60,90",
+    document_ids: []
+  });
+
+  // Dismiss Modal (Effective Date, never delete)
+  const [dismissTarget, setDismissTarget] = useState(null);
+  const [dismissDate, setDismissDate] = useState(new Date().toISOString().slice(0, 10));
+  const [dismissReason, setDismissReason] = useState("");
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -39,12 +77,55 @@ const PayrollPeoplePage = () => {
   const fetchStaff = async () => {
     try {
       setLoading(true);
-      const data = await getAllStaff();
-      setStaffList(data || []);
+      const [data, depts, docs] = await Promise.all([
+        getAllStaff(),
+        getAllDepartments().catch(() => []),
+        getAdminDocuments().catch(() => ({ documents: [] }))
+      ]);
+      setStaffList(Array.isArray(data) ? data : data.staff || []);
+      setDepartments(Array.isArray(depts) ? depts : depts.departments || []);
+      setSharedDocs((docs.documents || []).filter((d) => d.status === "active"));
     } catch (err) {
       console.error("Error loading staff list:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOnboardSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await onboardStaffMember(onboardForm);
+      setOnboardOpen(false);
+      setOnboardStep(1);
+      showToast(`Invited ${onboardForm.first_name} ${onboardForm.last_name} and assigned onboarding documents.`);
+      fetchStaff();
+    } catch (err) {
+      showToast(err.response?.data?.error || "Failed to onboard team member.");
+    }
+  };
+
+  const handleDismissConfirm = async (e) => {
+    e.preventDefault();
+    if (!dismissTarget) return;
+    try {
+      await dismissStaffMember(dismissTarget.id, { effective_date: dismissDate, reason: dismissReason });
+      setDismissTarget(null);
+      setDismissReason("");
+      showToast(`${dismissTarget.name} marked as Dismissed (unpaid hours will still process on next payroll).`);
+      fetchStaff();
+    } catch (err) {
+      showToast("Failed to dismiss team member.");
+    }
+  };
+
+  const handleReactivate = async (staff) => {
+    try {
+      await reactivateStaffMember(staff.id);
+      showToast(`${staff.name} reactivated!`);
+      fetchStaff();
+    } catch (err) {
+      showToast("Failed to reactivate.");
     }
   };
 
@@ -140,9 +221,12 @@ const PayrollPeoplePage = () => {
               alignItems: "center",
               gap: "0.35rem"
             }}
-            onClick={() => navigate("/admin/administration")}
+            onClick={() => {
+              setOnboardStep(1);
+              setOnboardOpen(true);
+            }}
           >
-            Add <ChevronDown className="w-3.5 h-3.5" />
+            + Add person
           </button>
         </div>
       </div>
@@ -252,6 +336,7 @@ const PayrollPeoplePage = () => {
               <th style={{ padding: "0.75rem 1rem", fontWeight: 600 }}>Department ⬍</th>
               <th style={{ padding: "0.75rem 1rem", fontWeight: 600 }}>Job title ⬍</th>
               <th style={{ padding: "0.75rem 1rem", fontWeight: 600 }}>Worker type ⬍</th>
+              <th style={{ padding: "0.75rem 1rem", fontWeight: 600, textAlign: "right" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -339,6 +424,30 @@ const PayrollPeoplePage = () => {
                     {/* Worker Type */}
                     <td style={{ padding: "0.75rem 1rem", color: "#374151" }}>
                       {staff.worker_type || "Contractor"}
+                      {staff.dismissed_effective_date && (
+                        <div style={{ fontSize: "0.74rem", color: "#9ca3af" }}>
+                          Dismissed {staff.dismissed_effective_date}
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ padding: "0.75rem 1rem", textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
+                      {(staff.worker_status || "Active").toLowerCase() === "dismissed" ? (
+                        <button
+                          type="button"
+                          onClick={() => handleReactivate(staff)}
+                          style={{ background: "none", border: "1px solid #0f766e", color: "#0f766e", borderRadius: "6px", padding: "0.25rem 0.65rem", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}
+                        >
+                          Reactivate
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setDismissTarget(staff)}
+                          style={{ background: "none", border: "1px solid #d1d5db", color: "#dc2626", borderRadius: "6px", padding: "0.25rem 0.65rem", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}
+                        >
+                          Dismiss
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -347,6 +456,178 @@ const PayrollPeoplePage = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Onboard Team Member Wizard Modal */}
+      <Modal show={onboardOpen} onHide={() => setOnboardOpen(false)} size="lg" centered>
+        <Modal.Header closeButton>
+          <Modal.Title style={{ fontSize: "1.1rem", fontWeight: 700 }}>
+            Add &amp; Onboard Team Member — Step {onboardStep} of 3
+          </Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleOnboardSubmit}>
+          <Modal.Body>
+            {onboardStep === 1 && (
+              <div className="row g-3">
+                <div className="col-md-5">
+                  <Form.Label className="small fw-semibold">First name *</Form.Label>
+                  <Form.Control required value={onboardForm.first_name} onChange={(e) => setOnboardForm({ ...onboardForm, first_name: e.target.value })} />
+                </div>
+                <div className="col-md-2">
+                  <Form.Label className="small fw-semibold">M.I.</Form.Label>
+                  <Form.Control maxLength={2} value={onboardForm.middle_initial} onChange={(e) => setOnboardForm({ ...onboardForm, middle_initial: e.target.value })} />
+                </div>
+                <div className="col-md-5">
+                  <Form.Label className="small fw-semibold">Last name *</Form.Label>
+                  <Form.Control required value={onboardForm.last_name} onChange={(e) => setOnboardForm({ ...onboardForm, last_name: e.target.value })} />
+                </div>
+                <div className="col-md-6">
+                  <Form.Label className="small fw-semibold">Preferred name</Form.Label>
+                  <Form.Control value={onboardForm.preferred_name} onChange={(e) => setOnboardForm({ ...onboardForm, preferred_name: e.target.value })} placeholder="First or middle name" />
+                </div>
+                <div className="col-md-6">
+                  <Form.Label className="small fw-semibold">Worker type</Form.Label>
+                  <Form.Select value={onboardForm.worker_type} onChange={(e) => setOnboardForm({ ...onboardForm, worker_type: e.target.value })}>
+                    <option value="Contractor">Contractor (Individual)</option>
+                    <option value="Contractor Business">Contractor (Business)</option>
+                    <option value="Employee">Employee (W-2)</option>
+                    <option value="Volunteer">Volunteer (Unpaid)</option>
+                  </Form.Select>
+                </div>
+                <div className="col-md-6">
+                  <Form.Label className="small fw-semibold">Country</Form.Label>
+                  <Form.Select value={onboardForm.country} onChange={(e) => setOnboardForm({ ...onboardForm, country: e.target.value })}>
+                    <option value="United States of America">United States of America</option>
+                    <option value="Colombia">Colombia (International)</option>
+                    <option value="Nigeria">Nigeria (International)</option>
+                    <option value="Kenya">Kenya (International)</option>
+                    <option value="Other International">Other International</option>
+                  </Form.Select>
+                </div>
+                <div className="col-md-6">
+                  <Form.Label className="small fw-semibold">Personal email *</Form.Label>
+                  <Form.Control type="email" required value={onboardForm.personal_email} onChange={(e) => setOnboardForm({ ...onboardForm, personal_email: e.target.value })} />
+                </div>
+              </div>
+            )}
+
+            {onboardStep === 2 && (
+              <div className="row g-3">
+                <div className="col-md-6">
+                  <Form.Label className="small fw-semibold">Start date (can be backdated)</Form.Label>
+                  <Form.Control type="date" value={onboardForm.start_date} onChange={(e) => setOnboardForm({ ...onboardForm, start_date: e.target.value })} />
+                </div>
+                <div className="col-md-6">
+                  <Form.Label className="small fw-semibold">Hourly rate ($/hr)</Form.Label>
+                  <Form.Control type="number" step="0.25" value={onboardForm.hourly_rate} onChange={(e) => setOnboardForm({ ...onboardForm, hourly_rate: e.target.value })} />
+                </div>
+                <div className="col-md-6">
+                  <Form.Label className="small fw-semibold">Department</Form.Label>
+                  <Form.Select value={onboardForm.department_id} onChange={(e) => setOnboardForm({ ...onboardForm, department_id: e.target.value })}>
+                    <option value="">-- Select existing department --</option>
+                    {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </Form.Select>
+                </div>
+                <div className="col-md-6">
+                  <Form.Label className="small fw-semibold">Or create new department</Form.Label>
+                  <Form.Control value={onboardForm.new_department_name} onChange={(e) => setOnboardForm({ ...onboardForm, new_department_name: e.target.value })} placeholder="e.g. Math Department" />
+                </div>
+                <div className="col-md-4">
+                  <Form.Label className="small fw-semibold">Job title</Form.Label>
+                  <Form.Control value={onboardForm.job_title} onChange={(e) => setOnboardForm({ ...onboardForm, job_title: e.target.value })} />
+                </div>
+                <div className="col-md-4">
+                  <Form.Label className="small fw-semibold">Manager</Form.Label>
+                  <Form.Control value={onboardForm.manager_name} onChange={(e) => setOnboardForm({ ...onboardForm, manager_name: e.target.value })} />
+                </div>
+                <div className="col-md-4">
+                  <Form.Label className="small fw-semibold">Supervisor</Form.Label>
+                  <Form.Control value={onboardForm.supervisor_name} onChange={(e) => setOnboardForm({ ...onboardForm, supervisor_name: e.target.value })} />
+                </div>
+              </div>
+            )}
+
+            {onboardStep === 3 && (
+              <div>
+                <div className="mb-3">
+                  <div className="small fw-bold mb-2">Onboarding Documents to Send</div>
+                  <div style={{ maxHeight: "170px", overflowY: "auto", border: "1px solid #e5e7eb", borderRadius: "6px", padding: "0.75rem" }}>
+                    {sharedDocs.map((d) => (
+                      <Form.Check
+                        key={d.id}
+                        type="checkbox"
+                        label={`${d.title} (${d.category})`}
+                        checked={onboardForm.document_ids.includes(d.id)}
+                        onChange={(e) => {
+                          const ids = e.target.checked
+                            ? [...onboardForm.document_ids, d.id]
+                            : onboardForm.document_ids.filter((x) => x !== d.id);
+                          setOnboardForm({ ...onboardForm, document_ids: ids });
+                        }}
+                        className="mb-1"
+                      />
+                    ))}
+                  </div>
+                </div>
+                <Form.Check
+                  type="switch"
+                  label="Automatically enable Time Tracking permission (recommended)"
+                  checked={onboardForm.assign_time_tracking}
+                  onChange={(e) => setOnboardForm({ ...onboardForm, assign_time_tracking: e.target.checked })}
+                  className="mb-3"
+                />
+                <Form.Group>
+                  <Form.Label className="small fw-semibold">Training &amp; Probation Check-in Reminder</Form.Label>
+                  <Form.Select value={onboardForm.checkin_schedule} onChange={(e) => setOnboardForm({ ...onboardForm, checkin_schedule: e.target.value })}>
+                    <option value="30,60,90">30 / 60 / 90 days (Standard 90-day probation)</option>
+                    <option value="30,60">30 / 60 days</option>
+                    <option value="30">30 days only</option>
+                  </Form.Select>
+                </Form.Group>
+              </div>
+            )}
+          </Modal.Body>
+          <Modal.Footer>
+            {onboardStep > 1 && (
+              <Button variant="light" onClick={() => setOnboardStep((s) => s - 1)}>Back</Button>
+            )}
+            {onboardStep < 3 ? (
+              <Button type="button" style={{ backgroundColor: "#0f766e", border: "none" }} onClick={() => setOnboardStep((s) => s + 1)}>
+                Save &amp; Continue
+              </Button>
+            ) : (
+              <Button type="submit" style={{ backgroundColor: "#0f766e", border: "none" }}>
+                Send Invitation &amp; Onboard
+              </Button>
+            )}
+          </Modal.Footer>
+        </Form>
+      </Modal>
+
+      {/* Dismiss Modal (Effective Date, Never Delete) */}
+      <Modal show={!!dismissTarget} onHide={() => setDismissTarget(null)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title style={{ fontSize: "1.05rem", fontWeight: 700 }}>Dismiss {dismissTarget?.name}</Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleDismissConfirm}>
+          <Modal.Body>
+            <p className="small text-muted">
+              Dismissed team members are preserved (never deleted) and can be reactivated at any time. Any unpaid hours worked before dismissal will still appear in the upcoming payroll run.
+            </p>
+            <Form.Group className="mb-3">
+              <Form.Label className="small fw-semibold">Effective date of dismissal</Form.Label>
+              <Form.Control type="date" required value={dismissDate} onChange={(e) => setDismissDate(e.target.value)} />
+            </Form.Group>
+            <Form.Group>
+              <Form.Label className="small fw-semibold">Reason / Notes</Form.Label>
+              <Form.Control as="textarea" rows={2} value={dismissReason} onChange={(e) => setDismissReason(e.target.value)} />
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="light" onClick={() => setDismissTarget(null)}>Cancel</Button>
+            <Button type="submit" variant="danger">Confirm Dismissal</Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
 
       {/* Info Modal replacing alert */}
       <Modal show={peopleModal.show} onHide={() => setPeopleModal({ show: false, title: "", body: "" })} centered>
