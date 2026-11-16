@@ -18,13 +18,16 @@ const formatMinutes = (mins) => {
 
 const buildWeekDays = (weekStartIso) => {
   if (!weekStartIso) return [];
-  const base = new Date(`${weekStartIso}T00:00:00`);
+  const [y, m, dNum] = weekStartIso.split("-").map(Number);
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const days = [];
   for (let i = 0; i < 7; i++) {
-    const d = new Date(base.getTime() + i * 86400000);
-    const iso = d.toISOString().slice(0, 10);
+    const d = new Date(y, m - 1, dNum + i);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const iso = `${yyyy}-${mm}-${dd}`;
     const abbrev = dayNames[d.getDay()];
     days.push({
       iso,
@@ -215,10 +218,12 @@ const GustoTimeTrackingPage = () => {
             <p style={{ color: "#6b7280" }}>Loading timesheet...</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-              {days.map((day) => {
+              {days
+                .filter((day) => allowedDays.includes(day.abbrev))
+                .map((day) => {
                 const dayEntries = entries.filter((e) => e.work_date === day.iso);
                 const dayMins = dayEntries.reduce((s, e) => s + (e.duration_minutes || 0), 0);
-                const isAllowed = allowedDays.includes(day.abbrev);
+                const isAllowed = true;
 
                 return (
                   <div
