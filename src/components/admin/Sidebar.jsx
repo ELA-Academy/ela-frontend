@@ -73,14 +73,20 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
     )
   );
 
-  // Accounting Department + Super Admin access to Payroll & Time Tracking
-  const isAccountingOrSuperAdmin = user?.role === "superadmin" || (
-    user?.role === "staff" && (
-      (Array.isArray(user?.departmentNames) && user.departmentNames.some(name => /accounting/i.test(name.trim()))) ||
-      (Array.isArray(user?.department_names) && user.department_names.some(name => /accounting/i.test(name.trim()))) ||
-      (user?.department && /accounting/i.test(user.department))
-    )
-  );
+  // Accounting, IT/Admin, HR, + Super Admin access to Payroll & Time Tracking
+  const allUserDeptNames = [
+    ...(Array.isArray(user?.departmentNames) ? user.departmentNames : []),
+    ...(Array.isArray(user?.department_names) ? user.department_names : []),
+    ...(Array.isArray(user?.departments) ? user.departments.map(d => (typeof d === "string" ? d : d?.name || "")) : []),
+    ...(user?.department ? [user.department] : [])
+  ].filter(Boolean);
+
+  const isAccountingOrSuperAdmin =
+    user?.role === "superadmin" ||
+    isITUser ||
+    user?.dashboardRoutes?.includes("/admin/accounting") ||
+    user?.dashboardRoutes?.includes("/admin/payroll") ||
+    allUserDeptNames.some(name => /(accounting|payroll|hr|human resource)/i.test(String(name).trim()));
 
   const managementLinks = [
     { path: "/admin/students", icon: GraduationCap, label: "Students", role: ["superadmin", "staff"] }
