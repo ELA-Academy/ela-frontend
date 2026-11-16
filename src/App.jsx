@@ -77,6 +77,10 @@ import PayrollPayHistoryPage from "./components/admin/payroll/PayrollPayHistoryP
 import PayrollContractorPaymentSummaryPage from "./components/admin/payroll/PayrollContractorPaymentSummaryPage";
 import PayrollTimesheetsPage from "./components/admin/payroll/PayrollTimesheetsPage";
 import PayrollContractorTimesheetDetailPage from "./components/admin/payroll/PayrollContractorTimesheetDetailPage";
+import PayrollDocumentsPage from "./components/admin/payroll/PayrollDocumentsPage";
+import PayrollReportsPage from "./components/admin/payroll/PayrollReportsPage";
+import PayrollPerformancePage from "./components/admin/payroll/PayrollPerformancePage";
+import PayrollTimeSettingsPage from "./components/admin/payroll/PayrollTimeSettingsPage";
 import PayrollSectionPlaceholder from "./components/admin/payroll/PayrollSectionPlaceholder";
 import { CircleDollarSign as IconPay, BarChart2 as IconReports, Landmark as IconTaxes, Clock as IconClock, FileText as IconDocs, DollarSign as IconMoney } from "lucide-react";
 
@@ -244,14 +248,16 @@ function App() {
                   <Route path="pay" element={<PayrollPayPage />} />
                   <Route path="pay/history" element={<PayrollPayHistoryPage />} />
                   <Route path="pay/contractors/:paymentId" element={<PayrollContractorPaymentSummaryPage />} />
-                  <Route path="reports" element={<PayrollSectionPlaceholder title="Reports" description="Generate audit logs, wage summaries, and tax compliance exports." icon={IconReports} />} />
+                  <Route path="reports" element={<PayrollReportsPage />} />
                   <Route path="taxes" element={<PayrollSectionPlaceholder title="Taxes & compliance" description="State and federal tax withholdings, unemployment insurance, and Form 1099-NEC." icon={IconTaxes} />} />
                   <Route path="time-attendance" element={<Navigate to="/admin/payroll/time-attendance/time-tracking" replace />} />
                   <Route path="time-attendance/time-tracking" element={<PayrollTimesheetsPage />} />
+                  <Route path="time-attendance/settings" element={<PayrollTimeSettingsPage />} />
                   <Route path="time-attendance/timesheets/:contractorId" element={<PayrollContractorTimesheetDetailPage />} />
                   <Route path="time-attendance/time-off" element={<PayrollSectionPlaceholder title="Time off" description="Review paid time off requests, sick days, and staff leave balances." icon={IconClock} />} />
                   <Route path="time-attendance/scheduling" element={<PayrollSectionPlaceholder title="Scheduling" description="Manage shift assignments, classroom schedules, and instructor rotations." icon={IconClock} />} />
-                  <Route path="documents" element={<PayrollSectionPlaceholder title="Documents" description="Contracts, Form W-9, employee handbooks, and signed agreements." icon={IconDocs} />} />
+                  <Route path="documents" element={<PayrollDocumentsPage />} />
+                  <Route path="performance" element={<PayrollPerformancePage />} />
                   <Route path="money" element={<PayrollSectionPlaceholder title="Money" description="Stripe connected treasury accounts, payout schedules, and bank reserves." icon={IconMoney} />} />
                 </Route>
                 <Route path="my-dashboard" element={<GenericDashboard />} />

@@ -105,6 +105,7 @@ const PayrollLayout = () => {
       ]
     },
     { path: "/admin/payroll/documents", label: "Documents", icon: FileText },
+    { path: "/admin/payroll/performance", label: "Performance", icon: BarChart2 },
     { path: "/admin/payroll/money", label: "Money", icon: DollarSign },
   ];
 
