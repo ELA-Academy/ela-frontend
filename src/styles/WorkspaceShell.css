@@ -1,9 +1,65 @@
 .workspace-shell {
   display: grid;
-  grid-template-columns: var(--sidebar-width, 255px) 4px minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-width, 250px) 4px minmax(0, 1fr);
   min-height: calc(100vh - 80px);
   align-items: stretch;
   background: var(--content-bg);
+  position: relative;
+}
+
+.workspace-shell.secondary-collapsed {
+  grid-template-columns: 0px 0px minmax(0, 1fr) !important;
+}
+
+.workspace-shell.secondary-collapsed .workspace-secondary-sidebar,
+.workspace-shell.secondary-collapsed .sidebar-resizer {
+  display: none !important;
+}
+
+.secondary-sidebar-collapse-btn {
+  width: 26px;
+  height: 26px;
+  border: 1px solid #e2e4ea;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #4a4c54;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.secondary-sidebar-collapse-btn:hover {
+  background: #ffffff;
+  color: #18181a;
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.secondary-sidebar-expand-btn {
+  position: absolute;
+  top: 12px;
+  left: 10px;
+  z-index: 30;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #e2e4ea;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #18181a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+  transition: all 0.15s ease;
+}
+
+.secondary-sidebar-expand-btn:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
 }
 
 .sidebar-resizer {
@@ -22,8 +78,8 @@
 }
 
 .workspace-secondary-sidebar {
-  border-right: 1px solid var(--border-color);
-  background: var(--sidebar-secondary-bg, #f1f5f9);
+  border-right: 1px solid #e4e6eb;
+  background: #f4f5f7;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -32,33 +88,34 @@
   align-self: stretch;
   height: calc(100vh - 80px);
   overflow-x: hidden;
+  font-family: "DM Sans", Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .workspace-secondary-header {
-  padding: 12px 14px 10px;
+  padding: 14px 14px 12px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  border-bottom: 1px solid #e7e8ee;
+  gap: 12px;
+  border-bottom: 1px solid #e4e6eb;
 }
 
 .workspace-secondary-eyebrow {
   display: block;
-  color: #8a90a0;
+  color: #7c808d;
   font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  margin-bottom: 6px;
+  margin-bottom: 3px;
 }
 
 .workspace-secondary-header h2 {
   margin: 0;
-  font-size: 0.95rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: #111827;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #18181a;
 }
 
 .workspace-secondary-create,
@@ -129,39 +186,51 @@
 .workspace-secondary-links {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .workspace-secondary-link {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 5px 8px;
-  border-radius: 6px;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
   text-decoration: none;
-  color: #4b5563;
-  transition: background-color 0.12s ease, color 0.12s ease;
+  color: #18181a;
+  font-family: "DM Sans", Roboto, sans-serif;
+  transition: background-color 0.14s ease, color 0.14s ease, box-shadow 0.14s ease;
 }
 
 .workspace-secondary-link:hover {
-  background: rgba(0, 0, 0, 0.04);
-  color: #111827;
+  background: rgba(255, 255, 255, 0.65);
+  color: #18181a;
 }
 
 .workspace-secondary-link.active {
-  background: rgba(103, 61, 230, 0.08);
-  color: #673de6;
+  background: #ffffff;
+  color: #18181a;
   font-weight: 600;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
 }
 
 .workspace-secondary-link.restricted .workspace-secondary-link-icon {
-  color: #8b5cf6;
+  color: #673de6;
 }
 
 .workspace-secondary-link-icon {
-  margin-top: 1px;
-  color: #8a90a0;
+  margin-top: 0;
+  color: #3f4047;
   flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+  stroke-width: 1.65;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.workspace-secondary-link.active .workspace-secondary-link-icon {
+  color: #18181a;
 }
 
 .workspace-secondary-link-text {
@@ -172,12 +241,16 @@
 
 .workspace-secondary-link-title {
   color: inherit;
-  font-size: 0.78rem;
-  font-weight: 700;
-  line-height: 1.3;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.workspace-secondary-link.active .workspace-secondary-link-title {
+  font-weight: 600;
 }
 
 .workspace-secondary-link-meta {

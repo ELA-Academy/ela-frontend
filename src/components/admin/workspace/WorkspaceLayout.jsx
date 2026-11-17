@@ -12,6 +12,7 @@ import NewConversationModal from "../../admin/messaging/NewConversationModal";
 import DeleteConfirmModal from "../DeleteConfirmModal";
 import { createBoard, updateBoard, deleteBoard, createTask, createBoardFromTemplate } from "../../../services/boardService";
 import { Modal, Form, Button, Spinner } from "react-bootstrap";
+import { PanelLeftOpen } from "lucide-react";
 import { io } from "socket.io-client";
 import "../../../styles/WorkspaceShell.css";
 
@@ -59,6 +60,7 @@ const WorkspaceLayout = () => {
   const shellRef = useRef(null);
   const [sidebarWidth, setSidebarWidth] = useState(255);
   const [isResizing, setIsResizing] = useState(false);
+  const [secondaryCollapsed, setSecondaryCollapsed] = useState(false);
 
   const startResizing = useCallback((e) => {
     e.preventDefault();
@@ -460,9 +462,19 @@ const WorkspaceLayout = () => {
     <>
       <div 
         ref={shellRef}
-        className="workspace-shell"
+        className={`workspace-shell ${secondaryCollapsed ? "secondary-collapsed" : ""}`}
         style={{ "--sidebar-width": `${sidebarWidth}px` }}
       >
+        {secondaryCollapsed && (
+          <button
+            type="button"
+            className="secondary-sidebar-expand-btn"
+            onClick={() => setSecondaryCollapsed(false)}
+            title="Expand Workspace Sidebar"
+          >
+            <PanelLeftOpen size={15} />
+          </button>
+        )}
         <WorkspaceSecondarySidebar
           conversations={conversationsWithLocalTimes}
           onlineUsers={onlineUsers}
@@ -481,6 +493,7 @@ const WorkspaceLayout = () => {
           onDeleteBoard={handleOpenDeleteBoard}
           onGlobalCreateTask={() => setShowCreateTaskModal(true)}
           onRefreshWorkspace={() => fetchWorkspaceData(false)}
+          onCollapse={() => setSecondaryCollapsed(true)}
           loading={workspaceLoading}
         />
 

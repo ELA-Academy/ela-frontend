@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Outlet, NavLink, Link, useOutletContext, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Building2, ShieldCheck, Activity, FileText } from "lucide-react";
+import { LayoutDashboard, Users, Building2, ShieldCheck, Activity, FileText, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { getActivityLogs } from "../../../services/activityService";
 import { useAuth } from "../../../context/AuthContext";
 import "../../../styles/WorkspaceShell.css";
@@ -31,6 +31,7 @@ const AdministrationLayout = () => {
   const shellRef = useRef(null);
   const [sidebarWidth, setSidebarWidth] = useState(255);
   const [isResizing, setIsResizing] = useState(false);
+  const [secondaryCollapsed, setSecondaryCollapsed] = useState(false);
 
   const startResizing = useCallback((e) => {
     e.preventDefault();
@@ -68,17 +69,33 @@ const AdministrationLayout = () => {
   return (
     <div 
       ref={shellRef}
-      className="workspace-shell"
+      className={`workspace-shell ${secondaryCollapsed ? "secondary-collapsed" : ""}`}
       style={{ "--sidebar-width": `${sidebarWidth}px` }}
     >
+      {secondaryCollapsed && (
+        <button
+          type="button"
+          className="secondary-sidebar-expand-btn"
+          onClick={() => setSecondaryCollapsed(false)}
+          title="Expand Administration Sidebar"
+        >
+          <PanelLeftOpen size={15} />
+        </button>
+      )}
       <aside className="workspace-secondary-sidebar">
         <div className="workspace-secondary-header">
           <div>
             <div className="workspace-secondary-eyebrow">DEPARTMENT</div>
-            <h2 style={{ fontSize: "14px", fontWeight: "700", display: "flex", alignItems: "center", gap: "6px", color: "#1e293b", margin: 0 }}>
-              Administration
-            </h2>
+            <h2>Administration</h2>
           </div>
+          <button
+            type="button"
+            className="secondary-sidebar-collapse-btn"
+            onClick={() => setSecondaryCollapsed(true)}
+            title="Collapse Sidebar"
+          >
+            <PanelLeftClose size={14} />
+          </button>
         </div>
 
         <div className="workspace-secondary-body">
