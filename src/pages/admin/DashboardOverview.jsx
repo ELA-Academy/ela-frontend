@@ -270,32 +270,103 @@ const DashboardOverview = () => {
   ].filter((card) => card.visible);
 
   return (
-    <div className="p-6 min-h-screen space-y-6">
-      <div className="dashboard-hero-panel">
+    <div className="p-4 md:p-5 min-h-screen space-y-4 position-relative overflow-hidden" style={{ backgroundColor: "#f8fafc" }}>
+      <style>{`
+        @keyframes dashboardOrbFloatA {
+          0%, 100% { transform: translate(0px, 0px) scale(1); }
+          50% { transform: translate(28px, 18px) scale(1.06); }
+        }
+        @keyframes dashboardOrbFloatB {
+          0%, 100% { transform: translate(0px, 0px) scale(1); }
+          50% { transform: translate(-24px, 22px) scale(1.05); }
+        }
+        @keyframes dashboardOrbFloatC {
+          0%, 100% { transform: translate(0px, 0px) scale(1); }
+          50% { transform: translate(18px, -20px) scale(1.04); }
+        }
+        .dashboard-ambient-layer {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          z-index: 0;
+          overflow: hidden;
+        }
+        .dashboard-ambient-grid {
+          position: absolute;
+          inset: 0;
+          background-image: radial-gradient(rgba(100, 116, 139, 0.14) 1px, transparent 1px);
+          background-size: 24px 24px;
+          opacity: 0.55;
+        }
+        .dashboard-orb-a {
+          position: absolute;
+          top: -80px;
+          left: -60px;
+          width: 420px;
+          height: 420px;
+          border-radius: 9999px;
+          background: radial-gradient(circle, rgba(186, 230, 253, 0.55) 0%, rgba(186, 230, 253, 0) 70%);
+          animation: dashboardOrbFloatA 14s ease-in-out infinite;
+        }
+        .dashboard-orb-b {
+          position: absolute;
+          top: 80px;
+          right: -80px;
+          width: 440px;
+          height: 440px;
+          border-radius: 9999px;
+          background: radial-gradient(circle, rgba(221, 214, 254, 0.5) 0%, rgba(221, 214, 254, 0) 70%);
+          animation: dashboardOrbFloatB 18s ease-in-out infinite;
+        }
+        .dashboard-orb-c {
+          position: absolute;
+          bottom: -100px;
+          left: 28%;
+          width: 460px;
+          height: 460px;
+          border-radius: 9999px;
+          background: radial-gradient(circle, rgba(254, 215, 170, 0.45) 0%, rgba(254, 215, 170, 0) 70%);
+          animation: dashboardOrbFloatC 16s ease-in-out infinite;
+        }
+        .dashboard-content-layer {
+          position: relative;
+          z-index: 1;
+        }
+      `}</style>
+
+      <div className="dashboard-ambient-layer" aria-hidden="true">
+        <div className="dashboard-ambient-grid" />
+        <div className="dashboard-orb-a" />
+        <div className="dashboard-orb-b" />
+        <div className="dashboard-orb-c" />
+      </div>
+
+      <div className="dashboard-content-layer space-y-4">
+      <div className="dashboard-hero-panel" style={{ padding: "16px 20px", background: "rgba(255, 255, 255, 0.92)", backdropFilter: "blur(8px)" }}>
         <div>
           <div className="dashboard-hero-breadcrumb">Team Space / Overview /</div>
-          <h1 className="text-3xl font-bold tracking-tight text-neutral-950 m-0">
+          <h1 className="text-2xl font-bold tracking-tight text-neutral-950 m-0">
             Welcome back, {user?.name || "Team Member"}
           </h1>
-          <p className="text-sm text-neutral-500 mt-2 max-w-3xl">
+          <p className="text-xs text-neutral-500 mt-1 mb-0 max-w-3xl">
             One place to enter the workspaces, departments, messages, reports, and actions
             assigned to your role.
           </p>
         </div>
 
         <div className="dashboard-hero-actions">
-          <Link to="/admin/boards" className="dashboard-top-action">
-            <FolderKanban className="w-4 h-4" />
+          <Link to="/admin/boards" className="dashboard-top-action" style={{ padding: "6px 12px", fontSize: "12.5px" }}>
+            <FolderKanban className="w-3.5 h-3.5" />
             Open Workspaces
           </Link>
-          <Link to="/time-tracking" className="dashboard-top-action dashboard-top-action-dark">
-            <Clock className="w-4 h-4" />
+          <Link to="/time-tracking" className="dashboard-top-action dashboard-top-action-dark" style={{ padding: "6px 12px", fontSize: "12.5px" }}>
+            <Clock className="w-3.5 h-3.5" />
             Track Time
           </Link>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
         {loadingBoards ? (
           <CardSkeleton count={1} />
         ) : (
@@ -474,27 +545,32 @@ const DashboardOverview = () => {
           </DashboardPanel>
         )}
       </div>
+      </div>
     </div>
   );
 };
 
 const ModuleCard = ({ card }) => (
-  <Link to={card.to} className="module-card">
-    <div className="flex items-start justify-between gap-4">
-      <div className={`module-card-icon ${card.accent}`}>
-        <card.icon className="w-5 h-5" />
+  <Link to={card.to} className="module-card" style={{ padding: "14px 16px", background: "rgba(255, 255, 255, 0.94)" }}>
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <div className={`module-card-icon ${card.accent}`} style={{ width: "34px", height: "34px", borderRadius: "9px", flexShrink: 0 }}>
+          <card.icon className="w-4 h-4" />
+        </div>
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <h3 className="text-sm font-bold text-neutral-950 m-0">{card.title}</h3>
+            <span className="module-card-badge" style={{ fontSize: "10.5px", padding: "1px 7px" }}>
+              {card.loading ? "..." : card.badge} {card.badgeLabel}
+            </span>
+          </div>
+        </div>
       </div>
-      <ArrowUpRight className="w-4 h-4 text-neutral-300" />
+      <ArrowUpRight className="w-3.5 h-3.5 text-neutral-300 flex-shrink-0" />
     </div>
     <div>
-      <div className="flex items-center gap-2 mt-5">
-        <h3 className="text-base font-bold text-neutral-950 m-0">{card.title}</h3>
-        <span className="module-card-badge">
-          {card.loading ? "..." : card.badge} {card.badgeLabel}
-        </span>
-      </div>
-      <p className="text-xs text-neutral-500 leading-relaxed mt-2 mb-4">{card.description}</p>
-      <div className="module-card-footer">
+      <p className="text-xs text-neutral-500 leading-snug mt-2 mb-2.5" style={{ fontSize: "12px" }}>{card.description}</p>
+      <div className="module-card-footer" style={{ paddingTop: "8px", fontSize: "11.5px" }}>
         <span>{card.error || card.metric}</span>
         <span>Open</span>
       </div>
@@ -503,16 +579,18 @@ const ModuleCard = ({ card }) => (
 );
 
 const SummaryCard = ({ icon: Icon, label, value, detail }) => (
-  <div className="bg-white rounded-2xl border border-neutral-100 shadow-sm p-5">
-    <div className="flex items-center justify-between mb-4">
-      <div className="w-10 h-10 rounded-xl bg-neutral-50 border border-neutral-100 flex items-center justify-center text-neutral-900">
-        <Icon className="w-5 h-5" />
+  <div className="rounded-xl border border-neutral-200/70 shadow-sm p-3.5" style={{ background: "rgba(255, 255, 255, 0.92)", backdropFilter: "blur(8px)" }}>
+    <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center gap-2">
+        <div className="w-8 h-8 rounded-lg bg-neutral-50 border border-neutral-100 flex items-center justify-center text-neutral-800">
+          <Icon className="w-4 h-4" />
+        </div>
+        <div className="text-[10.5px] font-bold text-neutral-500 uppercase tracking-wider">{label}</div>
       </div>
-      <ArrowUpRight className="w-4 h-4 text-neutral-300" />
+      <ArrowUpRight className="w-3.5 h-3.5 text-neutral-300" />
     </div>
-    <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">{label}</div>
-    <div className="text-3xl font-extrabold text-neutral-950 mt-1">{value}</div>
-    <div className="text-xs text-neutral-400 mt-2">{detail}</div>
+    <div className="text-2xl font-extrabold text-neutral-950 leading-tight">{value}</div>
+    <div className="text-[11.5px] text-neutral-400 mt-0.5">{detail}</div>
   </div>
 );
 
