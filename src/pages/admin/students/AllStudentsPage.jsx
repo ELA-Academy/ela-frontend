@@ -225,23 +225,38 @@ const AllStudentsPage = () => {
         subtitle="Manage student records, enrollment status, and parent linkages"
         badge={`${students.length} Total Registered`}
         actions={
-          <div className="d-flex align-items-center gap-2">
+          <div className="d-flex align-items-center gap-1.5 flex-wrap">
             <button
               onClick={() => setShowCleanSlateModal(true)}
-              className="btn btn-outline-danger d-inline-flex align-items-center gap-1.5 shadow-sm"
-              style={{ fontWeight: 500 }}
+              className="btn btn-sm d-inline-flex align-items-center gap-1"
+              style={{
+                borderRadius: "7px",
+                fontSize: "0.73rem",
+                fontWeight: "600",
+                padding: "4px 10px",
+                border: "1px solid #fecaca",
+                color: "#b91c1c",
+                backgroundColor: "#fef2f2"
+              }}
               title="Reset test data and start on a clean slate"
             >
-              <RotateCcw size={15} />
-              <span>Clean Slate (Reset Data)</span>
+              <RotateCcw size={12} />
+              <span>Clean Slate</span>
             </button>
             <button
               onClick={() => setShowImportModal(true)}
-              className="btn btn-outline-primary d-inline-flex align-items-center gap-2 shadow-sm"
-              style={{ fontWeight: 500 }}
+              className="btn btn-sm d-inline-flex align-items-center gap-1 bg-white"
+              style={{
+                borderRadius: "7px",
+                fontSize: "0.73rem",
+                fontWeight: "600",
+                padding: "4px 10px",
+                border: "1px solid #bfdbfe",
+                color: "#1d4ed8"
+              }}
             >
-              <FileSpreadsheet size={16} />
-              <span>Import Student & Family Directory</span>
+              <FileSpreadsheet size={12} />
+              <span>Import Directory</span>
             </button>
           </div>
         }

@@ -270,8 +270,8 @@ const Header = ({ collapsed, setCollapsed }) => {
       </button>
 
       {/* Brand logo */}
-      <div className="hostinger-brand-mark flex items-center gap-2.5" style={{ padding: "4px 10px" }}>
-        <img src="/images/ELA-logo.png" alt="ELA Academy" className="hostinger-logo-image" style={{ height: "28px", width: "auto" }} />
+      <div className="hostinger-brand-mark flex items-center gap-2.5" style={{ padding: "5px 14px", borderRadius: "10px" }}>
+        <img src="/images/ELA-logo.png" alt="ELA Academy" className="hostinger-logo-image" style={{ height: "36px", width: "auto", objectFit: "contain" }} />
         {upcomingReminder && (
           <>
             <div className="h-4 w-[1px] bg-slate-200" />

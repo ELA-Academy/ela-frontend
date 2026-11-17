@@ -339,46 +339,75 @@ const ManageParents = () => {
         subtitle="Manage registered parent portal accounts, send invite links, and review portal access status"
         badge="Administration & Accounting"
         actions={
-          <div className="d-flex align-items-center gap-2">
+          <div className="d-flex align-items-center gap-1.5 flex-wrap">
             <button
               onClick={() => {
                 setCleanSlateMode("parents");
                 setShowCleanSlateModal(true);
               }}
-              className="btn btn-outline-danger d-inline-flex align-items-center gap-1.5 shadow-sm"
-              style={{ fontWeight: 500 }}
+              className="btn btn-sm d-inline-flex align-items-center gap-1"
+              style={{
+                borderRadius: "7px",
+                fontSize: "0.73rem",
+                fontWeight: "600",
+                padding: "4px 10px",
+                border: "1px solid #fecaca",
+                color: "#b91c1c",
+                backgroundColor: "#fef2f2"
+              }}
               title="Wipe all parent accounts to re-import fresh families"
             >
-              <Trash2 size={15} />
-              <span>Wipe All Parents</span>
+              <Trash2 size={12} />
+              <span>Wipe Parents</span>
             </button>
             <button
               onClick={() => {
                 setCleanSlateMode("full");
                 setShowCleanSlateModal(true);
               }}
-              className="btn btn-outline-secondary d-inline-flex align-items-center gap-1.5 shadow-sm"
-              style={{ fontWeight: 500 }}
+              className="btn btn-sm d-inline-flex align-items-center gap-1 bg-white"
+              style={{
+                borderRadius: "7px",
+                fontSize: "0.73rem",
+                fontWeight: "600",
+                padding: "4px 10px",
+                border: "1px solid #cbd5e1",
+                color: "#475569"
+              }}
               title="Reset all students, parents & plans to clean slate"
             >
-              <RotateCcw size={15} />
+              <RotateCcw size={12} />
               <span>Full Clean Slate</span>
             </button>
             <button
               onClick={() => setShowImportModal(true)}
-              className="btn btn-outline-primary d-inline-flex align-items-center gap-2 shadow-sm"
-              style={{ fontWeight: 500 }}
+              className="btn btn-sm d-inline-flex align-items-center gap-1 bg-white"
+              style={{
+                borderRadius: "7px",
+                fontSize: "0.73rem",
+                fontWeight: "600",
+                padding: "4px 10px",
+                border: "1px solid #bfdbfe",
+                color: "#1d4ed8"
+              }}
             >
-              <FileSpreadsheet size={16} />
-              <span>Import Families & Students</span>
+              <FileSpreadsheet size={12} />
+              <span>Import Families</span>
             </button>
             <button
               onClick={() => handleShowModal()}
-              className="btn btn-primary d-inline-flex align-items-center gap-2 shadow-sm"
-              style={{ fontWeight: 500 }}
+              className="btn btn-sm btn-primary d-inline-flex align-items-center gap-1"
+              style={{
+                backgroundColor: "#673de6",
+                borderColor: "#673de6",
+                borderRadius: "7px",
+                fontSize: "0.73rem",
+                fontWeight: "600",
+                padding: "4px 12px"
+              }}
             >
-              <Plus size={16} />
-              <span>Create Parent Account</span>
+              <Plus size={13} />
+              <span>Create Parent</span>
             </button>
           </div>
         }
