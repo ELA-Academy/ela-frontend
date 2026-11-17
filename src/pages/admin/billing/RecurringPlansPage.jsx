@@ -315,65 +315,77 @@ const RecurringPlansPage = () => {
       {/* Top Header */}
       <div className="d-flex justify-content-between align-items-center mb-2">
         <h1 className="page-title fs-4 fw-bold text-slate-800 m-0">Recurring Plans</h1>
-        <div className="d-flex gap-2">
+        <div className="d-flex gap-1.5 flex-wrap align-items-center">
           <Button
             onClick={handleExportProcare}
             disabled={exportingPlans}
-            variant="outline-primary"
+            variant="light"
+            size="sm"
             style={{
-              borderRadius: "20px",
-              fontSize: "0.82rem",
+              borderRadius: "7px",
+              fontSize: "0.73rem",
               fontWeight: "600",
-              padding: "6px 16px"
+              padding: "4px 10px",
+              border: "1px solid #cbd5e1",
+              color: "#334155"
             }}
-            className="d-flex align-items-center gap-1 shadow-sm bg-white"
+            className="d-flex align-items-center gap-1 bg-white"
             title="Download all active tuition plans in Procare Excel format"
           >
-            <Download size={14} /> {exportingPlans ? "EXPORTING..." : "DOWNLOAD PLANS (.XLSX)"}
+            <Download size={12} /> {exportingPlans ? "Exporting..." : "Download Plans"}
           </Button>
 
           <Button
             onClick={() => setShowImportModal(true)}
-            variant="outline-success"
+            variant="light"
+            size="sm"
             style={{
-              borderRadius: "20px",
-              fontSize: "0.82rem",
+              borderRadius: "7px",
+              fontSize: "0.73rem",
               fontWeight: "600",
-              padding: "6px 18px"
+              padding: "4px 10px",
+              border: "1px solid #a7f3d0",
+              color: "#047857",
+              backgroundColor: "#ecfdf5"
             }}
-            className="d-flex align-items-center gap-1 shadow-sm bg-white"
+            className="d-flex align-items-center gap-1"
           >
-            <Upload size={15} /> IMPORT PROCARE PLANS
+            <Upload size={12} /> Import Procare
           </Button>
 
           <Button
-            variant="outline-danger"
+            variant="light"
+            size="sm"
             onClick={() => setShowCleanSlateModal(true)}
             style={{
-              borderRadius: "20px",
-              fontSize: "0.82rem",
+              borderRadius: "7px",
+              fontSize: "0.73rem",
               fontWeight: "600",
-              padding: "6px 16px"
+              padding: "4px 10px",
+              border: "1px solid #fecaca",
+              color: "#b91c1c",
+              backgroundColor: "#fef2f2"
             }}
-            className="d-flex align-items-center gap-1 shadow-sm"
+            className="d-flex align-items-center gap-1"
             title="Reset test data and start on a clean slate"
           >
-            <RotateCcw size={14} /> CLEAN SLATE (RESET)
+            <RotateCcw size={12} /> Clean Slate
           </Button>
 
           <Button
+            size="sm"
             onClick={() => setShowWizard(true)}
             style={{
-              backgroundColor: "#00b8d4",
-              borderColor: "#00b8d4",
-              borderRadius: "20px",
-              fontSize: "0.82rem",
+              backgroundColor: "#673de6",
+              borderColor: "#673de6",
+              borderRadius: "7px",
+              fontSize: "0.73rem",
               fontWeight: "600",
-              padding: "6px 20px"
+              padding: "4px 12px"
             }}
-            className="d-flex align-items-center gap-1 shadow-sm"
+            className="d-flex align-items-center gap-1"
           >
-            <Plus size={16} /> CREATE RECURRING PLAN
+            <Plus size={13} /> Create Plan
           </Button>
         </div>
       </div>

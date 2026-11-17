@@ -41,6 +41,7 @@ import {
   List,
   Trash2,
   ExternalLink,
+  PanelLeftClose,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useAuth } from "../../../context/AuthContext";
@@ -119,6 +120,7 @@ const WorkspaceSecondarySidebar = ({
   onDeleteBoard,
   onGlobalCreateTask,
   onRefreshWorkspace,
+  onCollapse,
 }) => {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
@@ -1054,7 +1056,11 @@ const WorkspaceSecondarySidebar = ({
             color: #673de6 !important;
           }
           .workspace-tree-row.active {
-            background: rgba(103, 61, 230, 0.08);
+            background: #ffffff;
+            color: #18181a;
+            font-weight: 600;
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
           }
           .workspace-secondary-header {
             align-items: center;
@@ -1062,14 +1068,24 @@ const WorkspaceSecondarySidebar = ({
         `}
       </style>
 
-      <div className="workspace-secondary-header" style={{ paddingBottom: "10px", borderBottom: "none" }}>
+      <div className="workspace-secondary-header" style={{ paddingBottom: "10px" }}>
         <div>
-          <h2 style={{ fontSize: "14px", fontWeight: "700", display: "flex", alignItems: "center", gap: "6px", color: "#1e293b", margin: 0 }}>
+          <h2 style={{ fontSize: "15px", fontWeight: "700", display: "flex", alignItems: "center", gap: "6px", color: "#18181a", margin: 0 }}>
             Home
             <ChevronDown size={12} className="text-slate-400" style={{ cursor: "pointer" }} />
           </h2>
         </div>
         <div className="d-flex align-items-center gap-1">
+          {onCollapse && (
+            <button
+              type="button"
+              className="secondary-sidebar-collapse-btn"
+              onClick={onCollapse}
+              title="Collapse Sidebar"
+            >
+              <PanelLeftClose size={14} />
+            </button>
+          )}
           {onGlobalCreateTask && (
             <Dropdown align="end">
               <Dropdown.Toggle as={React.forwardRef(({ children, onClick }, ref) => (

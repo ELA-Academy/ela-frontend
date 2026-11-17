@@ -12,7 +12,10 @@ import {
   Plus,
   Receipt,
   ChevronRight,
-  X
+  Calendar,
+  X,
+  PanelLeftClose,
+  PanelLeftOpen
 } from "lucide-react";
 import { Modal, Button, Form } from "react-bootstrap";
 import { useAuth } from "../../../context/AuthContext";
@@ -25,8 +28,9 @@ const PayrollLayout = () => {
 
   // Secondary sidebar resizer states & logic (flush and resizable like Workspace)
   const shellRef = useRef(null);
-  const [sidebarWidth, setSidebarWidth] = useState(240);
+  const [sidebarWidth, setSidebarWidth] = useState(250);
   const [isResizing, setIsResizing] = useState(false);
+  const [secondaryCollapsed, setSecondaryCollapsed] = useState(false);
 
   // Shortcut Modal State (No window.alert)
   const [shortcutModalOpen, setShortcutModalOpen] = useState(false);
@@ -101,204 +105,110 @@ const PayrollLayout = () => {
   return (
     <div
       ref={shellRef}
-      className="workspace-shell"
-      style={{
-        display: "grid",
-        gridTemplateColumns: `${sidebarWidth}px 4px minmax(0, 1fr)`,
-        minHeight: "calc(100vh - 70px)",
-        height: "calc(100vh - 70px)",
-        alignItems: "stretch",
-        backgroundColor: "#ffffff",
-        overflow: "hidden"
-      }}
+      className={`workspace-shell ${secondaryCollapsed ? "secondary-collapsed" : ""}`}
+      style={{ "--sidebar-width": `${sidebarWidth}px` }}
     >
-      {/* Secondary Sidebar for Payroll (Tight, flush, ELA Blue theme) */}
-      <aside
-        style={{
-          borderRight: "1px solid #e5e7eb",
-          backgroundColor: "#ffffff",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          padding: "1rem 0.65rem",
-          boxSizing: "border-box",
-          overflowY: "auto",
-          height: "100%"
-        }}
-      >
-        <div>
-          {/* Brand area with ELA Logo & Blue Heading */}
-          <div
-            style={{
-              padding: "0.25rem 0.5rem 0.85rem",
-              borderBottom: "1px solid #f1f5f9",
-              marginBottom: "0.65rem",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem"
-            }}
-          >
-            <img
-              src="/images/ELA-logo.png"
-              alt="ELA Academy"
-              style={{ height: "24px", width: "auto", objectFit: "contain" }}
-            />
-            <span
-              style={{
-                fontSize: "1.1rem",
-                fontWeight: 700,
-                color: "#1e3a8a",
-                letterSpacing: "-0.02em"
-              }}
-            >
-              Payroll
-            </span>
+      {secondaryCollapsed && (
+        <button
+          type="button"
+          className="secondary-sidebar-expand-btn"
+          onClick={() => setSecondaryCollapsed(false)}
+          title="Expand Payroll Sidebar"
+        >
+          <PanelLeftOpen size={15} />
+        </button>
+      )}
+      {/* Secondary Sidebar for Payroll (Standard Hostinger-style Workspace Shell) */}
+      <aside className="workspace-secondary-sidebar">
+        <div className="workspace-secondary-header">
+          <div>
+            <div className="workspace-secondary-eyebrow">DEPARTMENT</div>
+            <h2>Payroll</h2>
           </div>
-
-          {/* Navigation group */}
-          <nav style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isItemActive = item.end
-                ? location.pathname === item.path
-                : location.pathname.startsWith(item.path);
-
-              return (
-                <div key={item.path}>
-                  <NavLink
-                    to={item.path}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.65rem",
-                      padding: "0.55rem 0.75rem",
-                      fontSize: "0.875rem",
-                      fontWeight: isItemActive ? 600 : 500,
-                      color: isItemActive ? "#1d4ed8" : "#4b5563",
-                      backgroundColor: isItemActive ? "#eff6ff" : "transparent",
-                      borderRadius: "8px",
-                      textDecoration: "none",
-                      transition: "all 0.15s ease"
-                    }}
-                  >
-                    <Icon className="w-4 h-4" style={{ color: isItemActive ? "#2563eb" : "#6b7280" }} />
-                    <span style={{ flex: 1 }}>{item.label}</span>
-                  </NavLink>
-
-                  {/* Expandable nested child like Expenses under Pay */}
-                  {item.children && isItemActive && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem", paddingLeft: "1.75rem", marginTop: "0.2rem" }}>
-                      {item.children.map((child) => {
-                        const ChildIcon = child.icon;
-                        const isChildActive = location.search.includes("tab=expenses");
-                        return (
-                          <Link
-                            key={child.path}
-                            to={child.path}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "0.5rem",
-                              padding: "0.4rem 0.6rem",
-                              fontSize: "0.8rem",
-                              fontWeight: isChildActive ? 600 : 500,
-                              color: isChildActive ? "#1d4ed8" : "#64748b",
-                              backgroundColor: isChildActive ? "#dbeafe" : "transparent",
-                              borderRadius: "6px",
-                              textDecoration: "none"
-                            }}
-                          >
-                            <ChildIcon className="w-3.5 h-3.5" />
-                            <span>{child.label}</span>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </nav>
+          <button
+            type="button"
+            className="secondary-sidebar-collapse-btn"
+            onClick={() => setSecondaryCollapsed(true)}
+            title="Collapse Sidebar"
+          >
+            <PanelLeftClose size={14} />
+          </button>
         </div>
 
-        {/* Bottom shortcuts & Company pill */}
-        <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.45rem" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.2rem 0.4rem" }}>
-            <span style={{ fontSize: "0.7rem", color: "#9ca3af", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.04em" }}>
-              Shortcuts
-            </span>
-            <button
-              type="button"
-              style={{
-                background: "none",
-                border: "none",
-                color: "#2563eb",
-                fontSize: "0.75rem",
-                fontWeight: 600,
-                cursor: "pointer",
-                padding: "2px 6px",
-                borderRadius: "4px"
-              }}
-              onClick={() => setShortcutModalOpen(true)}
-            >
-              Add
-            </button>
+        <div className="workspace-secondary-body">
+          <div className="workspace-secondary-section">
+            <div className="workspace-secondary-section-header">
+              <span>NAVIGATION</span>
+            </div>
+            <div className="workspace-secondary-links">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isItemActive = item.end
+                  ? location.pathname === item.path
+                  : location.pathname.startsWith(item.path);
+
+                return (
+                  <div key={item.path}>
+                    <NavLink
+                      to={item.path}
+                      end={item.end}
+                      className={({ isActive }) => `workspace-secondary-link ${isActive ? "active" : ""}`}
+                    >
+                      <Icon className="workspace-secondary-link-icon" />
+                      <span className="workspace-secondary-link-title">{item.label}</span>
+                    </NavLink>
+
+                    {/* Expandable nested child like Expenses under Pay */}
+                    {item.children && isItemActive && (
+                      <div className="d-flex flex-column gap-0.5 ps-4 mt-1">
+                        {item.children.map((child) => {
+                          const ChildIcon = child.icon;
+                          const isChildActive = child.path.includes("?")
+                            ? location.pathname === child.path.split("?")[0] && location.search.includes(child.path.split("?")[1])
+                            : location.pathname === child.path || (child.path.endsWith("/time-tracking") && (location.pathname.startsWith("/admin/payroll/time-attendance/time-tracking") || location.pathname.startsWith("/admin/payroll/time-attendance/timesheets")));
+                          return (
+                            <Link
+                              key={child.path}
+                              to={child.path}
+                              className={`workspace-secondary-link ${isChildActive ? "active" : ""}`}
+                              style={{ padding: "6px 10px" }}
+                            >
+                              <ChildIcon className="workspace-secondary-link-icon" style={{ width: "15px", height: "15px" }} />
+                              <span className="workspace-secondary-link-title" style={{ fontSize: "13px" }}>{child.label}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Quick shortcuts list */}
-          {customShortcuts.map((sc, i) => (
-            <Link
-              key={i}
-              to={sc.url}
-              style={{
-                fontSize: "0.775rem",
-                color: "#64748b",
-                textDecoration: "none",
-                padding: "0.25rem 0.4rem",
-                borderRadius: "4px",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis"
-              }}
-              className="hover:bg-slate-50 hover:text-blue-600"
-            >
-              • {sc.name}
-            </Link>
-          ))}
-
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              padding: "0.4rem 0.5rem",
-              borderRadius: "6px",
-              backgroundColor: "#f8fafc",
-              border: "1px solid #f1f5f9",
-              fontSize: "0.8rem",
-              color: "#334155",
-              marginTop: "0.25rem"
-            }}
-          >
-            <div
-              style={{
-                width: "22px",
-                height: "22px",
-                borderRadius: "4px",
-                backgroundColor: "#dbeafe",
-                color: "#1e40af",
-                fontWeight: 700,
-                fontSize: "0.7rem",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center"
-              }}
-            >
-              ELA
+          <div className="workspace-secondary-section mt-3">
+            <div className="workspace-secondary-section-header">
+              <span>SHORTCUTS</span>
+              <button
+                type="button"
+                onClick={() => setShortcutModalOpen(true)}
+                title="Add Shortcut"
+              >
+                <Plus size={13} />
+              </button>
             </div>
-            <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontWeight: 600 }}>
-              ELA Academy LLC
-            </span>
+            <div className="workspace-secondary-links">
+              {customShortcuts.map((sc, i) => (
+                <Link
+                  key={i}
+                  to={sc.url}
+                  className="workspace-secondary-link"
+                  style={{ padding: "6px 10px" }}
+                >
+                  <span className="workspace-secondary-link-title" style={{ fontSize: "13px" }}>• {sc.name}</span>
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
       </aside>
