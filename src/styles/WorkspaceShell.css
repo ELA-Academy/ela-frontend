@@ -8,12 +8,20 @@
 }
 
 .workspace-shell.secondary-collapsed {
-  grid-template-columns: 0px 0px minmax(0, 1fr) !important;
+  grid-template-columns: minmax(0, 1fr) !important;
 }
 
 .workspace-shell.secondary-collapsed .workspace-secondary-sidebar,
 .workspace-shell.secondary-collapsed .sidebar-resizer {
   display: none !important;
+}
+
+.workspace-shell.secondary-collapsed > .workspace-content-pane,
+.workspace-shell.secondary-collapsed > main,
+.workspace-shell.secondary-collapsed > div:last-child {
+  width: 100% !important;
+  min-width: 0 !important;
+  padding-left: 44px !important;
 }
 
 .secondary-sidebar-collapse-btn {

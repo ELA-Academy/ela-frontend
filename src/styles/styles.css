@@ -15,7 +15,8 @@
 
 /* --- General Body Styles --- */
 body {
-  font-family: "Poppins", sans-serif;
+  font-family: "DM Sans", Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px;
   color: var(--body-text);
   background-color: var(--white);
 }

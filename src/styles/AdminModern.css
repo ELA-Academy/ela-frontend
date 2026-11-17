@@ -3,8 +3,8 @@
 
 /* === Root Variables === */
 :root {
-  --font-primary: "Prompt", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, Helvetica, Arial, sans-serif;
+  --font-primary: "DM Sans", Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Helvetica, Arial, sans-serif;
 
   --primary-color: #673de6;
   --primary-hover: #5025d1;
@@ -2875,6 +2875,67 @@ body {
 
 .sidebar-nav-logout-zbot:hover svg {
   color: #dc2626 !important;
+}
+
+/* ==========================================================================
+   GLOBAL DM SANS TYPOGRAPHY & ICON CONSISTENCY (Pages, Modals, Tables, Forms)
+   ========================================================================== */
+html,
+body,
+.admin-layout,
+.font-prompt,
+.modal,
+.modal-content,
+.modal-header,
+.modal-body,
+.modal-footer,
+.dropdown-menu,
+.popover,
+.tooltip,
+input,
+select,
+textarea,
+button,
+.btn,
+.form-control,
+.form-select,
+.form-label,
+.table {
+  font-family: "DM Sans", Roboto, -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+body,
+.admin-layout,
+.modal-body,
+.table {
+  font-size: 14px;
+  color: #18181a;
+}
+
+.modal-title {
+  font-family: "DM Sans", Roboto, sans-serif !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  color: #18181a !important;
+}
+
+.form-control,
+.form-select {
+  font-size: 13.5px;
+}
+
+.table th {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.table td {
+  font-size: 13.5px;
+}
+
+svg.lucide {
+  stroke-width: 1.7;
 }
 
 /* ── Nearly-invisible sidebar scrollbar ── */
