@@ -3,11 +3,19 @@ import { Link, useNavigate } from "react-router-dom";
 import { Container, Row, Col, Card, Table, Button, Form, Modal, Dropdown, Spinner, Alert } from "react-bootstrap";
 import { 
   FileText, Plus, Search, Folder, Calendar, Sparkles, MoreHorizontal, 
-  Trash2, Globe, Users, ArrowUpRight, Shield, Eye
+  Trash2, Globe, Users, ArrowUpRight, Shield, Eye, Receipt, Copy, BookmarkPlus, LayoutTemplate
 } from "lucide-react";
 import { useWorkspace } from "../../components/admin/workspace/WorkspaceLayout";
 import { useAuth } from "../../context/AuthContext";
-import { getAllWorkspaceDocs, createWorkspaceDoc, deleteWorkspaceDoc } from "../../services/boardService";
+import {
+  getAllWorkspaceDocs,
+  createWorkspaceDoc,
+  deleteWorkspaceDoc,
+  duplicateWorkspaceDoc,
+  saveDocAsTemplate,
+  getDocTemplates,
+  deleteDocTemplate
+} from "../../services/boardService";
 import { toast } from "react-toastify";
 import { format, parseISO } from "date-fns";
 import DocsView from "../../components/admin/workspace/DocsView";
@@ -39,11 +47,32 @@ const DocsHubPage = () => {
   const [docToDelete, setDocToDelete] = useState(null);
   const [deletingDoc, setDeletingDoc] = useState(false);
 
+  // Custom Document Templates states
+  const [customTemplates, setCustomTemplates] = useState([]);
+  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+  const [templateSourceDoc, setTemplateSourceDoc] = useState(null);
+  const [templateName, setTemplateName] = useState("");
+  const [templateDesc, setTemplateDesc] = useState("");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [showDeleteTemplateModal, setShowDeleteTemplateModal] = useState(false);
+  const [templateToDelete, setTemplateToDelete] = useState(null);
+  const [deletingTemplate, setDeletingTemplate] = useState(false);
+
   useEffect(() => {
     if (!urlDocId) {
       fetchDocs();
+      fetchTemplates();
     }
   }, [urlDocId]);
+
+  const fetchTemplates = async () => {
+    try {
+      const data = await getDocTemplates();
+      setCustomTemplates(data || []);
+    } catch (err) {
+      console.error("Failed to load document templates", err);
+    }
+  };
 
   const fetchDocs = async () => {
     try {
@@ -93,6 +122,65 @@ const DocsHubPage = () => {
     }
     setNewDocPublic(true);
     setShowCreateModal(true);
+  };
+
+  const handleDuplicateDoc = async (doc, e) => {
+    if (e) e.stopPropagation();
+    try {
+      const duplicated = await duplicateWorkspaceDoc(doc.id);
+      setDocs(prev => [duplicated, ...prev]);
+      toast.success(`Duplicated "${doc.title}"`);
+    } catch (err) {
+      console.error("Failed to duplicate document", err);
+      toast.error("Failed to duplicate document");
+    }
+  };
+
+  const handleOpenSaveTemplateModal = (doc, e) => {
+    if (e) e.stopPropagation();
+    setTemplateSourceDoc(doc);
+    setTemplateName(`${doc.title} Template`);
+    setTemplateDesc(`Reusable template based on "${doc.title}"`);
+    setShowSaveTemplateModal(true);
+  };
+
+  const handleSaveAsTemplate = async (e) => {
+    if (e) e.preventDefault();
+    if (!templateSourceDoc) return;
+    try {
+      setSavingTemplate(true);
+      const created = await saveDocAsTemplate(templateSourceDoc.id, {
+        name: templateName.trim() || templateSourceDoc.title,
+        description: templateDesc.trim(),
+        category: "Custom",
+      });
+      setCustomTemplates(prev => [created, ...prev]);
+      toast.success("Saved as reusable template!");
+      setShowSaveTemplateModal(false);
+      setTemplateSourceDoc(null);
+    } catch (err) {
+      console.error("Failed to save document template", err);
+      toast.error("Failed to save document template");
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  const handleDeleteTemplateConfirm = async () => {
+    if (!templateToDelete) return;
+    try {
+      setDeletingTemplate(true);
+      await deleteDocTemplate(templateToDelete.id);
+      setCustomTemplates(prev => prev.filter(t => t.id !== templateToDelete.id));
+      toast.success("Template deleted");
+      setShowDeleteTemplateModal(false);
+      setTemplateToDelete(null);
+    } catch (err) {
+      console.error("Failed to delete template", err);
+      toast.error("Failed to delete template");
+    } finally {
+      setDeletingTemplate(false);
+    }
   };
 
   const handleCreateDoc = async (e) => {
@@ -206,6 +294,64 @@ const DocsHubPage = () => {
         <h3>Getting Started</h3>
         <p>Review the team onboarding docs and guidelines.</p>
       `
+    },
+    {
+      type: "expense_report",
+      label: "Expense Report",
+      desc: "Track itemized expenses, totals, and approvals.",
+      icon: Receipt,
+      color: "#10b981", // emerald
+      html: `
+        <h2>Expense Report</h2>
+        <p><strong>Submitted By:</strong> [Employee Name] &nbsp;|&nbsp; <strong>Department:</strong> [Department]</p>
+        <p><strong>Report Date:</strong> ${format(new Date(), "MMMM dd, yyyy")} &nbsp;|&nbsp; <strong>Period:</strong> [Start Date – End Date]</p>
+        <p><strong>Business Purpose:</strong> [Describe the purpose of these expenses]</p>
+        <hr/>
+        <h3>Itemized Expenses</h3>
+        <table style="width: 100%; border-collapse: collapse; margin: 12px 0;">
+          <thead>
+            <tr>
+              <th style="border: 1px solid #cbd5e1; padding: 8px; background-color: #f8fafc; text-align: left;">Date</th>
+              <th style="border: 1px solid #cbd5e1; padding: 8px; background-color: #f8fafc; text-align: left;">Category</th>
+              <th style="border: 1px solid #cbd5e1; padding: 8px; background-color: #f8fafc; text-align: left;">Description</th>
+              <th style="border: 1px solid #cbd5e1; padding: 8px; background-color: #f8fafc; text-align: left;">Payment Method</th>
+              <th style="border: 1px solid #cbd5e1; padding: 8px; background-color: #f8fafc; text-align: left;">Receipt</th>
+              <th style="border: 1px solid #cbd5e1; padding: 8px; background-color: #f8fafc; text-align: right;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="border: 1px solid #cbd5e1; padding: 8px;">${format(new Date(), "MM/dd/yyyy")}</td>
+              <td style="border: 1px solid #cbd5e1; padding: 8px;">Supplies</td>
+              <td style="border: 1px solid #cbd5e1; padding: 8px;">Classroom / office supplies</td>
+              <td style="border: 1px solid #cbd5e1; padding: 8px;">Personal Card</td>
+              <td style="border: 1px solid #cbd5e1; padding: 8px;">Yes</td>
+              <td style="border: 1px solid #cbd5e1; padding: 8px; text-align: right;">\$0.00</td>
+            </tr>
+            <tr>
+              <td style="border: 1px solid #cbd5e1; padding: 8px;"></td>
+              <td style="border: 1px solid #cbd5e1; padding: 8px;">Travel / Meals</td>
+              <td style="border: 1px solid #cbd5e1; padding: 8px;"></td>
+              <td style="border: 1px solid #cbd5e1; padding: 8px;"></td>
+              <td style="border: 1px solid #cbd5e1; padding: 8px;"></td>
+              <td style="border: 1px solid #cbd5e1; padding: 8px; text-align: right;">\$0.00</td>
+            </tr>
+            <tr>
+              <td style="border: 1px solid #cbd5e1; padding: 8px;"></td>
+              <td style="border: 1px solid #cbd5e1; padding: 8px;">Other</td>
+              <td style="border: 1px solid #cbd5e1; padding: 8px;"></td>
+              <td style="border: 1px solid #cbd5e1; padding: 8px;"></td>
+              <td style="border: 1px solid #cbd5e1; padding: 8px;"></td>
+              <td style="border: 1px solid #cbd5e1; padding: 8px; text-align: right;">\$0.00</td>
+            </tr>
+          </tbody>
+        </table>
+        <h3>Summary &amp; Approval</h3>
+        <p><strong>Subtotal:</strong> \$0.00</p>
+        <p><strong>Less Advances:</strong> \$0.00</p>
+        <p><strong>Total Reimbursement Due:</strong> \$0.00</p>
+        <p><strong>Employee Signature:</strong> ______________________ &nbsp;&nbsp; <strong>Approved By:</strong> ______________________</p>
+      `
     }
   ];
 
@@ -253,9 +399,9 @@ const DocsHubPage = () => {
           {TEMPLATES.map(t => {
             const IconComponent = t.icon;
             return (
-              <Col key={t.type} xs={12} md={4}>
+              <Col key={t.type} xs={12} md={6} lg={3}>
                 <Card 
-                  className="border-slate-100 hover:border-purple-200 transition-all cursor-pointer shadow-sm rounded-3 hover:translate-y-[-2px]"
+                  className="border-slate-100 hover:border-purple-200 transition-all cursor-pointer shadow-sm rounded-3 hover:translate-y-[-2px] h-100"
                   style={{ transition: "all 0.2s" }}
                   onClick={() => handleOpenCreateModal(t)}
                 >
@@ -277,6 +423,58 @@ const DocsHubPage = () => {
           })}
         </Row>
       </div>
+
+      {/* Saved Custom Templates Row */}
+      {customTemplates.length > 0 && (
+        <div className="mb-4">
+          <span className="text-slate-400 font-bold d-block text-[10px] uppercase tracking-wider mb-2.5">Saved Templates</span>
+          <Row className="g-3">
+            {customTemplates.map(tpl => (
+              <Col key={tpl.id} xs={12} md={6} lg={3}>
+                <Card
+                  className="border-slate-100 hover:border-purple-200 transition-all cursor-pointer shadow-sm rounded-3 hover:translate-y-[-2px] h-100"
+                  style={{ transition: "all 0.2s" }}
+                  onClick={() => handleOpenCreateModal({
+                    type: `custom_${tpl.id}`,
+                    label: tpl.name,
+                    desc: tpl.description || "Custom saved template",
+                    html: tpl.content_html || "<p></p>",
+                  })}
+                >
+                  <Card.Body className="d-flex align-items-start justify-content-between gap-2 p-3">
+                    <div className="d-flex align-items-start gap-3 overflow-hidden">
+                      <div
+                        className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                        style={{ width: "38px", height: "38px", backgroundColor: "#6366f115", color: "#6366f1" }}
+                      >
+                        <LayoutTemplate size={20} />
+                      </div>
+                      <div className="overflow-hidden">
+                        <h6 className="fw-bold text-slate-800 mb-1 text-truncate" style={{ fontSize: "13px" }}>{tpl.name}</h6>
+                        <span className="text-slate-400 d-block text-[11px] leading-snug">
+                          {tpl.description || `By ${tpl.created_by_name}`}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-link btn-sm p-1 text-slate-300 hover:text-danger border-none flex-shrink-0"
+                      title="Delete Template"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTemplateToDelete(tpl);
+                        setShowDeleteTemplateModal(true);
+                      }}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </div>
+      )}
 
       {/* Main filterable list card */}
       <Card className="border-slate-100 shadow-sm rounded-3">
@@ -421,6 +619,18 @@ const DocsHubPage = () => {
                             >
                               <Eye size={12} /> Open Document
                             </Dropdown.Item>
+                            <Dropdown.Item 
+                              className="d-flex align-items-center gap-2 py-1.5 px-3"
+                              onClick={(e) => handleDuplicateDoc(doc, e)}
+                            >
+                              <Copy size={12} /> Duplicate Doc
+                            </Dropdown.Item>
+                            <Dropdown.Item 
+                              className="d-flex align-items-center gap-2 py-1.5 px-3"
+                              onClick={(e) => handleOpenSaveTemplateModal(doc, e)}
+                            >
+                              <BookmarkPlus size={12} /> Save as Template
+                            </Dropdown.Item>
                             <Dropdown.Divider className="my-1 border-slate-100" />
                             <Dropdown.Item 
                               className="d-flex align-items-center gap-2 py-1.5 px-3 text-danger"
@@ -549,6 +759,87 @@ const DocsHubPage = () => {
         message="Are you sure you want to permanently delete this document?"
         confirmText="Delete"
         loading={deletingDoc}
+      />
+
+      {/* Save as Template Modal */}
+      <Modal
+        show={showSaveTemplateModal}
+        onHide={() => setShowSaveTemplateModal(false)}
+        centered
+        className="zbot-premium-modal"
+      >
+        <Form onSubmit={handleSaveAsTemplate}>
+          <Modal.Header closeButton className="border-bottom border-slate-100 pb-2">
+            <Modal.Title className="fw-bold text-slate-800" style={{ fontSize: "16px" }}>
+              Save Document as Template
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body className="py-3">
+            <Form.Group className="mb-3">
+              <Form.Label className="text-slate-500 font-bold text-[10px] uppercase">Template Name</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder="e.g. Monthly Expense Report"
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                required
+                className="text-xs border-slate-200"
+                style={{ fontSize: "12px", height: "36px" }}
+              />
+            </Form.Group>
+            <Form.Group className="mb-1">
+              <Form.Label className="text-slate-500 font-bold text-[10px] uppercase">Description (Optional)</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder="Brief summary of when to use this template"
+                value={templateDesc}
+                onChange={(e) => setTemplateDesc(e.target.value)}
+                className="text-xs border-slate-200"
+                style={{ fontSize: "12px", height: "36px" }}
+              />
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer className="border-top border-slate-100 pt-2">
+            <Button
+              variant="outline-secondary"
+              size="sm"
+              className="text-xs font-semibold px-3 border-slate-200"
+              onClick={() => setShowSaveTemplateModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              type="submit"
+              size="sm"
+              className="text-xs font-bold px-3 bg-purple-600 hover:bg-purple-700 border-none d-flex align-items-center gap-1.5"
+              disabled={savingTemplate}
+            >
+              {savingTemplate ? (
+                <>
+                  <Spinner size="sm" animation="border" style={{ width: "12px", height: "12px" }} />
+                  Saving...
+                </>
+              ) : (
+                "Save Template"
+              )}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
+
+      {/* Delete template confirmation modal */}
+      <DeleteConfirmModal
+        show={showDeleteTemplateModal}
+        onHide={() => {
+          setShowDeleteTemplateModal(false);
+          setTemplateToDelete(null);
+        }}
+        onConfirm={handleDeleteTemplateConfirm}
+        title="Delete Template"
+        message={`Are you sure you want to delete the template "${templateToDelete?.name || ""}"?`}
+        confirmText="Delete"
+        loading={deletingTemplate}
       />
     </Container>
   );

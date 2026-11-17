@@ -218,6 +218,36 @@ export const getWorkspaceDoc = async (docId) => {
   return response.data;
 };
 
+export const duplicateWorkspaceDoc = async (docId, data = {}) => {
+  const response = await api.post(`/boards/docs/${docId}/duplicate`, data);
+  return response.data;
+};
+
+export const saveDocAsTemplate = async (docId, templateData) => {
+  const response = await api.post(`/boards/docs/${docId}/save-as-template`, templateData);
+  return response.data;
+};
+
+export const getDocTemplates = async () => {
+  const response = await api.get("/boards/doc-templates");
+  return response.data;
+};
+
+export const createDocTemplate = async (templateData) => {
+  const response = await api.post("/boards/doc-templates", templateData);
+  return response.data;
+};
+
+export const updateDocTemplate = async (templateId, templateData) => {
+  const response = await api.put(`/boards/doc-templates/${templateId}`, templateData);
+  return response.data;
+};
+
+export const deleteDocTemplate = async (templateId) => {
+  const response = await api.delete(`/boards/doc-templates/${templateId}`);
+  return response.data;
+};
+
 export const createBoardFromTemplate = async (templateId, boardData) => {
   const response = await api.post(`/boards/create-from-template/${templateId}`, boardData);
   return response.data;
