@@ -5,10 +5,10 @@ import {
   Share2, MessageSquare, Download, Send, Star, X, Unlock, Lock, 
   Link2, Undo2, Redo2, CheckSquare, Globe, Users, Folder, Sparkles,
   Calendar as CalendarIcon, Clock, Mail, Bell, BellOff, Paperclip,
-  Menu, Search, Printer, Paintbrush, Image
+  Menu, Search, Printer, Paintbrush, Image, Copy, BookmarkPlus
 } from "lucide-react";
 import api from "../../../utils/api";
-import { getWorkspaceDocs, getWorkspaceDoc, createWorkspaceDoc, updateWorkspaceDoc, deleteWorkspaceDoc } from "../../../services/boardService";
+import { getWorkspaceDocs, getWorkspaceDoc, createWorkspaceDoc, updateWorkspaceDoc, deleteWorkspaceDoc, duplicateWorkspaceDoc, saveDocAsTemplate } from "../../../services/boardService";
 import { useNavigate } from "react-router-dom";
 import DOMPurify from "dompurify";
 import { toast } from "react-toastify";
@@ -47,6 +47,13 @@ const DocsView = ({ boardId, assignees = [], departments = [] }) => {
   const [showShareModal, setShowShareModal] = useState(false);
   const [inviteUserId, setInviteUserId] = useState("");
   const [inviteStatus, setInviteStatus] = useState("");
+
+  // Save as Template & Duplicate states
+  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [templateDesc, setTemplateDesc] = useState("");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   
   // Font styling options
   const [currentFont, setCurrentFont] = useState("Outfit");
@@ -623,6 +630,58 @@ const DocsView = ({ boardId, assignees = [], departments = [] }) => {
     document.body.removeChild(link);
   };
 
+  const handleDuplicateCurrentDoc = async () => {
+    if (!selectedDoc || duplicating) return;
+    try {
+      setDuplicating(true);
+      const currentHtml = editorRef.current ? editorRef.current.innerHTML : editHtml;
+      if (selectedDoc.id && currentHtml !== selectedDoc.content_html) {
+        await updateWorkspaceDoc(selectedDoc.id, { title: editTitle, content_html: currentHtml });
+      }
+      const copy = await duplicateWorkspaceDoc(selectedDoc.id);
+      setDocs(prev => [...prev, copy]);
+      toast.success(`Duplicated as "${copy.title}"`);
+      if (!boardId) {
+        navigate(`/admin/docs?docId=${copy.id}`);
+      }
+      handleSelectDoc(copy);
+    } catch (err) {
+      console.error("Failed to duplicate doc", err);
+      toast.error("Failed to duplicate document");
+    } finally {
+      setDuplicating(false);
+    }
+  };
+
+  const handleOpenSaveTemplate = () => {
+    if (!selectedDoc) return;
+    setTemplateName(`${editTitle || selectedDoc.title} Template`);
+    setTemplateDesc(`Reusable template based on "${editTitle || selectedDoc.title}"`);
+    setShowSaveTemplateModal(true);
+  };
+
+  const handleSaveCurrentAsTemplate = async (e) => {
+    if (e) e.preventDefault();
+    if (!selectedDoc) return;
+    try {
+      setSavingTemplate(true);
+      const currentHtml = editorRef.current ? editorRef.current.innerHTML : editHtml;
+      await saveDocAsTemplate(selectedDoc.id, {
+        name: templateName.trim() || editTitle || selectedDoc.title,
+        description: templateDesc.trim(),
+        category: "Custom",
+        content_html: currentHtml,
+      });
+      toast.success("Saved as reusable template in Docs Hub!");
+      setShowSaveTemplateModal(false);
+    } catch (err) {
+      console.error("Failed to save as template", err);
+      toast.error("Failed to save as template");
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
   // Share Operations
   const handleTogglePublicShare = async (e) => {
     const isPublic = e.target.checked;
@@ -857,6 +916,27 @@ const DocsView = ({ boardId, assignees = [], departments = [] }) => {
                       style={{ fontSize: "11px", borderRadius: "6px" }}
                     >
                       <Share2 size={12} /> Share
+                    </Button>
+                    <Button 
+                      variant="outline-secondary" 
+                      size="sm" 
+                      onClick={handleDuplicateCurrentDoc}
+                      disabled={duplicating}
+                      className="d-flex align-items-center gap-1 font-semibold py-1 px-2.5 border-slate-200 text-slate-600"
+                      style={{ fontSize: "11px", borderRadius: "6px" }}
+                      title="Create a copy of this document"
+                    >
+                      <Copy size={12} /> {duplicating ? "Copying..." : "Duplicate"}
+                    </Button>
+                    <Button 
+                      variant="outline-secondary" 
+                      size="sm" 
+                      onClick={handleOpenSaveTemplate}
+                      className="d-flex align-items-center gap-1 font-semibold py-1 px-2.5 border-slate-200 text-slate-600"
+                      style={{ fontSize: "11px", borderRadius: "6px" }}
+                      title="Save this document format as a reusable template"
+                    >
+                      <BookmarkPlus size={12} /> Save as Template
                     </Button>
                     {saving ? (
                       <span className="badge bg-warning-subtle text-warning border border-warning-subtle d-flex align-items-center gap-1 py-1" style={{ fontSize: "10px" }}>
@@ -1626,6 +1706,73 @@ const DocsView = ({ boardId, assignees = [], departments = [] }) => {
         confirmText="Delete"
         loading={deletingDoc}
       />
+
+      {/* Save as Template Modal */}
+      <Modal
+        show={showSaveTemplateModal}
+        onHide={() => setShowSaveTemplateModal(false)}
+        centered
+        className="zbot-premium-modal"
+      >
+        <Form onSubmit={handleSaveCurrentAsTemplate}>
+          <Modal.Header closeButton className="border-bottom border-slate-100 pb-2">
+            <Modal.Title className="fw-bold text-slate-800" style={{ fontSize: "15px" }}>
+              Save Document as Template
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body className="py-3">
+            <Form.Group className="mb-3">
+              <Form.Label className="text-slate-500 font-bold text-[10px] uppercase">Template Name</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder="e.g. Monthly Expense Report"
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                required
+                className="text-xs border-slate-200"
+                style={{ fontSize: "12px", height: "36px" }}
+              />
+            </Form.Group>
+            <Form.Group className="mb-1">
+              <Form.Label className="text-slate-500 font-bold text-[10px] uppercase">Description (Optional)</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder="Brief summary of when to use this template"
+                value={templateDesc}
+                onChange={(e) => setTemplateDesc(e.target.value)}
+                className="text-xs border-slate-200"
+                style={{ fontSize: "12px", height: "36px" }}
+              />
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer className="border-top border-slate-100 pt-2">
+            <Button
+              variant="outline-secondary"
+              size="sm"
+              className="text-xs font-semibold px-3 border-slate-200"
+              onClick={() => setShowSaveTemplateModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              type="submit"
+              size="sm"
+              className="text-xs font-bold px-3 bg-purple-600 hover:bg-purple-700 border-none d-flex align-items-center gap-1.5"
+              disabled={savingTemplate}
+            >
+              {savingTemplate ? (
+                <>
+                  <Spinner size="sm" animation="border" style={{ width: "12px", height: "12px" }} />
+                  Saving...
+                </>
+              ) : (
+                "Save Template"
+              )}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
     </div>
   );
 };
