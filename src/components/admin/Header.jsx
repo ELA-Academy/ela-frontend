@@ -257,7 +257,7 @@ const Header = ({ collapsed, setCollapsed }) => {
   };
 
   return (
-    <header className="hostinger-topbar h-20 bg-white flex items-center justify-between px-8 border-b border-slate-100 sticky top-0 z-40">
+    <header className="hostinger-topbar bg-white flex items-center justify-between border-b border-slate-200 sticky top-0 z-40" style={{ height: "58px", minHeight: "58px", maxHeight: "58px", padding: "0 20px" }}>
       
       {/* Mobile Toggle Button */}
       <button
@@ -270,8 +270,8 @@ const Header = ({ collapsed, setCollapsed }) => {
       </button>
 
       {/* Brand logo */}
-      <div className="hostinger-brand-mark flex items-center gap-3">
-        <img src="/images/ELA-logo.png" alt="ELA Academy" className="hostinger-logo-image h-8" />
+      <div className="hostinger-brand-mark flex items-center gap-2.5" style={{ padding: "4px 10px" }}>
+        <img src="/images/ELA-logo.png" alt="ELA Academy" className="hostinger-logo-image" style={{ height: "28px", width: "auto" }} />
         {upcomingReminder && (
           <>
             <div className="h-4 w-[1px] bg-slate-200" />
