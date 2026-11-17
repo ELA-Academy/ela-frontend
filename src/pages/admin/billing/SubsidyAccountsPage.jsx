@@ -187,9 +187,22 @@ const SubsidyAccountsPage = () => {
 
   return (
     <>
-      <div className="d-flex justify-content-between align-items-center">
-        <h1 className="page-title">Accounting</h1>
-        <Button onClick={() => setShowCreateModal(true)}>Create Subsidy</Button>
+      <div className="d-flex justify-content-between align-items-center mb-2">
+        <h1 className="page-title m-0">Accounting</h1>
+        <Button
+          size="sm"
+          onClick={() => setShowCreateModal(true)}
+          style={{
+            backgroundColor: "#673de6",
+            borderColor: "#673de6",
+            borderRadius: "7px",
+            fontSize: "0.73rem",
+            fontWeight: "600",
+            padding: "4px 12px"
+          }}
+        >
+          + Create Subsidy
+        </Button>
       </div>
       <AccountingNav />
       <div className="content-card">
