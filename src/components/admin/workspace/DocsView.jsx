@@ -5,7 +5,9 @@ import {
   Share2, MessageSquare, Download, Send, Star, X, Unlock, Lock, 
   Link2, Undo2, Redo2, CheckSquare, Globe, Users, Folder, Sparkles,
   Calendar as CalendarIcon, Clock, Mail, Bell, BellOff, Paperclip,
-  Menu, Search, Printer, Paintbrush, Image, Copy, BookmarkPlus
+  Menu, Search, Printer, Paintbrush, Image, Copy, BookmarkPlus,
+  AlignLeft, AlignCenter, AlignRight, AlignJustify, List, ListOrdered,
+  IndentIncrease, IndentDecrease, Table2, Eraser, Highlighter, Eye
 } from "lucide-react";
 import api from "../../../utils/api";
 import { getWorkspaceDocs, getWorkspaceDoc, createWorkspaceDoc, updateWorkspaceDoc, deleteWorkspaceDoc, duplicateWorkspaceDoc, saveDocAsTemplate } from "../../../services/boardService";
@@ -54,6 +56,12 @@ const DocsView = ({ boardId, assignees = [], departments = [] }) => {
   const [templateDesc, setTemplateDesc] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
+
+  // Read-Only / View-Only Mode
+  const [isReadOnly, setIsReadOnly] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("mode") === "view" || params.get("readonly") === "1";
+  });
   
   // Font styling options
   const [currentFont, setCurrentFont] = useState("Outfit");
@@ -816,7 +824,38 @@ const DocsView = ({ boardId, assignees = [], departments = [] }) => {
   }
 
   return (
-    <div className="workspace-docs-layout" style={{ display: "flex", height: "calc(100vh - 160px)", overflow: "hidden" }}>
+    <div
+      className="workspace-docs-layout"
+      style={{
+        display: "flex",
+        height: boardId ? "calc(100vh - 160px)" : "calc(100vh - 72px)",
+        overflow: "hidden",
+        backgroundColor: "#f1f5f9"
+      }}
+    >
+      <style>{`
+        .zbot-google-doc-editor {
+          line-height: 1.65;
+          word-wrap: break-word;
+        }
+        .zbot-google-doc-editor h1 { font-size: 26px; font-weight: 700; color: #0f172a; margin: 0 0 14px; line-height: 1.25; }
+        .zbot-google-doc-editor h2 { font-size: 20px; font-weight: 700; color: #1e293b; margin: 20px 0 10px; line-height: 1.3; }
+        .zbot-google-doc-editor h3 { font-size: 16px; font-weight: 700; color: #1e293b; margin: 16px 0 8px; line-height: 1.35; }
+        .zbot-google-doc-editor p { margin: 0 0 10px; }
+        .zbot-google-doc-editor ul, .zbot-google-doc-editor ol { margin: 8px 0 12px; padding-left: 24px; }
+        .zbot-google-doc-editor li { margin-bottom: 4px; }
+        .zbot-google-doc-editor blockquote { border-left: 3px solid #cbd5e1; padding-left: 14px; color: #64748b; font-style: italic; margin: 12px 0; }
+        .zbot-google-doc-editor hr { border: 0; border-top: 1px solid #e2e8f0; margin: 16px 0; }
+        .zbot-google-doc-editor table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13.5px; }
+        .zbot-google-doc-editor th, .zbot-google-doc-editor td { border: 1px solid #cbd5e1; padding: 8px 10px; vertical-align: top; }
+        .zbot-google-doc-editor th { background-color: #f8fafc; font-weight: 600; color: #1e293b; }
+        .doc-toolbar-icon-btn {
+          width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
+          border: 0; background: transparent; color: #475569; border-radius: 6px; padding: 0; transition: background 0.12s, color 0.12s;
+        }
+        .doc-toolbar-icon-btn:hover { background-color: #f1f5f9; color: #0f172a; }
+        .doc-toolbar-sep { width: 1px; height: 18px; background-color: #e2e8f0; margin: 0 4px; display: inline-block; flex-shrink: 0; }
+      `}</style>
       {error && <Alert variant="danger" dismissible onClose={() => setError("")} style={{ position: "fixed", top: 20, right: 20, zIndex: 1100 }}>{error}</Alert>}
       
       {/* Sidebar List of Documents */}
@@ -875,463 +914,454 @@ const DocsView = ({ boardId, assignees = [], departments = [] }) => {
       )}
 
       {/* Editor Surface */}
-      <div className="docs-content-editor flex-grow-1 bg-white d-flex" style={{ overflow: "hidden" }}>
+      <div className="docs-content-editor flex-grow-1 d-flex flex-column" style={{ overflow: "hidden", backgroundColor: "#f1f5f9" }}>
         {selectedDoc ? (
-          <div className="d-flex flex-grow-1" style={{ overflow: "hidden" }}>
-            
-            {/* Editor page content */}
-            <div className="editor-workspace flex-grow-1 p-3 d-flex flex-column" style={{ overflowY: "auto", flex: 1 }}>
-              <div className="doc-editor-surface bg-white d-flex flex-column p-4 mx-auto shadow-sm" style={{ maxWidth: "850px", width: "100%", minHeight: "100%", display: "flex", flexDirection: "column" }}>
-                
-                {/* Header controls */}
-                <div className="d-flex justify-content-between align-items-center pb-2 border-bottom mb-3">
-                  <div className="d-flex align-items-center gap-2">
-                    {!boardId ? (
-                      <Button
-                        variant="outline-secondary"
-                        size="sm"
-                        onClick={() => navigate("/admin/docs")}
-                        className="d-flex align-items-center gap-1 border-slate-200 text-slate-600 hover:text-slate-800 rounded-3 me-1"
-                        style={{ fontSize: "11px", fontWeight: "600" }}
-                      >
-                        <ArrowLeft size={13} /> Back to Hub
-                      </Button>
-                    ) : (
-                      <Button 
-                        variant="outline-secondary" 
-                        size="sm" 
-                        onClick={() => setShowLeftSidebar(prev => !prev)}
-                        className="d-flex align-items-center justify-content-center p-1.5 border-slate-200 text-slate-500 hover:text-slate-700 rounded-3 me-1"
-                        style={{ width: "28px", height: "28px" }}
-                        title="Toggle Docs List"
-                      >
-                        <Menu size={14} />
-                      </Button>
-                    )}
-                    <Button 
-                      variant="outline-primary" 
-                      size="sm" 
-                      onClick={() => setShowShareModal(true)}
-                      className="d-flex align-items-center gap-1 font-bold py-1 px-2.5"
-                      style={{ fontSize: "11px", borderRadius: "6px" }}
-                    >
-                      <Share2 size={12} /> Share
-                    </Button>
-                    <Button 
-                      variant="outline-secondary" 
-                      size="sm" 
-                      onClick={handleDuplicateCurrentDoc}
-                      disabled={duplicating}
-                      className="d-flex align-items-center gap-1 font-semibold py-1 px-2.5 border-slate-200 text-slate-600"
-                      style={{ fontSize: "11px", borderRadius: "6px" }}
-                      title="Create a copy of this document"
-                    >
-                      <Copy size={12} /> {duplicating ? "Copying..." : "Duplicate"}
-                    </Button>
-                    <Button 
-                      variant="outline-secondary" 
-                      size="sm" 
-                      onClick={handleOpenSaveTemplate}
-                      className="d-flex align-items-center gap-1 font-semibold py-1 px-2.5 border-slate-200 text-slate-600"
-                      style={{ fontSize: "11px", borderRadius: "6px" }}
-                      title="Save this document format as a reusable template"
-                    >
-                      <BookmarkPlus size={12} /> Save as Template
-                    </Button>
-                    {saving ? (
-                      <span className="badge bg-warning-subtle text-warning border border-warning-subtle d-flex align-items-center gap-1 py-1" style={{ fontSize: "10px" }}>
-                        <Spinner size="sm" animation="border" style={{ width: 8, height: 8 }} /> Saving...
-                      </span>
-                    ) : (
-                      <span className="badge bg-success-subtle text-success border border-success-subtle d-flex align-items-center gap-1 py-1" style={{ fontSize: "10px" }}>
-                        <CheckCircle size={8} /> Saved
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div className="d-flex align-items-center gap-1">
-                    <button 
-                      type="button" 
-                      onClick={() => { 
-                        if (showRightSidebar && rightSidebarTab === "comments") {
-                          setShowRightSidebar(false);
-                        } else {
-                          setShowRightSidebar(true);
-                          setRightSidebarTab("comments");
-                        }
-                      }}
-                      className={`btn btn-link text-slate-500 p-1.5 hover:bg-slate-50 rounded-2 position-relative ${showRightSidebar && rightSidebarTab === "comments" ? "text-primary bg-slate-50" : ""}`}
-                      title="Comments"
-                    >
-                      <MessageSquare size={15} />
-                      {comments.filter(c => !c.resolved).length > 0 && (
-                        <span className="position-absolute top-0 end-0 bg-primary text-white rounded-circle font-bold d-flex align-items-center justify-content-center" style={{ width: 12, height: 12, fontSize: "7px" }}>
-                          {comments.filter(c => !c.resolved).length}
-                        </span>
-                      )}
-                    </button>
-                    <button 
-                      type="button" 
-                      onClick={() => { 
-                        if (showRightSidebar && rightSidebarTab === "export") {
-                          setShowRightSidebar(false);
-                        } else {
-                          setShowRightSidebar(true);
-                          setRightSidebarTab("export");
-                        }
-                      }}
-                      className={`btn btn-link text-slate-500 p-1.5 hover:bg-slate-50 rounded-2 ${showRightSidebar && rightSidebarTab === "export" ? "text-primary bg-slate-50" : ""}`}
-                      title="Export Options"
-                    >
-                      <Download size={15} />
-                    </button>
-                    {showRightSidebar && (
-                      <button 
-                        type="button" 
-                        onClick={() => setShowRightSidebar(false)}
-                        className="btn btn-link text-slate-400 p-1.5 hover:bg-slate-50 rounded-2"
-                        title="Close Sidebar"
-                      >
-                        <X size={15} />
-                      </button>
-                    )}
-                  </div>
-                </div>
+          <div className="d-flex flex-column flex-grow-1" style={{ overflow: "hidden" }}>
 
-                {/* Doc Link Badge & Title */}
-                <div className="mb-2">
-                  <button 
-                    type="button" 
-                    className="btn btn-link text-slate-400 p-0 text-decoration-none text-xs font-bold d-inline-flex align-items-center gap-1"
-                    onClick={() => toast.info("Link Task or Doc is only active when referencing boards")}
+            {/* Top Google-Docs Style Header Bar */}
+            <div className="bg-white border-bottom border-slate-200 px-3 py-2 d-flex justify-content-between align-items-center gap-2 flex-wrap" style={{ flexShrink: 0, zIndex: 20 }}>
+              <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ minWidth: "240px" }}>
+                {!boardId ? (
+                  <Button
+                    variant="light"
+                    size="sm"
+                    onClick={() => navigate("/admin/docs")}
+                    className="d-flex align-items-center justify-content-center p-1.5 border border-slate-200 text-slate-600 hover:text-slate-900 rounded-3"
+                    style={{ width: "30px", height: "30px" }}
+                    title="Back to Document Library"
                   >
-                    <Link2 size={12} /> Link Task or Doc
-                  </button>
+                    <ArrowLeft size={15} />
+                  </Button>
+                ) : (
+                  <Button
+                    variant="light"
+                    size="sm"
+                    onClick={() => setShowLeftSidebar(prev => !prev)}
+                    className="d-flex align-items-center justify-content-center p-1.5 border border-slate-200 text-slate-600 hover:text-slate-900 rounded-3"
+                    style={{ width: "30px", height: "30px" }}
+                    title="Toggle Space Docs List"
+                  >
+                    <Menu size={15} />
+                  </Button>
+                )}
+
+                <div
+                  className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{ width: "30px", height: "30px", backgroundColor: "#eef2ff", color: "#4f46e5" }}
+                >
+                  <FileText size={16} />
                 </div>
-                
-                <input
-                  type="text"
-                  className="doc-title-input font-bold text-slate-800 border-0 mb-2 w-100"
-                  style={{ fontSize: "26px", outline: "none", letterSpacing: "-0.02em" }}
-                  value={editTitle}
-                  onChange={handleTitleChange}
-                  placeholder="New Document"
-                />
 
-                <div className="d-flex align-items-center gap-2 text-slate-400 text-xs mb-3">
-                  <span className="d-inline-flex align-items-center justify-content-center bg-purple-500 text-white rounded-circle font-bold" style={{ width: 16, height: 16, fontSize: "8px" }}>
-                    {selectedDoc.created_by_name?.charAt(0).toUpperCase()}
-                  </span>
-                  <span>{selectedDoc.created_by_name}</span>
-                  <span>•</span>
-                </div>
-                {/* Google Docs Styling WYSIWYG Toolbar */}
-                <div className="doc-formatting-toolbar d-flex align-items-center gap-1 bg-transparent border-0 px-0 pb-2 mb-3 flex-wrap align-middle" style={{ zIndex: 10, borderBottom: "1px solid #eceff1" }}>
-                  
-                  {/* Search */}
-                  <button type="button" className="btn btn-light border-0 bg-transparent p-1 text-slate-700 hover:bg-slate-100 rounded" title="Search" onClick={() => toast.info("Search within Doc is active")}>
-                    <Search size={13} />
-                  </button>
-
-                  {/* Undo / Redo */}
-                  <button type="button" onClick={() => executeFormat("undo")} className="btn btn-light border-0 bg-transparent p-1 text-slate-700 hover:bg-slate-100 rounded" title="Undo" style={{ width: "24px", height: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <Undo2 size={12} />
-                  </button>
-                  <button type="button" onClick={() => executeFormat("redo")} className="btn btn-light border-0 bg-transparent p-1 text-slate-700 hover:bg-slate-100 rounded" title="Redo" style={{ width: "24px", height: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <Redo2 size={12} />
-                  </button>
-
-                  {/* Print / Format Painter */}
-                  <button type="button" onClick={() => window.print()} className="btn btn-light border-0 bg-transparent p-1 text-slate-700 hover:bg-slate-100 rounded" title="Print" style={{ width: "24px", height: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <Printer size={12} />
-                  </button>
-                  <button type="button" className="btn btn-light border-0 bg-transparent p-1 text-slate-700 hover:bg-slate-100 rounded" title="Paint Format" style={{ width: "24px", height: "24px", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => toast.info("Format Paint copied!")}>
-                    <Paintbrush size={12} />
-                  </button>
-
-                  <span className="toolbar-divider" />
-
-                  {/* Zoom scale dropdown */}
-                  <Dropdown>
-                    <Dropdown.Toggle size="sm" variant="light" className="text-slate-700 bg-white border border-slate-300 text-xs py-1 px-2 d-flex align-items-center gap-1" style={{ height: "26px", fontSize: "11px" }}>
-                      <span>{zoomScale}%</span>
-                    </Dropdown.Toggle>
-                    <Dropdown.Menu className="shadow border-slate-100" style={{ fontSize: "11px", minWidth: "80px" }}>
-                      {[50, 75, 90, 100, 125, 150].map(scale => (
-                        <Dropdown.Item key={scale} onClick={() => setZoomScale(scale)}>
-                          {scale}%
-                        </Dropdown.Item>
-                      ))}
-                    </Dropdown.Menu>
-                  </Dropdown>
-
-                  <span className="toolbar-divider" />
-
-                  {/* Paragraph styles dropdown */}
-                  <Dropdown>
-                    <Dropdown.Toggle size="sm" variant="light" className="text-slate-700 bg-white border border-slate-300 p-1 text-xs d-flex align-items-center justify-content-center" style={{ height: "26px", fontSize: "11px" }}>
-                      <span>Normal text</span>
-                    </Dropdown.Toggle>
-                    <Dropdown.Menu className="shadow border-slate-100" style={{ fontSize: "11px" }}>
-                      <Dropdown.Item onClick={() => executeFormat("formatBlock", "P")}>Normal text</Dropdown.Item>
-                      <Dropdown.Item onClick={() => executeFormat("formatBlock", "H1")} style={{ fontSize: "18px", fontWeight: "bold" }}>Heading 1</Dropdown.Item>
-                      <Dropdown.Item onClick={() => executeFormat("formatBlock", "H2")} style={{ fontSize: "16px", fontWeight: "bold" }}>Heading 2</Dropdown.Item>
-                      <Dropdown.Item onClick={() => executeFormat("formatBlock", "H3")} style={{ fontSize: "14px", fontWeight: "bold" }}>Heading 3</Dropdown.Item>
-                      <Dropdown.Item onClick={() => executeFormat("formatBlock", "BLOCKQUOTE")} style={{ fontStyle: "italic", borderLeft: "3px solid #ddd", paddingLeft: "8px" }}>Subtitle</Dropdown.Item>
-                      <Dropdown.Item onClick={() => executeFormat("formatBlock", "PRE")} style={{ fontFamily: "monospace", backgroundColor: "#f8fafc" }}>Code Block</Dropdown.Item>
-                    </Dropdown.Menu>
-                  </Dropdown>
-
-                  <span className="toolbar-divider" />
-
-                  {/* Font Select */}
-                  <Dropdown>
-                    <Dropdown.Toggle size="sm" variant="light" className="text-slate-700 bg-white border border-slate-300 text-xs py-1 px-2 d-flex align-items-center gap-1" style={{ height: "26px", fontSize: "11px" }}>
-                      <span>{currentFont}</span>
-                    </Dropdown.Toggle>
-                    <Dropdown.Menu className="shadow border-slate-100" style={{ fontSize: "11px" }}>
-                      {["Outfit", "Arial", "Georgia", "Courier New", "Times New Roman"].map(font => (
-                        <Dropdown.Item key={font} onClick={() => handleFontFamily(font)} style={{ fontFamily: font }}>
-                          {font}
-                        </Dropdown.Item>
-                      ))}
-                    </Dropdown.Menu>
-                  </Dropdown>
-
-                  <span className="toolbar-divider" />
-
-                  {/* Font Size controls */}
-                  <div className="d-flex align-items-center">
-                    <button type="button" className="doc-fontsize-btn" onClick={decrementFontSize}>-</button>
-                    <input 
-                      type="text" 
-                      className="doc-fontsize-input" 
-                      value={parseInt(currentFontSize, 10) || 14} 
-                      onChange={(e) => handleFontSizeChange(e.target.value)}
+                <div className="d-flex flex-column flex-grow-1" style={{ maxWidth: "420px" }}>
+                  <div className="d-flex align-items-center gap-2">
+                    <input
+                      type="text"
+                      readOnly={isReadOnly}
+                      className="fw-bold text-slate-900 border-0 bg-transparent p-0 w-100"
+                      style={{ fontSize: "15px", outline: "none", cursor: isReadOnly ? "default" : "text" }}
+                      value={editTitle}
+                      onChange={handleTitleChange}
+                      placeholder="Untitled Document"
                     />
-                    <button type="button" className="doc-fontsize-btn" onClick={incrementFontSize}>+</button>
                   </div>
+                  <div className="d-flex align-items-center gap-2 text-slate-400" style={{ fontSize: "11px" }}>
+                    <span>By {selectedDoc.created_by_name}</span>
+                    <span>•</span>
+                    {saving ? (
+                      <span className="text-amber-600 d-inline-flex align-items-center gap-1 fw-semibold">
+                        <Spinner size="sm" animation="border" style={{ width: 9, height: 9 }} /> Saving...
+                      </span>
+                    ) : (
+                      <span className="text-emerald-600 d-inline-flex align-items-center gap-1 fw-semibold">
+                        <CheckCircle size={10} /> Saved
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
 
-                  <span className="toolbar-divider" />
+              {/* Right Action Controls */}
+              <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                <Button
+                  variant={isReadOnly ? "dark" : "outline-secondary"}
+                  size="sm"
+                  onClick={() => setIsReadOnly(prev => !prev)}
+                  className={`d-flex align-items-center gap-1.5 fw-semibold py-1 px-2.5 rounded-3 ${isReadOnly ? "" : "border-slate-200 text-slate-700"}`}
+                  style={{ fontSize: "11.5px" }}
+                  title={isReadOnly ? "Switch to Edit Mode" : "Switch to Read-Only / View Mode"}
+                >
+                  {isReadOnly ? <><Edit3 size={13} /> Edit Mode</> : <><Eye size={13} /> Read Only</>}
+                </Button>
 
-                  {/* Basic Formatting */}
-                  <button type="button" onClick={() => executeFormat("bold")} className="btn btn-light border-0 bg-transparent p-1 text-slate-700 hover:bg-slate-100 rounded font-bold" title="Bold" style={{ width: "24px", height: "24px" }}>B</button>
-                  <button type="button" onClick={() => executeFormat("italic")} className="btn btn-light border-0 bg-transparent p-1 text-slate-700 hover:bg-slate-100 rounded" title="Italic" style={{ width: "24px", height: "24px", fontStyle: "italic" }}>I</button>
-                  <button type="button" onClick={() => executeFormat("underline")} className="btn btn-light border-0 bg-transparent p-1 text-slate-700 hover:bg-slate-100 rounded" title="Underline" style={{ width: "24px", height: "24px", textDecoration: "underline" }}>U</button>
-                  <button type="button" onClick={() => executeFormat("strikeThrough")} className="btn btn-light border-0 bg-transparent p-1 text-slate-700 hover:bg-slate-100 rounded" title="Strikethrough" style={{ width: "24px", height: "24px", textDecoration: "line-through" }}>S</button>
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  onClick={handleExportPDF}
+                  className="d-flex align-items-center gap-1.5 fw-semibold py-1 px-2.5 border-slate-200 text-slate-700 rounded-3"
+                  style={{ fontSize: "11.5px" }}
+                  title="Download / Print PDF"
+                >
+                  <Download size={13} /> Download PDF
+                </Button>
 
-                  {/* Colors Dropdown */}
-                  <Dropdown>
-                    <Dropdown.Toggle size="sm" variant="light" className="btn-light bg-transparent text-slate-700 border-0 p-1 rounded d-flex align-items-center justify-content-center" style={{ width: "24px", height: "24px" }} title="Text Color">
-                      <span className="font-bold text-xs" style={{ color: "#673de6", textDecoration: "underline" }}>A</span>
-                    </Dropdown.Toggle>
-                    <Dropdown.Menu className="shadow border-0 p-2" style={{ width: "160px" }}>
-                      <span className="text-slate-400 font-bold d-block mb-1 text-[9px] uppercase">Text Color</span>
-                      <div className="d-flex flex-wrap gap-1">
-                        {["#334155", "#673de6", "#e11d48", "#16a34a", "#ea580c", "#ca8a04", "#2563eb", "#db2777"].map(color => (
-                          <div 
-                            key={color} 
-                            onClick={() => executeFormat("foreColor", color)}
-                            style={{ width: "18px", height: "18px", borderRadius: "3px", backgroundColor: color, cursor: "pointer", border: "1px solid #cbd5e1" }}
-                          />
-                        ))}
-                      </div>
-                      <Dropdown.Divider />
-                      <span className="text-slate-400 font-bold d-block mb-1 text-[9px] uppercase">Highlight Color</span>
-                      <div className="d-flex flex-wrap gap-1">
-                        {["#ffffff", "#fef08a", "#bbf7d0", "#bfdbfe", "#fbcfe8", "#fed7aa", "#ddd6fe", "#cbd5e1"].map(color => (
-                          <div 
-                            key={color} 
-                            onClick={() => executeFormat("backColor", color)}
-                            style={{ width: "18px", height: "18px", borderRadius: "3px", backgroundColor: color, cursor: "pointer", border: "1px solid #cbd5e1" }}
-                          />
-                        ))}
-                      </div>
-                    </Dropdown.Menu>
-                  </Dropdown>
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  onClick={handleDuplicateCurrentDoc}
+                  disabled={duplicating}
+                  className="d-flex align-items-center gap-1.5 fw-semibold py-1 px-2.5 border-slate-200 text-slate-700 rounded-3"
+                  style={{ fontSize: "11.5px" }}
+                  title="Create a copy of this document"
+                >
+                  <Copy size={13} /> {duplicating ? "Copying..." : "Duplicate"}
+                </Button>
 
-                  <span className="toolbar-divider" />
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  onClick={handleOpenSaveTemplate}
+                  className="d-flex align-items-center gap-1.5 fw-semibold py-1 px-2.5 border-slate-200 text-slate-700 rounded-3"
+                  style={{ fontSize: "11.5px" }}
+                  title="Save this document format as a reusable template"
+                >
+                  <BookmarkPlus size={13} /> Save as Template
+                </Button>
 
-                  {/* Inline Link dropdown */}
-                  <Dropdown onToggle={(isOpen) => { if (isOpen) { saveSelection(); setLinkUrl(""); } }}>
-                    <Dropdown.Toggle size="sm" variant="light" className="text-slate-700 bg-transparent border-0 p-1 rounded d-flex align-items-center justify-content-center" style={{ width: "24px", height: "24px" }} title="Insert Link">
-                      <Link2 size={13} />
-                    </Dropdown.Toggle>
-                    <Dropdown.Menu className="p-3 shadow-lg border-0" style={{ width: "260px", zIndex: 1010 }}>
-                      <Form onSubmit={handleLinkApply}>
-                        <Form.Group className="mb-2">
-                          <Form.Label className="text-xs text-slate-500 font-bold">Link URL</Form.Label>
-                          <Form.Control 
-                            size="sm" 
-                            type="text" 
-                            placeholder="https://example.com" 
-                            value={linkUrl} 
-                            onChange={(e) => setLinkUrl(e.target.value)} 
-                            autoFocus
-                          />
-                        </Form.Group>
-                        <div className="d-flex justify-content-end gap-1.5">
-                          <Button size="sm" variant="primary" type="submit" className="text-xs px-3">Apply</Button>
-                        </div>
-                      </Form>
-                    </Dropdown.Menu>
-                  </Dropdown>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setShowShareModal(true)}
+                  className="d-flex align-items-center gap-1.5 fw-semibold py-1 px-2.5 rounded-3 border-0"
+                  style={{ fontSize: "11.5px", backgroundColor: "#673de6" }}
+                >
+                  <Share2 size={13} /> Share
+                </Button>
 
-                  {/* Inline Comment Toggle */}
-                  <button type="button" onClick={() => {
-                    const selection = window.getSelection();
-                    if (selection.toString().trim()) {
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (showRightSidebar && rightSidebarTab === "comments") {
+                      setShowRightSidebar(false);
+                    } else {
                       setShowRightSidebar(true);
                       setRightSidebarTab("comments");
-                    } else {
-                      toast.info("Select text to comment on first!");
                     }
-                  }} className="btn btn-light border-0 bg-transparent p-1 text-slate-700 hover:bg-slate-100 rounded d-flex align-items-center justify-content-center" title="Add Comment" style={{ width: "24px", height: "24px" }}>
-                    <MessageSquare size={13} />
-                  </button>
+                  }}
+                  className={`btn btn-light border border-slate-200 text-slate-600 p-1.5 rounded-3 position-relative ${showRightSidebar && rightSidebarTab === "comments" ? "text-primary bg-slate-100" : ""}`}
+                  title="Comments"
+                  style={{ width: "30px", height: "30px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                >
+                  <MessageSquare size={14} />
+                  {comments.filter(c => !c.resolved).length > 0 && (
+                    <span className="position-absolute top-0 end-0 bg-primary text-white rounded-circle fw-bold d-flex align-items-center justify-content-center" style={{ width: 13, height: 13, fontSize: "8px", transform: "translate(30%, -30%)" }}>
+                      {comments.filter(c => !c.resolved).length}
+                    </span>
+                  )}
+                </button>
 
-                  {/* Inline Image dropdown */}
-                  <Dropdown onToggle={(isOpen) => { if (isOpen) { saveSelection(); setImageUrl(""); } }}>
-                    <Dropdown.Toggle size="sm" variant="light" className="text-slate-700 bg-transparent border-0 p-1 rounded d-flex align-items-center justify-content-center" style={{ width: "24px", height: "24px" }} title="Insert Image">
-                      <Image size={13} />
-                    </Dropdown.Toggle>
-                    <Dropdown.Menu className="p-3 shadow-lg border-0" style={{ width: "260px", zIndex: 1010 }}>
-                      <Form onSubmit={handleImageApply}>
-                        <Form.Group className="mb-2">
-                          <Form.Label className="text-xs text-slate-500 font-bold">Image URL</Form.Label>
-                          <Form.Control 
-                            size="sm" 
-                            type="text" 
-                            placeholder="https://example.com/image.png" 
-                            value={imageUrl} 
-                            onChange={(e) => setImageUrl(e.target.value)} 
-                            autoFocus
-                          />
-                        </Form.Group>
-                        <div className="d-flex justify-content-end gap-1.5">
-                          <Button size="sm" variant="primary" type="submit" className="text-xs px-3">Insert</Button>
-                        </div>
-                      </Form>
-                    </Dropdown.Menu>
-                  </Dropdown>
-
-                  <span className="toolbar-divider" />
-
-                  {/* Alignment Dropdown */}
-                  <Dropdown>
-                    <Dropdown.Toggle size="sm" variant="light" className="text-slate-700 bg-white border border-slate-300 text-xs py-1 px-2 d-flex align-items-center gap-1" style={{ height: "26px", fontSize: "11px" }} title="Alignment">
-                      <span className="font-bold">Align</span>
-                    </Dropdown.Toggle>
-                    <Dropdown.Menu className="shadow border-slate-100" style={{ fontSize: "11px", minWidth: "90px" }}>
-                      <Dropdown.Item onClick={() => executeFormat("justifyLeft")}>Left</Dropdown.Item>
-                      <Dropdown.Item onClick={() => executeFormat("justifyCenter")}>Center</Dropdown.Item>
-                      <Dropdown.Item onClick={() => executeFormat("justifyRight")}>Right</Dropdown.Item>
-                      <Dropdown.Item onClick={() => executeFormat("justifyFull")}>Justify</Dropdown.Item>
-                    </Dropdown.Menu>
-                  </Dropdown>
-
-                  {/* Spacing Dropdown */}
-                  <Dropdown>
-                    <Dropdown.Toggle size="sm" variant="light" className="text-slate-700 bg-white border border-slate-300 text-xs py-1 px-2 d-flex align-items-center gap-1" style={{ height: "26px", fontSize: "11px" }} title="Line Spacing">
-                      <span className="font-bold">Spacing</span>
-                    </Dropdown.Toggle>
-                    <Dropdown.Menu className="shadow border-slate-100" style={{ fontSize: "11px", minWidth: "80px" }}>
-                      {["1.0", "1.15", "1.5", "2.0"].map(spacing => (
-                        <Dropdown.Item key={spacing} onClick={() => {
-                          const selection = window.getSelection();
-                          if (!selection.rangeCount) return;
-                          const range = selection.getRangeAt(0);
-                          const span = document.createElement("span");
-                          span.style.lineHeight = spacing;
-                          span.style.display = "inline-block";
-                          try {
-                            span.appendChild(range.extractContents());
-                            range.insertNode(span);
-                          } catch(e) {
-                            document.execCommand("insertHTML", false, `<span style="line-height:${spacing}; display:inline-block;">${selection.toString()}</span>`);
-                          }
-                          handleEditorInput();
-                        }}>
-                          {spacing}
-                        </Dropdown.Item>
-                      ))}
-                    </Dropdown.Menu>
-                  </Dropdown>
-
-                  <span className="toolbar-divider" />
-
-                  {/* Checklist, Bullet List, Numbered List */}
-                  <button type="button" onClick={handleInsertChecklist} className="btn btn-light border-0 bg-transparent p-1 text-slate-700 hover:bg-slate-100 rounded" title="Checklist" style={{ width: "24px", height: "24px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-                    <CheckSquare size={13} />
-                  </button>
-                  <button type="button" onClick={() => executeFormat("insertUnorderedList")} className="btn btn-light border-0 bg-transparent p-1 text-slate-700 hover:bg-slate-100 rounded font-bold" title="Bullet List" style={{ fontSize: "11px" }}>• List</button>
-                  <button type="button" onClick={() => executeFormat("insertOrderedList")} className="btn btn-light border-0 bg-transparent p-1 text-slate-700 hover:bg-slate-100 rounded font-bold" title="Numbered List" style={{ fontSize: "11px" }}>1. List</button>
-
-                  <span className="toolbar-divider" />
-
-                  {/* Indents */}
-                  <button type="button" onClick={() => executeFormat("outdent")} className="btn btn-light border-0 bg-transparent p-1 text-slate-700 hover:bg-slate-100 rounded text-xs" title="Decrease Indent" style={{ fontWeight: "bold" }}>&lt; Indent</button>
-                  <button type="button" onClick={() => executeFormat("indent")} className="btn btn-light border-0 bg-transparent p-1 text-slate-700 hover:bg-slate-100 rounded text-xs" title="Increase Indent" style={{ fontWeight: "bold" }}>Indent &gt;</button>
-
-                  <span className="toolbar-divider" />
-
-                  {/* Table (Grid table picker dropdown) */}
-                  <Dropdown onToggle={(isOpen) => { if (isOpen) { saveSelection(); setHoveredRow(0); setHoveredCol(0); } }}>
-                    <Dropdown.Toggle size="sm" variant="light" className="text-slate-700 bg-white border border-slate-300 text-xs py-1 px-2 d-flex align-items-center gap-1" style={{ height: "26px", fontSize: "11px" }}>
-                      <span>Table</span>
-                    </Dropdown.Toggle>
-                    <Dropdown.Menu className="p-0 shadow-lg border-0" style={{ zIndex: 1010 }}>
-                      <div className="table-grid-picker p-2 bg-white" style={{ display: "inline-block" }}>
-                        <div className="grid-container" style={{ display: "flex", flexDirection: "column", gap: "2px" }} onMouseLeave={() => { setHoveredRow(0); setHoveredCol(0); }}>
-                          {Array.from({ length: 8 }).map((_, r) => (
-                            <div key={r} style={{ display: "flex", gap: "2px" }}>
-                              {Array.from({ length: 8 }).map((_, c) => {
-                                const rowIndex = r + 1;
-                                const colIndex = c + 1;
-                                const isHighlighted = rowIndex <= hoveredRow && colIndex <= hoveredCol;
-                                return (
-                                  <div
-                                    key={c}
-                                    onMouseEnter={() => { setHoveredRow(rowIndex); setHoveredCol(colIndex); }}
-                                    onClick={() => handleTableGridSelect(rowIndex, colIndex)}
-                                    style={{
-                                      width: "18px",
-                                      height: "18px",
-                                      border: isHighlighted ? "1px solid #1a73e8" : "1px solid #cbd5e1",
-                                      backgroundColor: isHighlighted ? "#e8f0fe" : "transparent",
-                                      cursor: "pointer",
-                                      borderRadius: "2px",
-                                      transition: "background-color 0.1s, border-color 0.1s"
-                                    }}
-                                  />
-                                );
-                              })}
-                            </div>
-                          ))}
-                        </div>
-                        <div className="text-center text-xs text-slate-500 font-bold mt-2" style={{ fontFamily: "Outfit, sans-serif" }}>
-                          {hoveredCol > 0 && hoveredRow > 0 ? `${hoveredCol} x ${hoveredRow}` : "Select size"}
-                        </div>
-                      </div>
-                    </Dropdown.Menu>
-                  </Dropdown>
-
-                  <button type="button" onClick={() => executeFormat("removeFormat")} className="btn btn-light border-0 bg-transparent p-1 text-danger hover:bg-red-50 rounded ms-auto text-xs font-semibold" title="Clear Styles" style={{ padding: "3px 6px" }}>Clear</button>
-                </div>
-
-                {/* ContentEditable Paper-like typing area */}
-                <div 
-                  ref={editorRef}
-                  contentEditable
-                  onInput={handleEditorInput}
-                  onPaste={handlePaste}
-                  className="doc-editable-content-area flex-grow-1 py-2 w-100 zbot-google-doc-editor"
-                  style={{ outline: "none", minHeight: "750px", height: "auto", fontSize: "15px", fontFamily: currentFont, color: "#334155", paddingBottom: "100px", zoom: `${zoomScale}%` }}
-                  suppressContentEditableWarning={true}
-                />
-
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (showRightSidebar && rightSidebarTab === "export") {
+                      setShowRightSidebar(false);
+                    } else {
+                      setShowRightSidebar(true);
+                      setRightSidebarTab("export");
+                    }
+                  }}
+                  className={`btn btn-light border border-slate-200 text-slate-600 p-1.5 rounded-3 ${showRightSidebar && rightSidebarTab === "export" ? "text-primary bg-slate-100" : ""}`}
+                  title="Export Options"
+                  style={{ width: "30px", height: "30px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                >
+                  <FileText size={14} />
+                </button>
               </div>
             </div>
+
+            {/* Formatting Toolbar OR Read-Only Banner */}
+            {isReadOnly ? (
+              <div className="bg-amber-50 border-bottom border-amber-200 px-3 py-1.5 d-flex justify-content-between align-items-center" style={{ flexShrink: 0, fontSize: "12px" }}>
+                <div className="d-flex align-items-center gap-2 text-amber-800 fw-medium">
+                  <Lock size={13} />
+                  <span><strong>Read-Only Mode</strong> — You are viewing this document without editing.</span>
+                </div>
+                <Button
+                  variant="outline-dark"
+                  size="sm"
+                  onClick={() => setIsReadOnly(false)}
+                  className="py-0.5 px-2.5 fw-semibold rounded-2"
+                  style={{ fontSize: "11px" }}
+                >
+                  Switch to Edit
+                </Button>
+              </div>
+            ) : (
+              <div className="bg-white border-bottom border-slate-200 px-3 py-1.5 d-flex align-items-center gap-1 overflow-x-auto" style={{ flexShrink: 0, zIndex: 15 }}>
+                {/* Undo / Redo / Print */}
+                <button type="button" onClick={() => executeFormat("undo")} className="doc-toolbar-icon-btn" title="Undo">
+                  <Undo2 size={14} />
+                </button>
+                <button type="button" onClick={() => executeFormat("redo")} className="doc-toolbar-icon-btn" title="Redo">
+                  <Redo2 size={14} />
+                </button>
+                <button type="button" onClick={() => window.print()} className="doc-toolbar-icon-btn" title="Print">
+                  <Printer size={14} />
+                </button>
+
+                <span className="doc-toolbar-sep" />
+
+                {/* Zoom */}
+                <Dropdown>
+                  <Dropdown.Toggle size="sm" variant="light" className="text-slate-700 bg-transparent border-0 text-xs py-1 px-2 d-flex align-items-center gap-1 fw-medium" style={{ height: "28px", fontSize: "11.5px" }}>
+                    <span>{zoomScale}%</span>
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu className="shadow border-slate-100" style={{ fontSize: "11.5px", minWidth: "80px" }}>
+                    {[75, 90, 100, 115, 125, 150].map(scale => (
+                      <Dropdown.Item key={scale} onClick={() => setZoomScale(scale)}>
+                        {scale}%
+                      </Dropdown.Item>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown>
+
+                <span className="doc-toolbar-sep" />
+
+                {/* Paragraph styles */}
+                <Dropdown>
+                  <Dropdown.Toggle size="sm" variant="light" className="text-slate-700 bg-transparent border-0 py-1 px-2 d-flex align-items-center fw-medium" style={{ height: "28px", fontSize: "11.5px" }}>
+                    <span>Normal text</span>
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu className="shadow border-slate-100" style={{ fontSize: "12px" }}>
+                    <Dropdown.Item onClick={() => executeFormat("formatBlock", "P")}>Normal text</Dropdown.Item>
+                    <Dropdown.Item onClick={() => executeFormat("formatBlock", "H1")} style={{ fontSize: "18px", fontWeight: "bold" }}>Heading 1</Dropdown.Item>
+                    <Dropdown.Item onClick={() => executeFormat("formatBlock", "H2")} style={{ fontSize: "15px", fontWeight: "bold" }}>Heading 2</Dropdown.Item>
+                    <Dropdown.Item onClick={() => executeFormat("formatBlock", "H3")} style={{ fontSize: "13px", fontWeight: "bold" }}>Heading 3</Dropdown.Item>
+                    <Dropdown.Item onClick={() => executeFormat("formatBlock", "BLOCKQUOTE")} style={{ fontStyle: "italic", borderLeft: "3px solid #cbd5e1", paddingLeft: "8px" }}>Quote</Dropdown.Item>
+                  </Dropdown.Menu>
+                </Dropdown>
+
+                {/* Font Select */}
+                <Dropdown>
+                  <Dropdown.Toggle size="sm" variant="light" className="text-slate-700 bg-transparent border-0 py-1 px-2 d-flex align-items-center gap-1 fw-medium" style={{ height: "28px", fontSize: "11.5px" }}>
+                    <span>{currentFont}</span>
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu className="shadow border-slate-100" style={{ fontSize: "12px" }}>
+                    {["Outfit", "Arial", "Inter", "Georgia", "Courier New", "Times New Roman"].map(font => (
+                      <Dropdown.Item key={font} onClick={() => handleFontFamily(font)} style={{ fontFamily: font }}>
+                        {font}
+                      </Dropdown.Item>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown>
+
+                <span className="doc-toolbar-sep" />
+
+                {/* Font Size */}
+                <div className="d-flex align-items-center">
+                  <button type="button" className="doc-fontsize-btn" onClick={decrementFontSize} title="Decrease font size">-</button>
+                  <input
+                    type="text"
+                    className="doc-fontsize-input"
+                    value={parseInt(currentFontSize, 10) || 14}
+                    onChange={(e) => handleFontSizeChange(e.target.value)}
+                  />
+                  <button type="button" className="doc-fontsize-btn" onClick={incrementFontSize} title="Increase font size">+</button>
+                </div>
+
+                <span className="doc-toolbar-sep" />
+
+                {/* Bold / Italic / Underline / Strike */}
+                <button type="button" onClick={() => executeFormat("bold")} className="doc-toolbar-icon-btn fw-bold" title="Bold">B</button>
+                <button type="button" onClick={() => executeFormat("italic")} className="doc-toolbar-icon-btn fst-italic" title="Italic">I</button>
+                <button type="button" onClick={() => executeFormat("underline")} className="doc-toolbar-icon-btn text-decoration-underline" title="Underline">U</button>
+                <button type="button" onClick={() => executeFormat("strikeThrough")} className="doc-toolbar-icon-btn text-decoration-line-through" title="Strikethrough">S</button>
+
+                {/* Text & Highlight Color */}
+                <Dropdown>
+                  <Dropdown.Toggle size="sm" variant="light" className="doc-toolbar-icon-btn" title="Text & Highlight Color">
+                    <span className="fw-bold" style={{ fontSize: "12px", color: "#4f46e5", borderBottom: "2px solid #4f46e5", lineHeight: 1 }}>A</span>
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu className="shadow border-0 p-2" style={{ width: "170px" }}>
+                    <span className="text-slate-400 fw-bold d-block mb-1 text-[9px] uppercase">Text Color</span>
+                    <div className="d-flex flex-wrap gap-1 mb-2">
+                      {["#0f172a", "#334155", "#673de6", "#e11d48", "#16a34a", "#ea580c", "#ca8a04", "#2563eb"].map(color => (
+                        <div
+                          key={color}
+                          onClick={() => executeFormat("foreColor", color)}
+                          style={{ width: "18px", height: "18px", borderRadius: "4px", backgroundColor: color, cursor: "pointer", border: "1px solid #cbd5e1" }}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-slate-400 fw-bold d-block mb-1 text-[9px] uppercase">Highlight</span>
+                    <div className="d-flex flex-wrap gap-1">
+                      {["#ffffff", "#fef08a", "#bbf7d0", "#bfdbfe", "#fbcfe8", "#fed7aa", "#ddd6fe", "#e2e8f0"].map(color => (
+                        <div
+                          key={color}
+                          onClick={() => executeFormat("backColor", color)}
+                          style={{ width: "18px", height: "18px", borderRadius: "4px", backgroundColor: color, cursor: "pointer", border: "1px solid #cbd5e1" }}
+                        />
+                      ))}
+                    </div>
+                  </Dropdown.Menu>
+                </Dropdown>
+
+                <span className="doc-toolbar-sep" />
+
+                {/* Alignment Icons */}
+                <button type="button" onClick={() => executeFormat("justifyLeft")} className="doc-toolbar-icon-btn" title="Align Left">
+                  <AlignLeft size={14} />
+                </button>
+                <button type="button" onClick={() => executeFormat("justifyCenter")} className="doc-toolbar-icon-btn" title="Align Center">
+                  <AlignCenter size={14} />
+                </button>
+                <button type="button" onClick={() => executeFormat("justifyRight")} className="doc-toolbar-icon-btn" title="Align Right">
+                  <AlignRight size={14} />
+                </button>
+                <button type="button" onClick={() => executeFormat("justifyFull")} className="doc-toolbar-icon-btn" title="Justify">
+                  <AlignJustify size={14} />
+                </button>
+
+                <span className="doc-toolbar-sep" />
+
+                {/* Lists & Checklist */}
+                <button type="button" onClick={() => executeFormat("insertUnorderedList")} className="doc-toolbar-icon-btn" title="Bullet List">
+                  <List size={14} />
+                </button>
+                <button type="button" onClick={() => executeFormat("insertOrderedList")} className="doc-toolbar-icon-btn" title="Numbered List">
+                  <ListOrdered size={14} />
+                </button>
+                <button type="button" onClick={handleInsertChecklist} className="doc-toolbar-icon-btn" title="Checklist">
+                  <CheckSquare size={14} />
+                </button>
+
+                {/* Indents */}
+                <button type="button" onClick={() => executeFormat("outdent")} className="doc-toolbar-icon-btn" title="Decrease Indent">
+                  <IndentDecrease size={14} />
+                </button>
+                <button type="button" onClick={() => executeFormat("indent")} className="doc-toolbar-icon-btn" title="Increase Indent">
+                  <IndentIncrease size={14} />
+                </button>
+
+                <span className="doc-toolbar-sep" />
+
+                {/* Insert Link */}
+                <Dropdown onToggle={(isOpen) => { if (isOpen) { saveSelection(); setLinkUrl(""); } }}>
+                  <Dropdown.Toggle size="sm" variant="light" className="doc-toolbar-icon-btn" title="Insert Link">
+                    <Link2 size={14} />
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu className="p-3 shadow-lg border-0" style={{ width: "260px", zIndex: 1010 }}>
+                    <Form onSubmit={handleLinkApply}>
+                      <Form.Group className="mb-2">
+                        <Form.Label className="text-xs text-slate-500 fw-bold">Link URL</Form.Label>
+                        <Form.Control size="sm" type="text" placeholder="https://example.com" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} autoFocus />
+                      </Form.Group>
+                      <div className="d-flex justify-content-end">
+                        <Button size="sm" variant="primary" type="submit" className="text-xs px-3">Apply</Button>
+                      </div>
+                    </Form>
+                  </Dropdown.Menu>
+                </Dropdown>
+
+                {/* Insert Image */}
+                <Dropdown onToggle={(isOpen) => { if (isOpen) { saveSelection(); setImageUrl(""); } }}>
+                  <Dropdown.Toggle size="sm" variant="light" className="doc-toolbar-icon-btn" title="Insert Image">
+                    <Image size={14} />
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu className="p-3 shadow-lg border-0" style={{ width: "260px", zIndex: 1010 }}>
+                    <Form onSubmit={handleImageApply}>
+                      <Form.Group className="mb-2">
+                        <Form.Label className="text-xs text-slate-500 fw-bold">Image URL</Form.Label>
+                        <Form.Control size="sm" type="text" placeholder="https://example.com/image.png" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} autoFocus />
+                      </Form.Group>
+                      <div className="d-flex justify-content-end">
+                        <Button size="sm" variant="primary" type="submit" className="text-xs px-3">Insert</Button>
+                      </div>
+                    </Form>
+                  </Dropdown.Menu>
+                </Dropdown>
+
+                {/* Insert Table */}
+                <Dropdown onToggle={(isOpen) => { if (isOpen) { saveSelection(); setHoveredRow(0); setHoveredCol(0); } }}>
+                  <Dropdown.Toggle size="sm" variant="light" className="doc-toolbar-icon-btn" title="Insert Table">
+                    <Table2 size={14} />
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu className="p-0 shadow-lg border-0" style={{ zIndex: 1010 }}>
+                    <div className="table-grid-picker p-2 bg-white" style={{ display: "inline-block" }}>
+                      <div className="grid-container" style={{ display: "flex", flexDirection: "column", gap: "2px" }} onMouseLeave={() => { setHoveredRow(0); setHoveredCol(0); }}>
+                        {Array.from({ length: 8 }).map((_, r) => (
+                          <div key={r} style={{ display: "flex", gap: "2px" }}>
+                            {Array.from({ length: 8 }).map((_, c) => {
+                              const rowIndex = r + 1;
+                              const colIndex = c + 1;
+                              const isHighlighted = rowIndex <= hoveredRow && colIndex <= hoveredCol;
+                              return (
+                                <div
+                                  key={c}
+                                  onMouseEnter={() => { setHoveredRow(rowIndex); setHoveredCol(colIndex); }}
+                                  onClick={() => handleTableGridSelect(rowIndex, colIndex)}
+                                  style={{
+                                    width: "18px",
+                                    height: "18px",
+                                    border: isHighlighted ? "1px solid #1a73e8" : "1px solid #cbd5e1",
+                                    backgroundColor: isHighlighted ? "#e8f0fe" : "transparent",
+                                    cursor: "pointer",
+                                    borderRadius: "2px"
+                                  }}
+                                />
+                              );
+                            })}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="text-center text-xs text-slate-500 fw-bold mt-2">
+                        {hoveredCol > 0 && hoveredRow > 0 ? `${hoveredCol} x ${hoveredRow}` : "Select size"}
+                      </div>
+                    </div>
+                  </Dropdown.Menu>
+                </Dropdown>
+
+                {/* Clear Formatting */}
+                <button type="button" onClick={() => executeFormat("removeFormat")} className="doc-toolbar-icon-btn text-danger" title="Clear Formatting">
+                  <Eraser size={14} />
+                </button>
+              </div>
+            )}
+
+            {/* Main Paper Workspace + Collapsible Right Sidebar */}
+            <div className="d-flex flex-grow-1" style={{ overflow: "hidden" }}>
+              <div className="editor-workspace flex-grow-1 py-4 px-3 d-flex justify-content-center" style={{ overflowY: "auto", backgroundColor: "#f1f5f9" }}>
+                <div
+                  className="doc-editor-surface bg-white"
+                  style={{
+                    maxWidth: "816px",
+                    width: "100%",
+                    minHeight: "980px",
+                    height: "fit-content",
+                    padding: "56px 64px",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "4px",
+                    boxShadow: "0 1px 3px rgba(15, 23, 42, 0.06), 0 6px 18px rgba(15, 23, 42, 0.04)",
+                    zoom: `${zoomScale}%`
+                  }}
+                >
+                  <div
+                    ref={editorRef}
+                    contentEditable={!isReadOnly}
+                    onInput={isReadOnly ? undefined : handleEditorInput}
+                    onPaste={isReadOnly ? undefined : handlePaste}
+                    className="doc-editable-content-area w-100 zbot-google-doc-editor"
+                    style={{
+                      outline: "none",
+                      minHeight: "820px",
+                      fontSize: "14.5px",
+                      fontFamily: currentFont,
+                      color: "#1e293b",
+                      cursor: isReadOnly ? "default" : "text"
+                    }}
+                    suppressContentEditableWarning={true}
+                  />
+                </div>
+              </div>
 
             {/* Collapsible Right Sidebar */}
             {showRightSidebar && (
@@ -1495,7 +1525,7 @@ const DocsView = ({ boardId, assignees = [], departments = [] }) => {
                 </div>
               </div>
             )}
-            
+            </div>
           </div>
         ) : (
           <div className="doc-empty-state-surface bg-white shadow-sm border rounded-4 d-flex flex-column justify-content-center align-items-center p-5 text-center h-100 w-100 m-4">
