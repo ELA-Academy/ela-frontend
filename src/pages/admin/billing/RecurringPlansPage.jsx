@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Table, Spinner, Alert, Button, Form, Nav, Dropdown } from "react-bootstrap";
+import { Table, Spinner, Alert, Button, Form, Nav, Dropdown, Modal, Badge } from "react-bootstrap";
 import {
   Search,
   Filter,
@@ -15,7 +15,10 @@ import {
   Layers,
   Calendar,
   Trash2,
-  CheckSquare
+  CheckSquare,
+  Download,
+  Eye,
+  Receipt
 } from "lucide-react";
 import AccountingNav from "../../../components/admin/billing/AccountingNav";
 import CreatePlanWizard from "../../../components/admin/billing/CreatePlanWizard";
@@ -23,7 +26,7 @@ import BulkEditPlansModal from "../../../components/admin/billing/BulkEditPlansM
 import BulkDeletePlansModal from "../../../components/admin/billing/BulkDeletePlansModal";
 import CleanSlateModal from "../../../components/admin/CleanSlateModal";
 import EditPlanModal from "../../../components/admin/billing/EditPlanModal";
-import { getSubscriptions, getBillingPlans, deleteSubscription } from "../../../services/billingService";
+import { getSubscriptions, getBillingPlans, deleteSubscription, exportProcarePlans } from "../../../services/billingService";
 import { getAllStudents } from "../../../services/studentService";
 import { TableSkeleton } from "../../../components/Skeleton";
 import "../../../styles/AdminModern.css";
@@ -85,6 +88,27 @@ const RecurringPlansPage = () => {
   const [showCleanSlateModal, setShowCleanSlateModal] = useState(false);
   const [editingPlan, setEditingPlan] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [previewInvoicePlan, setPreviewInvoicePlan] = useState(null);
+  const [exportingPlans, setExportingPlans] = useState(false);
+
+  const handleExportProcare = async () => {
+    try {
+      setExportingPlans(true);
+      const blob = await exportProcarePlans();
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "ELA_Tuition_Plans_Procare_Export.xlsx");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError("Failed to export tuition plans.");
+    } finally {
+      setExportingPlans(false);
+    }
+  };
 
   // Search & Pagination & Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -292,6 +316,22 @@ const RecurringPlansPage = () => {
       <div className="d-flex justify-content-between align-items-center mb-2">
         <h1 className="page-title fs-4 fw-bold text-slate-800 m-0">Recurring Plans</h1>
         <div className="d-flex gap-2">
+          <Button
+            onClick={handleExportProcare}
+            disabled={exportingPlans}
+            variant="outline-primary"
+            style={{
+              borderRadius: "20px",
+              fontSize: "0.82rem",
+              fontWeight: "600",
+              padding: "6px 16px"
+            }}
+            className="d-flex align-items-center gap-1 shadow-sm bg-white"
+            title="Download all active tuition plans in Procare Excel format"
+          >
+            <Download size={14} /> {exportingPlans ? "EXPORTING..." : "DOWNLOAD PLANS (.XLSX)"}
+          </Button>
+
           <Button
             onClick={() => setShowImportModal(true)}
             variant="outline-success"
@@ -729,8 +769,19 @@ const RecurringPlansPage = () => {
                           {formatDateSafe(plan.next_invoice_date)}
                           <Edit3 size={11} className="opacity-50" />
                         </span>
-                        <div className="text-muted" style={{ fontSize: "10.5px" }}>
-                          Generates 5d prior
+                        <div className="d-flex align-items-center gap-2 mt-0.5">
+                          <span className="text-muted" style={{ fontSize: "10.5px" }}>
+                            Generates 5d prior
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setPreviewInvoicePlan(plan)}
+                            className="btn btn-link p-0 text-decoration-none text-info fw-semibold d-inline-flex align-items-center gap-0.5"
+                            style={{ fontSize: "10.5px" }}
+                            title="Preview the next invoice that will be generated"
+                          >
+                            <Eye size={10} /> Preview
+                          </button>
                         </div>
                       </td>
                       <td className="text-slate-800 fw-semibold" style={{ padding: "12px" }}>
@@ -749,6 +800,10 @@ const RecurringPlansPage = () => {
                             <MoreHorizontal size={16} />
                           </Dropdown.Toggle>
                           <Dropdown.Menu className="shadow-sm border-0 py-1" style={{ fontSize: "12.5px" }}>
+                            <Dropdown.Item onClick={() => setPreviewInvoicePlan(plan)}>
+                              <Receipt size={13} className="me-2 text-info" />
+                              View Next Invoice
+                            </Dropdown.Item>
                             <Dropdown.Item onClick={() => { setEditingPlan(plan); setShowEditModal(true); }}>
                               <Edit3 size={13} className="me-2 text-primary" />
                               Edit Plan Dates & Details
@@ -876,6 +931,114 @@ const RecurringPlansPage = () => {
         plan={editingPlan}
         onSuccess={fetchData}
       />
+
+      {/* Next Invoice Preview Modal */}
+      <Modal
+        show={Boolean(previewInvoicePlan)}
+        onHide={() => setPreviewInvoicePlan(null)}
+        centered
+        size="lg"
+      >
+        <Modal.Header closeButton className="border-bottom pb-2">
+          <Modal.Title className="fs-6 fw-bold text-slate-800 d-flex align-items-center gap-2">
+            <Receipt size={18} className="text-primary" />
+            Next Invoice Preview
+          </Modal.Title>
+        </Modal.Header>
+        {previewInvoicePlan && (
+          <Modal.Body className="py-3 px-4">
+            <div className="bg-light border rounded-3 p-3 mb-3">
+              <div className="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                <div>
+                  <div className="text-muted text-uppercase fw-bold" style={{ fontSize: "10px" }}>Student</div>
+                  <div className="fw-bold text-slate-800 fs-6">{previewInvoicePlan.student_name}</div>
+                  <div className="text-muted small">{previewInvoicePlan.grade_level || "Student"}</div>
+                </div>
+                <div className="text-end">
+                  <Badge bg="info" className="mb-1">{previewInvoicePlan.cycle || "Monthly"}</Badge>
+                  <div className="fw-semibold text-slate-700 small">{previewInvoicePlan.plan_name}</div>
+                </div>
+              </div>
+              <hr className="my-2.5" />
+              <div className="row g-2 small">
+                <div className="col-sm-4">
+                  <span className="text-muted d-block" style={{ fontSize: "11px" }}>Scheduled Generation Date</span>
+                  <strong className="text-primary">{formatDateSafe(previewInvoicePlan.next_invoice_date)}</strong>
+                </div>
+                <div className="col-sm-4">
+                  <span className="text-muted d-block" style={{ fontSize: "11px" }}>Upcoming Due Date</span>
+                  <strong className="text-slate-800">{getPlanNextDueDate(previewInvoicePlan)}</strong>
+                </div>
+                <div className="col-sm-4 text-sm-end">
+                  <span className="text-muted d-block" style={{ fontSize: "11px" }}>Estimated Total Due</span>
+                  <strong className="text-success fs-6">{formatCurrency(previewInvoicePlan.total_amount)}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="fw-bold text-slate-700 small mb-2">Upcoming Line Items</div>
+            <Table bordered size="sm" className="align-middle mb-0" style={{ fontSize: "13px" }}>
+              <thead className="table-light">
+                <tr>
+                  <th>Description</th>
+                  <th style={{ width: "110px" }}>Type</th>
+                  <th className="text-end" style={{ width: "130px" }}>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(previewInvoicePlan.items_json || []).length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="text-center text-muted py-3">
+                      No line items configured on this plan.
+                    </td>
+                  </tr>
+                ) : (
+                  (previewInvoicePlan.items_json || []).map((item, idx) => {
+                    const isDiscount = item.type === "Discount" || Number(item.amount) < 0;
+                    const amt = Number(item.amount ?? item.value ?? 0);
+                    return (
+                      <tr key={idx}>
+                        <td className="fw-medium text-slate-800">{item.description || "Tuition Item"}</td>
+                        <td>
+                          <Badge bg={isDiscount ? "warning" : "light"} text={isDiscount ? "dark" : "dark"} className="border">
+                            {isDiscount ? "Discount" : "Charge"}
+                          </Badge>
+                        </td>
+                        <td className={`text-end fw-semibold ${isDiscount ? "text-danger" : "text-slate-800"}`}>
+                          {isDiscount && amt > 0 ? `-${formatCurrency(amt)}` : formatCurrency(amt)}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+              <tfoot>
+                <tr className="table-light fw-bold">
+                  <td colSpan={2} className="text-end">Total Next Invoice Amount</td>
+                  <td className="text-end text-success">{formatCurrency(previewInvoicePlan.total_amount)}</td>
+                </tr>
+              </tfoot>
+            </Table>
+          </Modal.Body>
+        )}
+        <Modal.Footer className="border-top py-2">
+          <Button
+            variant="outline-primary"
+            size="sm"
+            onClick={() => {
+              const planToEdit = previewInvoicePlan;
+              setPreviewInvoicePlan(null);
+              setEditingPlan(planToEdit);
+              setShowEditModal(true);
+            }}
+          >
+            <Edit3 size={13} className="me-1" /> Edit Plan Schedule
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => setPreviewInvoicePlan(null)}>
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
       
       <style>{`
         .workspace-row:hover {

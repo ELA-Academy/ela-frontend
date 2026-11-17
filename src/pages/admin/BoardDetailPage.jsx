@@ -10,7 +10,7 @@ import {
   Plus,
   Trash,
 } from "react-bootstrap-icons";
-import { FileText, LayoutList, Kanban, Flag, User, Calendar, BookOpen, Folder, Repeat, GitFork, Link, MoreHorizontal, Copy, Star, Edit3, Bell, ArrowRight, PlusSquare, Layers, ClipboardCopy, Zap, Clock, Mail, Archive, Trash2, MessageSquare, Search, AlignLeft, Table, PieChart, Image, Activity, Share2, Users, MapPin, Pin, Settings, Lock, Filter, RefreshCw, Columns, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, Send, MousePointer, Type, PenTool, StickyNote, Eraser, Square, Target, Paperclip, Hash, Globe, DollarSign, CheckSquare, PlusCircle, ArrowLeft, ListPlus, Tag, Sparkles, Phone, Upload, Check } from "lucide-react";
+import { FileText, LayoutList, Kanban, Flag, User, Calendar, BookOpen, Folder, Repeat, GitFork, Link, MoreHorizontal, Copy, Star, Edit3, Bell, ArrowRight, PlusSquare, Layers, ClipboardCopy, Zap, Clock, Mail, Archive, Trash2, MessageSquare, Search, AlignLeft, Table, PieChart, Image, Activity, Share2, Users, MapPin, Pin, Settings, Lock, Filter, RefreshCw, Columns, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, Send, MousePointer, Type, PenTool, StickyNote, Eraser, Square, Target, Paperclip, Hash, Globe, DollarSign, CheckSquare, PlusCircle, ArrowLeft, ListPlus, Tag, Sparkles, Phone, Upload, Check, Undo2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { format, parseISO } from "date-fns";
 
@@ -395,6 +395,8 @@ const BoardDetailPage = () => {
   // Filters
   const [filterQuery, setFilterQuery] = useState("");
   const [showSearchInput, setShowSearchInput] = useState(false);
+  const undoStackRef = useRef([]);
+  const [undoCount, setUndoCount] = useState(0);
   const [filterAssignee, setFilterAssignee] = useState("");
   const [filterPriority, setFilterPriority] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
@@ -2321,15 +2323,38 @@ const BoardDetailPage = () => {
     let result = allTasks.filter((task) => !task.parent_task_id);
 
     if (filterQuery.trim()) {
-      const q = filterQuery.toLowerCase();
-      result = result.filter(
-        (t) =>
-          t.title.toLowerCase().includes(q) ||
-          (t.notes && t.notes.toLowerCase().includes(q)) ||
-          getTaskAssignees(t).some((assignee) =>
-            assignee.name?.toLowerCase().includes(q)
-          )
-      );
+      const q = filterQuery.toLowerCase().trim();
+      const qDigits = q.replace(/[^0-9]/g, "");
+
+      const matchesValue = (val) => {
+        if (val === null || val === undefined) return false;
+        if (Array.isArray(val)) return val.some(matchesValue);
+        if (typeof val === "object") return Object.values(val).some(matchesValue);
+        const str = String(val).toLowerCase();
+        if (str.includes(q)) return true;
+        if (qDigits.length >= 3) {
+          const valDigits = str.replace(/[^0-9]/g, "");
+          if (valDigits && valDigits.includes(qDigits)) return true;
+        }
+        return false;
+      };
+
+      const taskMatchesQuery = (t) =>
+        matchesValue(t.title) ||
+        matchesValue(t.notes) ||
+        matchesValue(t.status) ||
+        matchesValue(t.priority) ||
+        matchesValue(t.category) ||
+        matchesValue(t.tags) ||
+        matchesValue(t.due_date) ||
+        matchesValue(t.start_date) ||
+        getTaskAssignees(t).some(
+          (assignee) => matchesValue(assignee.name) || matchesValue(assignee.email)
+        ) ||
+        (t.custom_field_values && Object.values(t.custom_field_values).some(matchesValue)) ||
+        (Array.isArray(t.subtasks) && t.subtasks.some(taskMatchesQuery));
+
+      result = result.filter(taskMatchesQuery);
     }
 
     if (filterAssignee) {
@@ -2905,7 +2930,12 @@ const BoardDetailPage = () => {
     });
   };
 
-  const handleTaskCellChange = async (taskId, field, value) => {
+  const pushUndoAction = useCallback((action) => {
+    undoStackRef.current = [...undoStackRef.current.slice(-49), action];
+    setUndoCount(undoStackRef.current.length);
+  }, []);
+
+  const handleTaskCellChange = async (taskId, field, value, skipUndo = false) => {
     setSaving(true);
 
     const currentTask = allTasks.find((task) => task.id === taskId);
@@ -2913,6 +2943,18 @@ const BoardDetailPage = () => {
       setError("Complete all subtasks before marking this task complete.");
       setSaving(false);
       return;
+    }
+
+    if (!skipUndo && currentTask) {
+      const prevValue = field === "assignees" ? (currentTask.assignees || []) : currentTask[field];
+      if (JSON.stringify(prevValue ?? null) !== JSON.stringify(value ?? null)) {
+        pushUndoAction({
+          kind: "task",
+          taskId,
+          field,
+          previousValue: prevValue ?? null,
+        });
+      }
     }
 
     patchTaskInState(taskId, (task) => {
@@ -2941,6 +2983,52 @@ const BoardDetailPage = () => {
       setSaving(false);
     }
   };
+
+  const handleUndo = useCallback(async () => {
+    const stack = undoStackRef.current;
+    if (!stack || stack.length === 0) return;
+    const lastAction = stack[stack.length - 1];
+    undoStackRef.current = stack.slice(0, -1);
+    setUndoCount(undoStackRef.current.length);
+
+    if (lastAction.kind === "task") {
+      await handleTaskCellChange(lastAction.taskId, lastAction.field, lastAction.previousValue, true);
+      toast.info(`Undid change to ${lastAction.field.replace("_", " ")}`);
+    } else if (lastAction.kind === "custom_field") {
+      const { taskId, fieldId, previousValue } = lastAction;
+      patchTaskInState(taskId, (t) => {
+        const updated = { ...(t.custom_field_values || {}), [fieldId]: previousValue };
+        return { ...t, custom_field_values: updated };
+      });
+      try {
+        await api.put(`/board-extensions/tasks/${taskId}/custom-fields`, {
+          field_id: fieldId,
+          value: previousValue
+        });
+        toast.info("Undid last spreadsheet edit");
+      } catch (err) {
+        console.error("Failed to undo custom field:", err);
+        toast.error("Failed to undo change");
+      }
+    }
+  }, [allTasks]);
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "z") {
+        const active = document.activeElement;
+        const tag = active?.tagName?.toLowerCase();
+        const isTyping = tag === "input" || tag === "textarea" || active?.isContentEditable;
+        if (isTyping) return;
+        if (undoStackRef.current.length > 0) {
+          e.preventDefault();
+          handleUndo();
+        }
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [handleUndo]);
 
   const handleAddGroup = async () => {
     if (addingGroup) return;
@@ -6445,6 +6533,15 @@ const BoardDetailPage = () => {
     const value = normalizeFieldValue(field, rawValue);
     
     const handleUpdateValue = async (newVal) => {
+      if (JSON.stringify(rawValue ?? null) !== JSON.stringify(newVal ?? null)) {
+        pushUndoAction({
+          kind: "custom_field",
+          taskId: task.id,
+          fieldId: field.id,
+          previousValue: rawValue ?? null,
+        });
+      }
+
       // Optimistic state update
       patchTaskInState(task.id, (t) => {
         const updated = { ...(t.custom_field_values || {}), [field.id]: newVal };
@@ -8108,16 +8205,29 @@ const BoardDetailPage = () => {
             </div>
           </div>
 
-          {/* Right Side: Toggleable Search, Me quick filter, swimlanes, sort & saved views */}
+          {/* Right Side: Undo, Toggleable Search, Me quick filter, swimlanes, sort & saved views */}
           <div className="d-flex align-items-center gap-1.5">
+            {undoCount > 0 && (
+              <button
+                type="button"
+                className="workspace-inline-tool-btn d-flex align-items-center gap-1 px-1.5"
+                onClick={handleUndo}
+                title="Undo last spreadsheet change (Ctrl+Z)"
+                style={{ fontSize: "10.5px", color: "#4f46e5", fontWeight: 600 }}
+              >
+                <Undo2 size={11} />
+                <span>Undo ({undoCount})</span>
+              </button>
+            )}
+
             {/* Toggleable Search */}
             {showSearchInput || filterQuery ? (
               <div className="d-flex align-items-center position-relative me-1">
                 <input
                   type="text"
-                  placeholder="Search tasks..."
+                  placeholder="Search names, phones, emails..."
                   className="form-control form-control-sm"
-                  style={{ width: "130px", fontSize: "11px", height: "24px", paddingLeft: "22px", borderRadius: "4px", borderColor: "#cbd5e1" }}
+                  style={{ width: "185px", fontSize: "11px", height: "24px", paddingLeft: "22px", borderRadius: "4px", borderColor: "#cbd5e1" }}
                   value={filterQuery}
                   onChange={(e) => setFilterQuery(e.target.value)}
                   autoFocus
@@ -8130,7 +8240,7 @@ const BoardDetailPage = () => {
                 type="button" 
                 className="workspace-inline-tool-btn" 
                 onClick={() => setShowSearchInput(true)} 
-                title="Search Tasks"
+                title="Search anything in spreadsheet (names, phones, emails...)"
               >
                 <Search size={12} />
               </button>

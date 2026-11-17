@@ -325,5 +325,17 @@ export const importProcarePlans = async (formDataOrPayload) => {
   }
 };
 
+export const exportProcarePlans = async () => {
+  try {
+    const response = await api.get("/billing/export-procare-plans", {
+      responseType: "blob",
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error exporting Procare plans:", error);
+    throw error;
+  }
+};
+
 
 

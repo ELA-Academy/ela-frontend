@@ -16,6 +16,19 @@ import {
 import { previewProcarePlans, importProcarePlans } from "../../../services/billingService";
 import { showSuccess, showError } from "../../../utils/notificationService";
 
+const computeUpcomingInvoiceDate = (preset) => {
+  const genDay = preset === "15th" ? 10 : 26;
+  const now = new Date();
+  let target = new Date(now.getFullYear(), now.getMonth(), genDay);
+  if (now.getDate() >= genDay) {
+    target = new Date(now.getFullYear(), now.getMonth() + 1, genDay);
+  }
+  const yyyy = target.getFullYear();
+  const mm = String(target.getMonth() + 1).padStart(2, "0");
+  const dd = String(target.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 const ProcareImportWizardModal = ({ show, handleClose, onImportSuccess }) => {
   const [step, setStep] = useState(1); // 1: Select/Preview, 2: Review & Options, 3: Completed
   const [file, setFile] = useState(null);
@@ -33,7 +46,9 @@ const ProcareImportWizardModal = ({ show, handleClose, onImportSuccess }) => {
     import_subscriptions: true,
     all_students: false,
     schedule_preset: "1st",
-    next_invoice_date: "2026-10-26"
+    due_day: 1,
+    invoice_generation_day: 26,
+    next_invoice_date: computeUpcomingInvoiceDate("1st")
   });
 
   // Reset when modal opens
@@ -475,7 +490,13 @@ const ProcareImportWizardModal = ({ show, handleClose, onImportSuccess }) => {
                   <Row className="g-2">
                     <Col md={6}>
                       <div
-                        onClick={() => setOptions({ ...options, schedule_preset: "1st", next_invoice_date: "2026-10-26" })}
+                        onClick={() => setOptions({
+                          ...options,
+                          schedule_preset: "1st",
+                          due_day: 1,
+                          invoice_generation_day: 26,
+                          next_invoice_date: computeUpcomingInvoiceDate("1st")
+                        })}
                         className={`p-2.5 rounded-2 border cursor-pointer transition-all ${
                           options.schedule_preset === "1st" ? "border-primary bg-primary bg-opacity-10 fw-semibold" : "bg-light"
                         }`}
@@ -486,7 +507,13 @@ const ProcareImportWizardModal = ({ show, handleClose, onImportSuccess }) => {
                     </Col>
                     <Col md={6}>
                       <div
-                        onClick={() => setOptions({ ...options, schedule_preset: "15th", next_invoice_date: "2026-10-10" })}
+                        onClick={() => setOptions({
+                          ...options,
+                          schedule_preset: "15th",
+                          due_day: 15,
+                          invoice_generation_day: 10,
+                          next_invoice_date: computeUpcomingInvoiceDate("15th")
+                        })}
                         className={`p-2.5 rounded-2 border cursor-pointer transition-all ${
                           options.schedule_preset === "15th" ? "border-primary bg-primary bg-opacity-10 fw-semibold" : "bg-light"
                         }`}
