@@ -89,6 +89,10 @@ const Login = () => {
             navigate("/parent/payments");
             return;
           }
+          if (decoded.role === 'teacher') {
+            navigate("/time-tracking");
+            return;
+          }
         } catch (e) {}
       }
       navigate("/admin");

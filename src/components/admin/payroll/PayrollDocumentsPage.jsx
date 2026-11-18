@@ -52,7 +52,9 @@ const PayrollDocumentsPage = () => {
     content_body: "",
     requires_signature: true,
     is_fillable: false,
-    file_name: ""
+    file_name: "",
+    future_hires_rule: "all",
+    assign_to_existing: true
   });
 
   const [recipientsModalDoc, setRecipientsModalDoc] = useState(null);
@@ -95,7 +97,7 @@ const PayrollDocumentsPage = () => {
     e.preventDefault();
     if (!newDoc.title.trim()) return;
     try {
-      await createAdminDocument({
+      const res = await createAdminDocument({
         ...newDoc,
         doc_type: section === "templates" ? "template" : "shared"
       });
@@ -108,9 +110,15 @@ const PayrollDocumentsPage = () => {
         content_body: "",
         requires_signature: true,
         is_fillable: false,
-        file_name: ""
+        file_name: "",
+        future_hires_rule: "all",
+        assign_to_existing: true
       });
-      showToast("Document saved successfully.");
+      showToast(
+        res?.assigned_count > 0
+          ? `Document saved and attached to ${res.assigned_count} active worker(s).`
+          : "Document saved successfully."
+      );
       loadData();
     } catch (err) {
       showToast("Failed to save document.");
@@ -580,6 +588,32 @@ const PayrollDocumentsPage = () => {
               </Form.Select>
             </Form.Group>
             <Form.Group className="mb-3">
+              <Form.Label className="fw-semibold">Upload file (optional — PDF, Word, or Text)</Form.Label>
+              <Form.Control
+                type="file"
+                accept=".pdf,.doc,.docx,.txt,.md,.csv"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  setNewDoc((prev) => ({
+                    ...prev,
+                    file_name: f.name,
+                    title: prev.title || f.name.replace(/\.[^/.]+$/, "")
+                  }));
+                  if (f.type.startsWith("text/") || /\.(txt|md|csv)$/i.test(f.name)) {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      setNewDoc((prev) => ({ ...prev, content_body: String(ev.target?.result || "") }));
+                    };
+                    reader.readAsText(f);
+                  }
+                }}
+              />
+              {newDoc.file_name && (
+                <Form.Text className="text-emerald-700 fw-medium">Selected: {newDoc.file_name}</Form.Text>
+              )}
+            </Form.Group>
+            <Form.Group className="mb-3">
               <Form.Label className="fw-semibold">Document content / instructions</Form.Label>
               <Form.Control
                 as="textarea"
@@ -589,8 +623,31 @@ const PayrollDocumentsPage = () => {
                 placeholder="Paste document text or key schedule dates..."
               />
             </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-semibold">Auto-assign to future hires</Form.Label>
+              <Form.Select
+                value={newDoc.future_hires_rule}
+                onChange={(e) => setNewDoc({ ...newDoc, future_hires_rule: e.target.value })}
+              >
+                <option value="all">All future hires</option>
+                <option value="us">US-based hires only</option>
+                <option value="non_us">International / Non-US hires only</option>
+                <option value="none">Do not auto-assign</option>
+              </Form.Select>
+            </Form.Group>
+            {newDoc.status === "active" && (
+              <Form.Check
+                type="checkbox"
+                id="chk-assign-existing-workers"
+                label="Automatically attach to all matching active workers now"
+                checked={newDoc.assign_to_existing}
+                onChange={(e) => setNewDoc({ ...newDoc, assign_to_existing: e.target.checked })}
+                className="mb-2 fw-medium"
+              />
+            )}
             <Form.Check
               type="checkbox"
+              id="chk-requires-sig"
               label="Require e-signature / acknowledgement from recipient"
               checked={newDoc.requires_signature}
               onChange={(e) => setNewDoc({ ...newDoc, requires_signature: e.target.checked })}
