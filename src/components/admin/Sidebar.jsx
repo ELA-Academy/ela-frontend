@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { getMyPayrollAccess } from "../../services/payrollService";
 import {
   LayoutDashboard,
   FolderKanban,
@@ -81,12 +82,21 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
     ...(user?.department ? [user.department] : [])
   ].filter(Boolean);
 
+  const [hasPayrollAccess, setHasPayrollAccess] = useState(user?.role === "superadmin");
+
+  useEffect(() => {
+    if (!user) return;
+    if (user.role === "superadmin") {
+      setHasPayrollAccess(true);
+      return;
+    }
+    getMyPayrollAccess()
+      .then((res) => setHasPayrollAccess(Boolean(res?.has_access)))
+      .catch(() => setHasPayrollAccess(false));
+  }, [user]);
+
   const isAccountingOrSuperAdmin =
-    user?.role === "superadmin" ||
-    isITUser ||
-    user?.dashboardRoutes?.includes("/admin/accounting") ||
-    user?.dashboardRoutes?.includes("/admin/payroll") ||
-    allUserDeptNames.some(name => /(accounting|payroll|hr|human resource)/i.test(String(name).trim()));
+    user?.role === "superadmin" || hasPayrollAccess;
 
   const managementLinks = [
     { path: "/admin/students", icon: GraduationCap, label: "Students", role: ["superadmin", "staff"] }

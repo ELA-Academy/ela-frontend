@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { Modal, Button, Form, Table } from "react-bootstrap";
 import { getStaffById, updateStaff, updateStaffCompensation, getAllStaff } from "../../../services/staffService";
+import { getStaffDocumentsForAdmin, remindDocumentAssignment, remindAllStaffDocuments } from "../../../services/payrollService";
 import "../../../styles/GustoTheme.css";
 
 const PayrollStaffProfilePage = () => {
@@ -75,6 +76,7 @@ const PayrollStaffProfilePage = () => {
     pronouns: "",
     ssn_last4: "",
     birthday: "",
+    work_email: "",
     personal_email: "",
     phone: "",
     street: "",
@@ -104,112 +106,37 @@ const PayrollStaffProfilePage = () => {
   const [newDocType, setNewDocType] = useState("policy");
   const [newDocRequiresAck, setNewDocRequiresAck] = useState(true);
 
-  const [documentsList, setDocumentsList] = useState([
-    {
-      id: "doc-sched-2029",
-      name: "2029 Pay Schedule",
-      desc: "Employer provided document",
-      status: "Needs acknowledgement",
-      statusDate: "Aug 4, 2024",
-      type: "schedule",
-      canView: true,
-      hasMenu: false
-    },
-    {
-      id: "doc-sched-2028",
-      name: "2028 Pay Schedule",
-      desc: "Employer provided document",
-      status: "Needs acknowledgement",
-      statusDate: "Aug 4, 2024",
-      type: "schedule",
-      canView: true,
-      hasMenu: false
-    },
-    {
-      id: "doc-sched-2030",
-      name: "2030 Pay Schedule",
-      desc: "Employer provided document",
-      status: "Needs acknowledgement",
-      statusDate: "Aug 4, 2024",
-      type: "schedule",
-      canView: true,
-      hasMenu: false
-    },
-    {
-      id: "doc-sched-2027",
-      name: "2027 Pay Schedule",
-      desc: "Employer provided document",
-      status: "Needs acknowledgement",
-      statusDate: "Aug 4, 2024",
-      type: "schedule",
-      canView: true,
-      hasMenu: false
-    },
-    {
-      id: "doc-sched-2026",
-      name: "Pay Schedule 2026",
-      desc: "Employer provided document",
-      status: "Needs acknowledgement",
-      statusDate: "Aug 1, 2024",
-      type: "schedule",
-      canView: true,
-      hasMenu: false
-    },
-    {
-      id: "doc-1",
-      name: "Form 1099: 2025",
-      desc: "Form 1099 records your annual income as a contractor.",
-      status: "Filed",
-      statusDate: "Feb 2, 2026",
-      type: "tax",
-      canView: false,
-      hasMenu: true
-    },
-    {
-      id: "doc-2",
-      name: "Form 1099: 2024",
-      desc: "Form 1099 records your annual income as a contractor.",
-      status: "Filed",
-      statusDate: "Jan 16, 2025",
-      type: "tax",
-      canView: false,
-      hasMenu: true
-    },
-    {
-      id: "doc-1099-2023",
-      name: "Form 1099: 2023",
-      desc: "Form 1099 records your annual income as a contractor.",
-      status: "Filed",
-      statusDate: "Jan 19, 2024",
-      type: "tax",
-      canView: false,
-      hasMenu: true
-    },
-    {
-      id: "doc-new-2023",
-      name: "New 2023 Pay Schedule",
-      desc: "Employer provided document",
-      status: "Uploaded",
-      statusDate: "Jul 7, 2023",
-      type: "schedule",
-      canView: true,
-      hasMenu: false
-    },
-    {
-      id: "doc-4",
-      name: "ELA Academy Employee Handbook",
-      desc: "Employer provided document",
-      status: "Signed",
-      statusDate: "Aug 14, 2024",
-      type: "handbook",
-      canView: true,
-      hasMenu: false
+  const [documentsList, setDocumentsList] = useState([]);
+
+  const fetchStaffDocuments = async () => {
+    try {
+      const res = await getStaffDocumentsForAdmin(staffId);
+      const docs = (res.documents || []).map((a) => ({
+        id: a.id,
+        document_id: a.document_id,
+        name: a.document_title,
+        desc: a.document_description || "Employer provided document",
+        status: a.status,
+        is_locked: Boolean(a.is_locked),
+        statusDate: a.signed_at
+          ? new Date(a.signed_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+          : a.assigned_at
+          ? new Date(a.assigned_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+          : "",
+        type: (a.document_category || "policy").toLowerCase(),
+        canView: true,
+        hasMenu: false
+      }));
+      setDocumentsList(docs);
+    } catch (e) {
+      setDocumentsList([]);
     }
-  ]);
+  };
 
   useEffect(() => {
     fetchStaffDetails();
     fetchRoster();
+    fetchStaffDocuments();
   }, [staffId]);
 
   const fetchRoster = async () => {
@@ -245,7 +172,8 @@ const PayrollStaffProfilePage = () => {
         pronouns: data.pronouns || "she/her/hers",
         ssn_last4: data.ssn_last4 || "7600",
         birthday: data.birthday || "October 14, 1992",
-        personal_email: data.personal_email || data.email || "",
+        work_email: data.work_email || "",
+        personal_email: data.personal_email || "",
         phone: data.phone || "+1 (404) 555-0192",
         street: addr.street || "1420 Peachtree St NE, Apt 4B",
         city: addr.city || "Atlanta",
@@ -325,6 +253,7 @@ const PayrollStaffProfilePage = () => {
         pronouns: personalForm.pronouns,
         ssn_last4: personalForm.ssn_last4,
         birthday: personalForm.birthday,
+        work_email: personalForm.work_email,
         personal_email: personalForm.personal_email,
         phone: personalForm.phone,
         address: {
@@ -914,9 +843,15 @@ const PayrollStaffProfilePage = () => {
                     </div>
                   </div>
                   <div>
+                    <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>Work email</div>
+                    <div style={{ fontSize: "0.9rem", color: "#111827", marginTop: "0.15rem" }}>
+                      {staff.work_email || "—"}
+                    </div>
+                  </div>
+                  <div>
                     <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>Personal email</div>
                     <div style={{ fontSize: "0.9rem", color: "#111827", marginTop: "0.15rem" }}>
-                      {staff.personal_email || staff.email}
+                      {staff.personal_email || "—"}
                     </div>
                   </div>
                 </div>
@@ -1042,7 +977,7 @@ const PayrollStaffProfilePage = () => {
                   <Button
                     variant="primary"
                     size="sm"
-                    onClick={() => setAddDocModalOpen(true)}
+                    onClick={() => navigate("/admin/payroll/documents/new?status=active")}
                     style={{
                       backgroundColor: "#2563eb",
                       borderColor: "#2563eb",
@@ -1156,7 +1091,7 @@ const PayrollStaffProfilePage = () => {
                       return (
                         <tr key={doc.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                           <td style={{ padding: "0.95rem 0.5rem" }}>
-                            <div style={{ fontWeight: 600, color: "#1d4ed8", textDecoration: "underline", cursor: "pointer" }} onClick={() => setPreviewDocModal(doc)}>
+                            <div style={{ fontWeight: 600, color: "#1d4ed8", textDecoration: "underline", cursor: "pointer" }} onClick={() => navigate(`/admin/payroll/documents/artifacts/${doc.id}`)}>
                               {doc.name}
                             </div>
                             <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "0.15rem" }}>
@@ -1224,7 +1159,7 @@ const PayrollStaffProfilePage = () => {
                               ) : (
                                 <button
                                   type="button"
-                                  onClick={() => setPreviewDocModal(doc)}
+                                  onClick={() => navigate(`/admin/payroll/documents/artifacts/${doc.id}`)}
                                   style={{
                                     background: "none",
                                     border: "none",
@@ -1751,19 +1686,22 @@ const PayrollStaffProfilePage = () => {
           <Button
             variant="primary"
             size="sm"
-            onClick={() => {
+            onClick={async () => {
               setSendingReminder(true);
-              setTimeout(() => {
-                setSendingReminder(false);
-                setReminderModalOpen(false);
+              try {
                 if (isBulkReminder) {
-                  const pendingCount = documentsList.filter((d) => d.status === "Needs acknowledgement" || d.status === "Needs signature").length;
-                  setToastMessage(`Reminders dispatched to ${staffName} for ${pendingCount} pending documents.`);
-                } else {
-                  setToastMessage(`Reminder dispatched to ${staffName} for "${selectedDocForReminder?.name}".`);
+                  const res = await remindAllStaffDocuments(staffId);
+                  showToast(`Reminders sent to ${staffName} for ${res.reminded_count || 0} pending documents.`);
+                } else if (selectedDocForReminder) {
+                  await remindDocumentAssignment(selectedDocForReminder.id);
+                  showToast(`Reminder sent to ${staffName} for "${selectedDocForReminder.name}".`);
                 }
-                setTimeout(() => setToastMessage(""), 5000);
-              }, 800);
+                setReminderModalOpen(false);
+              } catch (err) {
+                showToast(err?.response?.data?.error || "Failed to send reminder.");
+              } finally {
+                setSendingReminder(false);
+              }
             }}
             disabled={sendingReminder}
             style={{ backgroundColor: "#2563eb", borderColor: "#2563eb", fontWeight: 600 }}
@@ -1959,9 +1897,19 @@ const PayrollStaffProfilePage = () => {
                 />
               </div>
               <div className="col-md-6">
+                <Form.Label className="small fw-semibold text-slate-700">Work Email</Form.Label>
+                <Form.Control
+                  type="email"
+                  placeholder="name@ela-academy.org"
+                  value={personalForm.work_email}
+                  onChange={(e) => setPersonalForm({ ...personalForm, work_email: e.target.value })}
+                />
+              </div>
+              <div className="col-md-6">
                 <Form.Label className="small fw-semibold text-slate-700">Personal Email</Form.Label>
                 <Form.Control
                   type="email"
+                  placeholder="personal@email.com"
                   value={personalForm.personal_email}
                   onChange={(e) => setPersonalForm({ ...personalForm, personal_email: e.target.value })}
                 />

@@ -15,10 +15,13 @@ import {
   Calendar,
   X,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  ShieldCheck,
+  Table as TableIcon
 } from "lucide-react";
 import { Modal, Button, Form } from "react-bootstrap";
 import { useAuth } from "../../../context/AuthContext";
+import { getMyPayrollAccess } from "../../../services/payrollService";
 import "../../../styles/WorkspaceShell.css";
 
 const PayrollLayout = () => {
@@ -82,35 +85,57 @@ const PayrollLayout = () => {
     setShortcutModalOpen(false);
   };
 
-  // Secondary sidebar links matching user requirement:
-  // [Home, People, pay, report, taxes & compliance, time & attendance, Documents, Money]
+  const [accessInfo, setAccessInfo] = useState({
+    loaded: user?.role === "superadmin",
+    has_access: user?.role === "superadmin",
+    is_superadmin: user?.role === "superadmin",
+    blocked_features: []
+  });
+
+  useEffect(() => {
+    getMyPayrollAccess()
+      .then((res) => setAccessInfo({ loaded: true, ...res }))
+      .catch(() => setAccessInfo({ loaded: true, has_access: user?.role === "superadmin", is_superadmin: user?.role === "superadmin", blocked_features: [] }));
+  }, [user]);
+
+  const isBlocked = (featureKey) => {
+    if (!featureKey || accessInfo.is_superadmin) return false;
+    return (accessInfo.blocked_features || []).includes(featureKey);
+  };
+
   const navItems = [
     { path: "/admin/payroll", label: "Home", icon: Home, end: true },
-    { path: "/admin/payroll/people", label: "People", icon: Users },
+    { path: "/admin/payroll/people", label: "People", icon: Users, feature: "people" },
     {
       path: "/admin/payroll/pay",
       label: "Pay",
       icon: CircleDollarSign,
+      feature: "pay",
       children: [
         { path: "/admin/payroll/pay?tab=expenses", label: "Expenses", icon: Receipt }
       ]
     },
-    { path: "/admin/payroll/reports", label: "Reports", icon: BarChart2 },
-    { path: "/admin/payroll/taxes", label: "Taxes & compliance", icon: Landmark },
+    { path: "/admin/payroll/enumeration", label: "Payment Enumeration", icon: TableIcon, feature: "payment_enumeration" },
+    { path: "/admin/payroll/reports", label: "Reports", icon: BarChart2, feature: "reports" },
+    { path: "/admin/payroll/taxes", label: "Taxes & compliance", icon: Landmark, feature: "taxes" },
     {
       path: "/admin/payroll/time-attendance",
       label: "Time & attendance",
       icon: Clock,
+      feature: "time_attendance",
       children: [
         { path: "/admin/payroll/time-attendance/time-off", label: "Time off", icon: Calendar },
         { path: "/admin/payroll/time-attendance/time-tracking", label: "Time tracking", icon: Clock },
         { path: "/admin/payroll/time-attendance/scheduling", label: "Scheduling", icon: Calendar }
       ]
     },
-    { path: "/admin/payroll/documents", label: "Documents", icon: FileText },
-    { path: "/admin/payroll/performance", label: "Performance", icon: BarChart2 },
-    { path: "/admin/payroll/money", label: "Money", icon: DollarSign },
-  ];
+    { path: "/admin/payroll/documents", label: "Documents", icon: FileText, feature: "documents" },
+    { path: "/admin/payroll/performance", label: "Performance", icon: BarChart2, feature: "performance" },
+    { path: "/admin/payroll/money", label: "Money", icon: DollarSign, feature: "money" },
+    ...(accessInfo.is_superadmin
+      ? [{ path: "/admin/payroll/permissions", label: "Co-Admin Access", icon: ShieldCheck }]
+      : []),
+  ].filter((item) => !isBlocked(item.feature));
 
   return (
     <div
@@ -247,7 +272,17 @@ const PayrollLayout = () => {
           height: "100%"
         }}
       >
-        <Outlet />
+        {accessInfo.loaded && !accessInfo.has_access ? (
+          <div style={{ maxWidth: "520px", margin: "4rem auto", textAlign: "center", padding: "2rem", border: "1px solid #e5e7eb", borderRadius: "12px" }}>
+            <ShieldCheck size={36} color="#94a3b8" style={{ marginBottom: "0.75rem" }} />
+            <h2 style={{ fontSize: "1.2rem", fontWeight: 700, color: "#111827" }}>Payroll Access Restricted</h2>
+            <p style={{ fontSize: "0.9rem", color: "#6b7280", margin: 0 }}>
+              Only Super Admin and authorized HR / Accounting co-admins can access the Payroll portal.
+            </p>
+          </div>
+        ) : (
+          <Outlet />
+        )}
       </main>
 
       {/* Add Shortcut Modal (Replaces window.alert) */}

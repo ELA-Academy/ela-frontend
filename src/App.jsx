@@ -78,6 +78,10 @@ import PayrollContractorPaymentSummaryPage from "./components/admin/payroll/Payr
 import PayrollTimesheetsPage from "./components/admin/payroll/PayrollTimesheetsPage";
 import PayrollContractorTimesheetDetailPage from "./components/admin/payroll/PayrollContractorTimesheetDetailPage";
 import PayrollDocumentsPage from "./components/admin/payroll/PayrollDocumentsPage";
+import PayrollDocumentWizardPage from "./components/admin/payroll/PayrollDocumentWizardPage";
+import PayrollDocumentViewerPage from "./components/admin/payroll/PayrollDocumentViewerPage";
+import PayrollEnumerationPage from "./components/admin/payroll/PayrollEnumerationPage";
+import PayrollPermissionsPage from "./components/admin/payroll/PayrollPermissionsPage";
 import PayrollReportsPage from "./components/admin/payroll/PayrollReportsPage";
 import PayrollPerformancePage from "./components/admin/payroll/PayrollPerformancePage";
 import PayrollTimeSettingsPage from "./components/admin/payroll/PayrollTimeSettingsPage";
@@ -93,6 +97,7 @@ import GustoProfilePage from "./pages/timetracking/GustoProfilePage";
 import GustoPayPage from "./pages/timetracking/GustoPayPage";
 import GustoBenefitsPage from "./pages/timetracking/GustoBenefitsPage";
 import GustoDocumentsPage from "./pages/timetracking/GustoDocumentsPage";
+import GustoDocumentSignPage from "./pages/timetracking/GustoDocumentSignPage";
 import GustoPerformancePage from "./pages/timetracking/GustoPerformancePage";
 import GustoSettingsPage from "./pages/timetracking/GustoSettingsPage";
 import GustoMyAccountPage from "./pages/timetracking/GustoMyAccountPage";
@@ -257,6 +262,11 @@ function App() {
                   <Route path="time-attendance/time-off" element={<PayrollSectionPlaceholder title="Time off" description="Review paid time off requests, sick days, and staff leave balances." icon={IconClock} />} />
                   <Route path="time-attendance/scheduling" element={<PayrollSectionPlaceholder title="Scheduling" description="Manage shift assignments, classroom schedules, and instructor rotations." icon={IconClock} />} />
                   <Route path="documents" element={<PayrollDocumentsPage />} />
+                  <Route path="documents/new" element={<PayrollDocumentWizardPage />} />
+                  <Route path="documents/:docId/edit" element={<PayrollDocumentWizardPage />} />
+                  <Route path="documents/artifacts/:assignmentId" element={<PayrollDocumentViewerPage />} />
+                  <Route path="enumeration" element={<PayrollEnumerationPage />} />
+                  <Route path="permissions" element={<PayrollPermissionsPage />} />
                   <Route path="performance" element={<PayrollPerformancePage />} />
                   <Route path="money" element={<PayrollSectionPlaceholder title="Money" description="Stripe connected treasury accounts, payout schedules, and bank reserves." icon={IconMoney} />} />
                 </Route>
@@ -275,6 +285,7 @@ function App() {
                 <Route path="pay" element={<GustoPayPage />} />
                 <Route path="benefits" element={<GustoBenefitsPage />} />
                 <Route path="documents" element={<GustoDocumentsPage />} />
+                <Route path="documents/:assignmentId" element={<GustoDocumentSignPage />} />
                 <Route path="performance" element={<GustoPerformancePage />} />
                 <Route path="settings" element={<GustoSettingsPage />} />
                 <Route path="my-account" element={<GustoMyAccountPage />} />

@@ -35,8 +35,18 @@ export const getMyPayHistory = async () => {
   return res.data;
 };
 
+export const getMyPayrollAccess = async () => {
+  const res = await api.get("/payroll/my-access");
+  return res.data;
+};
+
 export const getMyDocuments = async () => {
   const res = await api.get("/payroll/my/documents");
+  return res.data;
+};
+
+export const getMyDocumentDetail = async (assignmentId) => {
+  const res = await api.get(`/payroll/my/documents/${assignmentId}`);
   return res.data;
 };
 
@@ -165,6 +175,41 @@ export const getAdminDocuments = async () => {
   return res.data;
 };
 
+export const uploadPayrollDocumentPdf = async (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await api.post("/payroll/admin/documents/upload", formData, {
+    headers: { "Content-Type": "multipart/form-data" }
+  });
+  return res.data;
+};
+
+export const getPayrollDocumentFileUrl = (docId) => {
+  const base = (api.defaults.baseURL || "").replace(/\/$/, "");
+  const token = localStorage.getItem("authToken") || "";
+  return `${base}/payroll/documents/${docId}/file?token=${encodeURIComponent(token)}`;
+};
+
+export const getAdminDocumentDetail = async (docId) => {
+  const res = await api.get(`/payroll/admin/documents/${docId}`);
+  return res.data;
+};
+
+export const getAdminAssignmentDetail = async (assignmentId) => {
+  const res = await api.get(`/payroll/admin/documents/assignments/${assignmentId}`);
+  return res.data;
+};
+
+export const getStaffDocumentsForAdmin = async (staffId) => {
+  const res = await api.get(`/payroll/admin/documents/staff/${staffId}`);
+  return res.data;
+};
+
+export const remindAllStaffDocuments = async (staffId) => {
+  const res = await api.post(`/payroll/admin/documents/staff/${staffId}/remind-all`);
+  return res.data;
+};
+
 export const createAdminDocument = async (payload) => {
   const res = await api.post("/payroll/admin/documents", payload);
   return res.data;
@@ -206,5 +251,48 @@ export const createPerformanceGoal = async (payload) => {
 
 export const createPerformanceReview = async (payload) => {
   const res = await api.post("/payroll/admin/performance/reviews", payload);
+  return res.data;
+};
+
+// ==========================================
+// Super Admin Co-Admin Access & Feature Blocking
+// ==========================================
+
+export const getPayrollAccessList = async () => {
+  const res = await api.get("/payroll/admin/access");
+  return res.data;
+};
+
+export const grantPayrollAccess = async (payload) => {
+  const res = await api.post("/payroll/admin/access", payload);
+  return res.data;
+};
+
+export const updatePayrollAccess = async (accessId, payload) => {
+  const res = await api.put(`/payroll/admin/access/${accessId}`, payload);
+  return res.data;
+};
+
+export const revokePayrollAccess = async (accessId) => {
+  const res = await api.delete(`/payroll/admin/access/${accessId}`);
+  return res.data;
+};
+
+// ==========================================
+// Payment Enumeration & Cumulative Pay
+// ==========================================
+
+export const getPaymentEnumeration = async () => {
+  const res = await api.get("/payroll/admin/enumeration");
+  return res.data;
+};
+
+export const updatePaymentEnumeration = async (staffId, payload) => {
+  const res = await api.put(`/payroll/admin/enumeration/${staffId}`, payload);
+  return res.data;
+};
+
+export const getCumulativePayReport = async (params) => {
+  const res = await api.get("/payroll/admin/reports/cumulative-pay", { params });
   return res.data;
 };

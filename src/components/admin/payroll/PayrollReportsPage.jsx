@@ -13,16 +13,22 @@ import {
 import { Button, Form } from "react-bootstrap";
 import {
   getContractorPaymentsReport,
-  getAdminTimesheets
+  getAdminTimesheets,
+  getCumulativePayReport
 } from "../../../services/payrollService";
 import { getAllStaff } from "../../../services/staffService";
+import { getAllDepartments } from "../../../services/departmentService";
 import "../../../styles/GustoTheme.css";
 
 const PayrollReportsPage = () => {
   const [activeTab, setActiveTab] = useState("new"); // "new" | "history"
-  const [selectedReport, setSelectedReport] = useState(null); // null | "contractor_payments" | "contractor_info" | "time_hours"
+  const [selectedReport, setSelectedReport] = useState(null); // null | "cumulative_pay" | "contractor_payments" | "contractor_info" | "time_hours"
   const [staffList, setStaffList] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [reportRows, setReportRows] = useState([]);
+  const [cumulativeSummary, setCumulativeSummary] = useState(null);
+  const [cumulativePreset, setCumulativePreset] = useState("6_months");
+  const [selectedDepartment, setSelectedDepartment] = useState("all");
   const [loading, setLoading] = useState(false);
   const [reportHistory, setReportHistory] = useState([]);
 
@@ -48,6 +54,9 @@ const PayrollReportsPage = () => {
     getAllStaff()
       .then((res) => setStaffList(Array.isArray(res) ? res : res.staff || []))
       .catch(() => {});
+    getAllDepartments()
+      .then((res) => setDepartments(Array.isArray(res) ? res : res.departments || []))
+      .catch(() => {});
   }, []);
 
   const computeDateBounds = () => {
@@ -62,11 +71,35 @@ const PayrollReportsPage = () => {
     return { start_date: customStart, end_date: customEnd };
   };
 
-  const runReport = async (type) => {
+  const runReport = async (type, presetOverride) => {
     setLoading(true);
     try {
       const bounds = computeDateBounds();
-      if (type === "contractor_payments") {
+      if (type === "cumulative_pay") {
+        const activePreset = presetOverride || cumulativePreset;
+        const params = {
+          preset: activePreset,
+          staff_id: selectedContractor,
+          department_id: selectedDepartment
+        };
+        if (activePreset === "custom") {
+          params.start_date = customStart;
+          params.end_date = customEnd;
+        }
+        const res = await getCumulativePayReport(params);
+        setReportRows(res.rows || []);
+        setCumulativeSummary(res);
+        setReportHistory((prev) => [
+          {
+            id: Date.now(),
+            name: "Cumulative pay tracking",
+            generatedAt: new Date().toLocaleString(),
+            range: `${res.start_date} to ${res.end_date}`
+          },
+          ...prev
+        ]);
+        return;
+      } else if (type === "contractor_payments") {
         const res = await getContractorPaymentsReport({
           ...bounds,
           staff_id: selectedContractor
@@ -100,7 +133,18 @@ const PayrollReportsPage = () => {
   };
 
   const exportCSV = () => {
-    if (selectedReport === "contractor_payments") {
+    if (selectedReport === "cumulative_pay") {
+      const header = "Staff Name,Department,Pay Runs,Total Hours,Regular Pay,Bonus,Reimbursement,Avg Per Run,Cumulative Total Paid,Last Pay Date";
+      const body = reportRows
+        .map((r) => `"${r.staff_name}","${r.department}",${r.pay_runs_count},${r.total_hours},${r.total_regular_pay},${r.total_bonus},${r.total_reimbursement},${r.avg_per_run},${r.total_net_pay},"${r.last_pay_date || ""}"`)
+        .join("\n");
+      const blob = new Blob([`${header}\n${body}`], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `cumulative_pay_${cumulativePreset}.csv`;
+      a.click();
+    } else if (selectedReport === "contractor_payments") {
       const activeCols = [
         columns.contractor_name && { key: "staff_name", label: "Contractor name" },
         columns.payment_method && { key: "payment_method", label: "Payment method" },
@@ -173,7 +217,9 @@ const PayrollReportsPage = () => {
         </button>
 
         <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "#111827", marginBottom: "1.5rem" }}>
-          {selectedReport === "contractor_payments"
+          {selectedReport === "cumulative_pay"
+            ? "Cumulative pay tracking"
+            : selectedReport === "contractor_payments"
             ? "Contractor payments"
             : selectedReport === "time_hours"
             ? "Time tracking hours"
@@ -181,6 +227,106 @@ const PayrollReportsPage = () => {
         </h1>
 
         <div style={{ backgroundColor: "#ffffff", border: "1px solid #e5e7eb", borderRadius: "10px", padding: "1.75rem", marginBottom: "1.5rem" }}>
+          {selectedReport === "cumulative_pay" && (
+            <>
+              <h2 style={{ fontSize: "1.15rem", fontWeight: 700, marginBottom: "0.35rem" }}>
+                Track cumulative staff pay over any timeframe
+              </h2>
+              <p style={{ color: "#6b7280", fontSize: "0.875rem", marginBottom: "1.25rem" }}>
+                View total cumulative compensation paid per team member across the last 4 weeks, 3 months, 6 months, 12 months, or any custom window.
+              </p>
+
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1.25rem" }}>
+                {[
+                  { id: "4_weeks", label: "Last 4 weeks" },
+                  { id: "3_months", label: "Last 3 months" },
+                  { id: "6_months", label: "Last 6 months" },
+                  { id: "12_months", label: "Last 12 months" },
+                  { id: "ytd", label: "Year to date" },
+                  { id: "custom", label: "Custom range" }
+                ].map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => {
+                      setCumulativePreset(p.id);
+                      if (p.id !== "custom") runReport("cumulative_pay", p.id);
+                    }}
+                    style={{
+                      padding: "0.4rem 0.85rem",
+                      borderRadius: "6px",
+                      border: cumulativePreset === p.id ? "1px solid #0f766e" : "1px solid #d1d5db",
+                      backgroundColor: cumulativePreset === p.id ? "#f0fdfa" : "#ffffff",
+                      color: cumulativePreset === p.id ? "#0f766e" : "#374151",
+                      fontSize: "0.84rem",
+                      fontWeight: 600,
+                      cursor: "pointer"
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "1.25rem" }}>
+                {cumulativePreset === "custom" && (
+                  <>
+                    <Form.Group>
+                      <Form.Label className="small fw-semibold">Start date</Form.Label>
+                      <Form.Control type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} />
+                    </Form.Group>
+                    <Form.Group>
+                      <Form.Label className="small fw-semibold">End date</Form.Label>
+                      <Form.Control type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} />
+                    </Form.Group>
+                  </>
+                )}
+                <Form.Group>
+                  <Form.Label className="small fw-semibold">Department</Form.Label>
+                  <Form.Select value={selectedDepartment} onChange={(e) => setSelectedDepartment(e.target.value)}>
+                    <option value="all">All departments</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+                <Form.Group>
+                  <Form.Label className="small fw-semibold">Team member</Form.Label>
+                  <Form.Select value={selectedContractor} onChange={(e) => setSelectedContractor(e.target.value)}>
+                    <option value="all">All team members</option>
+                    {staffList.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </div>
+
+              {cumulativeSummary && (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1rem", marginBottom: "1.25rem" }}>
+                  <div style={{ backgroundColor: "#f0fdfa", border: "1px solid #99f6e4", borderRadius: "8px", padding: "0.9rem 1.1rem" }}>
+                    <div style={{ fontSize: "0.75rem", fontWeight: 600, color: "#0f766e", textTransform: "uppercase" }}>Total Cumulative Paid</div>
+                    <div style={{ fontSize: "1.4rem", fontWeight: 700, color: "#111827", marginTop: "0.2rem" }}>
+                      ${Number(cumulativeSummary.grand_total_net_pay || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                    <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>{cumulativeSummary.start_date} to {cumulativeSummary.end_date}</div>
+                  </div>
+                  <div style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "0.9rem 1.1rem" }}>
+                    <div style={{ fontSize: "0.75rem", fontWeight: 600, color: "#475569", textTransform: "uppercase" }}>Total Hours Paid</div>
+                    <div style={{ fontSize: "1.4rem", fontWeight: 700, color: "#111827", marginTop: "0.2rem" }}>
+                      {Number(cumulativeSummary.grand_total_hours || 0).toFixed(2)} hrs
+                    </div>
+                  </div>
+                  <div style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "0.9rem 1.1rem" }}>
+                    <div style={{ fontSize: "0.75rem", fontWeight: 600, color: "#475569", textTransform: "uppercase" }}>Staff Paid</div>
+                    <div style={{ fontSize: "1.4rem", fontWeight: 700, color: "#111827", marginTop: "0.2rem" }}>
+                      {cumulativeSummary.staff_paid_count || 0}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
           {selectedReport === "contractor_payments" && (
             <>
               <h2 style={{ fontSize: "1.15rem", fontWeight: 700, marginBottom: "0.35rem" }}>
@@ -285,6 +431,18 @@ const PayrollReportsPage = () => {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: "#f9fafb" }}>
+                  {selectedReport === "cumulative_pay" && (
+                    <>
+                      <th style={{ padding: "0.75rem 1rem", textAlign: "left" }}>Team member</th>
+                      <th style={{ padding: "0.75rem 1rem", textAlign: "left" }}>Department</th>
+                      <th style={{ padding: "0.75rem 1rem", textAlign: "right" }}>Pay runs</th>
+                      <th style={{ padding: "0.75rem 1rem", textAlign: "right" }}>Total hours</th>
+                      <th style={{ padding: "0.75rem 1rem", textAlign: "right" }}>Regular pay</th>
+                      <th style={{ padding: "0.75rem 1rem", textAlign: "right" }}>Bonuses</th>
+                      <th style={{ padding: "0.75rem 1rem", textAlign: "right" }}>Reimb.</th>
+                      <th style={{ padding: "0.75rem 1rem", textAlign: "right" }}>Cumulative total</th>
+                    </>
+                  )}
                   {selectedReport === "contractor_payments" && (
                     <>
                       <th style={{ padding: "0.75rem 1rem", textAlign: "left" }}>Contractor</th>
@@ -318,7 +476,19 @@ const PayrollReportsPage = () => {
               </thead>
               <tbody>
                 {reportRows.map((r, idx) => (
-                  <tr key={r.id || idx} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                  <tr key={r.id || r.staff_id || idx} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                    {selectedReport === "cumulative_pay" && (
+                      <>
+                        <td style={{ padding: "0.75rem 1rem", fontWeight: 600 }}>{r.staff_name}</td>
+                        <td style={{ padding: "0.75rem 1rem" }}>{r.department}</td>
+                        <td style={{ padding: "0.75rem 1rem", textAlign: "right" }}>{r.pay_runs_count}</td>
+                        <td style={{ padding: "0.75rem 1rem", textAlign: "right" }}>{r.total_hours}h</td>
+                        <td style={{ padding: "0.75rem 1rem", textAlign: "right" }}>${Number(r.total_regular_pay || 0).toFixed(2)}</td>
+                        <td style={{ padding: "0.75rem 1rem", textAlign: "right" }}>${Number(r.total_bonus || 0).toFixed(2)}</td>
+                        <td style={{ padding: "0.75rem 1rem", textAlign: "right" }}>${Number(r.total_reimbursement || 0).toFixed(2)}</td>
+                        <td style={{ padding: "0.75rem 1rem", textAlign: "right", fontWeight: 700, color: "#0f766e" }}>${Number(r.total_net_pay || 0).toFixed(2)}</td>
+                      </>
+                    )}
                     {selectedReport === "contractor_payments" && (
                       <>
                         <td style={{ padding: "0.75rem 1rem", fontWeight: 600 }}>{r.staff_name}</td>
@@ -403,6 +573,12 @@ const PayrollReportsPage = () => {
           <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#111827", marginBottom: "1rem" }}>Recently used</h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(310px, 1fr))", gap: "1.25rem" }}>
             {[
+              {
+                id: "cumulative_pay",
+                title: "Cumulative pay tracking",
+                desc: "Track how much each staff member has been paid across the last 4 weeks, 3 months, 6 months, 12 months, or any custom range.",
+                icon: DollarSign
+              },
               {
                 id: "contractor_payments",
                 title: "Contractor payments",

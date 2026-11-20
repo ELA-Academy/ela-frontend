@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Search,
   Plus,
@@ -8,32 +9,33 @@ import {
   Archive,
   Bell,
   CheckCircle2,
-  FileText,
   Download,
+  Edit3,
+  Lock,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight
 } from "lucide-react";
-import { Modal, Button, Form, Dropdown } from "react-bootstrap";
+import { Button, Dropdown } from "react-bootstrap";
 import {
   getAdminDocuments,
-  createAdminDocument,
   updateAdminDocument,
-  updateDocumentRecipients,
   remindDocumentAssignment
 } from "../../../services/payrollService";
-import { getAllStaff } from "../../../services/staffService";
-import { getAllDepartments } from "../../../services/departmentService";
 import "../../../styles/GustoTheme.css";
 
 const PayrollDocumentsPage = () => {
-  const [section, setSection] = useState("artifacts"); // "artifacts" | "shared" | "templates" | "bulk" | "authorization"
-  const [sharedTab, setSharedTab] = useState("active"); // "active" | "draft" | "archived"
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const initialSection = searchParams.get("section") || "shared";
+  const initialTab = searchParams.get("tab") || "active";
+
+  const [section, setSection] = useState(initialSection);
+  const [sharedTab, setSharedTab] = useState(initialTab);
   const [documents, setDocuments] = useState([]);
   const [artifacts, setArtifacts] = useState([]);
-  const [staffList, setStaffList] = useState([]);
-  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [toastMessage, setToastMessage] = useState("");
@@ -41,29 +43,6 @@ const PayrollDocumentsPage = () => {
   // Pagination for Artifacts
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
-
-  // Modals
-  const [addModalOpen, setAddModalOpen] = useState(false);
-  const [newDoc, setNewDoc] = useState({
-    title: "",
-    category: "Company Policies",
-    description: "",
-    status: "active",
-    content_body: "",
-    requires_signature: true,
-    is_fillable: false,
-    file_name: "",
-    future_hires_rule: "all",
-    assign_to_existing: true
-  });
-
-  const [recipientsModalDoc, setRecipientsModalDoc] = useState(null);
-  const [futureHiresRule, setFutureHiresRule] = useState("all");
-  const [selectedDeptIds, setSelectedDeptIds] = useState([]);
-  const [selectedStaffIds, setSelectedStaffIds] = useState([]);
-  const [recipientSearch, setRecipientSearch] = useState("");
-
-  const [viewArtifact, setViewArtifact] = useState(null);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -73,15 +52,9 @@ const PayrollDocumentsPage = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [docRes, staffRes, deptRes] = await Promise.all([
-        getAdminDocuments(),
-        getAllStaff(),
-        getAllDepartments().catch(() => [])
-      ]);
+      const docRes = await getAdminDocuments();
       setDocuments(docRes.documents || []);
       setArtifacts(docRes.artifacts || []);
-      setStaffList(Array.isArray(staffRes) ? staffRes : staffRes.staff || []);
-      setDepartments(Array.isArray(deptRes) ? deptRes : deptRes.departments || []);
     } catch (err) {
       console.error("Failed to load documents:", err);
     } finally {
@@ -93,60 +66,20 @@ const PayrollDocumentsPage = () => {
     loadData();
   }, []);
 
-  const handleCreateDoc = async (e) => {
-    e.preventDefault();
-    if (!newDoc.title.trim()) return;
-    try {
-      const res = await createAdminDocument({
-        ...newDoc,
-        doc_type: section === "templates" ? "template" : "shared"
-      });
-      setAddModalOpen(false);
-      setNewDoc({
-        title: "",
-        category: "Company Policies",
-        description: "",
-        status: "active",
-        content_body: "",
-        requires_signature: true,
-        is_fillable: false,
-        file_name: "",
-        future_hires_rule: "all",
-        assign_to_existing: true
-      });
-      showToast(
-        res?.assigned_count > 0
-          ? `Document saved and attached to ${res.assigned_count} active worker(s).`
-          : "Document saved successfully."
-      );
-      loadData();
-    } catch (err) {
-      showToast("Failed to save document.");
-    }
+  const handleSelectSection = (nextSection) => {
+    setSection(nextSection);
+    setSearchQuery("");
+    setSearchParams({ section: nextSection, ...(nextSection === "shared" ? { tab: sharedTab } : {}) });
   };
 
-  const openRecipientsModal = (doc) => {
-    setRecipientsModalDoc(doc);
-    setFutureHiresRule(doc.future_hires_rule || "none");
-    setSelectedDeptIds(doc.target_department_ids || []);
-    setSelectedStaffIds([]);
-    setRecipientSearch("");
+  const handleSelectSharedTab = (nextTab) => {
+    setSharedTab(nextTab);
+    setSearchParams({ section: "shared", tab: nextTab });
   };
 
-  const handleSaveRecipients = async () => {
-    if (!recipientsModalDoc) return;
-    try {
-      const res = await updateDocumentRecipients(recipientsModalDoc.id, {
-        future_hires_rule: futureHiresRule,
-        department_ids: selectedDeptIds,
-        staff_ids: selectedStaffIds
-      });
-      setRecipientsModalDoc(null);
-      showToast(`Recipients updated (${res.added_recipients || 0} newly assigned).`);
-      loadData();
-    } catch (err) {
-      showToast("Failed to update recipients.");
-    }
+  const handleAddDocumentClick = () => {
+    const targetStatus = section === "shared" && sharedTab === "draft" ? "draft" : "active";
+    navigate(`/admin/payroll/documents/new?status=${targetStatus}`);
   };
 
   const handleArchiveDoc = async (doc) => {
@@ -166,7 +99,7 @@ const PayrollDocumentsPage = () => {
       showToast(`Reminder sent to ${artifact.staff_name} for "${artifact.document_title}".`);
       loadData();
     } catch (err) {
-      showToast("Failed to send reminder.");
+      showToast(err?.response?.data?.error || "Failed to send reminder.");
     }
   };
 
@@ -222,10 +155,10 @@ const PayrollDocumentsPage = () => {
         <h1 style={{ fontSize: "1.85rem", fontWeight: 700, color: "#111827", margin: 0 }}>
           Documents
         </h1>
-        {(section === "shared" || section === "templates") && (
+        {(section === "shared" || section === "templates") && sharedTab !== "archived" && (
           <button
             type="button"
-            onClick={() => setAddModalOpen(true)}
+            onClick={handleAddDocumentClick}
             style={{
               backgroundColor: "#0f766e",
               color: "#ffffff",
@@ -247,7 +180,7 @@ const PayrollDocumentsPage = () => {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: "2rem", alignItems: "start" }}>
-        {/* Left Sub-nav matching Gusto Image 4 & 5 */}
+        {/* Left Sub-nav matching Image 8 */}
         <div>
           <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#111827", marginBottom: "0.5rem" }}>
             Team
@@ -262,10 +195,7 @@ const PayrollDocumentsPage = () => {
               <button
                 key={item.id}
                 type="button"
-                onClick={() => {
-                  setSection(item.id);
-                  setSearchQuery("");
-                }}
+                onClick={() => handleSelectSection(item.id)}
                 style={{
                   textAlign: "left",
                   background: "none",
@@ -287,7 +217,7 @@ const PayrollDocumentsPage = () => {
           </div>
           <button
             type="button"
-            onClick={() => setSection("authorization")}
+            onClick={() => handleSelectSection("authorization")}
             style={{
               textAlign: "left",
               background: "none",
@@ -343,14 +273,17 @@ const PayrollDocumentsPage = () => {
                     {loading ? (
                       <tr><td colSpan={4} style={{ padding: "2rem", textAlign: "center", color: "#6b7280" }}>Loading artifacts...</td></tr>
                     ) : pagedArtifacts.length === 0 ? (
-                      <tr><td colSpan={4} style={{ padding: "2rem", textAlign: "center", color: "#6b7280" }}>No document assignments found. Assign recipients from the Shared tab.</td></tr>
+                      <tr><td colSpan={4} style={{ padding: "2rem", textAlign: "center", color: "#6b7280" }}>No document assignments yet. Upload and send a document from Shared.</td></tr>
                     ) : (
                       pagedArtifacts.map((a) => {
-                        const isDone = a.status === "Signed" || a.status === "Submitted" || a.status === "Acknowledged";
+                        const isDone = Boolean(a.is_locked);
                         return (
                           <tr key={a.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
                             <td style={{ padding: "0.85rem 1rem", fontWeight: 600, color: "#0f766e" }}>{a.staff_name}</td>
-                            <td style={{ padding: "0.85rem 1rem", color: "#0f766e", textDecoration: "underline", cursor: "pointer" }} onClick={() => setViewArtifact(a)}>
+                            <td
+                              style={{ padding: "0.85rem 1rem", color: "#0f766e", textDecoration: "underline", cursor: "pointer" }}
+                              onClick={() => navigate(`/admin/payroll/documents/artifacts/${a.id}`)}
+                            >
                               {a.document_title}
                             </td>
                             <td style={{ padding: "0.85rem 1rem" }}>
@@ -361,9 +294,13 @@ const PayrollDocumentsPage = () => {
                                   padding: "0.2rem 0.65rem",
                                   borderRadius: "9999px",
                                   fontSize: "0.75rem",
-                                  fontWeight: 600
+                                  fontWeight: 600,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "0.3rem"
                                 }}
                               >
+                                {isDone && <Lock size={11} />}
                                 {a.status}
                               </span>
                             </td>
@@ -371,7 +308,7 @@ const PayrollDocumentsPage = () => {
                               <div style={{ display: "inline-flex", gap: "0.75rem", alignItems: "center" }}>
                                 <button
                                   type="button"
-                                  onClick={() => setViewArtifact(a)}
+                                  onClick={() => navigate(`/admin/payroll/documents/artifacts/${a.id}`)}
                                   style={{ background: "none", border: "none", color: "#0f766e", fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.25rem" }}
                                 >
                                   <Eye className="w-4 h-4" /> View
@@ -435,7 +372,7 @@ const PayrollDocumentsPage = () => {
                     <button
                       key={t}
                       type="button"
-                      onClick={() => setSharedTab(t)}
+                      onClick={() => handleSelectSharedTab(t)}
                       style={{
                         background: "none",
                         border: "none",
@@ -458,7 +395,7 @@ const PayrollDocumentsPage = () => {
                 <Search className="w-4 h-4 text-gray-400" style={{ position: "absolute", left: "12px", top: "11px" }} />
                 <input
                   type="text"
-                  placeholder="Search shared documents"
+                  placeholder={`Search ${sharedTab} documents`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   style={{
@@ -481,14 +418,29 @@ const PayrollDocumentsPage = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredDocs.length === 0 ? (
-                      <tr><td colSpan={3} style={{ padding: "2rem", textAlign: "center", color: "#6b7280" }}>No documents in this view.</td></tr>
+                    {loading ? (
+                      <tr><td colSpan={3} style={{ padding: "2rem", textAlign: "center", color: "#6b7280" }}>Loading documents...</td></tr>
+                    ) : filteredDocs.length === 0 ? (
+                      <tr>
+                        <td colSpan={3} style={{ padding: "2.5rem", textAlign: "center", color: "#6b7280" }}>
+                          No {sharedTab} documents yet. Click <strong>Add document</strong> to upload a PDF.
+                        </td>
+                      </tr>
                     ) : (
                       filteredDocs.map((doc) => (
                         <tr key={doc.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
                           <td style={{ padding: "0.9rem 1rem" }}>
-                            <div style={{ fontWeight: 600, color: "#0f766e" }}>{doc.title}</div>
-                            <div style={{ fontSize: "0.78rem", color: "#6b7280" }}>{doc.category} • {doc.recipient_count || 0} assigned</div>
+                            <div
+                              onClick={() => navigate(`/admin/payroll/documents/${doc.id}/edit?step=${doc.is_locked ? 3 : 2}`)}
+                              style={{ fontWeight: 600, color: "#0f766e", textDecoration: "underline", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
+                            >
+                              {doc.title}
+                              {doc.is_locked && <Lock size={13} color="#6b7280" title="Locked because signed copies exist" />}
+                            </div>
+                            <div style={{ fontSize: "0.78rem", color: "#6b7280", marginTop: "0.15rem" }}>
+                              {doc.document_scope === "individual" ? "Individual document" : "Team document"} • {doc.recipient_count || 0} assigned
+                              {doc.signed_count > 0 && ` • ${doc.signed_count} signed`}
+                            </div>
                           </td>
                           <td style={{ padding: "0.9rem 1rem", color: "#374151" }}>{doc.uploaded_by}</td>
                           <td style={{ padding: "0.9rem 1rem", textAlign: "right" }}>
@@ -497,10 +449,15 @@ const PayrollDocumentsPage = () => {
                                 <MoreVertical className="w-4 h-4 text-gray-600" />
                               </Dropdown.Toggle>
                               <Dropdown.Menu>
-                                <Dropdown.Item onClick={() => setViewArtifact({ document_title: doc.title, content_body: doc.content_body || doc.description, status: doc.status })}>
-                                  <Eye className="w-4 h-4 me-2 inline" /> View document details
+                                {!doc.is_locked && (
+                                  <Dropdown.Item onClick={() => navigate(`/admin/payroll/documents/${doc.id}/edit?step=2`)}>
+                                    <Edit3 className="w-4 h-4 me-2 inline" /> Edit document
+                                  </Dropdown.Item>
+                                )}
+                                <Dropdown.Item onClick={() => navigate(`/admin/payroll/documents/${doc.id}/edit?step=3`)}>
+                                  <Eye className="w-4 h-4 me-2 inline" /> Preview document
                                 </Dropdown.Item>
-                                <Dropdown.Item onClick={() => openRecipientsModal(doc)}>
+                                <Dropdown.Item onClick={() => navigate(`/admin/payroll/documents/${doc.id}/edit?step=4`)}>
                                   <Users className="w-4 h-4 me-2 inline" /> Update recipients
                                 </Dropdown.Item>
                                 <Dropdown.Item onClick={() => handleArchiveDoc(doc)}>
@@ -522,7 +479,7 @@ const PayrollDocumentsPage = () => {
             <div style={{ backgroundColor: "#ffffff", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "2rem" }}>
               <h3 style={{ fontSize: "1.15rem", fontWeight: 700, marginBottom: "0.5rem" }}>Bulk downloads</h3>
               <p style={{ color: "#6b7280", fontSize: "0.9rem", marginBottom: "1.25rem" }}>
-                Export signed contractor W-9s, Alternate Payment Forms, and acknowledged Pay Schedules for compliance audits.
+                Export signed document audit records for compliance.
               </p>
               <Button
                 variant="outline-primary"
@@ -547,235 +504,12 @@ const PayrollDocumentsPage = () => {
             <div style={{ backgroundColor: "#ffffff", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "2rem" }}>
               <h3 style={{ fontSize: "1.15rem", fontWeight: 700, marginBottom: "0.5rem" }}>Company Authorization</h3>
               <p style={{ color: "#6b7280", fontSize: "0.9rem" }}>
-                Cooper Galvis Enterprises LLC / ELA Academy is authorized for electronic document signing, contractor W-9 collection, and Stripe / Remitly disbursement tracking.
+                Cooper Galvis Enterprises LLC / ELA Academy is authorized for electronic document signing and staff compliance tracking.
               </p>
             </div>
           )}
         </div>
       </div>
-
-      {/* Add Document Modal */}
-      <Modal show={addModalOpen} onHide={() => setAddModalOpen(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title style={{ fontSize: "1.1rem", fontWeight: 700 }}>Add shared document</Modal.Title>
-        </Modal.Header>
-        <Form onSubmit={handleCreateDoc}>
-          <Modal.Body>
-            <Form.Group className="mb-3">
-              <Form.Label className="fw-semibold">Document title</Form.Label>
-              <Form.Control
-                required
-                value={newDoc.title}
-                onChange={(e) => setNewDoc({ ...newDoc, title: e.target.value })}
-                placeholder="e.g. 2027 Pay Schedule International"
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label className="fw-semibold">Category</Form.Label>
-              <Form.Select value={newDoc.category} onChange={(e) => setNewDoc({ ...newDoc, category: e.target.value })}>
-                <option value="Company Policies">Company Policies</option>
-                <option value="Pay Schedules">Pay Schedules</option>
-                <option value="Payroll & Payment">Payroll & Payment</option>
-                <option value="Tax Documents">Tax Documents</option>
-                <option value="Time Off & Leave">Time Off & Leave</option>
-              </Form.Select>
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label className="fw-semibold">Status</Form.Label>
-              <Form.Select value={newDoc.status} onChange={(e) => setNewDoc({ ...newDoc, status: e.target.value })}>
-                <option value="active">Active (Ready to assign)</option>
-                <option value="draft">Draft (Awaiting approval)</option>
-              </Form.Select>
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label className="fw-semibold">Upload file (optional — PDF, Word, or Text)</Form.Label>
-              <Form.Control
-                type="file"
-                accept=".pdf,.doc,.docx,.txt,.md,.csv"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (!f) return;
-                  setNewDoc((prev) => ({
-                    ...prev,
-                    file_name: f.name,
-                    title: prev.title || f.name.replace(/\.[^/.]+$/, "")
-                  }));
-                  if (f.type.startsWith("text/") || /\.(txt|md|csv)$/i.test(f.name)) {
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                      setNewDoc((prev) => ({ ...prev, content_body: String(ev.target?.result || "") }));
-                    };
-                    reader.readAsText(f);
-                  }
-                }}
-              />
-              {newDoc.file_name && (
-                <Form.Text className="text-emerald-700 fw-medium">Selected: {newDoc.file_name}</Form.Text>
-              )}
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label className="fw-semibold">Document content / instructions</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={4}
-                value={newDoc.content_body}
-                onChange={(e) => setNewDoc({ ...newDoc, content_body: e.target.value })}
-                placeholder="Paste document text or key schedule dates..."
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label className="fw-semibold">Auto-assign to future hires</Form.Label>
-              <Form.Select
-                value={newDoc.future_hires_rule}
-                onChange={(e) => setNewDoc({ ...newDoc, future_hires_rule: e.target.value })}
-              >
-                <option value="all">All future hires</option>
-                <option value="us">US-based hires only</option>
-                <option value="non_us">International / Non-US hires only</option>
-                <option value="none">Do not auto-assign</option>
-              </Form.Select>
-            </Form.Group>
-            {newDoc.status === "active" && (
-              <Form.Check
-                type="checkbox"
-                id="chk-assign-existing-workers"
-                label="Automatically attach to all matching active workers now"
-                checked={newDoc.assign_to_existing}
-                onChange={(e) => setNewDoc({ ...newDoc, assign_to_existing: e.target.checked })}
-                className="mb-2 fw-medium"
-              />
-            )}
-            <Form.Check
-              type="checkbox"
-              id="chk-requires-sig"
-              label="Require e-signature / acknowledgement from recipient"
-              checked={newDoc.requires_signature}
-              onChange={(e) => setNewDoc({ ...newDoc, requires_signature: e.target.checked })}
-            />
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="light" onClick={() => setAddModalOpen(false)}>Cancel</Button>
-            <Button type="submit" style={{ backgroundColor: "#0f766e", border: "none" }}>Save document</Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
-
-      {/* Update Document Recipients Modal (Image 7) */}
-      <Modal show={!!recipientsModalDoc} onHide={() => setRecipientsModalDoc(null)} size="lg" centered>
-        <Modal.Header closeButton>
-          <Modal.Title style={{ fontSize: "1.15rem", fontWeight: 700 }}>
-            Update document recipients — {recipientsModalDoc?.title}
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <div style={{ marginBottom: "1.25rem" }}>
-            <div style={{ fontWeight: 700, fontSize: "0.95rem", marginBottom: "0.5rem" }}>Future hires</div>
-            <Form.Select value={futureHiresRule} onChange={(e) => setFutureHiresRule(e.target.value)}>
-              <option value="none">Do not auto-assign to future hires</option>
-              <option value="all">All future hires</option>
-              <option value="us">US-based hires only</option>
-              <option value="non_us">International / Non-US hires only</option>
-            </Form.Select>
-          </div>
-
-          <div>
-            <div style={{ fontWeight: 700, fontSize: "0.95rem", marginBottom: "0.5rem" }}>Current team members & departments</div>
-            <input
-              type="text"
-              placeholder="Search for a person or department..."
-              value={recipientSearch}
-              onChange={(e) => setRecipientSearch(e.target.value)}
-              style={{ width: "100%", padding: "0.5rem 0.75rem", border: "1px solid #d1d5db", borderRadius: "6px", marginBottom: "0.75rem" }}
-            />
-            <div style={{ maxHeight: "260px", overflowY: "auto", border: "1px solid #e5e7eb", borderRadius: "6px", padding: "0.75rem" }}>
-              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#6b7280", textTransform: "uppercase", marginBottom: "0.4rem" }}>
-                Departments
-              </div>
-              {departments
-                .filter((d) => (d.name || "").toLowerCase().includes(recipientSearch.toLowerCase()))
-                .map((d) => (
-                  <Form.Check
-                    key={`dept-${d.id}`}
-                    type="checkbox"
-                    label={d.name}
-                    checked={selectedDeptIds.includes(d.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) setSelectedDeptIds((p) => [...p, d.id]);
-                      else setSelectedDeptIds((p) => p.filter((x) => x !== d.id));
-                    }}
-                    className="mb-1"
-                  />
-                ))}
-
-              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#6b7280", textTransform: "uppercase", marginTop: "0.85rem", marginBottom: "0.4rem" }}>
-                Individual Team Members
-              </div>
-              {staffList
-                .filter((s) => (s.name || "").toLowerCase().includes(recipientSearch.toLowerCase()))
-                .map((s) => (
-                  <Form.Check
-                    key={`staff-${s.id}`}
-                    type="checkbox"
-                    label={`${s.name} (${s.country || "US"})`}
-                    checked={selectedStaffIds.includes(s.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) setSelectedStaffIds((p) => [...p, s.id]);
-                      else setSelectedStaffIds((p) => p.filter((x) => x !== s.id));
-                    }}
-                    className="mb-1"
-                  />
-                ))}
-            </div>
-          </div>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="light" onClick={() => setRecipientsModalDoc(null)}>Cancel</Button>
-          <Button onClick={handleSaveRecipients} style={{ backgroundColor: "#0f766e", border: "none" }}>
-            Send &amp; Save Recipients
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-      {/* View Artifact / Submitted Form Data Modal */}
-      <Modal show={!!viewArtifact} onHide={() => setViewArtifact(null)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title style={{ fontSize: "1.1rem", fontWeight: 700 }}>
-            <FileText className="w-4 h-4 me-2 inline" />
-            {viewArtifact?.document_title}
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {viewArtifact?.staff_name && (
-            <div style={{ marginBottom: "0.75rem", fontSize: "0.875rem" }}>
-              <strong>Team member:</strong> {viewArtifact.staff_name}
-            </div>
-          )}
-          <div style={{ marginBottom: "0.75rem", fontSize: "0.875rem" }}>
-            <strong>Status:</strong> {viewArtifact?.status}
-            {viewArtifact?.signature_name && ` (Signed by "${viewArtifact.signature_name}")`}
-          </div>
-          {viewArtifact?.content_body && (
-            <div style={{ backgroundColor: "#f9fafb", padding: "0.85rem", borderRadius: "6px", whiteSpace: "pre-wrap", fontSize: "0.85rem", marginBottom: "0.75rem" }}>
-              {viewArtifact.content_body}
-            </div>
-          )}
-          {viewArtifact?.filled_data && Object.keys(viewArtifact.filled_data).length > 0 && (
-            <div style={{ border: "1px solid #d1fae5", backgroundColor: "#ecfdf5", padding: "0.85rem", borderRadius: "6px" }}>
-              <div style={{ fontWeight: 700, fontSize: "0.85rem", color: "#065f46", marginBottom: "0.4rem" }}>
-                Submitted Form Details
-              </div>
-              {Object.entries(viewArtifact.filled_data).map(([k, v]) => (
-                <div key={k} style={{ fontSize: "0.85rem", marginBottom: "0.2rem" }}>
-                  <strong style={{ textTransform: "capitalize" }}>{k.replace(/_/g, " ")}:</strong> {v}
-                </div>
-              ))}
-            </div>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setViewArtifact(null)}>Close</Button>
-        </Modal.Footer>
-      </Modal>
     </div>
   );
 };
