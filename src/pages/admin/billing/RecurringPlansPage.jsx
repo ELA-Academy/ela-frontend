@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { Table, Spinner, Alert, Button, Form, Nav, Dropdown, Modal, Badge } from "react-bootstrap";
 import {
   Search,
@@ -71,7 +72,45 @@ const getPlanNextDueDate = (plan) => {
   return dObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 };
 
+const getPlanInvoicePeriod = (plan) => {
+  const refStr = plan.next_due_date || plan.next_invoice_date;
+  if (!refStr) return "N/A";
+  const parts = String(refStr).split("T")[0].split("-").map(Number);
+  if (parts.length !== 3) return "N/A";
+  let [y, m, d] = parts;
+  if (!plan.next_due_date) {
+    const dueDay = plan.due_day != null && plan.due_day > 0 ? Number(plan.due_day) : 1;
+    if (d > dueDay) {
+      m += 1;
+      if (m > 12) {
+        m = 1;
+        y += 1;
+      }
+    }
+    d = dueDay;
+  }
+  const cycle = (plan.cycle || "Monthly").toLowerCase();
+  const fmt = (dt) =>
+    dt.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }).toUpperCase();
+
+  if (cycle.includes("week")) {
+    const start = new Date(y, m - 1, d);
+    const end = new Date(y, m - 1, d + (cycle.includes("bi") ? 13 : 6));
+    return `${fmt(start)} - ${fmt(end)}`;
+  }
+  if (cycle.includes("annual") || cycle.includes("year")) {
+    const start = new Date(y, m - 1, 1);
+    const end = new Date(y + 1, m - 1, 0);
+    return `${fmt(start)} - ${fmt(end)}`;
+  }
+  // Monthly default: 1st to last day of the due month
+  const start = new Date(y, m - 1, 1);
+  const end = new Date(y, m, 0);
+  return `${fmt(start)} - ${fmt(end)}`;
+};
+
 const RecurringPlansPage = () => {
+  const navigate = useNavigate();
   const [activePlans, setActivePlans] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [students, setStudents] = useState([]);
@@ -775,11 +814,11 @@ const RecurringPlansPage = () => {
                       <td style={{ padding: "12px" }}>
                         <span
                           className="text-primary fw-semibold cursor-pointer d-inline-flex align-items-center gap-1"
-                          onClick={() => { setEditingPlan(plan); setShowEditModal(true); }}
-                          title="Click to edit schedule"
+                          onClick={() => setPreviewInvoicePlan(plan)}
+                          title="Click to preview next invoice"
+                          style={{ textDecoration: "underline", textUnderlineOffset: "2px" }}
                         >
                           {formatDateSafe(plan.next_invoice_date)}
-                          <Edit3 size={11} className="opacity-50" />
                         </span>
                         <div className="d-flex align-items-center gap-2 mt-0.5">
                           <span className="text-muted" style={{ fontSize: "10.5px" }}>
@@ -944,112 +983,153 @@ const RecurringPlansPage = () => {
         onSuccess={fetchData}
       />
 
-      {/* Next Invoice Preview Modal */}
+      {/* Preview of Next Invoice Modal (Procare-style) */}
       <Modal
         show={Boolean(previewInvoicePlan)}
         onHide={() => setPreviewInvoicePlan(null)}
         centered
         size="lg"
       >
-        <Modal.Header closeButton className="border-bottom pb-2">
-          <Modal.Title className="fs-6 fw-bold text-slate-800 d-flex align-items-center gap-2">
-            <Receipt size={18} className="text-primary" />
-            Next Invoice Preview
+        <Modal.Header closeButton className="border-bottom px-4 py-3">
+          <Modal.Title className="fs-5 fw-semibold text-slate-700">
+            Preview of Next Invoice
           </Modal.Title>
         </Modal.Header>
         {previewInvoicePlan && (
-          <Modal.Body className="py-3 px-4">
-            <div className="bg-light border rounded-3 p-3 mb-3">
-              <div className="d-flex justify-content-between align-items-start flex-wrap gap-2">
-                <div>
-                  <div className="text-muted text-uppercase fw-bold" style={{ fontSize: "10px" }}>Student</div>
-                  <div className="fw-bold text-slate-800 fs-6">{previewInvoicePlan.student_name}</div>
-                  <div className="text-muted small">{previewInvoicePlan.grade_level || "Student"}</div>
+          <Modal.Body className="p-4" style={{ backgroundColor: "#ffffff" }}>
+            <div
+              className="border rounded-3 overflow-hidden"
+              style={{ borderColor: "#e2e8f0" }}
+            >
+              {/* Top School Header + Billed For */}
+              <div className="p-4 bg-white">
+                <div className="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+                  <div className="d-flex align-items-center justify-content-center" style={{ minWidth: "140px" }}>
+                    <img
+                      src="/images/ELA-logo.png"
+                      alt="ELA Academy Logo"
+                      style={{ maxHeight: "96px", maxWidth: "150px", objectFit: "contain", borderRadius: "6px" }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
+                  </div>
+                  <div style={{ maxWidth: "300px" }}>
+                    <div className="fw-bold text-slate-800" style={{ fontSize: "1rem", lineHeight: 1.35 }}>
+                      Exceptional Learning and Arts Academy
+                    </div>
+                    <div className="text-slate-600 mt-1" style={{ fontSize: "0.86rem" }}>
+                      P.O. Box 29515, Jacksonville, FL, 32256
+                    </div>
+                  </div>
                 </div>
-                <div className="text-end">
-                  <Badge bg="info" className="mb-1">{previewInvoicePlan.cycle || "Monthly"}</Badge>
-                  <div className="fw-semibold text-slate-700 small">{previewInvoicePlan.plan_name}</div>
+
+                <div className="d-flex align-items-center gap-3 pt-1">
+                  <span className="text-slate-500" style={{ fontSize: "0.9rem" }}>Billed For</span>
+                  <div
+                    className="d-flex align-items-center justify-content-center text-white fw-bold rounded-circle flex-shrink-0"
+                    style={{
+                      width: "34px",
+                      height: "34px",
+                      backgroundColor: getAvatarBg(previewInvoicePlan.student_name || "A"),
+                      fontSize: "12px"
+                    }}
+                  >
+                    {getInitials(previewInvoicePlan.student_name)}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-link p-0 fw-bold text-slate-800 text-decoration-underline"
+                    style={{ fontSize: "0.95rem" }}
+                    onClick={() => {
+                      const sid = previewInvoicePlan.student_id;
+                      setPreviewInvoicePlan(null);
+                      if (sid) navigate(`/admin/accounting/accounts/${sid}`);
+                    }}
+                  >
+                    {previewInvoicePlan.student_name}
+                  </button>
                 </div>
               </div>
-              <hr className="my-2.5" />
-              <div className="row g-2 small">
-                <div className="col-sm-4">
-                  <span className="text-muted d-block" style={{ fontSize: "11px" }}>Scheduled Generation Date</span>
-                  <strong className="text-primary">{formatDateSafe(previewInvoicePlan.next_invoice_date)}</strong>
+
+              {/* Tinted Invoice Body */}
+              <div className="p-4" style={{ backgroundColor: "#f7f9f2", borderTop: "1px solid #eef2e6" }}>
+                <div className="mb-4" style={{ fontSize: "0.82rem", letterSpacing: "0.02em", color: "#475569" }}>
+                  <div className="mb-1">
+                    DUE DATE: <strong className="text-slate-900">{String(getPlanNextDueDate(previewInvoicePlan)).toUpperCase()}</strong>
+                  </div>
+                  <div>
+                    INVOICE PERIOD: <strong className="text-slate-900">{getPlanInvoicePeriod(previewInvoicePlan)}</strong>
+                  </div>
                 </div>
-                <div className="col-sm-4">
-                  <span className="text-muted d-block" style={{ fontSize: "11px" }}>Upcoming Due Date</span>
-                  <strong className="text-slate-800">{getPlanNextDueDate(previewInvoicePlan)}</strong>
+
+                <div className="d-flex justify-content-between pb-2 mb-2 border-bottom" style={{ fontSize: "0.78rem", fontWeight: 600, color: "#64748b", letterSpacing: "0.04em" }}>
+                  <span>DESCRIPTION</span>
+                  <span>AMOUNT</span>
                 </div>
-                <div className="col-sm-4 text-sm-end">
-                  <span className="text-muted d-block" style={{ fontSize: "11px" }}>Estimated Total Due</span>
-                  <strong className="text-success fs-6">{formatCurrency(previewInvoicePlan.total_amount)}</strong>
+
+                {(previewInvoicePlan.items_json || []).length === 0 ? (
+                  <div className="text-center text-muted py-3 small">
+                    No line items configured on this plan.
+                  </div>
+                ) : (
+                  <div className="d-flex flex-column gap-2.5 py-2">
+                    {(previewInvoicePlan.items_json || []).map((item, idx) => {
+                      const isDiscount = item.type === "Discount" || Number(item.amount ?? item.value ?? 0) < 0;
+                      const rawAmt = Number(item.amount ?? item.value ?? 0);
+                      const displayAmt = isDiscount
+                        ? `$-${Math.abs(rawAmt).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+                        : `$${rawAmt.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+                      return (
+                        <div key={idx} className="d-flex justify-content-between align-items-center" style={{ fontSize: "0.92rem" }}>
+                          <span className="fw-semibold text-slate-800">{item.description || "Tuition Item"}</span>
+                          <span className="fw-semibold text-slate-800">{displayAmt}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className="d-flex justify-content-end align-items-baseline gap-3 mt-4 pt-3 border-top">
+                  <span className="text-slate-600" style={{ fontSize: "0.95rem" }}>Total Amount</span>
+                  <span className="fw-bold text-slate-900" style={{ fontSize: "1.45rem" }}>
+                    ${Number(previewInvoicePlan.total_amount || 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                  </span>
                 </div>
               </div>
             </div>
 
-            <div className="fw-bold text-slate-700 small mb-2">Upcoming Line Items</div>
-            <Table bordered size="sm" className="align-middle mb-0" style={{ fontSize: "13px" }}>
-              <thead className="table-light">
-                <tr>
-                  <th>Description</th>
-                  <th style={{ width: "110px" }}>Type</th>
-                  <th className="text-end" style={{ width: "130px" }}>Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(previewInvoicePlan.items_json || []).length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="text-center text-muted py-3">
-                      No line items configured on this plan.
-                    </td>
-                  </tr>
-                ) : (
-                  (previewInvoicePlan.items_json || []).map((item, idx) => {
-                    const isDiscount = item.type === "Discount" || Number(item.amount) < 0;
-                    const amt = Number(item.amount ?? item.value ?? 0);
-                    return (
-                      <tr key={idx}>
-                        <td className="fw-medium text-slate-800">{item.description || "Tuition Item"}</td>
-                        <td>
-                          <Badge bg={isDiscount ? "warning" : "light"} text={isDiscount ? "dark" : "dark"} className="border">
-                            {isDiscount ? "Discount" : "Charge"}
-                          </Badge>
-                        </td>
-                        <td className={`text-end fw-semibold ${isDiscount ? "text-danger" : "text-slate-800"}`}>
-                          {isDiscount && amt > 0 ? `-${formatCurrency(amt)}` : formatCurrency(amt)}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-              <tfoot>
-                <tr className="table-light fw-bold">
-                  <td colSpan={2} className="text-end">Total Next Invoice Amount</td>
-                  <td className="text-end text-success">{formatCurrency(previewInvoicePlan.total_amount)}</td>
-                </tr>
-              </tfoot>
-            </Table>
+            <div className="d-flex justify-content-center align-items-center gap-3 mt-4">
+              <Button
+                onClick={() => setPreviewInvoicePlan(null)}
+                style={{
+                  backgroundColor: "#2563eb",
+                  borderColor: "#2563eb",
+                  borderRadius: "9999px",
+                  padding: "0.5rem 2.25rem",
+                  fontWeight: 600,
+                  fontSize: "0.85rem",
+                  letterSpacing: "0.04em"
+                }}
+              >
+                CLOSE
+              </Button>
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                style={{ borderRadius: "9999px", padding: "0.45rem 1.1rem", fontSize: "0.82rem" }}
+                onClick={() => {
+                  const planToEdit = previewInvoicePlan;
+                  setPreviewInvoicePlan(null);
+                  setEditingPlan(planToEdit);
+                  setShowEditModal(true);
+                }}
+              >
+                <Edit3 size={13} className="me-1" /> Edit Plan
+              </Button>
+            </div>
           </Modal.Body>
         )}
-        <Modal.Footer className="border-top py-2">
-          <Button
-            variant="outline-primary"
-            size="sm"
-            onClick={() => {
-              const planToEdit = previewInvoicePlan;
-              setPreviewInvoicePlan(null);
-              setEditingPlan(planToEdit);
-              setShowEditModal(true);
-            }}
-          >
-            <Edit3 size={13} className="me-1" /> Edit Plan Schedule
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => setPreviewInvoicePlan(null)}>
-            Close
-          </Button>
-        </Modal.Footer>
       </Modal>
       
       <style>{`
