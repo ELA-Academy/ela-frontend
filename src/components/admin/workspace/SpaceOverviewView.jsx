@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Form, Button, Spinner } from "react-bootstrap";
+import { Form, Button, Spinner, Modal } from "react-bootstrap";
 import {
   Plus,
   Settings,
@@ -16,7 +16,13 @@ import {
   ChevronRight,
   List,
   Lock,
-  RotateCw
+  RotateCw,
+  Calculator,
+  BarChart3,
+  Flag,
+  Users,
+  StickyNote,
+  ListChecks
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { formatDistanceToNow } from "date-fns";
@@ -56,6 +62,64 @@ const SpaceOverviewView = ({ board, boards = [], assignees = [] }) => {
   const [selectedCardForModal, setSelectedCardForModal] = useState(null);
   const [modalTab, setModalTab] = useState("settings");
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showCardGallery, setShowCardGallery] = useState(false);
+
+  const CARD_TEMPLATES = [
+    {
+      type: "calculation",
+      title: "Calculation / Running Total",
+      desc: "Track running totals, sums, averages, min/max, or counts from any list column (e.g., Event Expenses) with an optional budget target.",
+      icon: Calculator,
+      color: "#2563eb",
+      bg: "#eff6ff",
+      defaultName: "Running Total"
+    },
+    {
+      type: "task_list",
+      title: "Task List",
+      desc: "Embed a live filtered list of tasks from any list in this space, including custom field values and one-click task navigation.",
+      icon: ListChecks,
+      color: "#059669",
+      bg: "#ecfdf5",
+      defaultName: "Embedded Task List"
+    },
+    {
+      type: "status_breakdown",
+      title: "Tasks by Status",
+      desc: "Visualize task progress across To Do, In Progress, and Completed with percentage breakdown bars.",
+      icon: BarChart3,
+      color: "#7c3aed",
+      bg: "#f5f3ff",
+      defaultName: "Tasks by Status"
+    },
+    {
+      type: "priority_breakdown",
+      title: "Tasks by Priority",
+      desc: "Monitor Urgent, High, Normal, and Low priority workload across a list or the entire space.",
+      icon: Flag,
+      color: "#d97706",
+      bg: "#fffbeb",
+      defaultName: "Tasks by Priority"
+    },
+    {
+      type: "assignee_workload",
+      title: "Tasks by Assignee",
+      desc: "See how tasks are distributed across team members to spot bottlenecks quickly.",
+      icon: Users,
+      color: "#0284c7",
+      bg: "#f0f9ff",
+      defaultName: "Workload by Assignee"
+    },
+    {
+      type: "notes",
+      title: "Text / Notes Card",
+      desc: "Pin event budget summaries, guidelines, or key notes directly onto your Space Overview.",
+      icon: StickyNote,
+      color: "#475569",
+      bg: "#f8fafc",
+      defaultName: "Space Notes"
+    }
+  ];
 
   // Inline title editing
   const [editingCardId, setEditingCardId] = useState(null);
@@ -132,13 +196,11 @@ const SpaceOverviewView = ({ board, boards = [], assignees = [] }) => {
     const values = {};
     await Promise.all(
       cardsList.map(async (card) => {
-        if (card.card_type === "calculation") {
-          try {
-            const res = await getCardAggregate(spaceId, card.id);
-            values[card.id] = res.data;
-          } catch (e) {
-            values[card.id] = { value: 0, count: 0 };
-          }
+        try {
+          const res = await getCardAggregate(spaceId, card.id);
+          values[card.id] = res.data;
+        } catch (e) {
+          values[card.id] = { value: 0, count: 0, breakdown: [], tasks: [] };
         }
       })
     );
@@ -156,27 +218,32 @@ const SpaceOverviewView = ({ board, boards = [], assignees = [] }) => {
     setRefreshing(false);
   };
 
-  // Add a new calculation card
-  const handleAddCard = async (type = "calculation") => {
+  // Add a new overview card of any ClickUp-style type
+  const handleAddCard = async (type = "calculation", defaultName = "New Card") => {
     try {
+      setShowCardGallery(false);
       const defaultList = childLists[0];
       const newCardData = {
-        name: type === "calculation" ? "New Calculation Card" : "Card",
+        name: defaultName,
         card_type: type,
-        data_source_board_id: defaultList ? defaultList.id : null,
+        data_source_board_id: type === "calculation" && defaultList ? (defaultList.internal_id || defaultList.id) : null,
         calculation: "sum",
-        units: "None"
+        units: type === "calculation" ? "$" : "None",
+        filters: type === "calculation" ? { show_closed: true } : {}
       };
 
       const res = await createOverviewCard(spaceId, newCardData);
       const newCard = res.data;
       setCards((prev) => [...prev, newCard]);
 
-      if (type === "calculation") {
-        setSelectedCardForModal(newCard);
-        setModalTab("settings");
-        setShowSettingsModal(true);
-      }
+      try {
+        const aggRes = await getCardAggregate(spaceId, newCard.id);
+        setCardValues((prev) => ({ ...prev, [newCard.id]: aggRes.data }));
+      } catch (e) {}
+
+      setSelectedCardForModal(newCard);
+      setModalTab("settings");
+      setShowSettingsModal(true);
       toast.success("Card added to overview");
     } catch (err) {
       console.error("Failed to create card:", err);
@@ -378,26 +445,29 @@ const SpaceOverviewView = ({ board, boards = [], assignees = [] }) => {
             variant="dark"
             size="sm"
             className="d-flex align-items-center gap-1 bg-slate-900 border-0 rounded-3 px-3 py-1.5 fw-medium shadow-sm"
-            onClick={() => handleAddCard("calculation")}
+            onClick={() => setShowCardGallery(true)}
           >
             <Plus size={16} />
-            <span>Card</span>
+            <span>Add Card</span>
           </Button>
         </div>
       </div>
 
-      {/* Dynamic Calculation Cards Grid (if user added any) */}
-      {cards.filter((c) => c.card_type === "calculation").length > 0 && (
+      {/* Dynamic Overview Cards Grid (Calculation, Task List, Status/Priority/Assignee Breakdowns, Notes) */}
+      {cards.length > 0 && (
         <div className="overview-cards-grid mb-4">
-          {cards.filter((c) => c.card_type === "calculation").map((card) => {
+          {cards.map((card) => {
             const valObj = cardValues[card.id] || {};
             const displayVal = formatCardValue(valObj.value, card.units);
             const refreshedAgo = valObj.refreshed_at
               ? formatDistanceToNow(new Date(valObj.refreshed_at), { addSuffix: true })
               : "recently";
+            const isBreakdown = ["status_breakdown", "priority_breakdown", "assignee_workload"].includes(card.card_type);
+            const targetBudget = valObj.target_budget;
+            const budgetPct = targetBudget && targetBudget > 0 ? Math.min(100, Math.round((Number(valObj.value || 0) / targetBudget) * 100)) : null;
 
             return (
-              <div key={card.id} className="overview-stat-card bg-white p-4 rounded-4 border border-slate-200 shadow-sm position-relative">
+              <div key={card.id} className="overview-stat-card bg-white p-4 rounded-4 border border-slate-200 shadow-sm position-relative d-flex flex-column">
                 <div className="d-flex align-items-start justify-content-between mb-3">
                   <div className="card-title-text fw-bold text-slate-700 uppercase tracking-wide flex-grow-1 me-2" style={{ fontSize: "13px" }}>
                     {editingCardId === card.id ? (
@@ -428,21 +498,106 @@ const SpaceOverviewView = ({ board, boards = [], assignees = [] }) => {
                   </span>
                 </div>
 
-                <div className="metric-display-container py-3">
-                  <div className="metric-big-number fw-bold text-slate-900" style={{ fontSize: "3.25rem", lineHeight: "1" }}>
-                    {displayVal}
+                {/* Card Body by Type */}
+                {card.card_type === "notes" ? (
+                  <div className="text-slate-700 small flex-grow-1" style={{ whiteSpace: "pre-wrap", lineHeight: 1.55, minHeight: "90px" }}>
+                    {valObj.note_content || card.filters?.note_content || "Click Settings to add notes or budget instructions."}
                   </div>
-                </div>
+                ) : isBreakdown ? (
+                  <div className="d-flex flex-column gap-2.5 flex-grow-1 py-1">
+                    {(valObj.breakdown || []).length === 0 ? (
+                      <div className="text-muted small py-3 text-center">No tasks match the current filter.</div>
+                    ) : (
+                      (valObj.breakdown || []).map((item) => (
+                        <div key={item.label} style={{ fontSize: "12.5px" }}>
+                          <div className="d-flex justify-content-between align-items-center mb-1">
+                            <span className="fw-semibold text-slate-700">{item.label}</span>
+                            <span className="text-muted fw-medium">{item.count} ({item.pct}%)</span>
+                          </div>
+                          <div style={{ height: "7px", backgroundColor: "#e2e8f0", borderRadius: "99px", overflow: "hidden" }}>
+                            <div style={{ width: `${item.pct}%`, height: "100%", backgroundColor: item.color || "#2563eb", transition: "width 0.3s ease" }} />
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                ) : card.card_type === "task_list" ? (
+                  <div className="d-flex flex-column flex-grow-1">
+                    <div className="d-flex justify-content-between align-items-center mb-2" style={{ fontSize: "11.5px", color: "#64748b" }}>
+                      <span>{valObj.total || 0} task(s)</span>
+                      {valObj.measure_field_name && (
+                        <span className="fw-bold text-primary">
+                          Total {valObj.measure_field_name}: {formatCardValue(valObj.sum_value, "$")}
+                        </span>
+                      )}
+                    </div>
+                    <div className="overflow-auto" style={{ maxHeight: "190px" }}>
+                      {(valObj.tasks || []).length === 0 ? (
+                        <div className="text-muted small py-3 text-center">No matching tasks found.</div>
+                      ) : (
+                        (valObj.tasks || []).slice(0, 8).map((t) => (
+                          <div
+                            key={t.id}
+                            onClick={() => navigate(`/admin/boards/${t.board_id || spaceId}?taskId=${t.id}`)}
+                            className="d-flex justify-content-between align-items-center py-1.5 px-2 rounded-2 border-bottom cursor-pointer hover:bg-slate-50"
+                            style={{ fontSize: "12.5px" }}
+                          >
+                            <span className="fw-medium text-slate-800 text-truncate me-2">{t.title}</span>
+                            <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                              {t.measure_value != null && t.measure_value !== "" && (
+                                <span className="fw-bold text-primary">{t.measure_value}</span>
+                              )}
+                              <span className="badge bg-light text-slate-600 border" style={{ fontSize: "10px" }}>
+                                {t.status}
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="metric-display-container py-2 flex-grow-1 d-flex flex-column justify-content-center">
+                    <div className="metric-big-number fw-bold text-slate-900" style={{ fontSize: "2.85rem", lineHeight: "1.05" }}>
+                      {displayVal}
+                    </div>
+                    <div className="text-muted mt-1" style={{ fontSize: "12px" }}>
+                      {(card.calculation || "sum").toUpperCase()} across {valObj.count ?? 0} task(s)
+                    </div>
+                    {budgetPct !== null && (
+                      <div className="mt-3">
+                        <div className="d-flex justify-content-between small mb-1" style={{ fontSize: "11.5px" }}>
+                          <span className="text-slate-600 fw-medium">Budget progress</span>
+                          <span className={`fw-bold ${budgetPct >= 100 ? "text-danger" : "text-primary"}`}>
+                            {budgetPct}% of {formatCardValue(targetBudget, card.units)}
+                          </span>
+                        </div>
+                        <div style={{ height: "7px", backgroundColor: "#e2e8f0", borderRadius: "99px", overflow: "hidden" }}>
+                          <div
+                            style={{
+                              width: `${budgetPct}%`,
+                              height: "100%",
+                              backgroundColor: budgetPct >= 100 ? "#ef4444" : "#2563eb",
+                              transition: "width 0.3s ease"
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="card-hover-actions position-absolute d-flex align-items-center gap-1.5 bg-white border border-slate-200 shadow-sm rounded-3 p-1">
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-light p-1.5 rounded-2 border-0 text-slate-600 hover:text-indigo-600"
-                    title="Expand Data View"
-                    onClick={(e) => handleOpenCardModal(card, "data", e)}
-                  >
-                    <Maximize2 size={13} />
-                  </button>
+                  {card.card_type === "calculation" && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-light p-1.5 rounded-2 border-0 text-slate-600 hover:text-indigo-600"
+                      title="Expand Data View"
+                      onClick={(e) => handleOpenCardModal(card, "data", e)}
+                    >
+                      <Maximize2 size={13} />
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="btn btn-sm btn-light p-1.5 rounded-2 border-0 text-slate-600 hover:text-indigo-600"
@@ -450,14 +605,6 @@ const SpaceOverviewView = ({ board, boards = [], assignees = [] }) => {
                     onClick={(e) => handleOpenCardModal(card, "settings", e)}
                   >
                     <Settings size={13} />
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-light p-1.5 rounded-2 border-0 text-slate-600 hover:text-indigo-600"
-                    title="Filters"
-                    onClick={(e) => handleOpenCardModal(card, "settings", e)}
-                  >
-                    <Filter size={13} />
                   </button>
                   <button
                     type="button"
@@ -704,6 +851,56 @@ const SpaceOverviewView = ({ board, boards = [], assignees = [] }) => {
           )}
         </div>
       </div>
+
+      {/* ClickUp-Style Add Card Gallery Modal */}
+      <Modal show={showCardGallery} onHide={() => setShowCardGallery(false)} centered size="lg">
+        <Modal.Header closeButton className="border-bottom px-4 py-3">
+          <Modal.Title className="fs-6 fw-bold text-slate-800">
+            Add Card to Space Overview
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4">
+          <div className="row g-3">
+            {CARD_TEMPLATES.map((tpl) => {
+              const Icon = tpl.icon;
+              return (
+                <div key={tpl.type} className="col-md-6">
+                  <div
+                    onClick={() => handleAddCard(tpl.type, tpl.defaultName)}
+                    className="p-3.5 rounded-3 border bg-white h-100 cursor-pointer transition-all"
+                    style={{ borderColor: "#e2e8f0" }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = tpl.color;
+                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(15, 23, 42, 0.08)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = "#e2e8f0";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
+                  >
+                    <div className="d-flex align-items-start gap-3">
+                      <div
+                        className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                        style={{ width: "40px", height: "40px", backgroundColor: tpl.bg, color: tpl.color }}
+                      >
+                        <Icon size={20} />
+                      </div>
+                      <div>
+                        <div className="fw-bold text-slate-800" style={{ fontSize: "0.92rem" }}>
+                          {tpl.title}
+                        </div>
+                        <div className="text-muted mt-1" style={{ fontSize: "0.78rem", lineHeight: 1.45 }}>
+                          {tpl.desc}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Modal.Body>
+      </Modal>
 
       {/* Card Settings & Data Modal */}
       {selectedCardForModal && (

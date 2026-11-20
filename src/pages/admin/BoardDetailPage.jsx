@@ -59,7 +59,7 @@ import "../../styles/WorkspaceShell.css";
 
 const DEFAULT_STATUS_OPTIONS = ["Not Started", "In Progress", "Done"];
 const PRIORITY_OPTIONS = ["Urgent", "High", "Normal", "Low"];
-const STANDARD_COL_KEYS = ["assignee", "start_date", "due_date", "priority", "status", "comments"];
+const STANDARD_COL_KEYS = ["assignee", "start_date", "due_date", "created_at", "priority", "status", "comments"];
 
 const DEFAULT_STATUS_META = {
   "Not Started": { label: "To do", className: "badge-status-todo", color: "#7c8798" },
@@ -605,8 +605,11 @@ const BoardDetailPage = () => {
     }
   }, [boardId]);
 
-  const toggleHideColumn = (colKey) => {
+  const toggleHideColumn = (colKey, skipUndo = false) => {
     const keyStr = String(colKey).replace(/^custom_/, "");
+    if (!skipUndo) {
+      pushUndoAction({ kind: "hide_column", colKey: keyStr });
+    }
     setHiddenColumns((prev) => {
       const isHidden = prev.includes(keyStr);
       const updated = isHidden ? prev.filter((c) => c !== keyStr) : [...prev, keyStr];
@@ -614,13 +617,14 @@ const BoardDetailPage = () => {
         localStorage.setItem(`hidden_columns_${boardId}`, JSON.stringify(updated));
       }
       saveViewSettings({ hidden_columns: updated });
-      toast.info(isHidden ? `Column shown` : `Column hidden`);
+      if (!skipUndo) toast.info(isHidden ? `Column shown` : `Column hidden`);
       return updated;
     });
   };
 
   const handleMoveColumn = (colKey, direction) => {
     const keyStr = String(colKey).replace(/^custom_/, "");
+    const previousOrder = [...orderedColumns];
     const currentOrder = [...orderedColumns];
     const idx = currentOrder.indexOf(keyStr);
     if (idx === -1) return;
@@ -639,6 +643,7 @@ const BoardDetailPage = () => {
       currentOrder.splice(targetIdx, 0, item);
     }
 
+    pushUndoAction({ kind: "reorder_columns", previousOrder });
     setColumnOrder(currentOrder);
     saveViewSettings({ column_order: currentOrder });
     toast.success("Column order updated");
@@ -768,6 +773,7 @@ const BoardDetailPage = () => {
       case "assignee": return "Assignee";
       case "start_date": return "Start date";
       case "due_date": return "Due date";
+      case "created_at": return "Date created";
       case "priority": return "Priority";
       case "status": return "Status";
       case "comments": return "Comments";
@@ -2389,7 +2395,7 @@ const BoardDetailPage = () => {
         valB = getTaskAssignees(b).map((assignee) => assignee.name).join(", ");
       }
 
-      const isDateCol = sortBy === "due_date" || sortBy === "start_date" || (typeof sortBy === "string" && sortBy.includes("date"));
+      const isDateCol = sortBy === "due_date" || sortBy === "start_date" || sortBy === "created_at" || (typeof sortBy === "string" && sortBy.includes("date"));
 
       // If one of the values is empty, rank it last in ascending order
       const isEmptyA = valA === undefined || valA === null || valA === "";
@@ -3010,8 +3016,105 @@ const BoardDetailPage = () => {
         console.error("Failed to undo custom field:", err);
         toast.error("Failed to undo change");
       }
+    } else if (lastAction.kind === "create_column") {
+      try {
+        await api.delete(`/board-extensions/custom-fields/${lastAction.fieldId}`);
+        await fetchWorkspace(false);
+        toast.info(`Undid creation of column "${lastAction.fieldName || "column"}"`);
+      } catch (err) {
+        console.error("Failed to undo column creation:", err);
+        toast.error("Failed to undo column creation");
+      }
+    } else if (lastAction.kind === "delete_column") {
+      try {
+        const res = await api.post(`/board-extensions/boards/${boardId}/custom-fields`, {
+          name: lastAction.field.name,
+          type: lastAction.field.type,
+          config: lastAction.field.config || {}
+        });
+        const newFieldId = res.data?.id;
+        if (newFieldId && Array.isArray(lastAction.savedValues) && lastAction.savedValues.length > 0) {
+          await Promise.all(
+            lastAction.savedValues.map((sv) =>
+              api.put(`/board-extensions/tasks/${sv.taskId}/custom-fields`, {
+                field_id: newFieldId,
+                value: sv.value
+              }).catch(() => {})
+            )
+          );
+        }
+        await fetchWorkspace(false);
+        toast.info(`Restored deleted column "${lastAction.field.name}"`);
+      } catch (err) {
+        console.error("Failed to undo column deletion:", err);
+        toast.error("Failed to restore deleted column");
+      }
+    } else if (lastAction.kind === "rename_column") {
+      try {
+        await api.put(`/board-extensions/custom-fields/${lastAction.fieldId}`, {
+          name: lastAction.previousName,
+          ...(lastAction.previousConfig ? { config: lastAction.previousConfig } : {})
+        });
+        await fetchWorkspace(false);
+        toast.info(`Restored column name "${lastAction.previousName}"`);
+      } catch (err) {
+        console.error("Failed to undo column rename:", err);
+        toast.error("Failed to undo column edit");
+      }
+    } else if (lastAction.kind === "create_task") {
+      try {
+        await deleteTask(lastAction.taskId);
+        setBoard((prev) => ({
+          ...prev,
+          groups: prev.groups.map((g) => ({
+            ...g,
+            tasks: (g.tasks || []).filter((t) => t.id !== lastAction.taskId),
+          })),
+        }));
+        toast.info(`Undid creating task "${lastAction.title || ""}"`);
+      } catch (err) {
+        console.error("Failed to undo task creation:", err);
+        toast.error("Failed to undo task creation");
+      }
+    } else if (lastAction.kind === "delete_task") {
+      try {
+        const snap = lastAction.taskSnapshot;
+        const created = await createTask(snap.group_id, {
+          title: snap.title,
+          status: snap.status || "Not Started",
+          priority: snap.priority || "Normal",
+          start_date: snap.start_date || null,
+          due_date: snap.due_date || null,
+          notes: snap.notes || "",
+          assignees: snap.assignees || [],
+        });
+        if (created?.id && snap.custom_field_values) {
+          await Promise.all(
+            Object.entries(snap.custom_field_values).map(([fid, val]) =>
+              val !== undefined && val !== null && val !== ""
+                ? api.put(`/board-extensions/tasks/${created.id}/custom-fields`, {
+                    field_id: Number(fid),
+                    value: val,
+                  }).catch(() => {})
+                : Promise.resolve()
+            )
+          );
+        }
+        await fetchWorkspace(false);
+        toast.info(`Restored deleted task "${snap.title}"`);
+      } catch (err) {
+        console.error("Failed to restore deleted task:", err);
+        toast.error("Failed to restore deleted task");
+      }
+    } else if (lastAction.kind === "hide_column") {
+      toggleHideColumn(lastAction.colKey, true);
+      toast.info("Undid column visibility change");
+    } else if (lastAction.kind === "reorder_columns") {
+      setColumnOrder(lastAction.previousOrder);
+      saveViewSettings({ column_order: lastAction.previousOrder });
+      toast.info("Restored previous column order");
     }
-  }, [allTasks]);
+  }, [allTasks, boardId]);
 
   useEffect(() => {
     const onKeyDown = (e) => {
@@ -3182,6 +3285,9 @@ const BoardDetailPage = () => {
           group.id === groupId ? { ...group, tasks: [...(group.tasks || []), created] } : group
         ),
       }));
+      if (created?.id) {
+        pushUndoAction({ kind: "create_task", taskId: created.id, title: created.title });
+      }
       setInlineTaskBuilders((prev) => ({
         ...prev,
         [key]: { title: "", assignee: null, dueDate: null, priority: "Normal", active: false }
@@ -3245,6 +3351,9 @@ const BoardDetailPage = () => {
           group.id === groupId ? { ...group, tasks: [...(group.tasks || []), created] } : group
         ),
       }));
+      if (created?.id) {
+        pushUndoAction({ kind: "create_task", taskId: created.id, title: created.title });
+      }
     } catch (createError) {
       setError("Failed to create task.");
     } finally {
@@ -3261,7 +3370,11 @@ const BoardDetailPage = () => {
   };
 
   const handleDeleteTask = async (taskId) => {
+    const taskSnapshot = allTasks.find((t) => t.id === taskId);
     await deleteTask(taskId);
+    if (taskSnapshot) {
+      pushUndoAction({ kind: "delete_task", taskSnapshot });
+    }
     setBoard((prev) => ({
       ...prev,
       groups: prev.groups.map((group) => ({
@@ -6309,7 +6422,10 @@ const BoardDetailPage = () => {
         type: field.type,
         config: field.config
       };
-      await api.post(`/board-extensions/boards/${boardId}/custom-fields`, payload);
+      const res = await api.post(`/board-extensions/boards/${boardId}/custom-fields`, payload);
+      if (res.data?.id) {
+        pushUndoAction({ kind: "create_column", fieldId: res.data.id, fieldName: payload.name });
+      }
       toast.success("Column duplicated successfully!");
       fetchWorkspace(false);
     } catch (err) {
@@ -6321,8 +6437,21 @@ const BoardDetailPage = () => {
   const handleDeleteFieldConfirm = async (fieldId) => {
     if (window.confirm("Are you sure you want to delete this custom field? This will delete all task values associated with it.")) {
       try {
+        const fieldSnapshot = boardCustomFields.find((f) => String(f.id) === String(fieldId));
+        const savedValues = [];
+        if (fieldSnapshot) {
+          allTasks.forEach((t) => {
+            const v = t.custom_field_values?.[fieldSnapshot.id] ?? t.custom_field_values?.[String(fieldSnapshot.id)];
+            if (v !== undefined && v !== null && v !== "") {
+              savedValues.push({ taskId: t.id, value: v });
+            }
+          });
+        }
         await api.delete(`/board-extensions/custom-fields/${fieldId}`);
-        toast.success("Custom field deleted successfully.");
+        if (fieldSnapshot) {
+          pushUndoAction({ kind: "delete_column", field: fieldSnapshot, savedValues });
+        }
+        toast.success("Custom field deleted successfully. Press Ctrl+Z to undo.");
         setEditingCustomField(null);
         fetchWorkspace(false);
         if (showFieldManagerModal) {
@@ -6342,9 +6471,13 @@ const BoardDetailPage = () => {
       return;
     }
     try {
+      const prevField = boardCustomFields.find((f) => String(f.id) === String(fieldId));
       await api.put(`/board-extensions/custom-fields/${fieldId}`, {
         name: cleanName
       });
+      if (prevField && prevField.name !== cleanName) {
+        pushUndoAction({ kind: "rename_column", fieldId, previousName: prevField.name });
+      }
       toast.success("Field updated successfully!");
       setEditingCustomField(null);
       fetchWorkspace(false);
@@ -6394,8 +6527,11 @@ const BoardDetailPage = () => {
         config: config
       };
 
-      await api.post(`/board-extensions/boards/${boardId}/custom-fields`, payload);
-      toast.success("Custom field created successfully!");
+      const res = await api.post(`/board-extensions/boards/${boardId}/custom-fields`, payload);
+      if (res.data?.id) {
+        pushUndoAction({ kind: "create_column", fieldId: res.data.id, fieldName: payload.name });
+      }
+      toast.success("Custom field created! Press Ctrl+Z to undo.");
       setShowCustomFieldsOffcanvas(false);
       
       // Reload custom fields and board data
@@ -6445,7 +6581,15 @@ const BoardDetailPage = () => {
         config: config
       };
 
+      const prevFieldName = editingCustomField.name;
+      const prevFieldConfig = editingCustomField.config;
       await api.put(`/board-extensions/custom-fields/${editingCustomField.id}`, payload);
+      pushUndoAction({
+        kind: "rename_column",
+        fieldId: editingCustomField.id,
+        previousName: prevFieldName,
+        previousConfig: prevFieldConfig,
+      });
       toast.success("Custom field updated successfully!");
       setShowCustomFieldsOffcanvas(false);
       setEditingCustomField(null);
@@ -6467,7 +6611,10 @@ const BoardDetailPage = () => {
         config: existingField.config
       };
 
-      await api.post(`/board-extensions/boards/${boardId}/custom-fields`, payload);
+      const res = await api.post(`/board-extensions/boards/${boardId}/custom-fields`, payload);
+      if (res.data?.id) {
+        pushUndoAction({ kind: "create_column", fieldId: res.data.id, fieldName: payload.name });
+      }
       toast.success(`Added custom field "${existingField.name}" to space!`);
       setShowCustomFieldsOffcanvas(false);
       
@@ -7533,6 +7680,9 @@ const BoardDetailPage = () => {
     if (colKey === "due_date") {
       return renderStandardFieldHeader("due_date", "Due date", { width: "10%", minWidth: "110px" });
     }
+    if (colKey === "created_at") {
+      return renderStandardFieldHeader("created_at", "Date created", { width: "10%", minWidth: "115px" });
+    }
     if (colKey === "priority") {
       return renderStandardFieldHeader("priority", "Priority", { width: "8%", minWidth: "90px" });
     }
@@ -7602,6 +7752,22 @@ const BoardDetailPage = () => {
     if (colKey === "due_date") {
       return <td key="due_date" style={{ minWidth: "110px", ...cellWidthStyle }}>{renderDateCell(task, "due_date")}</td>;
     }
+    if (colKey === "created_at") {
+      const createdStr = task.created_at
+        ? (() => {
+            try {
+              return format(new Date(task.created_at), "MMM d, yyyy");
+            } catch {
+              return String(task.created_at).slice(0, 10);
+            }
+          })()
+        : "-";
+      return (
+        <td key="created_at" style={{ minWidth: "115px", ...cellWidthStyle }} className="text-muted small px-2">
+          {createdStr}
+        </td>
+      );
+    }
     if (colKey === "priority") {
       return <td key="priority" style={{ minWidth: "90px", ...cellWidthStyle }}>{renderPriorityDropdown(task)}</td>;
     }
@@ -7667,6 +7833,13 @@ const BoardDetailPage = () => {
         </td>
       );
     }
+    if (colKey === "created_at") {
+      return (
+        <td key="calc_created_at" style={{ minWidth: "115px", ...cellWidthStyle }} className="px-2 py-1 align-middle">
+          {renderColumnCalculationCell("created_at", statusTasks)}
+        </td>
+      );
+    }
     if (colKey === "priority") {
       return (
         <td key="calc_priority" style={{ minWidth: "90px", ...cellWidthStyle }} className="px-2 py-1 align-middle">
@@ -7711,6 +7884,22 @@ const BoardDetailPage = () => {
     }
     if (colKey === "due_date") {
       return <td key="st_due_date" style={{ minWidth: "110px", ...cellWidthStyle }}>{renderDateCell(subtaskFull, "due_date")}</td>;
+    }
+    if (colKey === "created_at") {
+      const createdStr = subtaskFull.created_at
+        ? (() => {
+            try {
+              return format(new Date(subtaskFull.created_at), "MMM d, yyyy");
+            } catch {
+              return String(subtaskFull.created_at).slice(0, 10);
+            }
+          })()
+        : "-";
+      return (
+        <td key="st_created_at" style={{ minWidth: "115px", ...cellWidthStyle }} className="text-muted small px-2">
+          {createdStr}
+        </td>
+      );
     }
     if (colKey === "priority") {
       return <td key="st_priority" style={{ minWidth: "90px", ...cellWidthStyle }}>{renderPriorityDropdown(subtaskFull)}</td>;
@@ -8313,6 +8502,7 @@ const BoardDetailPage = () => {
                 <option value="priority">Sort: Priority</option>
                 <option value="due_date">Sort: Due Date</option>
                 <option value="start_date">Sort: Start Date</option>
+                <option value="created_at">Sort: Date Created</option>
                 <option value="status">Sort: Status</option>
                 <option value="assignee">Sort: Assignee</option>
                 {boardCustomFields.map(f => (

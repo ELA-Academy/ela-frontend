@@ -4,7 +4,7 @@ export const getOverviewCards = (spaceId) => api.get(`/boards/${spaceId}/overvie
 export const createOverviewCard = (spaceId, data) => api.post(`/boards/${spaceId}/overview-cards`, data);
 export const updateOverviewCard = (spaceId, cardId, data) => api.put(`/boards/${spaceId}/overview-cards/${cardId}`, data);
 export const deleteOverviewCard = (spaceId, cardId) => api.delete(`/boards/${spaceId}/overview-cards/${cardId}`);
-export const getCardAggregate = (spaceId, cardId) => api.get(`/boards/${spaceId}/overview-cards/${cardId}/aggregate`);
+export const getCardAggregate = (spaceId, cardId, params) => api.get(`/boards/${spaceId}/overview-cards/${cardId}/aggregate`, { params });
 export const getCardData = (spaceId, cardId) => api.get(`/boards/${spaceId}/overview-cards/${cardId}/data`);
 export const getSpaceChildren = (spaceId) => api.get(`/boards/${spaceId}/overview/children`);
 export const getSpaceRecent = (spaceId) => api.get(`/boards/${spaceId}/overview/recent`);
