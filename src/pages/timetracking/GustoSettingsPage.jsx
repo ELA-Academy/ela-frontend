@@ -159,7 +159,7 @@ const GustoSettingsPage = () => {
                       style={{
                         background: "none",
                         border: "none",
-                        color: "#0f766e",
+                        color: "#2563eb",
                         fontSize: "0.875rem",
                         fontWeight: 600,
                         cursor: "pointer",
@@ -175,7 +175,7 @@ const GustoSettingsPage = () => {
                       style={{
                         background: "none",
                         border: "none",
-                        color: "#0f766e",
+                        color: "#2563eb",
                         fontSize: "0.875rem",
                         fontWeight: 500,
                         cursor: "pointer",
@@ -211,7 +211,7 @@ const GustoSettingsPage = () => {
                     style={{
                       background: "none",
                       border: "none",
-                      color: "#0f766e",
+                      color: "#2563eb",
                       fontSize: "0.875rem",
                       fontWeight: 600,
                       cursor: "pointer",
@@ -246,7 +246,7 @@ const GustoSettingsPage = () => {
                     style={{
                       background: "none",
                       border: "none",
-                      color: "#0f766e",
+                      color: "#2563eb",
                       fontSize: "0.875rem",
                       fontWeight: 600,
                       cursor: "pointer",
@@ -298,7 +298,7 @@ const GustoSettingsPage = () => {
                     style={{
                       background: "none",
                       border: "none",
-                      color: "#0f766e",
+                      color: "#2563eb",
                       fontSize: "0.875rem",
                       fontWeight: 600,
                       cursor: "pointer",
@@ -337,7 +337,7 @@ const GustoSettingsPage = () => {
                       style={{
                         background: "none",
                         border: "none",
-                        color: "#0f766e",
+                        color: "#2563eb",
                         fontSize: "0.875rem",
                         fontWeight: 600,
                         cursor: "pointer",
@@ -356,7 +356,7 @@ const GustoSettingsPage = () => {
                       style={{
                         background: "none",
                         border: "none",
-                        color: "#0f766e",
+                        color: "#2563eb",
                         fontSize: "0.875rem",
                         fontWeight: 500,
                         cursor: "pointer",
@@ -396,7 +396,7 @@ const GustoSettingsPage = () => {
                     style={{
                       background: "none",
                       border: "none",
-                      color: "#0f766e",
+                      color: "#2563eb",
                       fontSize: "0.875rem",
                       fontWeight: 600,
                       cursor: "pointer",
@@ -532,7 +532,7 @@ const GustoSettingsPage = () => {
                   style={{
                     background: "none",
                     border: "none",
-                    color: "#0f766e",
+                    color: "#2563eb",
                     fontSize: "0.875rem",
                     fontWeight: 600,
                     cursor: "pointer",
@@ -567,7 +567,7 @@ const GustoSettingsPage = () => {
                   style={{
                     background: "none",
                     border: "none",
-                    color: "#0f766e",
+                    color: "#2563eb",
                     fontSize: "0.875rem",
                     fontWeight: 600,
                     cursor: "pointer",
@@ -602,7 +602,7 @@ const GustoSettingsPage = () => {
                   style={{
                     background: "none",
                     border: "none",
-                    color: "#0f766e",
+                    color: "#2563eb",
                     fontSize: "0.875rem",
                     fontWeight: 600,
                     cursor: "pointer",
@@ -636,7 +636,7 @@ const GustoSettingsPage = () => {
                   style={{
                     background: "none",
                     border: "none",
-                    color: "#0f766e",
+                    color: "#2563eb",
                     fontSize: "0.875rem",
                     fontWeight: 600,
                     cursor: "pointer",
@@ -704,13 +704,13 @@ const GustoSettingsPage = () => {
               </h2>
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                 <label style={{ display: "flex", alignItems: "center", gap: "0.75rem", cursor: "pointer" }}>
-                  <input type="checkbox" defaultChecked style={{ width: "16px", height: "16px", accentColor: "#0f766e" }} />
+                  <input type="checkbox" defaultChecked style={{ width: "16px", height: "16px", accentColor: "#2563eb" }} />
                   <span style={{ fontSize: "0.875rem", color: "#374151" }}>
                     Enable product analytics to help improve ELA TT time tracking and reporting features.
                   </span>
                 </label>
                 <label style={{ display: "flex", alignItems: "center", gap: "0.75rem", cursor: "pointer" }}>
-                  <input type="checkbox" defaultChecked style={{ width: "16px", height: "16px", accentColor: "#0f766e" }} />
+                  <input type="checkbox" defaultChecked style={{ width: "16px", height: "16px", accentColor: "#2563eb" }} />
                   <span style={{ fontSize: "0.875rem", color: "#374151" }}>
                     Keep sensitive banking and SSN fields masked by default across all dashboards.
                   </span>

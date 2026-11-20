@@ -26,7 +26,7 @@ const PayrollPayHistoryPage = () => {
       <button
         type="button"
         onClick={() => navigate("/admin/payroll/pay")}
-        style={{ background: "none", border: "none", color: "#0f766e", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "0.3rem", padding: 0, marginBottom: "1rem", cursor: "pointer" }}
+        style={{ background: "none", border: "none", color: "#2563eb", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "0.3rem", padding: 0, marginBottom: "1rem", cursor: "pointer" }}
       >
         <ArrowLeft className="w-4 h-4" /> Back to Pay
       </button>
@@ -69,7 +69,7 @@ const PayrollPayHistoryPage = () => {
                 <tr key={item.id}>
                   <td>{item.pay_date}</td>
                   <td className="fw-semibold">#{item.invoice_number}</td>
-                  <td className="fw-semibold" style={{ color: "#0f766e" }}>{item.staff_name}</td>
+                  <td className="fw-semibold" style={{ color: "#2563eb" }}>{item.staff_name}</td>
                   <td>{item.payment_method}</td>
                   <td>${Number(item.hourly_rate).toFixed(2)}</td>
                   <td>{item.hours_worked}h</td>

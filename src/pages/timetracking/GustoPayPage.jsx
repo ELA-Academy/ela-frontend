@@ -28,7 +28,7 @@ const GustoPayPage = () => {
         <button
           type="button"
           onClick={() => navigate("/time-tracking/documents")}
-          style={{ background: "none", border: "none", padding: 0, color: "#0f766e", textDecoration: "underline", fontWeight: 600, cursor: "pointer" }}
+          style={{ background: "none", border: "none", padding: 0, color: "#2563eb", textDecoration: "underline", fontWeight: 600, cursor: "pointer" }}
         >
           2026 Pay Schedule
         </button>{" "}
@@ -68,12 +68,12 @@ const GustoPayPage = () => {
                   <td>{p.hours_worked}h</td>
                   <td>${Number(p.hourly_rate).toFixed(2)}/hr</td>
                   <td>${(Number(p.bonus || 0) + Number(p.reimbursement || 0)).toFixed(2)}</td>
-                  <td className="text-end fw-bold" style={{ color: "#0f766e" }}>${Number(p.net_pay).toFixed(2)}</td>
+                  <td className="text-end fw-bold" style={{ color: "#2563eb" }}>${Number(p.net_pay).toFixed(2)}</td>
                   <td className="text-end">
                     <button
                       type="button"
                       onClick={() => setSelectedPay(p)}
-                      style={{ background: "none", border: "none", color: "#0f766e", fontWeight: 600, cursor: "pointer" }}
+                      style={{ background: "none", border: "none", color: "#2563eb", fontWeight: 600, cursor: "pointer" }}
                     >
                       <FileText className="w-4 h-4 inline me-1" /> View
                     </button>
@@ -106,7 +106,7 @@ const GustoPayPage = () => {
                 </div>
               )}
               <hr />
-              <div className="d-flex justify-content-between fs-5 fw-bold" style={{ color: "#0f766e" }}>
+              <div className="d-flex justify-content-between fs-5 fw-bold" style={{ color: "#2563eb" }}>
                 <span>Total Net Pay:</span>
                 <span>${Number(selectedPay.net_pay).toFixed(2)}</span>
               </div>

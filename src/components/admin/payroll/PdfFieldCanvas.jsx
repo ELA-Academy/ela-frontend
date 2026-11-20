@@ -227,9 +227,9 @@ const PdfFieldCanvas = ({
     const isAdmin = field.category === "admin";
     const isAuto = field.category === "auto";
 
-    const borderColor = isRecipient ? "#0f766e" : isAdmin ? "#2563eb" : "#7c3aed";
+    const borderColor = isRecipient ? "#2563eb" : isAdmin ? "#2563eb" : "#7c3aed";
     const bgColor = isRecipient
-      ? "rgba(240, 253, 250, 0.94)"
+      ? "rgba(239, 246, 255, 0.94)"
       : isAdmin
       ? "rgba(239, 246, 255, 0.94)"
       : "rgba(245, 243, 255, 0.94)";
@@ -413,8 +413,8 @@ const PdfFieldCanvas = ({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: locked ? "rgba(240, 253, 250, 0.7)" : "#ffffff",
-            border: `1.5px solid ${locked ? "#94a3b8" : "#0f766e"}`,
+            backgroundColor: locked ? "rgba(239, 246, 255, 0.7)" : "#ffffff",
+            border: `1.5px solid ${locked ? "#94a3b8" : "#2563eb"}`,
             borderRadius: "4px",
             cursor: locked ? "default" : "pointer"
           }}
@@ -426,7 +426,7 @@ const PdfFieldCanvas = ({
             onChange={(e) =>
               onChangeFilledData && onChangeFilledData({ ...filledData, [field.id]: e.target.checked })
             }
-            style={{ width: "16px", height: "16px", accentColor: "#0f766e" }}
+            style={{ width: "16px", height: "16px", accentColor: "#2563eb" }}
           />
         </label>
       );
@@ -438,8 +438,8 @@ const PdfFieldCanvas = ({
         key={field.id}
         style={{
           ...baseStyle,
-          border: `1.5px solid ${locked ? "#94a3b8" : "#0f766e"}`,
-          backgroundColor: locked ? "rgba(248, 250, 252, 0.92)" : "rgba(240, 253, 250, 0.96)",
+          border: `1.5px solid ${locked ? "#94a3b8" : "#2563eb"}`,
+          backgroundColor: locked ? "rgba(248, 250, 252, 0.92)" : "rgba(239, 246, 255, 0.96)",
           borderRadius: "4px",
           padding: "2px 6px",
           display: "flex",

@@ -157,7 +157,7 @@ const PayrollPermissionsPage = () => {
 
       <div style={{ marginBottom: "1.5rem" }}>
         <h1 style={{ fontSize: "1.8rem", fontWeight: 700, color: "#111827", margin: 0, display: "flex", alignItems: "center", gap: "0.6rem" }}>
-          <ShieldCheck size={26} color="#0f766e" />
+          <ShieldCheck size={26} color="#2563eb" />
           Payroll Co-Admin Access &amp; Controls
         </h1>
         <p style={{ color: "#6b7280", fontSize: "0.9rem", marginTop: "0.35rem" }}>
@@ -198,7 +198,7 @@ const PayrollPermissionsPage = () => {
         }}
       >
         <h2 style={{ fontSize: "1.05rem", fontWeight: 700, color: "#111827", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.45rem" }}>
-          <UserPlus size={18} color="#0f766e" />
+          <UserPlus size={18} color="#2563eb" />
           Add Payroll Co-Admin
         </h2>
 
@@ -263,7 +263,7 @@ const PayrollPermissionsPage = () => {
             type="submit"
             disabled={saving || !selectedStaffId}
             style={{
-              backgroundColor: "#0f766e",
+              backgroundColor: "#2563eb",
               color: "#ffffff",
               border: "none",
               borderRadius: "6px",

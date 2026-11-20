@@ -140,7 +140,7 @@ const PayrollContractorTimesheetDetailPage = () => {
       <button
         type="button"
         onClick={() => navigate("/admin/payroll/time-attendance/time-tracking")}
-        style={{ background: "none", border: "none", color: "#0f766e", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "0.3rem", padding: 0, marginBottom: "1rem", cursor: "pointer" }}
+        style={{ background: "none", border: "none", color: "#2563eb", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "0.3rem", padding: 0, marginBottom: "1rem", cursor: "pointer" }}
       >
         <ArrowLeft className="w-4 h-4" /> Back to Time Tracking
       </button>
@@ -158,7 +158,7 @@ const PayrollContractorTimesheetDetailPage = () => {
           <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={{ padding: "0.4rem 0.6rem", border: "1px solid #d1d5db", borderRadius: "6px" }} />
           <span>to</span>
           <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={{ padding: "0.4rem 0.6rem", border: "1px solid #d1d5db", borderRadius: "6px" }} />
-          <Button onClick={() => setAddOpen(true)} style={{ backgroundColor: "#0f766e", border: "none", fontWeight: 600 }}>
+          <Button onClick={() => setAddOpen(true)} style={{ backgroundColor: "#2563eb", border: "none", fontWeight: 600 }}>
             <Plus className="w-4 h-4 me-1 inline" /> Add Shift
           </Button>
         </div>
@@ -217,7 +217,7 @@ const PayrollContractorTimesheetDetailPage = () => {
                           admin_override_note: s.admin_override_note || "Rounded up to nearest whole hour - CM"
                         })
                       }
-                      style={{ background: "none", border: "none", color: "#0f766e", fontWeight: 600, cursor: "pointer", marginRight: "0.75rem" }}
+                      style={{ background: "none", border: "none", color: "#2563eb", fontWeight: 600, cursor: "pointer", marginRight: "0.75rem" }}
                     >
                       <Edit2 className="w-4 h-4 inline me-1" /> Overwrite
                     </button>
@@ -266,7 +266,7 @@ const PayrollContractorTimesheetDetailPage = () => {
           </Modal.Body>
           <Modal.Footer>
             <Button variant="light" onClick={() => setAddOpen(false)}>Cancel</Button>
-            <Button type="submit" style={{ backgroundColor: "#0f766e", border: "none" }}>Save Shift</Button>
+            <Button type="submit" style={{ backgroundColor: "#2563eb", border: "none" }}>Save Shift</Button>
           </Modal.Footer>
         </Form>
       </Modal>
@@ -297,7 +297,7 @@ const PayrollContractorTimesheetDetailPage = () => {
           </Modal.Body>
           <Modal.Footer>
             <Button variant="light" onClick={() => setEditShift(null)}>Cancel</Button>
-            <Button type="submit" style={{ backgroundColor: "#0f766e", border: "none" }}>Save Overwrite</Button>
+            <Button type="submit" style={{ backgroundColor: "#2563eb", border: "none" }}>Save Overwrite</Button>
           </Modal.Footer>
         </Form>
       </Modal>

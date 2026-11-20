@@ -279,7 +279,7 @@ const PayrollDocumentWizardPage = () => {
             style={{
               width: `${progressPct}%`,
               height: "100%",
-              backgroundColor: "#0f766e",
+              backgroundColor: "#2563eb",
               transition: "width 0.25s ease"
             }}
           />
@@ -407,7 +407,7 @@ const PayrollDocumentWizardPage = () => {
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", fontSize: "0.875rem", fontWeight: 600, color: "#111827" }}>
-                  <FileText size={16} color="#0f766e" />
+                  <FileText size={16} color="#2563eb" />
                   <span>{fileName}</span>
                 </div>
                 {!isLocked && (
@@ -466,7 +466,7 @@ const PayrollDocumentWizardPage = () => {
                   checked={requiresSignature}
                   disabled={isLocked}
                   onChange={(e) => setRequiresSignature(e.target.checked)}
-                  style={{ width: "16px", height: "16px", accentColor: "#0f766e" }}
+                  style={{ width: "16px", height: "16px", accentColor: "#2563eb" }}
                 />
                 <span>Recipient must fill out or sign this document</span>
               </label>
@@ -489,7 +489,7 @@ const PayrollDocumentWizardPage = () => {
                 setStep(2);
               }}
               style={{
-                backgroundColor: "#0f766e",
+                backgroundColor: "#2563eb",
                 color: "#ffffff",
                 border: "none",
                 borderRadius: "6px",
@@ -580,7 +580,7 @@ const PayrollDocumentWizardPage = () => {
                           gap: "0.5rem"
                         }}
                       >
-                        <Icon size={14} color="#0f766e" />
+                        <Icon size={14} color="#2563eb" />
                         <span>{item.label}</span>
                       </div>
                     );
@@ -680,7 +680,7 @@ const PayrollDocumentWizardPage = () => {
               type="button"
               onClick={() => setStep(3)}
               style={{
-                backgroundColor: "#0f766e",
+                backgroundColor: "#2563eb",
                 color: "#ffffff",
                 border: "none",
                 borderRadius: "6px",
@@ -719,7 +719,7 @@ const PayrollDocumentWizardPage = () => {
               type="button"
               onClick={() => setStep(4)}
               style={{
-                backgroundColor: "#0f766e",
+                backgroundColor: "#2563eb",
                 color: "#ffffff",
                 border: "none",
                 borderRadius: "6px",
@@ -774,7 +774,7 @@ const PayrollDocumentWizardPage = () => {
                   name="documentScope"
                   checked={documentScope === "team"}
                   onChange={() => setDocumentScope("team")}
-                  style={{ marginTop: "3px", accentColor: "#0f766e" }}
+                  style={{ marginTop: "3px", accentColor: "#2563eb" }}
                 />
                 <div>
                   <div style={{ fontWeight: 600, fontSize: "0.92rem", color: "#111827" }}>Team document</div>
@@ -788,7 +788,7 @@ const PayrollDocumentWizardPage = () => {
                   name="documentScope"
                   checked={documentScope === "individual"}
                   onChange={() => setDocumentScope("individual")}
-                  style={{ marginTop: "3px", accentColor: "#0f766e" }}
+                  style={{ marginTop: "3px", accentColor: "#2563eb" }}
                 />
                 <div>
                   <div style={{ fontWeight: 600, fontSize: "0.92rem", color: "#111827" }}>Individual document</div>
@@ -815,7 +815,7 @@ const PayrollDocumentWizardPage = () => {
                     type="checkbox"
                     checked={futureHiresEnabled}
                     onChange={(e) => setFutureHiresEnabled(e.target.checked)}
-                    style={{ width: "16px", height: "16px", accentColor: "#0f766e" }}
+                    style={{ width: "16px", height: "16px", accentColor: "#2563eb" }}
                   />
                   <span>Future hires</span>
                 </label>
@@ -828,7 +828,7 @@ const PayrollDocumentWizardPage = () => {
                         name="futureHiresMode"
                         checked={futureHiresMode === "all"}
                         onChange={() => setFutureHiresMode("all")}
-                        style={{ accentColor: "#0f766e" }}
+                        style={{ accentColor: "#2563eb" }}
                       />
                       <span>All future hires</span>
                     </label>
@@ -838,7 +838,7 @@ const PayrollDocumentWizardPage = () => {
                         name="futureHiresMode"
                         checked={futureHiresMode === "specific"}
                         onChange={() => setFutureHiresMode("specific")}
-                        style={{ accentColor: "#0f766e" }}
+                        style={{ accentColor: "#2563eb" }}
                       />
                       <span>Specific types of hires</span>
                     </label>
@@ -865,7 +865,7 @@ const PayrollDocumentWizardPage = () => {
                                 type="checkbox"
                                 checked={selectedHireTypes.includes(opt.id)}
                                 onChange={() => toggleItem(selectedHireTypes, setSelectedHireTypes, opt.id)}
-                                style={{ accentColor: "#0f766e" }}
+                                style={{ accentColor: "#2563eb" }}
                               />
                               <span>{opt.label}</span>
                             </label>
@@ -881,7 +881,7 @@ const PayrollDocumentWizardPage = () => {
                                   type="checkbox"
                                   checked={selectedFutureDeptIds.includes(dept.id)}
                                   onChange={() => toggleItem(selectedFutureDeptIds, setSelectedFutureDeptIds, dept.id)}
-                                  style={{ accentColor: "#0f766e" }}
+                                  style={{ accentColor: "#2563eb" }}
                                 />
                                 <span>{dept.name}</span>
                               </label>
@@ -900,7 +900,7 @@ const PayrollDocumentWizardPage = () => {
                     type="checkbox"
                     checked={currentMembersEnabled}
                     onChange={(e) => setCurrentMembersEnabled(e.target.checked)}
-                    style={{ width: "16px", height: "16px", accentColor: "#0f766e" }}
+                    style={{ width: "16px", height: "16px", accentColor: "#2563eb" }}
                   />
                   <span>Current team members</span>
                 </label>
@@ -913,7 +913,7 @@ const PayrollDocumentWizardPage = () => {
                         name="currentMembersMode"
                         checked={currentMembersMode === "all"}
                         onChange={() => setCurrentMembersMode("all")}
-                        style={{ accentColor: "#0f766e" }}
+                        style={{ accentColor: "#2563eb" }}
                       />
                       <span>All current team members</span>
                     </label>
@@ -923,7 +923,7 @@ const PayrollDocumentWizardPage = () => {
                         name="currentMembersMode"
                         checked={currentMembersMode === "specific"}
                         onChange={() => setCurrentMembersMode("specific")}
-                        style={{ accentColor: "#0f766e" }}
+                        style={{ accentColor: "#2563eb" }}
                       />
                       <span>Specific team members or departments</span>
                     </label>
@@ -952,7 +952,7 @@ const PayrollDocumentWizardPage = () => {
                                   type="checkbox"
                                   checked={selectedCurrentDeptIds.includes(dept.id)}
                                   onChange={() => toggleItem(selectedCurrentDeptIds, setSelectedCurrentDeptIds, dept.id)}
-                                  style={{ accentColor: "#0f766e" }}
+                                  style={{ accentColor: "#2563eb" }}
                                 />
                                 <span>{dept.name}</span>
                               </label>
@@ -969,7 +969,7 @@ const PayrollDocumentWizardPage = () => {
                                   type="checkbox"
                                   checked={selectedCurrentStaffIds.includes(s.id)}
                                   onChange={() => toggleItem(selectedCurrentStaffIds, setSelectedCurrentStaffIds, s.id)}
-                                  style={{ accentColor: "#0f766e" }}
+                                  style={{ accentColor: "#2563eb" }}
                                 />
                                 <span>
                                   {s.name}{" "}
@@ -1015,7 +1015,7 @@ const PayrollDocumentWizardPage = () => {
                           name="individualStaff"
                           checked={String(individualStaffId) === String(s.id)}
                           onChange={() => setIndividualStaffId(String(s.id))}
-                          style={{ accentColor: "#0f766e" }}
+                          style={{ accentColor: "#2563eb" }}
                         />
                         <span style={{ fontWeight: 500 }}>{s.name}</span>
                         <span style={{ color: "#6b7280", fontSize: "0.78rem" }}>
@@ -1037,7 +1037,7 @@ const PayrollDocumentWizardPage = () => {
                   disabled={saving}
                   onClick={() => handleSave("draft")}
                   style={{
-                    backgroundColor: "#0f766e",
+                    backgroundColor: "#2563eb",
                     color: "#ffffff",
                     border: "none",
                     borderRadius: "6px",
@@ -1055,8 +1055,8 @@ const PayrollDocumentWizardPage = () => {
                   onClick={() => handleSave("active")}
                   style={{
                     backgroundColor: "#ffffff",
-                    color: "#0f766e",
-                    border: "1px solid #0f766e",
+                    color: "#2563eb",
+                    border: "1px solid #2563eb",
                     borderRadius: "6px",
                     padding: "0.6rem 1.4rem",
                     fontSize: "0.9rem",
@@ -1074,7 +1074,7 @@ const PayrollDocumentWizardPage = () => {
                   disabled={saving}
                   onClick={() => handleSave("active")}
                   style={{
-                    backgroundColor: "#0f766e",
+                    backgroundColor: "#2563eb",
                     color: "#ffffff",
                     border: "none",
                     borderRadius: "6px",

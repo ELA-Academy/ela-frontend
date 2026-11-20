@@ -182,7 +182,7 @@ const PayrollPayPage = () => {
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
               <h2 style={{ fontSize: "1.15rem", fontWeight: 700, margin: 0 }}>Up next</h2>
-              <span style={{ fontSize: "0.85rem", color: "#0f766e", fontWeight: 600 }}>
+              <span style={{ fontSize: "0.85rem", color: "#2563eb", fontWeight: 600 }}>
                 <Calendar className="w-4 h-4 inline me-1" /> Bi-weekly Friday schedule
               </span>
             </div>
@@ -202,10 +202,10 @@ const PayrollPayPage = () => {
                   Payday: <strong>{payDate}</strong>
                 </div>
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: "1rem", alignItems: "center" }}>
-                  <button type="button" onClick={() => setSkipNotice(true)} style={{ background: "none", border: "none", color: "#0f766e", fontWeight: 600, cursor: "pointer" }}>
+                  <button type="button" onClick={() => setSkipNotice(true)} style={{ background: "none", border: "none", color: "#2563eb", fontWeight: 600, cursor: "pointer" }}>
                     Skip
                   </button>
-                  <Button onClick={openEmployeePayroll} style={{ backgroundColor: "#0f766e", border: "none", fontWeight: 600, padding: "0.45rem 1.25rem" }}>
+                  <Button onClick={openEmployeePayroll} style={{ backgroundColor: "#2563eb", border: "none", fontWeight: 600, padding: "0.45rem 1.25rem" }}>
                     Run
                   </Button>
                 </div>
@@ -213,7 +213,7 @@ const PayrollPayPage = () => {
             ) : (
               <div style={{ backgroundColor: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "10px", padding: "1rem", marginBottom: "1.75rem", fontSize: "0.875rem", color: "#6b7280", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span>Current employee payroll cycle skipped.</span>
-                <button type="button" onClick={() => setSkipNotice(false)} style={{ background: "none", border: "none", color: "#0f766e", fontWeight: 600, cursor: "pointer" }}>Undo</button>
+                <button type="button" onClick={() => setSkipNotice(false)} style={{ background: "none", border: "none", color: "#2563eb", fontWeight: 600, cursor: "pointer" }}>Undo</button>
               </div>
             )}
 
@@ -226,7 +226,7 @@ const PayrollPayPage = () => {
                 Contractors receive 100% of hours worked + reimbursements/bonuses with zero tax withholding. Review &amp; lock shifts in Time Tracking before paying.
               </div>
               <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-                <Button onClick={() => openContractorPayroll("us_contractor")} style={{ backgroundColor: "#0f766e", border: "none", fontWeight: 600 }}>
+                <Button onClick={() => openContractorPayroll("us_contractor")} style={{ backgroundColor: "#2563eb", border: "none", fontWeight: 600 }}>
                   Pay US Contractors
                 </Button>
                 <Button variant="outline-primary" onClick={() => openContractorPayroll("non_us_contractor")}>
@@ -291,7 +291,7 @@ const PayrollPayPage = () => {
     return (
       <div style={{ maxWidth: "1180px", margin: "0 auto", paddingBottom: "4rem" }}>
         <div style={{ fontSize: "0.85rem", marginBottom: "0.5rem" }}>
-          <button type="button" onClick={() => setView("home")} style={{ background: "none", border: "none", color: "#0f766e", fontWeight: 600, padding: 0, cursor: "pointer" }}>
+          <button type="button" onClick={() => setView("home")} style={{ background: "none", border: "none", color: "#2563eb", fontWeight: 600, padding: 0, cursor: "pointer" }}>
             Pay
           </button>{" "}
           / <span style={{ color: "#4b5563" }}>Every other Friday payroll</span>
@@ -370,7 +370,7 @@ const PayrollPayPage = () => {
                           <div className="small text-muted">{fmtMoney(r.hourly_rate)}/hr</div>
                         </td>
                         <td>
-                          <div className="fw-bold" style={{ color: "#0f766e" }}>{fmtMoney(gross)}</div>
+                          <div className="fw-bold" style={{ color: "#2563eb" }}>{fmtMoney(gross)}</div>
                           <div className="small text-muted">{fmtMoney(net)} net</div>
                         </td>
                         <td style={{ width: "110px" }}>
@@ -399,7 +399,7 @@ const PayrollPayPage = () => {
           <Button
             disabled={selectedRows.length === 0}
             onClick={() => setView("employee_step2")}
-            style={{ backgroundColor: "#0f766e", border: "none", fontWeight: 600 }}
+            style={{ backgroundColor: "#2563eb", border: "none", fontWeight: 600 }}
           >
             Review summary
           </Button>
@@ -415,7 +415,7 @@ const PayrollPayPage = () => {
     return (
       <div style={{ maxWidth: "1050px", margin: "0 auto", paddingBottom: "4rem" }}>
         <div style={{ fontSize: "0.85rem", marginBottom: "0.5rem" }}>
-          <button type="button" onClick={() => setView("home")} style={{ background: "none", border: "none", color: "#0f766e", fontWeight: 600, padding: 0, cursor: "pointer" }}>
+          <button type="button" onClick={() => setView("home")} style={{ background: "none", border: "none", color: "#2563eb", fontWeight: 600, padding: 0, cursor: "pointer" }}>
             Pay
           </button>{" "}
           / <span style={{ color: "#4b5563" }}>Every other Friday payroll</span>
@@ -510,7 +510,7 @@ const PayrollPayPage = () => {
           <Button
             disabled={submitting}
             onClick={() => handleSubmitPayroll("employee")}
-            style={{ backgroundColor: "#0f766e", border: "none", fontWeight: 600 }}
+            style={{ backgroundColor: "#2563eb", border: "none", fontWeight: 600 }}
           >
             {submitting ? "Submitting..." : "Submit payroll"}
           </Button>
@@ -533,7 +533,7 @@ const PayrollPayPage = () => {
             Payroll submitted for {payDate}. Total withdrawal: <strong>{fmtMoney(lastRunResult?.total_amount ?? empTotals.totalDebit)}</strong> from {paidFrom}.
           </p>
           <div style={{ display: "flex", gap: "0.75rem", marginBottom: "2rem" }}>
-            <Button onClick={() => setView("home")} style={{ backgroundColor: "#0f766e", border: "none", fontWeight: 600 }}>
+            <Button onClick={() => setView("home")} style={{ backgroundColor: "#2563eb", border: "none", fontWeight: 600 }}>
               Go to Pay dashboard
             </Button>
             <Button variant="outline-secondary" onClick={() => navigate("/admin/payroll/pay/history")}>
@@ -569,7 +569,7 @@ const PayrollPayPage = () => {
     return (
       <div style={{ maxWidth: "1050px", margin: "0 auto", paddingBottom: "4rem" }}>
         <div style={{ fontSize: "0.85rem", marginBottom: "0.5rem" }}>
-          <button type="button" onClick={() => setView("home")} style={{ background: "none", border: "none", color: "#0f766e", fontWeight: 600, padding: 0, cursor: "pointer" }}>
+          <button type="button" onClick={() => setView("home")} style={{ background: "none", border: "none", color: "#2563eb", fontWeight: 600, padding: 0, cursor: "pointer" }}>
             Pay
           </button>{" "}
           / <span style={{ color: "#4b5563" }}>Pay contractors</span>
@@ -589,7 +589,7 @@ const PayrollPayPage = () => {
           </div>
           <div>
             <div className="small text-muted">Withdrawal amount (Direct Deposit)</div>
-            <div className="fw-bold fs-5" style={{ color: "#0f766e" }}>{fmtMoney(directDepositWithdrawal)}</div>
+            <div className="fw-bold fs-5" style={{ color: "#2563eb" }}>{fmtMoney(directDepositWithdrawal)}</div>
           </div>
           <div><div className="small text-muted">Bank account</div><div className="fw-semibold">{paidFrom}</div></div>
           <div><div className="small text-muted">Withdrawal date</div><div className="fw-semibold">{withdrawalDate}</div></div>
@@ -639,7 +639,7 @@ const PayrollPayPage = () => {
           <Button
             disabled={submitting}
             onClick={() => handleSubmitPayroll(workerGroup)}
-            style={{ backgroundColor: "#0f766e", border: "none", fontWeight: 600 }}
+            style={{ backgroundColor: "#2563eb", border: "none", fontWeight: 600 }}
           >
             {submitting ? "Submitting..." : "Submit payments"}
           </Button>
@@ -680,7 +680,7 @@ const PayrollPayPage = () => {
 
   return (
     <div style={{ maxWidth: "1180px", margin: "0 auto", paddingBottom: "4rem" }}>
-      <button type="button" onClick={() => setView("home")} style={{ background: "none", border: "none", color: "#0f766e", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "0.3rem", padding: 0, marginBottom: "1rem", cursor: "pointer" }}>
+      <button type="button" onClick={() => setView("home")} style={{ background: "none", border: "none", color: "#2563eb", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "0.3rem", padding: 0, marginBottom: "1rem", cursor: "pointer" }}>
         <ArrowLeft className="w-4 h-4" /> Back to Pay
       </button>
 
@@ -704,7 +704,7 @@ const PayrollPayPage = () => {
         <div><div className="small text-muted">Debit date</div><div className="fw-bold">{withdrawalDate}</div></div>
         <div><div className="small text-muted">Contractors paid</div><div className="fw-bold">{selectedRows.length}</div></div>
         <div><div className="small text-muted">Total worked</div><div className="fw-bold">{contractorTotals.hours.toFixed(2)} hrs</div></div>
-        <div><div className="small text-muted">Total payments</div><div className="fw-bold" style={{ color: "#0f766e" }}>{fmtMoney(contractorTotal)}</div></div>
+        <div><div className="small text-muted">Total payments</div><div className="fw-bold" style={{ color: "#2563eb" }}>{fmtMoney(contractorTotal)}</div></div>
       </div>
 
       <div style={{ backgroundColor: "#ecfdf5", border: "1px solid #a7f3d0", borderRadius: "8px", padding: "0.75rem 1rem", fontSize: "0.875rem", color: "#065f46", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -734,9 +734,9 @@ const PayrollPayPage = () => {
                 style={{
                   padding: "0.38rem 0.75rem",
                   borderRadius: "6px",
-                  border: workerGroup === g.id ? "1px solid #0f766e" : "1px solid #d1d5db",
-                  backgroundColor: workerGroup === g.id ? "#f0fdfa" : "#ffffff",
-                  color: workerGroup === g.id ? "#0f766e" : "#374151",
+                  border: workerGroup === g.id ? "1px solid #2563eb" : "1px solid #d1d5db",
+                  backgroundColor: workerGroup === g.id ? "#eff6ff" : "#ffffff",
+                  color: workerGroup === g.id ? "#2563eb" : "#374151",
                   fontWeight: 600,
                   fontSize: "0.82rem",
                   cursor: "pointer"
@@ -848,7 +848,7 @@ const PayrollPayPage = () => {
             <Button
               disabled={selectedRows.length === 0}
               onClick={() => setView("contractor_step2")}
-              style={{ backgroundColor: "#0f766e", border: "none", fontWeight: 600 }}
+              style={{ backgroundColor: "#2563eb", border: "none", fontWeight: 600 }}
             >
               Review summary
             </Button>

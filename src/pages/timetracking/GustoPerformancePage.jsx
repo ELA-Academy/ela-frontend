@@ -118,7 +118,7 @@ const GustoPerformancePage = () => {
                   {r.status !== "Completed" && (
                     <Button
                       size="sm"
-                      style={{ backgroundColor: "#0f766e", border: "none" }}
+                      style={{ backgroundColor: "#2563eb", border: "none" }}
                       onClick={() => {
                         setActiveReview(r);
                         setResponses(r.responses || {});
@@ -166,7 +166,7 @@ const GustoPerformancePage = () => {
           </Modal.Body>
           <Modal.Footer>
             <Button variant="light" onClick={() => setActiveReview(null)}>Cancel</Button>
-            <Button type="submit" style={{ backgroundColor: "#0f766e", border: "none" }}>Submit Appraisal</Button>
+            <Button type="submit" style={{ backgroundColor: "#2563eb", border: "none" }}>Submit Appraisal</Button>
           </Modal.Footer>
         </Form>
       </Modal>

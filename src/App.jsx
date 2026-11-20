@@ -71,6 +71,7 @@ import AdministrationLayout from "./components/admin/administration/Administrati
 import PayrollLayout from "./components/admin/payroll/PayrollLayout";
 import PayrollHomePage from "./components/admin/payroll/PayrollHomePage";
 import PayrollPeoplePage from "./components/admin/payroll/PayrollPeoplePage";
+import PayrollAddPersonPage from "./components/admin/payroll/PayrollAddPersonPage";
 import PayrollStaffProfilePage from "./components/admin/payroll/PayrollStaffProfilePage";
 import PayrollPayPage from "./components/admin/payroll/PayrollPayPage";
 import PayrollPayHistoryPage from "./components/admin/payroll/PayrollPayHistoryPage";
@@ -249,6 +250,7 @@ function App() {
                 <Route path="payroll" element={<PayrollLayout />}>
                   <Route index element={<PayrollHomePage />} />
                   <Route path="people" element={<PayrollPeoplePage />} />
+                  <Route path="people/add" element={<PayrollAddPersonPage />} />
                   <Route path="people/:staffId" element={<PayrollStaffProfilePage />} />
                   <Route path="pay" element={<PayrollPayPage />} />
                   <Route path="pay/history" element={<PayrollPayHistoryPage />} />

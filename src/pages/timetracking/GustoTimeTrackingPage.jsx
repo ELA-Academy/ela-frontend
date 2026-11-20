@@ -171,7 +171,7 @@ const GustoTimeTrackingPage = () => {
               fontSize: "0.9rem",
               fontWeight: activeTab === t.id ? 700 : 500,
               color: activeTab === t.id ? "#111827" : "#6b7280",
-              borderBottom: activeTab === t.id ? "2px solid #0f766e" : "2px solid transparent",
+              borderBottom: activeTab === t.id ? "2px solid #2563eb" : "2px solid transparent",
               cursor: "pointer"
             }}
           >
@@ -197,7 +197,7 @@ const GustoTimeTrackingPage = () => {
             </Form.Select>
 
             <div style={{ fontSize: "1rem", fontWeight: 700, color: "#111827" }}>
-              Week Total: <span style={{ color: "#0f766e" }}>{formatMinutes(totalWeekMinutes)}</span>
+              Week Total: <span style={{ color: "#2563eb" }}>{formatMinutes(totalWeekMinutes)}</span>
             </div>
           </div>
 
@@ -249,7 +249,7 @@ const GustoTimeTrackingPage = () => {
 
                       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                         {dayMins > 0 && (
-                          <span style={{ fontWeight: 700, color: "#0f766e", fontSize: "0.9rem" }}>
+                          <span style={{ fontWeight: 700, color: "#2563eb", fontSize: "0.9rem" }}>
                             {formatMinutes(dayMins)}
                           </span>
                         )}
@@ -258,9 +258,9 @@ const GustoTimeTrackingPage = () => {
                             type="button"
                             onClick={() => openAddModal(day.iso)}
                             style={{
-                              backgroundColor: "#f0fdfa",
-                              color: "#0f766e",
-                              border: "1px solid #99f6e4",
+                              backgroundColor: "#eff6ff",
+                              color: "#2563eb",
+                              border: "1px solid #bfdbfe",
                               borderRadius: "6px",
                               padding: "0.3rem 0.7rem",
                               fontSize: "0.8rem",
@@ -304,7 +304,7 @@ const GustoTimeTrackingPage = () => {
                         </div>
                         {!isLocked && shift.status === "draft" && (
                           <div style={{ display: "flex", gap: "0.5rem" }}>
-                            <button type="button" onClick={() => openEditModal(shift)} style={{ background: "none", border: "none", color: "#0f766e", cursor: "pointer" }}>
+                            <button type="button" onClick={() => openEditModal(shift)} style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer" }}>
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button type="button" onClick={() => handleDeleteShift(shift.id)} style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer" }}>
@@ -335,7 +335,7 @@ const GustoTimeTrackingPage = () => {
             <option value="Africa/Lagos (WAT, GMT+1)">West Africa Time (WAT, GMT+1)</option>
             <option value="Africa/Nairobi (EAT, GMT+3)">East Africa Time (EAT, GMT+3)</option>
           </Form.Select>
-          <Button onClick={handleSaveTimezone} style={{ backgroundColor: "#0f766e", border: "none", fontWeight: 600 }}>
+          <Button onClick={handleSaveTimezone} style={{ backgroundColor: "#2563eb", border: "none", fontWeight: 600 }}>
             Save Timezone
           </Button>
           {timezoneSaved && (
@@ -377,7 +377,7 @@ const GustoTimeTrackingPage = () => {
           </Modal.Body>
           <Modal.Footer>
             <Button variant="light" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button type="submit" style={{ backgroundColor: "#0f766e", border: "none" }}>Save Hours</Button>
+            <Button type="submit" style={{ backgroundColor: "#2563eb", border: "none" }}>Save Hours</Button>
           </Modal.Footer>
         </Form>
       </Modal>

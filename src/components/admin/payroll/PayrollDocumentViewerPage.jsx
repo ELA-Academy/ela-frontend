@@ -52,7 +52,7 @@ const PayrollDocumentViewerPage = () => {
         <button
           type="button"
           onClick={() => navigate("/admin/payroll/documents")}
-          style={{ background: "none", border: "none", color: "#0f766e", fontWeight: 600, cursor: "pointer" }}
+          style={{ background: "none", border: "none", color: "#2563eb", fontWeight: 600, cursor: "pointer" }}
         >
           ← Back to Documents
         </button>
@@ -95,7 +95,7 @@ const PayrollDocumentViewerPage = () => {
         style={{
           background: "none",
           border: "none",
-          color: "#0f766e",
+          color: "#2563eb",
           fontWeight: 600,
           fontSize: "0.9rem",
           display: "inline-flex",
@@ -145,7 +145,7 @@ const PayrollDocumentViewerPage = () => {
               disabled={sendingReminder}
               onClick={handleRemind}
               style={{
-                backgroundColor: "#0f766e",
+                backgroundColor: "#2563eb",
                 color: "#ffffff",
                 border: "none",
                 borderRadius: "6px",
@@ -212,7 +212,7 @@ const PayrollDocumentViewerPage = () => {
       ) : (
         <div style={{ backgroundColor: "#ffffff", border: "1px solid #e5e7eb", borderRadius: "10px", padding: "1.75rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700, marginBottom: "0.75rem" }}>
-            <FileText size={18} color="#0f766e" />
+            <FileText size={18} color="#2563eb" />
             <span>Document Content</span>
           </div>
           <div style={{ whiteSpace: "pre-wrap", fontSize: "0.9rem", color: "#374151" }}>

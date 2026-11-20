@@ -125,7 +125,7 @@ const PayrollTimesheetsPage = () => {
         <Button
           onClick={() => setSyncModalOpen(true)}
           disabled={isSyncing}
-          style={{ backgroundColor: "#0f766e", border: "none", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "0.45rem" }}
+          style={{ backgroundColor: "#2563eb", border: "none", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "0.45rem" }}
         >
           <RefreshCw className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`} />
           Sync hours to contractor payments
@@ -161,7 +161,7 @@ const PayrollTimesheetsPage = () => {
         </div>
         <Button
           onClick={() => navigate("/admin/payroll/pay")}
-          style={{ backgroundColor: "#0f766e", border: "none", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "0.3rem" }}
+          style={{ backgroundColor: "#2563eb", border: "none", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "0.3rem" }}
         >
           Go to Payroll <ChevronRight className="w-4 h-4" />
         </Button>
@@ -183,7 +183,7 @@ const PayrollTimesheetsPage = () => {
           <button
             type="button"
             onClick={() => navigate("/admin/payroll/time-attendance/settings")}
-            style={{ background: "none", border: "none", padding: 0, color: "#0f766e", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.25rem" }}
+            style={{ background: "none", border: "none", padding: 0, color: "#2563eb", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.25rem" }}
           >
             Manage settings and policies <ChevronRight className="w-4 h-4" />
           </button>
@@ -200,7 +200,7 @@ const PayrollTimesheetsPage = () => {
           <button
             type="button"
             onClick={() => navigate("/admin/payroll/time-attendance/settings")}
-            style={{ background: "none", border: "none", padding: 0, color: "#0f766e", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.25rem" }}
+            style={{ background: "none", border: "none", padding: 0, color: "#2563eb", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.25rem" }}
           >
             Configure <ChevronRight className="w-4 h-4" />
           </button>
@@ -234,9 +234,9 @@ const PayrollTimesheetsPage = () => {
               style={{
                 padding: "0.45rem 0.9rem",
                 borderRadius: "6px",
-                border: activeTab === tab.id ? "1px solid #0f766e" : "1px solid #d1d5db",
-                backgroundColor: activeTab === tab.id ? "#f0fdfa" : "#ffffff",
-                color: activeTab === tab.id ? "#0f766e" : "#374151",
+                border: activeTab === tab.id ? "1px solid #2563eb" : "1px solid #d1d5db",
+                backgroundColor: activeTab === tab.id ? "#eff6ff" : "#ffffff",
+                color: activeTab === tab.id ? "#2563eb" : "#374151",
                 fontWeight: 600,
                 fontSize: "0.85rem",
                 cursor: "pointer"
@@ -263,7 +263,7 @@ const PayrollTimesheetsPage = () => {
           />
           <Button variant="outline-secondary" size="sm" onClick={loadTimesheets}>Apply</Button>
           {lastSyncedRange && (
-            <span style={{ fontSize: "0.78rem", color: "#0f766e", fontWeight: 600 }}>
+            <span style={{ fontSize: "0.78rem", color: "#2563eb", fontWeight: 600 }}>
               Last dates synced: {lastSyncedRange}
             </span>
           )}
@@ -302,7 +302,7 @@ const PayrollTimesheetsPage = () => {
               filteredTimesheets.map((t) => (
                 <tr key={t.staff_id} style={{ borderBottom: "1px solid #f3f4f6" }}>
                   <td style={{ padding: "0.85rem 1rem" }}>
-                    <div style={{ fontWeight: 600, color: "#0f766e", cursor: "pointer" }} onClick={() => navigate(`/admin/payroll/time-attendance/timesheets/${t.staff_id}?start=${startDate}&end=${endDate}`)}>
+                    <div style={{ fontWeight: 600, color: "#2563eb", cursor: "pointer" }} onClick={() => navigate(`/admin/payroll/time-attendance/timesheets/${t.staff_id}?start=${startDate}&end=${endDate}`)}>
                       {t.name}
                     </div>
                     <div style={{ fontSize: "0.78rem", color: "#6b7280" }}>{t.department}</div>
@@ -333,7 +333,7 @@ const PayrollTimesheetsPage = () => {
                     <button
                       type="button"
                       onClick={() => navigate(`/admin/payroll/time-attendance/timesheets/${t.staff_id}?start=${startDate}&end=${endDate}`)}
-                      style={{ background: "none", border: "1px solid #d1d5db", borderRadius: "6px", padding: "0.3rem 0.7rem", fontSize: "0.8rem", fontWeight: 600, color: "#0f766e", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.3rem" }}
+                      style={{ background: "none", border: "1px solid #d1d5db", borderRadius: "6px", padding: "0.3rem 0.7rem", fontSize: "0.8rem", fontWeight: 600, color: "#2563eb", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.3rem" }}
                     >
                       <Eye className="w-3.5 h-3.5" /> Review / Edit
                     </button>
@@ -349,7 +349,7 @@ const PayrollTimesheetsPage = () => {
       <div style={{ display: "flex", justifyContent: "center", marginTop: "1.5rem" }}>
         <Button
           onClick={() => setSyncModalOpen(true)}
-          style={{ backgroundColor: "#0f766e", border: "none", fontWeight: 600, padding: "0.6rem 1.5rem" }}
+          style={{ backgroundColor: "#2563eb", border: "none", fontWeight: 600, padding: "0.6rem 1.5rem" }}
         >
           Sync hours to contractor payments
         </Button>
@@ -369,7 +369,7 @@ const PayrollTimesheetsPage = () => {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="light" onClick={() => setSyncModalOpen(false)}>Cancel</Button>
-          <Button disabled={isSyncing} onClick={handleSyncHours} style={{ backgroundColor: "#0f766e", border: "none", fontWeight: 600 }}>
+          <Button disabled={isSyncing} onClick={handleSyncHours} style={{ backgroundColor: "#2563eb", border: "none", fontWeight: 600 }}>
             {isSyncing ? "Syncing..." : "Confirm Sync & Lock"}
           </Button>
         </Modal.Footer>

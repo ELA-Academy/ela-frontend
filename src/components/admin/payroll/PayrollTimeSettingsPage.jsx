@@ -104,11 +104,11 @@ const PayrollTimeSettingsPage = () => {
         </div>
       )}
 
-      <div style={{ fontSize: "0.85rem", color: "#0f766e", marginBottom: "0.5rem" }}>
+      <div style={{ fontSize: "0.85rem", color: "#2563eb", marginBottom: "0.5rem" }}>
         <button
           type="button"
           onClick={() => navigate("/admin/payroll/time-attendance/time-tracking")}
-          style={{ background: "none", border: "none", color: "#0f766e", fontWeight: 600, padding: 0, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.3rem" }}
+          style={{ background: "none", border: "none", color: "#2563eb", fontWeight: 600, padding: 0, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.3rem" }}
         >
           <ArrowLeft className="w-4 h-4" /> Time tracking
         </button>{" "}
@@ -204,7 +204,7 @@ const PayrollTimeSettingsPage = () => {
               </div>
 
               <div>
-                <Button onClick={handleSaveSettings} style={{ backgroundColor: "#0f766e", border: "none", fontWeight: 600 }}>
+                <Button onClick={handleSaveSettings} style={{ backgroundColor: "#2563eb", border: "none", fontWeight: 600 }}>
                   Save General Settings
                 </Button>
               </div>
@@ -228,9 +228,9 @@ const PayrollTimeSettingsPage = () => {
                       style={{
                         padding: "0.45rem 0.9rem",
                         borderRadius: "9999px",
-                        border: active ? "1px solid #0f766e" : "1px solid #d1d5db",
-                        backgroundColor: active ? "#f0fdfa" : "#ffffff",
-                        color: active ? "#0f766e" : "#4b5563",
+                        border: active ? "1px solid #2563eb" : "1px solid #d1d5db",
+                        backgroundColor: active ? "#eff6ff" : "#ffffff",
+                        color: active ? "#2563eb" : "#4b5563",
                         fontWeight: 600,
                         fontSize: "0.85rem",
                         cursor: "pointer"
@@ -250,7 +250,7 @@ const PayrollTimeSettingsPage = () => {
                 className="mb-4"
               />
 
-              <Button onClick={handleSaveSettings} style={{ backgroundColor: "#0f766e", border: "none", fontWeight: 600 }}>
+              <Button onClick={handleSaveSettings} style={{ backgroundColor: "#2563eb", border: "none", fontWeight: 600 }}>
                 Save Timesheet Rules
               </Button>
             </div>
@@ -269,7 +269,7 @@ const PayrollTimeSettingsPage = () => {
                 onChange={(e) => setSettings({ ...settings, geolocation_enabled: e.target.checked })}
                 className="mb-3"
               />
-              <Button onClick={handleSaveSettings} style={{ backgroundColor: "#0f766e", border: "none", fontWeight: 600 }}>
+              <Button onClick={handleSaveSettings} style={{ backgroundColor: "#2563eb", border: "none", fontWeight: 600 }}>
                 Save
               </Button>
             </div>
@@ -288,7 +288,7 @@ const PayrollTimeSettingsPage = () => {
                 onChange={(e) => setSettings({ ...settings, non_us_tracking_enabled: e.target.checked })}
                 className="mb-3"
               />
-              <Button onClick={handleSaveSettings} style={{ backgroundColor: "#0f766e", border: "none", fontWeight: 600 }}>
+              <Button onClick={handleSaveSettings} style={{ backgroundColor: "#2563eb", border: "none", fontWeight: 600 }}>
                 Save
               </Button>
             </div>

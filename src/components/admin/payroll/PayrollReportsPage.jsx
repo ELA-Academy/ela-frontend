@@ -203,7 +203,7 @@ const PayrollReportsPage = () => {
           style={{
             background: "none",
             border: "none",
-            color: "#0f766e",
+            color: "#2563eb",
             fontWeight: 600,
             fontSize: "0.9rem",
             display: "inline-flex",
@@ -255,9 +255,9 @@ const PayrollReportsPage = () => {
                     style={{
                       padding: "0.4rem 0.85rem",
                       borderRadius: "6px",
-                      border: cumulativePreset === p.id ? "1px solid #0f766e" : "1px solid #d1d5db",
-                      backgroundColor: cumulativePreset === p.id ? "#f0fdfa" : "#ffffff",
-                      color: cumulativePreset === p.id ? "#0f766e" : "#374151",
+                      border: cumulativePreset === p.id ? "1px solid #2563eb" : "1px solid #d1d5db",
+                      backgroundColor: cumulativePreset === p.id ? "#eff6ff" : "#ffffff",
+                      color: cumulativePreset === p.id ? "#2563eb" : "#374151",
                       fontSize: "0.84rem",
                       fontWeight: 600,
                       cursor: "pointer"
@@ -303,8 +303,8 @@ const PayrollReportsPage = () => {
 
               {cumulativeSummary && (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1rem", marginBottom: "1.25rem" }}>
-                  <div style={{ backgroundColor: "#f0fdfa", border: "1px solid #99f6e4", borderRadius: "8px", padding: "0.9rem 1.1rem" }}>
-                    <div style={{ fontSize: "0.75rem", fontWeight: 600, color: "#0f766e", textTransform: "uppercase" }}>Total Cumulative Paid</div>
+                  <div style={{ backgroundColor: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "8px", padding: "0.9rem 1.1rem" }}>
+                    <div style={{ fontSize: "0.75rem", fontWeight: 600, color: "#2563eb", textTransform: "uppercase" }}>Total Cumulative Paid</div>
                     <div style={{ fontSize: "1.4rem", fontWeight: 700, color: "#111827", marginTop: "0.2rem" }}>
                       ${Number(cumulativeSummary.grand_total_net_pay || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
@@ -408,7 +408,7 @@ const PayrollReportsPage = () => {
           <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
             <Button
               onClick={() => runReport(selectedReport)}
-              style={{ backgroundColor: "#0f766e", border: "none", fontWeight: 600 }}
+              style={{ backgroundColor: "#2563eb", border: "none", fontWeight: 600 }}
             >
               {loading ? "Generating..." : "Generate report"}
             </Button>
@@ -486,7 +486,7 @@ const PayrollReportsPage = () => {
                         <td style={{ padding: "0.75rem 1rem", textAlign: "right" }}>${Number(r.total_regular_pay || 0).toFixed(2)}</td>
                         <td style={{ padding: "0.75rem 1rem", textAlign: "right" }}>${Number(r.total_bonus || 0).toFixed(2)}</td>
                         <td style={{ padding: "0.75rem 1rem", textAlign: "right" }}>${Number(r.total_reimbursement || 0).toFixed(2)}</td>
-                        <td style={{ padding: "0.75rem 1rem", textAlign: "right", fontWeight: 700, color: "#0f766e" }}>${Number(r.total_net_pay || 0).toFixed(2)}</td>
+                        <td style={{ padding: "0.75rem 1rem", textAlign: "right", fontWeight: 700, color: "#2563eb" }}>${Number(r.total_net_pay || 0).toFixed(2)}</td>
                       </>
                     )}
                     {selectedReport === "contractor_payments" && (
@@ -537,7 +537,7 @@ const PayrollReportsPage = () => {
             setSelectedReport("contractor_payments");
             runReport("contractor_payments");
           }}
-          style={{ backgroundColor: "#0f766e", border: "none", fontWeight: 600 }}
+          style={{ backgroundColor: "#2563eb", border: "none", fontWeight: 600 }}
         >
           New custom report
         </Button>
@@ -625,7 +625,7 @@ const PayrollReportsPage = () => {
                   }}
                 >
                   <div>
-                    <div style={{ width: "36px", height: "36px", borderRadius: "8px", backgroundColor: "#f0fdfa", color: "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "0.75rem" }}>
+                    <div style={{ width: "36px", height: "36px", borderRadius: "8px", backgroundColor: "#eff6ff", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "0.75rem" }}>
                       <Icon className="w-5 h-5" />
                     </div>
                     <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "#111827", marginBottom: "0.4rem" }}>{card.title}</h3>
@@ -641,7 +641,7 @@ const PayrollReportsPage = () => {
                       background: "none",
                       border: "none",
                       padding: 0,
-                      color: "#0f766e",
+                      color: "#2563eb",
                       fontWeight: 600,
                       fontSize: "0.875rem",
                       cursor: "pointer",

@@ -395,7 +395,7 @@ const PayrollPeoplePage = () => {
               size="sm"
               className="border-0 fw-semibold d-inline-flex align-items-center gap-1.5"
               style={{
-                backgroundColor: "#0f766e",
+                backgroundColor: "#2563eb",
                 borderRadius: "7px",
                 padding: "5px 14px",
                 fontSize: "12.5px"
@@ -404,10 +404,10 @@ const PayrollPeoplePage = () => {
               Add
             </Dropdown.Toggle>
             <Dropdown.Menu className="shadow border-slate-200 rounded-3 py-1" style={{ fontSize: "13px", minWidth: "210px" }}>
-              <Dropdown.Item onClick={() => openAddPersonModal("existing")} className="py-2 px-3 fw-medium">
+              <Dropdown.Item onClick={() => navigate("/admin/payroll/people/add?mode=existing")} className="py-2 px-3 fw-medium">
                 Add a person (from ELA Directory)
               </Dropdown.Item>
-              <Dropdown.Item onClick={() => openAddPersonModal("manual")} className="py-2 px-3">
+              <Dropdown.Item onClick={() => navigate("/admin/payroll/people/add?mode=manual")} className="py-2 px-3">
                 Add new person manually
               </Dropdown.Item>
               <Dropdown.Divider className="my-1" />
@@ -551,7 +551,7 @@ const PayrollPeoplePage = () => {
                       <td className="py-2.5 px-3" style={{ minWidth: "200px" }}>
                         <div className="d-flex align-items-center gap-2">
                           <div className="flex-grow-1 rounded-pill overflow-hidden" style={{ height: "6px", backgroundColor: "#e2e8f0" }}>
-                            <div style={{ width: "65%", height: "100%", backgroundColor: "#0f766e" }} />
+                            <div style={{ width: "65%", height: "100%", backgroundColor: "#2563eb" }} />
                           </div>
                           <span className="text-slate-600 fw-semibold" style={{ fontSize: "11.5px" }}>65%</span>
                         </div>
@@ -802,7 +802,7 @@ const PayrollPeoplePage = () => {
                             checked={active}
                             onChange={() => setOnboardForm({ ...onboardForm, worker_type: wt.value })}
                             className="mt-1"
-                            style={{ accentColor: "#0f766e" }}
+                            style={{ accentColor: "#2563eb" }}
                           />
                           <div>
                             <div className="fw-semibold text-slate-900" style={{ fontSize: "13px" }}>{wt.label}</div>
@@ -866,7 +866,7 @@ const PayrollPeoplePage = () => {
                     <button
                       type="button"
                       className="btn btn-link p-0 text-decoration-none fw-semibold"
-                      style={{ fontSize: "11.5px", color: "#0f766e" }}
+                      style={{ fontSize: "11.5px", color: "#2563eb" }}
                       onClick={() => {
                         setCreatingDept((prev) => !prev);
                         setOnboardForm((prev) => ({ ...prev, department_id: "", new_department_name: "" }));
@@ -900,7 +900,7 @@ const PayrollPeoplePage = () => {
                     <button
                       type="button"
                       className="btn btn-link p-0 text-decoration-none fw-semibold"
-                      style={{ fontSize: "11.5px", color: "#0f766e" }}
+                      style={{ fontSize: "11.5px", color: "#2563eb" }}
                       onClick={() => setCreatingJobTitle((prev) => !prev)}
                     >
                       {creatingJobTitle ? "Choose from list" : "+ Create a new job title"}
@@ -984,7 +984,7 @@ const PayrollPeoplePage = () => {
                     <button
                       type="button"
                       className="btn btn-link p-0 fw-semibold text-decoration-none"
-                      style={{ fontSize: "12.5px", color: "#0f766e" }}
+                      style={{ fontSize: "12.5px", color: "#2563eb" }}
                       onClick={() => {
                         setTempDocIds(onboardForm.document_ids || []);
                         setEditDocsModalOpen(true);
@@ -1088,7 +1088,7 @@ const PayrollPeoplePage = () => {
               <Button
                 type="button"
                 size="sm"
-                style={{ backgroundColor: "#0f766e", border: "none" }}
+                style={{ backgroundColor: "#2563eb", border: "none" }}
                 disabled={addMode === "existing" && !onboardForm.staff_id}
                 onClick={handleAdvanceStep}
               >
@@ -1099,7 +1099,7 @@ const PayrollPeoplePage = () => {
                 type="submit"
                 size="sm"
                 disabled={submittingOnboard}
-                style={{ backgroundColor: "#0f766e", border: "none" }}
+                style={{ backgroundColor: "#2563eb", border: "none" }}
               >
                 {submittingOnboard ? "Saving..." : "Save & Activate in Payroll"}
               </Button>
@@ -1161,7 +1161,7 @@ const PayrollPeoplePage = () => {
           </Button>
           <Button
             size="sm"
-            style={{ backgroundColor: "#0f766e", border: "none" }}
+            style={{ backgroundColor: "#2563eb", border: "none" }}
             onClick={() => {
               setOnboardForm((prev) => ({ ...prev, document_ids: tempDocIds }));
               setEditDocsModalOpen(false);

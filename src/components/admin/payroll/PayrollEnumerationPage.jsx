@@ -135,7 +135,7 @@ const PayrollEnumerationPage = () => {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1.25rem" }}>
         <div>
           <h1 style={{ fontSize: "1.8rem", fontWeight: 700, color: "#111827", margin: 0, display: "flex", alignItems: "center", gap: "0.55rem" }}>
-            <TableIcon size={24} color="#0f766e" />
+            <TableIcon size={24} color="#2563eb" />
             Payment Enumeration
           </h1>
           <p style={{ color: "#6b7280", fontSize: "0.875rem", marginTop: "0.25rem", marginBottom: 0 }}>
@@ -147,7 +147,7 @@ const PayrollEnumerationPage = () => {
           type="button"
           onClick={exportCSV}
           style={{
-            backgroundColor: "#0f766e",
+            backgroundColor: "#2563eb",
             color: "#ffffff",
             border: "none",
             borderRadius: "6px",
@@ -206,7 +206,7 @@ const PayrollEnumerationPage = () => {
               filtered.map((row) => {
                 const isDirty = Boolean(dirtyIds[row.staff_id]);
                 return (
-                  <tr key={row.staff_id} style={{ borderBottom: "1px solid #f1f5f9", backgroundColor: isDirty ? "#f0fdfa" : "#ffffff" }}>
+                  <tr key={row.staff_id} style={{ borderBottom: "1px solid #f1f5f9", backgroundColor: isDirty ? "#eff6ff" : "#ffffff" }}>
                     <td style={{ padding: "0.55rem 0.75rem", fontWeight: 600, color: "#111827" }}>
                       {row.staff_name}
                       {row.department && <div style={{ fontSize: "0.72rem", color: "#6b7280", fontWeight: 400 }}>{row.department}</div>}
@@ -293,7 +293,7 @@ const PayrollEnumerationPage = () => {
                         disabled={savingId === row.staff_id}
                         onClick={() => handleSaveRow(row)}
                         style={{
-                          backgroundColor: isDirty ? "#0f766e" : "#f1f5f9",
+                          backgroundColor: isDirty ? "#2563eb" : "#f1f5f9",
                           color: isDirty ? "#ffffff" : "#475569",
                           border: "none",
                           borderRadius: "5px",

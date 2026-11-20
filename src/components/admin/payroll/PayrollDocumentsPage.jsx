@@ -160,7 +160,7 @@ const PayrollDocumentsPage = () => {
             type="button"
             onClick={handleAddDocumentClick}
             style={{
-              backgroundColor: "#0f766e",
+              backgroundColor: "#2563eb",
               color: "#ffffff",
               border: "none",
               borderRadius: "6px",
@@ -203,7 +203,7 @@ const PayrollDocumentsPage = () => {
                   padding: "0.4rem 0.25rem",
                   fontSize: "0.875rem",
                   fontWeight: section === item.id ? 700 : 500,
-                  color: section === item.id ? "#0f766e" : "#4b5563",
+                  color: section === item.id ? "#2563eb" : "#4b5563",
                   cursor: "pointer"
                 }}
               >
@@ -225,7 +225,7 @@ const PayrollDocumentsPage = () => {
               padding: "0.4rem 0.25rem",
               fontSize: "0.875rem",
               fontWeight: section === "authorization" ? 700 : 500,
-              color: section === "authorization" ? "#0f766e" : "#4b5563",
+              color: section === "authorization" ? "#2563eb" : "#4b5563",
               cursor: "pointer"
             }}
           >
@@ -279,9 +279,9 @@ const PayrollDocumentsPage = () => {
                         const isDone = Boolean(a.is_locked);
                         return (
                           <tr key={a.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                            <td style={{ padding: "0.85rem 1rem", fontWeight: 600, color: "#0f766e" }}>{a.staff_name}</td>
+                            <td style={{ padding: "0.85rem 1rem", fontWeight: 600, color: "#2563eb" }}>{a.staff_name}</td>
                             <td
-                              style={{ padding: "0.85rem 1rem", color: "#0f766e", textDecoration: "underline", cursor: "pointer" }}
+                              style={{ padding: "0.85rem 1rem", color: "#2563eb", textDecoration: "underline", cursor: "pointer" }}
                               onClick={() => navigate(`/admin/payroll/documents/artifacts/${a.id}`)}
                             >
                               {a.document_title}
@@ -309,7 +309,7 @@ const PayrollDocumentsPage = () => {
                                 <button
                                   type="button"
                                   onClick={() => navigate(`/admin/payroll/documents/artifacts/${a.id}`)}
-                                  style={{ background: "none", border: "none", color: "#0f766e", fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.25rem" }}
+                                  style={{ background: "none", border: "none", color: "#2563eb", fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.25rem" }}
                                 >
                                   <Eye className="w-4 h-4" /> View
                                 </button>
@@ -432,7 +432,7 @@ const PayrollDocumentsPage = () => {
                           <td style={{ padding: "0.9rem 1rem" }}>
                             <div
                               onClick={() => navigate(`/admin/payroll/documents/${doc.id}/edit?step=${doc.is_locked ? 3 : 2}`)}
-                              style={{ fontWeight: 600, color: "#0f766e", textDecoration: "underline", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
+                              style={{ fontWeight: 600, color: "#2563eb", textDecoration: "underline", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
                             >
                               {doc.title}
                               {doc.is_locked && <Lock size={13} color="#6b7280" title="Locked because signed copies exist" />}

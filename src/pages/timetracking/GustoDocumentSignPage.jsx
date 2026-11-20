@@ -85,7 +85,7 @@ const GustoDocumentSignPage = () => {
         <button
           type="button"
           onClick={() => navigate("/time-tracking/documents")}
-          style={{ background: "none", border: "none", color: "#0f766e", fontWeight: 600, cursor: "pointer" }}
+          style={{ background: "none", border: "none", color: "#2563eb", fontWeight: 600, cursor: "pointer" }}
         >
           ← Back to Documents
         </button>
@@ -104,7 +104,7 @@ const GustoDocumentSignPage = () => {
         style={{
           background: "none",
           border: "none",
-          color: "#0f766e",
+          color: "#2563eb",
           fontWeight: 600,
           fontSize: "0.9rem",
           display: "inline-flex",
@@ -240,7 +240,7 @@ const GustoDocumentSignPage = () => {
         ) : (
           <div style={{ backgroundColor: "#ffffff", border: "1px solid #e5e7eb", borderRadius: "10px", padding: "1.5rem", marginBottom: "1.25rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700, marginBottom: "0.65rem" }}>
-              <FileText size={16} color="#0f766e" />
+              <FileText size={16} color="#2563eb" />
               <span>Document Details</span>
             </div>
             <div style={{ whiteSpace: "pre-wrap", fontSize: "0.9rem", color: "#374151" }}>
@@ -291,7 +291,7 @@ const GustoDocumentSignPage = () => {
               type="submit"
               disabled={submitting}
               style={{
-                backgroundColor: "#0f766e",
+                backgroundColor: "#2563eb",
                 color: "#ffffff",
                 border: "none",
                 borderRadius: "6px",

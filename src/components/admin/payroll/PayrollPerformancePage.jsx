@@ -117,7 +117,7 @@ const PayrollPerformancePage = () => {
           <Button variant="outline-primary" onClick={() => setGoalModal(true)}>
             <Plus className="w-4 h-4 me-1 inline" /> Assign Goal
           </Button>
-          <Button style={{ backgroundColor: "#0f766e", border: "none" }} onClick={() => setReviewModal(true)}>
+          <Button style={{ backgroundColor: "#2563eb", border: "none" }} onClick={() => setReviewModal(true)}>
             <Plus className="w-4 h-4 me-1 inline" /> Send Appraisal
           </Button>
         </div>
@@ -138,7 +138,7 @@ const PayrollPerformancePage = () => {
               <div key={g.id} style={{ padding: "0.85rem", border: "1px solid #f3f4f6", borderRadius: "8px", marginBottom: "0.75rem" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: "0.92rem" }}>
                   <span>{g.title}</span>
-                  <span style={{ color: "#0f766e", fontSize: "0.8rem" }}>{g.status}</span>
+                  <span style={{ color: "#2563eb", fontSize: "0.8rem" }}>{g.status}</span>
                 </div>
                 <div style={{ fontSize: "0.8rem", color: "#6b7280", marginTop: "0.2rem" }}>
                   Assigned to <strong>{g.staff_name}</strong> {g.due_date ? `• Due ${g.due_date}` : ""}
@@ -178,7 +178,7 @@ const PayrollPerformancePage = () => {
                 <div style={{ fontSize: "0.8rem", color: "#6b7280", marginTop: "0.2rem" }}>
                   {r.staff_name} • {r.review_type === "self" ? "Self-Appraisal" : "Supervisor Appraisal"} • {r.period}
                 </div>
-                {r.rating && <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#0f766e", marginTop: "0.3rem" }}>Rating: {r.rating}/5</div>}
+                {r.rating && <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#2563eb", marginTop: "0.3rem" }}>Rating: {r.rating}/5</div>}
               </div>
             ))
           )}
@@ -211,7 +211,7 @@ const PayrollPerformancePage = () => {
           </Modal.Body>
           <Modal.Footer>
             <Button variant="light" onClick={() => setGoalModal(false)}>Cancel</Button>
-            <Button type="submit" style={{ backgroundColor: "#0f766e", border: "none" }}>Assign Goal</Button>
+            <Button type="submit" style={{ backgroundColor: "#2563eb", border: "none" }}>Assign Goal</Button>
           </Modal.Footer>
         </Form>
       </Modal>
@@ -245,7 +245,7 @@ const PayrollPerformancePage = () => {
           </Modal.Body>
           <Modal.Footer>
             <Button variant="light" onClick={() => setReviewModal(false)}>Cancel</Button>
-            <Button type="submit" style={{ backgroundColor: "#0f766e", border: "none" }}>Send Appraisal</Button>
+            <Button type="submit" style={{ backgroundColor: "#2563eb", border: "none" }}>Send Appraisal</Button>
           </Modal.Footer>
         </Form>
       </Modal>

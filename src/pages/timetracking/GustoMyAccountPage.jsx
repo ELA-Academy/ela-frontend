@@ -80,7 +80,7 @@ const GustoMyAccountPage = () => {
             gap: "0.4rem",
             background: "none",
             border: "none",
-            color: "#0f766e",
+            color: "#2563eb",
             fontSize: "0.875rem",
             fontWeight: 600,
             cursor: "pointer",
@@ -131,8 +131,8 @@ const GustoMyAccountPage = () => {
             <rect x="175" y="91" width="6" height="35" rx="2" fill="#94a3b8" />
 
             {/* Monitor */}
-            <rect x="80" y="35" width="80" height="50" rx="4" fill="#ffffff" stroke="#0f766e" strokeWidth="2.5" />
-            <rect x="115" y="85" width="10" height="8" fill="#0f766e" />
+            <rect x="80" y="35" width="80" height="50" rx="4" fill="#ffffff" stroke="#2563eb" strokeWidth="2.5" />
+            <rect x="115" y="85" width="10" height="8" fill="#2563eb" />
             <circle cx="120" cy="60" r="14" fill="#fef08a" stroke="#ca8a04" strokeWidth="2" />
             <text x="120" y="65" textAnchor="middle" fill="#854d0e" fontSize="14" fontWeight="bold">$</text>
 
@@ -179,7 +179,7 @@ const GustoMyAccountPage = () => {
               <Link
                 to="/time-tracking/pay"
                 style={{
-                  color: "#0f766e",
+                  color: "#2563eb",
                   fontSize: "0.875rem",
                   fontWeight: 600,
                   textDecoration: "underline"
@@ -276,7 +276,7 @@ const GustoMyAccountPage = () => {
               <Link
                 to="/time-tracking/documents"
                 style={{
-                  color: "#0f766e",
+                  color: "#2563eb",
                   fontSize: "0.875rem",
                   fontWeight: 600,
                   textDecoration: "underline"
@@ -384,7 +384,7 @@ const GustoMyAccountPage = () => {
                     width: "10px",
                     height: "10px",
                     borderRadius: "50%",
-                    border: "2px solid #0f766e",
+                    border: "2px solid #2563eb",
                     backgroundColor: "#ffffff",
                     zIndex: 2
                   }}
@@ -436,7 +436,7 @@ const GustoMyAccountPage = () => {
                           to="/time-tracking/hours"
                           style={{
                             fontSize: "0.825rem",
-                            color: "#0f766e",
+                            color: "#2563eb",
                             fontWeight: 600,
                             textDecoration: "underline"
                           }}

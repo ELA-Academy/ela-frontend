@@ -53,7 +53,7 @@ const GustoDocumentsPage = () => {
               >
                 <div>
                   <div
-                    style={{ fontWeight: 700, fontSize: "0.95rem", color: "#0f766e", cursor: "pointer", textDecoration: "underline" }}
+                    style={{ fontWeight: 700, fontSize: "0.95rem", color: "#2563eb", cursor: "pointer", textDecoration: "underline" }}
                     onClick={() => navigate(`/time-tracking/documents/${doc.id}`)}
                   >
                     {doc.document_title}
@@ -87,7 +87,7 @@ const GustoDocumentsPage = () => {
                   <Button
                     size="sm"
                     variant={isDone ? "outline-secondary" : "primary"}
-                    style={!isDone ? { backgroundColor: "#0f766e", border: "none" } : {}}
+                    style={!isDone ? { backgroundColor: "#2563eb", border: "none" } : {}}
                     onClick={() => navigate(`/time-tracking/documents/${doc.id}`)}
                   >
                     {isDone ? "View" : "Review & Sign"}
