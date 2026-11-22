@@ -392,9 +392,25 @@ const BoardDetailPage = () => {
   const [groupBy, setGroupBy] = useState("status");
   const [kanbanGrouping, setKanbanGrouping] = useState("none");
 
-  // Filters
+  // Filters & Progressive List Windowing (eliminates lag on 390+ task lists)
   const [filterQuery, setFilterQuery] = useState("");
-  const [showSearchInput, setShowSearchInput] = useState(false);
+  const [debouncedFilterQuery, setDebouncedFilterQuery] = useState("");
+  const [searchColumn, setSearchColumn] = useState("all"); // "all" | "title" | "assignee" | "notes" | "custom_field_<id>"
+  const [showSearchInput, setShowSearchInput] = useState(true);
+  const DEFAULT_LIST_CHUNK = 50;
+  const [visibleCountByStatus, setVisibleCountByStatus] = useState({});
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedFilterQuery(filterQuery);
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [filterQuery]);
+
+  // Reset per-group window when switching boards or searching
+  useEffect(() => {
+    setVisibleCountByStatus({});
+  }, [boardId, debouncedFilterQuery, searchColumn]);
   const undoStackRef = useRef([]);
   const [undoCount, setUndoCount] = useState(0);
   const [filterAssignee, setFilterAssignee] = useState("");
@@ -2328,8 +2344,8 @@ const BoardDetailPage = () => {
   const filteredTasks = useMemo(() => {
     let result = allTasks.filter((task) => !task.parent_task_id);
 
-    if (filterQuery.trim()) {
-      const q = filterQuery.toLowerCase().trim();
+    if (debouncedFilterQuery.trim()) {
+      const q = debouncedFilterQuery.toLowerCase().trim();
       const qDigits = q.replace(/[^0-9]/g, "");
 
       const matchesValue = (val) => {
@@ -2345,20 +2361,43 @@ const BoardDetailPage = () => {
         return false;
       };
 
-      const taskMatchesQuery = (t) =>
-        matchesValue(t.title) ||
-        matchesValue(t.notes) ||
-        matchesValue(t.status) ||
-        matchesValue(t.priority) ||
-        matchesValue(t.category) ||
-        matchesValue(t.tags) ||
-        matchesValue(t.due_date) ||
-        matchesValue(t.start_date) ||
-        getTaskAssignees(t).some(
-          (assignee) => matchesValue(assignee.name) || matchesValue(assignee.email)
-        ) ||
-        (t.custom_field_values && Object.values(t.custom_field_values).some(matchesValue)) ||
-        (Array.isArray(t.subtasks) && t.subtasks.some(taskMatchesQuery));
+      const taskMatchesQuery = (t) => {
+        if (searchColumn === "title") {
+          return matchesValue(t.title) || (Array.isArray(t.subtasks) && t.subtasks.some(taskMatchesQuery));
+        }
+        if (searchColumn === "assignee") {
+          return (
+            getTaskAssignees(t).some((a) => matchesValue(a.name) || matchesValue(a.email)) ||
+            (Array.isArray(t.subtasks) && t.subtasks.some(taskMatchesQuery))
+          );
+        }
+        if (searchColumn === "notes") {
+          return matchesValue(t.notes) || (Array.isArray(t.subtasks) && t.subtasks.some(taskMatchesQuery));
+        }
+        if (searchColumn && searchColumn.startsWith("custom_field_")) {
+          const fid = searchColumn.replace("custom_field_", "");
+          const cfVals = t.custom_field_values || {};
+          const val = cfVals[fid] !== undefined ? cfVals[fid] : cfVals[Number(fid)];
+          return matchesValue(val) || (Array.isArray(t.subtasks) && t.subtasks.some(taskMatchesQuery));
+        }
+        // Default: search across ALL columns (Name, Notes, Phone/Email, Custom Fields, Assignees, Subtasks)
+        return (
+          matchesValue(t.title) ||
+          matchesValue(t.notes) ||
+          matchesValue(t.submitter_email) ||
+          matchesValue(t.status) ||
+          matchesValue(t.priority) ||
+          matchesValue(t.category) ||
+          matchesValue(t.tags) ||
+          matchesValue(t.due_date) ||
+          matchesValue(t.start_date) ||
+          getTaskAssignees(t).some(
+            (assignee) => matchesValue(assignee.name) || matchesValue(assignee.email)
+          ) ||
+          (t.custom_field_values && Object.values(t.custom_field_values).some(matchesValue)) ||
+          (Array.isArray(t.subtasks) && t.subtasks.some(taskMatchesQuery))
+        );
+      };
 
       result = result.filter(taskMatchesQuery);
     }
@@ -2437,7 +2476,7 @@ const BoardDetailPage = () => {
     });
 
     return result;
-  }, [allTasks, filterQuery, filterAssignee, filterPriority, filterCategory, sortBy, sortOrder]);
+  }, [allTasks, debouncedFilterQuery, searchColumn, filterAssignee, filterPriority, filterCategory, sortBy, sortOrder]);
 
   // Grouped Tasks for List View
   const groupedTasks = useMemo(() => {
@@ -4721,7 +4760,7 @@ const BoardDetailPage = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {statusTasks.map((task) => {
+                        {statusTasks.slice(0, visibleCountByStatus[statusKey] || DEFAULT_LIST_CHUNK).map((task) => {
                           const isCollapsed = !!collapsedTasks[task.id];
                           const subtaskCount = task.subtasks?.length || 0;
                           return (
@@ -5092,6 +5131,50 @@ const BoardDetailPage = () => {
                             </React.Fragment>
                           );
                         })}
+
+                        {/* Progressive Windowed Load-More Footer for Large Lists (prevents 390+ DOM row lag) */}
+                        {statusTasks.length > (visibleCountByStatus[statusKey] || DEFAULT_LIST_CHUNK) && (() => {
+                          const currentLimit = visibleCountByStatus[statusKey] || DEFAULT_LIST_CHUNK;
+                          const remaining = statusTasks.length - currentLimit;
+                          const colSpan = 4 + activeOrderedColumns.length;
+                          return (
+                            <tr style={{ backgroundColor: "#f8fafc", borderTop: "1px solid #e2e8f0" }}>
+                              <td colSpan={colSpan} style={{ padding: "8px 16px" }}>
+                                <div className="d-flex align-items-center gap-3" style={{ fontSize: "12px", color: "#475569" }}>
+                                  <span>
+                                    Showing <strong>{currentLimit}</strong> of <strong>{statusTasks.length}</strong> tasks in this group
+                                  </span>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-primary py-0 px-2"
+                                    style={{ fontSize: "11.5px", height: "24px" }}
+                                    onClick={() =>
+                                      setVisibleCountByStatus((prev) => ({
+                                        ...prev,
+                                        [statusKey]: currentLimit + DEFAULT_LIST_CHUNK
+                                      }))
+                                    }
+                                  >
+                                    Load {Math.min(DEFAULT_LIST_CHUNK, remaining)} more
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-link text-decoration-none py-0 px-1"
+                                    style={{ fontSize: "11.5px", color: "#64748b" }}
+                                    onClick={() =>
+                                      setVisibleCountByStatus((prev) => ({
+                                        ...prev,
+                                        [statusKey]: statusTasks.length
+                                      }))
+                                    }
+                                  >
+                                    Show all ({statusTasks.length})
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })()}
 
                       {/* Inline Add Task & Column Calculation Footer Row */}
                       {defaultGroupId && (
@@ -8409,27 +8492,67 @@ const BoardDetailPage = () => {
               </button>
             )}
 
-            {/* Toggleable Search */}
+            {/* Search by Column + Instant Spreadsheet Search */}
             {showSearchInput || filterQuery ? (
-              <div className="d-flex align-items-center position-relative me-1">
-                <input
-                  type="text"
-                  placeholder="Search names, phones, emails..."
-                  className="form-control form-control-sm"
-                  style={{ width: "185px", fontSize: "11px", height: "24px", paddingLeft: "22px", borderRadius: "4px", borderColor: "#cbd5e1" }}
-                  value={filterQuery}
-                  onChange={(e) => setFilterQuery(e.target.value)}
-                  autoFocus
-                  onBlur={() => { if (!filterQuery) setShowSearchInput(false); }}
-                />
-                <Search className="position-absolute start-0 ms-1.5 text-slate-400" size={11} style={{ top: "50%", transform: "translateY(-50%)" }} />
+              <div className="d-flex align-items-center gap-1 me-1">
+                <select
+                  className="form-select form-select-sm"
+                  style={{ width: "128px", fontSize: "11px", height: "24px", padding: "0 20px 0 6px", borderRadius: "4px", borderColor: "#cbd5e1", backgroundColor: "#f8fafc" }}
+                  value={searchColumn}
+                  onChange={(e) => setSearchColumn(e.target.value)}
+                  title="Choose which column to search"
+                >
+                  <option value="all">All columns</option>
+                  <option value="title">Task Name</option>
+                  <option value="assignee">Assignee</option>
+                  <option value="notes">Notes</option>
+                  {boardCustomFields.map((cf) => (
+                    <option key={cf.id} value={`custom_field_${cf.id}`}>
+                      {cf.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="d-flex align-items-center position-relative">
+                  <input
+                    type="text"
+                    placeholder={
+                      searchColumn === "all"
+                        ? "Search any column (name, grade, phone...)"
+                        : `Search ${
+                            searchColumn === "title"
+                              ? "Task Name"
+                              : searchColumn === "assignee"
+                              ? "Assignee"
+                              : searchColumn === "notes"
+                              ? "Notes"
+                              : boardCustomFields.find((f) => `custom_field_${f.id}` === searchColumn)?.name || "column"
+                          }...`
+                    }
+                    className="form-control form-control-sm"
+                    style={{ width: "215px", fontSize: "11px", height: "24px", paddingLeft: "22px", paddingRight: filterQuery ? "22px" : "6px", borderRadius: "4px", borderColor: "#cbd5e1" }}
+                    value={filterQuery}
+                    onChange={(e) => setFilterQuery(e.target.value)}
+                  />
+                  <Search className="position-absolute start-0 ms-1.5 text-slate-400" size={11} style={{ top: "50%", transform: "translateY(-50%)" }} />
+                  {filterQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setFilterQuery("")}
+                      className="position-absolute end-0 me-1 border-0 bg-transparent text-slate-400 p-0 d-flex align-items-center"
+                      style={{ top: "50%", transform: "translateY(-50%)" }}
+                      title="Clear search"
+                    >
+                      <X size={11} />
+                    </button>
+                  )}
+                </div>
               </div>
             ) : (
               <button 
                 type="button" 
                 className="workspace-inline-tool-btn" 
                 onClick={() => setShowSearchInput(true)} 
-                title="Search anything in spreadsheet (names, phones, emails...)"
+                title="Search any column (name, grade, phone, emails...)"
               >
                 <Search size={12} />
               </button>
