@@ -170,11 +170,18 @@ const PayrollPayPage = () => {
           </div>
         )}
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
           <h1 style={{ fontSize: "1.85rem", fontWeight: 700, color: "#111827", margin: 0 }}>Pay</h1>
           <Button variant="outline-secondary" onClick={() => navigate("/admin/payroll/pay/history")}>
             <History className="w-4 h-4 me-1 inline" /> View pay history
           </Button>
+        </div>
+
+        <div style={{ backgroundColor: "#fffbeb", border: "1px solid #fcd34d", borderRadius: "10px", padding: "0.75rem 1rem", marginBottom: "1.25rem", fontSize: "0.84rem", color: "#92400e", display: "flex", alignItems: "center", gap: "0.6rem" }}>
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <span>
+            <strong>Internal Payroll Ledger Only:</strong> Submitting a payroll run records hours and payment history in ELA Academy, but does <strong>not</strong> initiate ACH bank transfers or file federal/state payroll taxes. Employee tax figures shown are flat estimates—always process official W-2 payouts and tax remittances through your payroll provider.
+          </span>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "2rem", alignItems: "start" }}>

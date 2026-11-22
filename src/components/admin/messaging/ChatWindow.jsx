@@ -815,8 +815,10 @@ const ChatWindow = ({ conversationId, conversation, onlineUsers = [] }) => {
     fetchMessages(true);
 
     const socketUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+    const token = localStorage.getItem("authToken");
     const socket = io(socketUrl, {
-      transports: ["polling"]
+      transports: ["polling"],
+      auth: { token }
     });
 
     socket.emit("join", { conversation_id: conversationId });

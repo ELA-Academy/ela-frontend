@@ -45,9 +45,11 @@ export const AuthProvider = ({ children }) => {
     import("socket.io-client").then(({ io }) => {
       if (!isAuthenticated) return;
       
+      const token = localStorage.getItem("authToken");
       activeSocket = io(socketUrl, {
         transports: ["websocket", "polling"],
-        withCredentials: true
+        withCredentials: true,
+        auth: { token }
       });
 
       activeSocket.on("connect", () => {
@@ -91,7 +93,7 @@ export const AuthProvider = ({ children }) => {
   }, [isAuthenticated, user]);
 
   const fetchCounts = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !user || user.role === "parent") return;
     try {
       const [notifData, tasksCount, messagesCount] = await Promise.all([
         getNotifications(),
@@ -104,7 +106,7 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error("Failed to poll for counts and notifications.", error);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user]);
 
   useEffect(() => {
     fetchCounts(); // Fetch immediately on login

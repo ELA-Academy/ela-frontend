@@ -17,6 +17,10 @@ const ParentRoute = () => {
     return <Navigate to="/login" replace />;
   }
 
+  if (user && user.role !== "parent") {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+
   return <Outlet />;
 };
 
