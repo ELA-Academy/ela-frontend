@@ -26,9 +26,9 @@ import {
   Send,
   Bell
 } from "lucide-react";
-import { Modal, Button, Form, Table } from "react-bootstrap";
+import { Modal, Offcanvas, Button, Form, Table } from "react-bootstrap";
 import { getStaffById, updateStaff, updateStaffCompensation, getAllStaff } from "../../../services/staffService";
-import { getStaffDocumentsForAdmin, remindDocumentAssignment, remindAllStaffDocuments } from "../../../services/payrollService";
+import { getStaffDocumentsForAdmin, remindDocumentAssignment, remindAllStaffDocuments, getAdminStaffPayments } from "../../../services/payrollService";
 import "../../../styles/GustoTheme.css";
 
 const PayrollStaffProfilePage = () => {
@@ -36,6 +36,7 @@ const PayrollStaffProfilePage = () => {
   const navigate = useNavigate();
 
   const [staff, setStaff] = useState(null);
+  const [staffPayments, setStaffPayments] = useState([]);
   const [allStaffList, setAllStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeSubTab, setActiveSubTab] = useState("work"); // "work" | "pay" | "personal" | "documents" | "performance" | "apps"
@@ -152,38 +153,42 @@ const PayrollStaffProfilePage = () => {
   const fetchStaffDetails = async () => {
     try {
       setLoading(true);
-      const data = await getStaffById(staffId);
+      const [data, paymentsRes] = await Promise.all([
+        getStaffById(staffId),
+        getAdminStaffPayments(staffId).catch(() => ({ payments: [] }))
+      ]);
       setStaff(data);
-      // Init form states
+      setStaffPayments(paymentsRes?.payments || []);
+      // Init form states strictly from real DB values (zero mock fallbacks)
       setCompJobTitle(data.job_title || "");
-      setCompRate(data.hourly_rate ? String(data.hourly_rate) : "30.00");
+      setCompRate(data.hourly_rate ? String(data.hourly_rate) : "");
       setCompReceivesTips(Boolean(data.receives_tips));
 
-      setRoleJobTitle(data.job_title || "Accounting Manager");
-      setRoleDepartment(data.department || "Accounting Department");
+      setRoleJobTitle(data.job_title || "");
+      setRoleDepartment(data.department || "");
       setRoleWorkEmail(data.work_email || data.email || "");
-      setRoleManager(data.manager_name || "Marcus Cooper");
+      setRoleManager(data.manager_name || "");
 
       const addr = data.address || {};
       const emg = data.emergency_contact || {};
       setPersonalForm({
         preferred_name: data.preferred_name || data.name || "",
         legal_name: data.legal_name || data.name || "",
-        pronouns: data.pronouns || "she/her/hers",
-        ssn_last4: data.ssn_last4 || "7600",
-        birthday: data.birthday || "October 14, 1992",
-        work_email: data.work_email || "",
+        pronouns: data.pronouns || "",
+        ssn_last4: data.ssn_last4 || "",
+        birthday: data.birthday || "",
+        work_email: data.work_email || data.email || "",
         personal_email: data.personal_email || "",
-        phone: data.phone || "+1 (404) 555-0192",
-        street: addr.street || "1420 Peachtree St NE, Apt 4B",
-        city: addr.city || "Atlanta",
-        state: addr.state || "GA",
-        zip: addr.zip || "30309",
+        phone: data.phone || "",
+        street: addr.street || "",
+        city: addr.city || "",
+        state: addr.state || "",
+        zip: addr.zip || "",
         country: addr.country || "United States of America",
-        emg_name: emg.name || "David Rigsby",
-        emg_relationship: emg.relationship || "Spouse",
-        emg_phone: emg.phone || "+1 (404) 555-0188",
-        emg_email: emg.email || "david.rigsby@example.com"
+        emg_name: emg.name || "",
+        emg_relationship: emg.relationship || "",
+        emg_phone: emg.phone || "",
+        emg_email: emg.email || ""
       });
     } catch (err) {
       console.error("Failed to load staff profile:", err);
@@ -576,7 +581,7 @@ const PayrollStaffProfilePage = () => {
                     <div>
                       <div style={{ fontSize: "0.85rem", color: "#6b7280" }}>Manager</div>
                       <div style={{ fontSize: "0.95rem", color: "#1d4ed8", fontWeight: 500, marginTop: "0.25rem", textDecoration: "underline" }}>
-                        {staff.manager_name || "Marcus Cooper"}
+                        {staff.manager_name || "Not assigned"}
                       </div>
                     </div>
                     <button
@@ -667,7 +672,7 @@ const PayrollStaffProfilePage = () => {
                         Bank Account #1 (Checking)
                       </div>
                       <div style={{ fontSize: "0.85rem", color: "#6b7280", marginTop: "0.15rem" }}>
-                        XXXX{staff.ssn_last4 || "7600"}
+                        {staff.bank_account_last4 ? `•••• ${staff.bank_account_last4}` : "Not set"}
                       </div>
                     </div>
                     <button
@@ -765,28 +770,37 @@ const PayrollStaffProfilePage = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr style={{ borderBottom: "1px solid #f3f4f6" }}>
-                        <td style={{ padding: "0.85rem 0.5rem", color: "#111827" }}>Oct 2, 2026</td>
-                        <td style={{ padding: "0.85rem 0.5rem", color: "#4b5563" }}>Direct deposit</td>
-                        <td style={{ padding: "0.85rem 0.5rem" }}>
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem", color: "#1d4ed8", fontSize: "0.8rem", fontWeight: 600 }}>
-                            ● Complete
-                          </span>
-                        </td>
-                        <td style={{ padding: "0.85rem 0.5rem", fontWeight: 600, color: "#111827" }}>$1,200.00</td>
-                        <td style={{ padding: "0.85rem 0.5rem", color: "#9ca3af", cursor: "pointer" }}>⋮</td>
-                      </tr>
-                      <tr style={{ borderBottom: "1px solid #f3f4f6" }}>
-                        <td style={{ padding: "0.85rem 0.5rem", color: "#111827" }}>Sep 18, 2026</td>
-                        <td style={{ padding: "0.85rem 0.5rem", color: "#4b5563" }}>Direct deposit</td>
-                        <td style={{ padding: "0.85rem 0.5rem" }}>
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem", color: "#1d4ed8", fontSize: "0.8rem", fontWeight: 600 }}>
-                            ● Complete
-                          </span>
-                        </td>
-                        <td style={{ padding: "0.85rem 0.5rem", fontWeight: 600, color: "#111827" }}>$1,200.00</td>
-                        <td style={{ padding: "0.85rem 0.5rem", color: "#9ca3af", cursor: "pointer" }}>⋮</td>
-                      </tr>
+                      {staffPayments.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} style={{ padding: "1.25rem 0.5rem", color: "#6b7280", textAlign: "center" }}>
+                            No payments recorded for this team member yet.
+                          </td>
+                        </tr>
+                      ) : (
+                        staffPayments.slice(0, 5).map((p) => (
+                          <tr key={p.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                            <td style={{ padding: "0.85rem 0.5rem", color: "#111827" }}>{p.pay_date || (p.paid_at ? p.paid_at.slice(0, 10) : "—")}</td>
+                            <td style={{ padding: "0.85rem 0.5rem", color: "#4b5563" }}>{p.payment_method || "Direct deposit"}</td>
+                            <td style={{ padding: "0.85rem 0.5rem" }}>
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem", color: "#1d4ed8", fontSize: "0.8rem", fontWeight: 600 }}>
+                                ● {p.status || "Paid"}
+                              </span>
+                            </td>
+                            <td style={{ padding: "0.85rem 0.5rem", fontWeight: 600, color: "#111827" }}>
+                              ${Number(p.net_pay || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td style={{ padding: "0.85rem 0.5rem" }}>
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/admin/payroll/pay/contractors/${p.id}`)}
+                                style={{ background: "none", border: "none", color: "#2563eb", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}
+                              >
+                                Details
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -827,25 +841,31 @@ const PayrollStaffProfilePage = () => {
                   <div>
                     <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>Pronouns</div>
                     <div style={{ fontSize: "0.9rem", color: "#111827", marginTop: "0.15rem" }}>
-                      {staff.pronouns || "she/her/hers"}
+                      {staff.pronouns || "—"}
                     </div>
                   </div>
                   <div>
                     <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>Social Security number (SSN)</div>
                     <div style={{ fontSize: "0.9rem", color: "#111827", marginTop: "0.15rem" }}>
-                      ***-**-{staff.ssn_last4 || "7600"}
+                      {staff.ssn_last4 ? `***-**-${staff.ssn_last4}` : "Not provided"}
                     </div>
                   </div>
                   <div>
                     <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>Birthday</div>
                     <div style={{ fontSize: "0.9rem", color: "#111827", marginTop: "0.15rem" }}>
-                      {staff.birthday || "October 14, 1992"}
+                      {staff.birthday || "—"}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>Phone</div>
+                    <div style={{ fontSize: "0.9rem", color: "#111827", marginTop: "0.15rem" }}>
+                      {staff.phone || "—"}
                     </div>
                   </div>
                   <div>
                     <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>Work email</div>
                     <div style={{ fontSize: "0.9rem", color: "#111827", marginTop: "0.15rem" }}>
-                      {staff.work_email || "—"}
+                      {staff.work_email || staff.email || "—"}
                     </div>
                   </div>
                   <div>
@@ -871,9 +891,15 @@ const PayrollStaffProfilePage = () => {
                     </button>
                   </div>
                   <div style={{ fontSize: "0.875rem", color: "#374151", lineHeight: 1.5 }}>
-                    {staff.address?.street || "1420 Peachtree St NE, Apt 4B"}<br />
-                    {staff.address?.city || "Atlanta"}, {staff.address?.state || "GA"} {staff.address?.zip || "30309"}<br />
-                    {staff.address?.country || "United States of America"}
+                    {staff.address?.street || staff.address?.city ? (
+                      <>
+                        {staff.address?.street && <>{staff.address.street}<br /></>}
+                        {[staff.address?.city, staff.address?.state, staff.address?.zip].filter(Boolean).join(", ")}
+                        {staff.address?.country && <><br />{staff.address.country}</>}
+                      </>
+                    ) : (
+                      <span className="text-muted">Not provided yet.</span>
+                    )}
                   </div>
                 </div>
 
@@ -889,9 +915,18 @@ const PayrollStaffProfilePage = () => {
                     </button>
                   </div>
                   <div style={{ fontSize: "0.875rem", color: "#374151", lineHeight: 1.5 }}>
-                    <strong>{staff.emergency_contact?.name || "David Rigsby"}</strong> ({staff.emergency_contact?.relationship || "Spouse"})<br />
-                    Phone: {staff.emergency_contact?.phone || "+1 (404) 555-0188"}<br />
-                    Email: {staff.emergency_contact?.email || "david.rigsby@example.com"}
+                    {staff.emergency_contact?.name || staff.emergency_contact?.phone ? (
+                      <>
+                        <strong>{staff.emergency_contact?.name || "—"}</strong>
+                        {staff.emergency_contact?.relationship ? ` (${staff.emergency_contact.relationship})` : ""}
+                        <br />
+                        Phone: {staff.emergency_contact?.phone || "—"}
+                        <br />
+                        Email: {staff.emergency_contact?.email || "—"}
+                      </>
+                    ) : (
+                      <span className="text-muted">Not provided yet.</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1717,7 +1752,7 @@ const PayrollStaffProfilePage = () => {
           <Modal.Title style={{ fontSize: "1rem", fontWeight: 700 }}>Bank Account Settings</Modal.Title>
         </Modal.Header>
         <Modal.Body className="p-4 text-sm">
-          <p className="text-slate-600 mb-3">Checking Account ending in XXXX{staff.ssn_last4 || "7600"}.</p>
+          <p className="text-slate-600 mb-3">Checking Account ending in {staff.bank_account_last4 ? `•••• ${staff.bank_account_last4}` : "Not set"}.</p>
           <Button variant="outline-primary" size="sm" className="w-100 mb-2" onClick={() => { setBankOptionsModalOpen(false); showToast("Micro-deposit verification re-sent."); }}>
             Re-verify Bank Account
           </Button>
@@ -1776,24 +1811,22 @@ const PayrollStaffProfilePage = () => {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td>Oct 2, 2026</td>
-                <td>Direct Deposit</td>
-                <td className="fw-bold">$1,200.00</td>
-                <td><span className="badge bg-blue-100 text-blue-800">● Complete</span></td>
-              </tr>
-              <tr>
-                <td>Sep 18, 2026</td>
-                <td>Direct Deposit</td>
-                <td className="fw-bold">$1,200.00</td>
-                <td><span className="badge bg-blue-100 text-blue-800">● Complete</span></td>
-              </tr>
-              <tr>
-                <td>Sep 4, 2026</td>
-                <td>Direct Deposit</td>
-                <td className="fw-bold">$1,200.00</td>
-                <td><span className="badge bg-blue-100 text-blue-800">● Complete</span></td>
-              </tr>
+              {staffPayments.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="text-center text-muted py-4">
+                    No payments recorded for this team member yet.
+                  </td>
+                </tr>
+              ) : (
+                staffPayments.map((p) => (
+                  <tr key={p.id}>
+                    <td>{p.pay_date || (p.paid_at ? p.paid_at.slice(0, 10) : "—")}</td>
+                    <td>{p.payment_method || "Direct deposit"}</td>
+                    <td className="fw-bold">${Number(p.net_pay || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td><span className="badge bg-blue-100 text-blue-800">● {p.status || "Paid"}</span></td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </Table>
         </Modal.Body>
@@ -1847,126 +1880,185 @@ const PayrollStaffProfilePage = () => {
         </Form>
       </Modal>
 
-      {/* EDIT PERSONAL DETAILS MODAL */}
-      <Modal show={editPersonalModalOpen} onHide={() => setEditPersonalModalOpen(false)} size="lg" centered>
-        <Modal.Header closeButton>
-          <Modal.Title style={{ fontSize: "1.05rem", fontWeight: 700 }}>Edit Personal Details & Contacts</Modal.Title>
-        </Modal.Header>
-        <Form onSubmit={handleSavePersonal}>
-          <Modal.Body className="p-4">
+      {/* EDIT PERSONAL DETAILS OFFCANVAS (Fitting right-side drawer instead of modal) */}
+      <Offcanvas
+        show={editPersonalModalOpen}
+        onHide={() => setEditPersonalModalOpen(false)}
+        placement="end"
+        style={{ width: "520px", maxWidth: "95vw" }}
+      >
+        <Offcanvas.Header closeButton className="border-bottom">
+          <Offcanvas.Title style={{ fontSize: "1.05rem", fontWeight: 700 }}>
+            Edit Personal Details &amp; Contacts
+          </Offcanvas.Title>
+        </Offcanvas.Header>
+        <Offcanvas.Body>
+          <Form onSubmit={handleSavePersonal}>
             <div className="row g-3">
-              <div className="col-md-6">
+              <div className="col-6">
                 <Form.Label className="small fw-semibold text-slate-700">Preferred Name</Form.Label>
                 <Form.Control
+                  size="sm"
                   type="text"
                   value={personalForm.preferred_name}
                   onChange={(e) => setPersonalForm({ ...personalForm, preferred_name: e.target.value })}
                 />
               </div>
-              <div className="col-md-6">
+              <div className="col-6">
                 <Form.Label className="small fw-semibold text-slate-700">Legal Name</Form.Label>
                 <Form.Control
+                  size="sm"
                   type="text"
                   value={personalForm.legal_name}
                   onChange={(e) => setPersonalForm({ ...personalForm, legal_name: e.target.value })}
                 />
               </div>
-              <div className="col-md-4">
+              <div className="col-4">
                 <Form.Label className="small fw-semibold text-slate-700">Pronouns</Form.Label>
                 <Form.Control
+                  size="sm"
                   type="text"
+                  placeholder="Optional"
                   value={personalForm.pronouns}
                   onChange={(e) => setPersonalForm({ ...personalForm, pronouns: e.target.value })}
                 />
               </div>
-              <div className="col-md-4">
-                <Form.Label className="small fw-semibold text-slate-700">SSN (Last 4 Digits)</Form.Label>
+              <div className="col-4">
+                <Form.Label className="small fw-semibold text-slate-700">SSN Last 4 (Opt.)</Form.Label>
                 <Form.Control
+                  size="sm"
                   type="text"
                   maxLength={4}
+                  placeholder="Optional"
                   value={personalForm.ssn_last4}
-                  onChange={(e) => setPersonalForm({ ...personalForm, ssn_last4: e.target.value })}
+                  onChange={(e) => setPersonalForm({ ...personalForm, ssn_last4: e.target.value.replace(/\D/g, "").slice(0, 4) })}
                 />
               </div>
-              <div className="col-md-4">
+              <div className="col-4">
                 <Form.Label className="small fw-semibold text-slate-700">Birthday</Form.Label>
                 <Form.Control
-                  type="text"
+                  size="sm"
+                  type="date"
                   value={personalForm.birthday}
                   onChange={(e) => setPersonalForm({ ...personalForm, birthday: e.target.value })}
                 />
               </div>
-              <div className="col-md-6">
+              <div className="col-6">
                 <Form.Label className="small fw-semibold text-slate-700">Work Email</Form.Label>
                 <Form.Control
+                  size="sm"
                   type="email"
                   placeholder="name@ela-academy.org"
                   value={personalForm.work_email}
                   onChange={(e) => setPersonalForm({ ...personalForm, work_email: e.target.value })}
                 />
               </div>
-              <div className="col-md-6">
+              <div className="col-6">
                 <Form.Label className="small fw-semibold text-slate-700">Personal Email</Form.Label>
                 <Form.Control
+                  size="sm"
                   type="email"
                   placeholder="personal@email.com"
                   value={personalForm.personal_email}
                   onChange={(e) => setPersonalForm({ ...personalForm, personal_email: e.target.value })}
                 />
               </div>
-              <div className="col-md-6">
+              <div className="col-12">
                 <Form.Label className="small fw-semibold text-slate-700">Phone</Form.Label>
                 <Form.Control
-                  type="text"
+                  size="sm"
+                  type="tel"
+                  placeholder="+1 (555) 000-0000"
                   value={personalForm.phone}
                   onChange={(e) => setPersonalForm({ ...personalForm, phone: e.target.value })}
                 />
               </div>
-              <div className="col-12"><hr className="my-2" /><div className="fw-bold small text-slate-900">Home Address</div></div>
-              <div className="col-md-12">
+              <div className="col-12"><hr className="my-1" /><div className="fw-bold small text-slate-900">Home Address</div></div>
+              <div className="col-12">
                 <Form.Label className="small fw-semibold text-slate-700">Street</Form.Label>
                 <Form.Control
+                  size="sm"
                   type="text"
                   value={personalForm.street}
                   onChange={(e) => setPersonalForm({ ...personalForm, street: e.target.value })}
                 />
               </div>
-              <div className="col-md-4">
+              <div className="col-5">
                 <Form.Label className="small fw-semibold text-slate-700">City</Form.Label>
                 <Form.Control
+                  size="sm"
                   type="text"
                   value={personalForm.city}
                   onChange={(e) => setPersonalForm({ ...personalForm, city: e.target.value })}
                 />
               </div>
-              <div className="col-md-4">
+              <div className="col-3">
                 <Form.Label className="small fw-semibold text-slate-700">State</Form.Label>
                 <Form.Control
+                  size="sm"
                   type="text"
                   value={personalForm.state}
                   onChange={(e) => setPersonalForm({ ...personalForm, state: e.target.value })}
                 />
               </div>
-              <div className="col-md-4">
+              <div className="col-4">
                 <Form.Label className="small fw-semibold text-slate-700">ZIP</Form.Label>
                 <Form.Control
+                  size="sm"
                   type="text"
                   value={personalForm.zip}
                   onChange={(e) => setPersonalForm({ ...personalForm, zip: e.target.value })}
                 />
               </div>
+              <div className="col-12"><hr className="my-1" /><div className="fw-bold small text-slate-900">Emergency Contact</div></div>
+              <div className="col-6">
+                <Form.Label className="small fw-semibold text-slate-700">Full Name</Form.Label>
+                <Form.Control
+                  size="sm"
+                  type="text"
+                  value={personalForm.emg_name}
+                  onChange={(e) => setPersonalForm({ ...personalForm, emg_name: e.target.value })}
+                />
+              </div>
+              <div className="col-6">
+                <Form.Label className="small fw-semibold text-slate-700">Relationship</Form.Label>
+                <Form.Control
+                  size="sm"
+                  type="text"
+                  value={personalForm.emg_relationship}
+                  onChange={(e) => setPersonalForm({ ...personalForm, emg_relationship: e.target.value })}
+                />
+              </div>
+              <div className="col-6">
+                <Form.Label className="small fw-semibold text-slate-700">Phone</Form.Label>
+                <Form.Control
+                  size="sm"
+                  type="tel"
+                  value={personalForm.emg_phone}
+                  onChange={(e) => setPersonalForm({ ...personalForm, emg_phone: e.target.value })}
+                />
+              </div>
+              <div className="col-6">
+                <Form.Label className="small fw-semibold text-slate-700">Email</Form.Label>
+                <Form.Control
+                  size="sm"
+                  type="email"
+                  value={personalForm.emg_email}
+                  onChange={(e) => setPersonalForm({ ...personalForm, emg_email: e.target.value })}
+                />
+              </div>
             </div>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="light" size="sm" onClick={() => setEditPersonalModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" size="sm" type="submit" style={{ backgroundColor: "#2563eb", borderColor: "#2563eb" }}>
-              Save Personal Information
-            </Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
+            <div className="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+              <Button variant="light" size="sm" onClick={() => setEditPersonalModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button variant="primary" size="sm" type="submit" style={{ backgroundColor: "#2563eb", borderColor: "#2563eb" }}>
+                Save Personal Information
+              </Button>
+            </div>
+          </Form>
+        </Offcanvas.Body>
+      </Offcanvas>
     </div>
   );
 };

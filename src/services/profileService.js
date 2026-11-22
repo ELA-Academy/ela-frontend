@@ -42,6 +42,20 @@ export const changePassword = async (passwordData) => {
   }
 };
 
+// Update personal details (staff/teacher self-service: pronouns, optional SSN, DOB, phone, address, emergency contact)
+export const updateMyPersonalDetails = async (personalData) => {
+  try {
+    const response = await api.put("/profile/personal", personalData);
+    return response.data;
+  } catch (error) {
+    console.error(
+      "Error updating personal details:",
+      error.response?.data || error.message
+    );
+    throw error;
+  }
+};
+
 // Update profile details
 export const updateProfile = async (profileData) => {
   try {

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import { ZoomIn, ZoomOut, Maximize2, Minimize2, X, GripVertical } from "lucide-react";
+import api from "../../../utils/api";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -145,7 +146,10 @@ const PdfFieldCanvas = ({
           const buf = await localFile.arrayBuffer();
           loadingTask = pdfjsLib.getDocument({ data: buf });
         } else if (fileUrl) {
-          loadingTask = pdfjsLib.getDocument({ url: fileUrl, withCredentials: false });
+          // Fetch PDF with the user's JWT Authorization header so authenticated document routes never 401
+          const response = await api.get(fileUrl, { responseType: "arraybuffer" });
+          if (cancelled) return;
+          loadingTask = pdfjsLib.getDocument({ data: response.data });
         } else {
           return;
         }

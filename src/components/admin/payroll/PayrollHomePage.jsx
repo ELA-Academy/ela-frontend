@@ -1,421 +1,229 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Clock,
   Calendar,
-  AlertCircle,
-  CheckCircle2,
-  ChevronRight,
   ChevronDown,
   DollarSign,
   FileText,
-  Mail,
-  ShieldCheck,
-  Building,
-  MoreVertical,
-  X,
-  Check
+  Users,
+  CheckCircle2
 } from "lucide-react";
-import { Modal, Button } from "react-bootstrap";
 import { useAuth } from "../../../context/AuthContext";
+import { getPayrollHomeSummary } from "../../../services/payrollService";
 import "../../../styles/GustoTheme.css";
 
 const PayrollHomePage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const adminName = user?.name ? user.name.split(" ")[0] : "Caitlin";
-  const [showHires, setShowHires] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
-  const [infoModal, setInfoModal] = useState({ show: false, title: "", body: "" });
+  const adminName = user?.name ? user.name.split(" ")[0] : "Admin";
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState({
+    active_staff_count: 0,
+    onboarding_staff: [],
+    unpaid_hours: 0,
+    unpaid_staff_count: 0,
+    pending_documents_count: 0,
+    recent_runs: []
+  });
 
-  const showToast = (msg) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(""), 4000);
-  };
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const data = await getPayrollHomeSummary();
+        if (data) setSummary(data);
+      } catch (err) {
+        console.error("Failed to load payroll home summary:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
   return (
     <div style={{ maxWidth: "1140px", margin: "0 auto", paddingBottom: "4rem" }}>
-      {/* Page Greeting (Image 3 replica) */}
-      <div style={{ marginBottom: "2rem" }}>
+      <div style={{ marginBottom: "1.75rem" }}>
         <h1 style={{ fontSize: "1.85rem", fontWeight: 700, color: "#111827", margin: "0 0 0.25rem" }}>
-          Good afternoon, {adminName}
+          {greeting}, {adminName}
         </h1>
         <p style={{ fontSize: "0.9rem", color: "#6b7280", margin: 0 }}>
-          Here's what's going on with your team at Cooper Galvis Enterprises LLC / ELA Academy.
+          Live payroll, timesheet, and team overview for ELA Academy.
         </p>
       </div>
 
-      {/* Main 2-Column Layout */}
+      {/* Live KPI Summary Cards */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "1.7fr 1.1fr",
-          gap: "2.5rem",
-          alignItems: "start"
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: "1rem",
+          marginBottom: "2rem"
         }}
       >
-        {/* Left Column: Important Tasks & Recent Activity */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
-          {/* Section: Important Tasks */}
-          <div>
-            <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#111827", marginBottom: "0.85rem" }}>
-              Important tasks
-            </h2>
-
-            <div
-              style={{
-                backgroundColor: "#ffffff",
-                borderRadius: "12px",
-                border: "1px solid #e5e7eb",
-                padding: "1.5rem",
-                display: "flex",
-                flexDirection: "column",
-                gap: "1.75rem"
-              }}
-            >
-              {/* Task 1: Complete new hire check-ins */}
-              <div style={{ borderBottom: "1px solid #f1f5f9", paddingBottom: "1.5rem" }}>
-                <div style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", padding: "0.2rem 0.55rem", backgroundColor: "#fff1f2", color: "#e11d48", borderRadius: "9999px", fontSize: "0.75rem", fontWeight: 600, marginBottom: "0.6rem" }}>
-                  <Clock className="w-3.5 h-3.5" /> 18 days overdue
-                </div>
-                <div style={{ fontSize: "1rem", fontWeight: 700, color: "#111827", marginBottom: "0.35rem" }}>
-                  Complete new hire check-ins
-                </div>
-                <div style={{ fontSize: "0.85rem", color: "#4b5563", lineHeight: 1.4, marginBottom: "0.75rem" }}>
-                  Add a rating and any notes on how things are going for these new hires.
-                </div>
-                <button
-                  type="button"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "0.35rem",
-                    background: "none",
-                    border: "none",
-                    color: "#2563eb",
-                    fontSize: "0.85rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    padding: 0
-                  }}
-                  onClick={() => setShowHires(!showHires)}
-                >
-                  <ChevronDown className={`w-4 h-4 transition-transform ${showHires ? "rotate-180" : ""}`} />
-                  Show 12 new hires
-                </button>
-
-                {showHires && (
-                  <div style={{ marginTop: "0.75rem", padding: "0.75rem", backgroundColor: "#f8fafc", borderRadius: "8px", fontSize: "0.8rem", color: "#334155" }}>
-                    • Caitlin MacFarlane, Dana Acosta, Nikoith Acosta, Moyinoluwa Adebola, Danna Alvarez, Christian Ayemidejor, Aldren Barboza, Mildred Buso-Castillo, Gina Paola Cagua, Claudia Carrillo, Eunice Carrillo, Marcus Cooper
-                  </div>
-                )}
-              </div>
-
-              {/* Task 2: Run payroll */}
-              <div>
-                <div style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", padding: "0.2rem 0.55rem", backgroundColor: "#f3f4f6", color: "#374151", borderRadius: "9999px", fontSize: "0.75rem", fontWeight: 600, marginBottom: "0.6rem" }}>
-                  <Calendar className="w-3.5 h-3.5" /> Due Oct 15
-                </div>
-                <div style={{ fontSize: "1rem", fontWeight: 700, color: "#111827", marginBottom: "0.35rem" }}>
-                  Run payroll
-                </div>
-                <div style={{ fontSize: "0.85rem", color: "#4b5563", lineHeight: 1.4, marginBottom: "1rem" }}>
-                  Time to make employees happy (and the government too). Run payroll for the Sep 27–Oct 10, 2026 pay period.
-                </div>
-                <button
-                  type="button"
-                  onClick={() => navigate("/admin/payroll/pay")}
-                  style={{
-                    backgroundColor: "#ffffff",
-                    border: "1px solid #d1d5db",
-                    borderRadius: "6px",
-                    padding: "0.45rem 1rem",
-                    fontSize: "0.85rem",
-                    fontWeight: 600,
-                    color: "#111827",
-                    cursor: "pointer",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "0.35rem"
-                  }}
-                >
-                  Start &gt;
-                </button>
-              </div>
-            </div>
+        <div style={{ backgroundColor: "#fff", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "1.25rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#6b7280", fontSize: "0.8rem", fontWeight: 600 }}>
+            <Users className="w-4 h-4 text-blue-600" /> Active Team Members
           </div>
-
-          {/* Section: Recent activity */}
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.85rem" }}>
-              <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#111827", margin: 0 }}>
-                Recent activity
-              </h2>
-              <button
-                type="button"
-                style={{ background: "none", border: "none", color: "#2563eb", fontSize: "0.85rem", fontWeight: 600, textDecoration: "underline", cursor: "pointer" }}
-                onClick={() => setInfoModal({ show: true, title: "All Recent Payroll Activities", body: "Recent activities include contractor direct deposit debit confirmations, automated invoice receipts, and compliance syncs." })}
-              >
-                View all activity
-              </button>
-            </div>
-
-            <div
-              style={{
-                backgroundColor: "#ffffff",
-                borderRadius: "12px",
-                border: "1px solid #e5e7eb",
-                overflow: "hidden"
-              }}
-            >
-              {[
-                {
-                  id: "act-1",
-                  time: "4d ago",
-                  text: "Your Sep 1–Sep 30 ELA TT invoice for $932.00 has been paid automatically. The funds will debit from your bank account in 1 business day.",
-                  linkText: "View invoice"
-                },
-                {
-                  id: "act-2",
-                  time: "5d ago",
-                  text: "Payroll confirmed for Sep 13–Sep 26. We'll debit $1,211.06 from the bank account ending in 3042 at 7pm EDT on Thu Oct 1.",
-                  linkText: "View payroll"
-                },
-                {
-                  id: "act-3",
-                  time: "5d ago",
-                  text: "Contractor payments confirmed for Fri Oct 2. We'll debit $24,745.00 from the bank account ending in 3042 at 7pm EDT on Thu Oct 1.",
-                  linkText: "View details"
-                }
-              ].map((act, idx) => (
-                <div
-                  key={act.id}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                    gap: "1rem",
-                    padding: "1.1rem 1.25rem",
-                    borderBottom: idx === 2 ? "none" : "1px solid #f1f5f9"
-                  }}
-                >
-                  <div style={{ fontSize: "0.75rem", color: "#6b7280", minWidth: "50px", flexShrink: 0, marginTop: "0.15rem" }}>
-                    {act.time}
-                  </div>
-                  <div style={{ flex: 1, fontSize: "0.85rem", color: "#374151", lineHeight: 1.4 }}>
-                    {act.text}{" "}
-                    <button
-                      type="button"
-                      style={{ background: "none", border: "none", color: "#2563eb", fontWeight: 600, textDecoration: "underline", cursor: "pointer", padding: 0 }}
-                      onClick={() => setInfoModal({ show: true, title: act.linkText, body: `Details for ${act.linkText}: Transaction verified via ELA Academy Automated Treasury.` })}
-                    >
-                      {act.linkText}
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", padding: "2px" }}
-                    onClick={() => showToast("Activity dismissed")}
-                    title="Dismiss"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
+          <div style={{ fontSize: "1.75rem", fontWeight: 700, color: "#111827", marginTop: "0.4rem" }}>
+            {loading ? "—" : summary.active_staff_count}
           </div>
         </div>
 
-        {/* Right Column: Payments in Progress, Upcoming, Recommendations */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
-          {/* Section: Payments in progress */}
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.85rem" }}>
-              <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#111827", margin: 0 }}>
-                Payments in progress
-              </h2>
-              <button
-                type="button"
-                style={{ background: "none", border: "none", color: "#2563eb", fontSize: "0.85rem", fontWeight: 600, textDecoration: "underline", cursor: "pointer" }}
-                onClick={() => navigate("/admin/payroll/pay")}
-              >
-                See history
-              </button>
-            </div>
-
-            <div
-              style={{
-                backgroundColor: "#ffffff",
-                borderRadius: "12px",
-                border: "1px solid #e5e7eb",
-                padding: "1.25rem",
-                color: "#6b7280",
-                fontSize: "0.875rem"
-              }}
-            >
-              No payrolls in progress
-            </div>
+        <div style={{ backgroundColor: "#fff", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "1.25rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#6b7280", fontSize: "0.8rem", fontWeight: 600 }}>
+            <Clock className="w-4 h-4 text-emerald-600" /> Unpaid Logged Hours
           </div>
-
-          {/* Section: Upcoming */}
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.85rem" }}>
-              <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#111827", margin: 0 }}>
-                Upcoming
-              </h2>
-              <button
-                type="button"
-                style={{ background: "none", border: "none", color: "#2563eb", fontSize: "0.85rem", fontWeight: 600, textDecoration: "underline", cursor: "pointer" }}
-                onClick={() => showToast("Payroll schedule synced with calendar.")}
-              >
-                Sync calendar
-              </button>
-            </div>
-
-            <div
-              style={{
-                backgroundColor: "#ffffff",
-                borderRadius: "12px",
-                border: "1px solid #e5e7eb",
-                padding: "1.25rem"
-              }}
-            >
-              <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#111827", marginBottom: "0.75rem" }}>
-                Payroll
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                <div>
-                  <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#374151" }}>Bank Holiday</div>
-                  <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>Mon Oct 12</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#374151" }}>
-                    Run payroll by 7:00pm EDT for Sep 27 - Oct 10
-                  </div>
-                  <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>Thu Oct 15</div>
-                </div>
-              </div>
-            </div>
+          <div style={{ fontSize: "1.75rem", fontWeight: 700, color: "#111827", marginTop: "0.4rem" }}>
+            {loading ? "—" : `${summary.unpaid_hours}h`}
           </div>
+          <div style={{ fontSize: "0.78rem", color: "#6b7280" }}>
+            Across {summary.unpaid_staff_count} staff member(s)
+          </div>
+        </div>
 
-          {/* Section: Recommendations */}
-          <div>
-            <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#111827", marginBottom: "0.85rem" }}>
-              Recommendations
-            </h2>
+        <div style={{ backgroundColor: "#fff", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "1.25rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#6b7280", fontSize: "0.8rem", fontWeight: 600 }}>
+            <FileText className="w-4 h-4 text-amber-600" /> Unsigned HR Documents
+          </div>
+          <div style={{ fontSize: "1.75rem", fontWeight: 700, color: "#111827", marginTop: "0.4rem" }}>
+            {loading ? "—" : summary.pending_documents_count}
+          </div>
+        </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              {/* Recommendation 1 */}
-              <div
-                style={{
-                  backgroundColor: "#ffffff",
-                  borderRadius: "12px",
-                  border: "1px solid #e5e7eb",
-                  padding: "1.25rem"
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "#111827", marginBottom: "0.4rem" }}>
-                    Bring all your contractor payments together
-                  </div>
-                  <MoreVertical className="w-4 h-4 text-gray-400" />
-                </div>
-                <p style={{ fontSize: "0.825rem", color: "#4b5563", lineHeight: 1.4, margin: "0 0 1rem" }}>
-                  Along with your domestic contractors, you can pay global contractors. No new platform needed.
-                </p>
-                <button
-                  type="button"
-                  style={{
-                    backgroundColor: "#ffffff",
-                    border: "1px solid #d1d5db",
-                    borderRadius: "6px",
-                    padding: "0.4rem 0.85rem",
-                    fontSize: "0.8rem",
-                    fontWeight: 600,
-                    color: "#111827",
-                    cursor: "pointer"
-                  }}
-                  onClick={() => navigate("/admin/payroll/pay")}
-                >
-                  Pay your global contractors
-                </button>
-              </div>
-
-              {/* Recommendation 2 */}
-              <div
-                style={{
-                  backgroundColor: "#ffffff",
-                  borderRadius: "12px",
-                  border: "1px solid #e5e7eb",
-                  padding: "1.25rem"
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "#111827", marginBottom: "0.4rem" }}>
-                    Is it time to update your handbook?
-                  </div>
-                  <MoreVertical className="w-4 h-4 text-gray-400" />
-                </div>
-                <p style={{ fontSize: "0.825rem", color: "#4b5563", lineHeight: 1.4, margin: "0 0 1rem" }}>
-                  Due to changing regulations, HR experts recommend reviewing your handbook regularly. Don't get caught out of compliance. Book a call to learn how to get started.
-                </p>
-                <button
-                  type="button"
-                  style={{
-                    backgroundColor: "#ffffff",
-                    border: "1px solid #d1d5db",
-                    borderRadius: "6px",
-                    padding: "0.4rem 0.85rem",
-                    fontSize: "0.8rem",
-                    fontWeight: 600,
-                    color: "#111827",
-                    cursor: "pointer"
-                  }}
-                  onClick={() => setInfoModal({ show: true, title: "HR Compliance Advisor", body: "Speak with an ELA HR advisor to audit Employee and Student handbooks for compliance." })}
-                >
-                  Speak with a plan advisor
-                </button>
-              </div>
-            </div>
+        <div style={{ backgroundColor: "#fff", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "1.25rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#6b7280", fontSize: "0.8rem", fontWeight: 600 }}>
+            <DollarSign className="w-4 h-4 text-indigo-600" /> Recorded Payroll Runs
+          </div>
+          <div style={{ fontSize: "1.75rem", fontWeight: 700, color: "#111827", marginTop: "0.4rem" }}>
+            {loading ? "—" : summary.recent_runs.length}
           </div>
         </div>
       </div>
 
-      {/* Info Modal (Replaces window.alert) */}
-      <Modal show={infoModal.show} onHide={() => setInfoModal({ show: false, title: "", body: "" })} centered>
-        <Modal.Header closeButton>
-          <Modal.Title style={{ fontSize: "1rem", fontWeight: 700 }}>{infoModal.title}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="p-4 text-sm text-slate-700">
-          {infoModal.body}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" size="sm" onClick={() => setInfoModal({ show: false, title: "", body: "" })}>
-            Close
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      {/* Main 2-Column Layout */}
+      <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1.1fr", gap: "2rem", alignItems: "start" }}>
+        {/* Left: Actionable Tasks */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+          <div style={{ backgroundColor: "#ffffff", borderRadius: "12px", border: "1px solid #e5e7eb", padding: "1.5rem" }}>
+            <h2 style={{ fontSize: "1.05rem", fontWeight: 700, color: "#111827", marginBottom: "1rem" }}>
+              Action items
+            </h2>
 
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: "2rem",
-            right: "2rem",
-            backgroundColor: "#1e3a8a",
-            color: "#ffffff",
-            padding: "0.75rem 1.25rem",
-            borderRadius: "8px",
-            boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
-            fontSize: "0.875rem",
-            fontWeight: 600,
-            zIndex: 9999
-          }}
-        >
-          {toastMessage}
+            {summary.onboarding_staff.length > 0 && (
+              <div style={{ borderBottom: "1px solid #f1f5f9", paddingBottom: "1.25rem", marginBottom: "1.25rem" }}>
+                <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "#111827", marginBottom: "0.3rem" }}>
+                  Staff currently onboarding ({summary.onboarding_staff.length})
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowOnboarding(!showOnboarding)}
+                  style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", background: "none", border: "none", color: "#2563eb", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", padding: 0 }}
+                >
+                  <ChevronDown className={`w-4 h-4 transition-transform ${showOnboarding ? "rotate-180" : ""}`} />
+                  {showOnboarding ? "Hide onboarding list" : "View onboarding staff"}
+                </button>
+                {showOnboarding && (
+                  <div style={{ marginTop: "0.75rem", padding: "0.75rem", backgroundColor: "#f8fafc", borderRadius: "8px", fontSize: "0.84rem", color: "#334155" }}>
+                    {summary.onboarding_staff.map((s) => s.name).join(", ")}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+              <div>
+                <div style={{ fontSize: "0.98rem", fontWeight: 700, color: "#111827", marginBottom: "0.25rem" }}>
+                  Review timesheets &amp; run payroll
+                </div>
+                <div style={{ fontSize: "0.85rem", color: "#4b5563" }}>
+                  {summary.unpaid_hours > 0
+                    ? `${summary.unpaid_hours} unpaid hour(s) logged across ${summary.unpaid_staff_count} team member(s).`
+                    : "All logged timesheets are up to date."}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: "0.6rem" }}>
+                <button
+                  type="button"
+                  onClick={() => navigate("/admin/payroll/time-attendance/time-tracking")}
+                  style={{ backgroundColor: "#ffffff", border: "1px solid #d1d5db", borderRadius: "6px", padding: "0.45rem 0.9rem", fontSize: "0.84rem", fontWeight: 600, color: "#111827", cursor: "pointer" }}
+                >
+                  Timesheets
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate("/admin/payroll/pay")}
+                  style={{ backgroundColor: "#2563eb", border: "1px solid #2563eb", borderRadius: "6px", padding: "0.45rem 0.9rem", fontSize: "0.84rem", fontWeight: 600, color: "#ffffff", cursor: "pointer" }}
+                >
+                  Run payroll &gt;
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-      )}
+
+        {/* Right: Real Recent Payroll Runs */}
+        <div style={{ backgroundColor: "#ffffff", borderRadius: "12px", border: "1px solid #e5e7eb", padding: "1.5rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+            <h2 style={{ fontSize: "1.05rem", fontWeight: 700, color: "#111827", margin: 0 }}>
+              Recent payroll runs
+            </h2>
+            <button
+              type="button"
+              onClick={() => navigate("/admin/payroll/pay/history")}
+              style={{ background: "none", border: "none", color: "#2563eb", fontSize: "0.82rem", fontWeight: 600, textDecoration: "underline", cursor: "pointer" }}
+            >
+              See history
+            </button>
+          </div>
+
+          {summary.recent_runs.length === 0 ? (
+            <div style={{ fontSize: "0.875rem", color: "#6b7280", padding: "0.5rem 0" }}>
+              No payroll runs recorded yet.
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              {summary.recent_runs.map((run) => (
+                <div
+                  key={run.id}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "0.75rem",
+                    borderRadius: "8px",
+                    backgroundColor: "#f8fafc",
+                    border: "1px solid #e2e8f0"
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: "0.86rem", fontWeight: 600, color: "#111827" }}>
+                      Run #{run.id} · {run.pay_date || "—"}
+                    </div>
+                    <div style={{ fontSize: "0.76rem", color: "#64748b" }}>
+                      {run.item_count} worker(s) · {run.run_type}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#111827" }}>
+                      ${Number(run.total_amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                    <div style={{ fontSize: "0.72rem", color: "#15803d", fontWeight: 600 }}>
+                      <CheckCircle2 className="w-3 h-3 inline me-1" />
+                      {run.status}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

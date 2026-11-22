@@ -278,6 +278,26 @@ export const revokePayrollAccess = async (accessId) => {
   return res.data;
 };
 
+export const getAdminStaffPayments = async (staffId) => {
+  const res = await api.get(`/payroll/admin/staff/${staffId}/payments`);
+  return res.data;
+};
+
+export const getPayrollHomeSummary = async () => {
+  const res = await api.get("/payroll/admin/home-summary");
+  return res.data;
+};
+
+export const startMyStripeConnectOnboarding = async () => {
+  const res = await api.post("/payroll/my/stripe-connect/onboard");
+  return res.data;
+};
+
+export const getMyStripeConnectStatus = async () => {
+  const res = await api.get("/payroll/my/stripe-connect/status");
+  return res.data;
+};
+
 // ==========================================
 // Payment Enumeration & Cumulative Pay
 // ==========================================
