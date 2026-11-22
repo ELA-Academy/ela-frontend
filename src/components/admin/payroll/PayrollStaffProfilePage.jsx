@@ -1126,7 +1126,7 @@ const PayrollStaffProfilePage = () => {
                       return (
                         <tr key={doc.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                           <td style={{ padding: "0.95rem 0.5rem" }}>
-                            <div style={{ fontWeight: 600, color: "#1d4ed8", textDecoration: "underline", cursor: "pointer" }} onClick={() => navigate(`/admin/payroll/documents/artifacts/${doc.id}`)}>
+                            <div style={{ fontWeight: 600, color: "#1d4ed8", textDecoration: "underline", cursor: "pointer" }} onClick={() => navigate(`/admin/payroll/documents/artifacts/${doc.public_id || doc.id}`)}>
                               {doc.name}
                             </div>
                             <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "0.15rem" }}>
@@ -1194,7 +1194,7 @@ const PayrollStaffProfilePage = () => {
                               ) : (
                                 <button
                                   type="button"
-                                  onClick={() => navigate(`/admin/payroll/documents/artifacts/${doc.id}`)}
+                                  onClick={() => navigate(`/admin/payroll/documents/artifacts/${doc.public_id || doc.id}`)}
                                   style={{
                                     background: "none",
                                     border: "none",

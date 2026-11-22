@@ -282,7 +282,7 @@ const PayrollDocumentsPage = () => {
                             <td style={{ padding: "0.85rem 1rem", fontWeight: 600, color: "#2563eb" }}>{a.staff_name}</td>
                             <td
                               style={{ padding: "0.85rem 1rem", color: "#2563eb", textDecoration: "underline", cursor: "pointer" }}
-                              onClick={() => navigate(`/admin/payroll/documents/artifacts/${a.id}`)}
+                              onClick={() => navigate(`/admin/payroll/documents/artifacts/${a.public_id || a.id}`)}
                             >
                               {a.document_title}
                             </td>
@@ -308,7 +308,7 @@ const PayrollDocumentsPage = () => {
                               <div style={{ display: "inline-flex", gap: "0.75rem", alignItems: "center" }}>
                                 <button
                                   type="button"
-                                  onClick={() => navigate(`/admin/payroll/documents/artifacts/${a.id}`)}
+                                  onClick={() => navigate(`/admin/payroll/documents/artifacts/${a.public_id || a.id}`)}
                                   style={{ background: "none", border: "none", color: "#2563eb", fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.25rem" }}
                                 >
                                   <Eye className="w-4 h-4" /> View

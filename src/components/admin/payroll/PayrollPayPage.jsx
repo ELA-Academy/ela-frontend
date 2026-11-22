@@ -8,6 +8,7 @@ import {
   History,
   DollarSign,
   AlertTriangle,
+  AlertCircle,
   Filter,
   Calendar,
   ChevronRight,
