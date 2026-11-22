@@ -431,11 +431,10 @@ const PayrollDocumentsPage = () => {
                         <tr key={doc.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
                           <td style={{ padding: "0.9rem 1rem" }}>
                             <div
-                              onClick={() => navigate(`/admin/payroll/documents/${doc.id}/edit?step=${doc.is_locked ? 3 : 2}`)}
+                              onClick={() => navigate(`/admin/payroll/documents/${doc.id}/edit?step=2`)}
                               style={{ fontWeight: 600, color: "#2563eb", textDecoration: "underline", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
                             >
                               {doc.title}
-                              {doc.is_locked && <Lock size={13} color="#6b7280" title="Locked because signed copies exist" />}
                             </div>
                             <div style={{ fontSize: "0.78rem", color: "#6b7280", marginTop: "0.15rem" }}>
                               {doc.document_scope === "individual" ? "Individual document" : "Team document"} • {doc.recipient_count || 0} assigned
@@ -449,11 +448,9 @@ const PayrollDocumentsPage = () => {
                                 <MoreVertical className="w-4 h-4 text-gray-600" />
                               </Dropdown.Toggle>
                               <Dropdown.Menu>
-                                {!doc.is_locked && (
-                                  <Dropdown.Item onClick={() => navigate(`/admin/payroll/documents/${doc.id}/edit?step=2`)}>
-                                    <Edit3 className="w-4 h-4 me-2 inline" /> Edit document
-                                  </Dropdown.Item>
-                                )}
+                                <Dropdown.Item onClick={() => navigate(`/admin/payroll/documents/${doc.id}/edit?step=2`)}>
+                                  <Edit3 className="w-4 h-4 me-2 inline" /> Edit document
+                                </Dropdown.Item>
                                 <Dropdown.Item onClick={() => navigate(`/admin/payroll/documents/${doc.id}/edit?step=3`)}>
                                   <Eye className="w-4 h-4 me-2 inline" /> Preview document
                                 </Dropdown.Item>
