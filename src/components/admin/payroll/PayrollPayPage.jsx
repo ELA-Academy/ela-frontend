@@ -34,6 +34,7 @@ const PayrollPayPage = () => {
   const [payPeriodEnd, setPayPeriodEnd] = useState(today.toISOString().slice(0, 10));
   const [payDate, setPayDate] = useState(nextFriday.toISOString().slice(0, 10));
   const [workerGroup, setWorkerGroup] = useState("us_contractor");
+  const [executeStripePayouts, setExecuteStripePayouts] = useState(false);
   const [methodFilter, setMethodFilter] = useState("all");
   const [contractorSearch, setContractorSearch] = useState("");
   const [bulkInvoice, setBulkInvoice] = useState("072");
@@ -135,13 +136,18 @@ const PayrollPayPage = () => {
         pay_period_end: payPeriodEnd,
         pay_date: payDate,
         paid_from: paidFrom,
+        execute_stripe_payouts: executeStripePayouts,
         items: selectedRows
       });
       setLastRunResult(res);
       if (runType === "employee") {
         setView("employee_done");
       } else {
-        showToast(`Contractor payroll submitted (${selectedRows.length} paid, ${fmtMoney(contractorTotal)}).`);
+        const s = res?.stripe_summary;
+        const stripeNote = executeStripePayouts && s
+          ? ` • Stripe transfers: ${s.transfers_sent} sent, ${s.transfers_failed} failed, ${s.manual_recorded} manual`
+          : "";
+        showToast(`Contractor payroll submitted (${selectedRows.length} workers, ${fmtMoney(contractorTotal)})${stripeNote}.`);
         setView("home");
       }
     } catch (err) {
@@ -178,10 +184,10 @@ const PayrollPayPage = () => {
           </Button>
         </div>
 
-        <div style={{ backgroundColor: "#fffbeb", border: "1px solid #fcd34d", borderRadius: "10px", padding: "0.75rem 1rem", marginBottom: "1.25rem", fontSize: "0.84rem", color: "#92400e", display: "flex", alignItems: "center", gap: "0.6rem" }}>
+        <div style={{ backgroundColor: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "10px", padding: "0.75rem 1rem", marginBottom: "1.25rem", fontSize: "0.84rem", color: "#1e3a8a", display: "flex", alignItems: "center", gap: "0.6rem" }}>
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           <span>
-            <strong>Internal Payroll Ledger Only:</strong> Submitting a payroll run records hours and payment history in ELA Academy, but does <strong>not</strong> initiate ACH bank transfers or file federal/state payroll taxes. Employee tax figures shown are flat estimates—always process official W-2 payouts and tax remittances through your payroll provider.
+            <strong>Stripe Connect Payouts:</strong> Workers who have connected their bank account via Stripe show a green <strong>Stripe Ready</strong> badge and can be paid directly via Stripe Connect when enabled at review. Workers without Stripe Connect are recorded in the ledger for manual payment. Employee tax figures are estimates—remit official W-2 taxes via your tax provider.
           </span>
         </div>
 
@@ -642,14 +648,31 @@ const PayrollPayPage = () => {
           </Table>
         </div>
 
+        <div style={{ backgroundColor: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: "10px", padding: "0.9rem 1.1rem", marginBottom: "1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem" }}>
+          <Form.Check
+            type="switch"
+            id="stripe-payouts-contractor-switch"
+            checked={executeStripePayouts}
+            onChange={(e) => setExecuteStripePayouts(e.target.checked)}
+            label={
+              <span style={{ fontSize: "0.88rem", fontWeight: 600, color: "#111827" }}>
+                Send real Stripe Connect transfers to connected workers ({selectedRows.filter((r) => r.stripe_connect_account_id).length} of {selectedRows.length} connected)
+              </span>
+            }
+          />
+          <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
+            Unconnected workers will be recorded as manual payments
+          </span>
+        </div>
+
         <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
           <Button variant="outline-secondary" onClick={() => setView("contractor")}>Back</Button>
           <Button
             disabled={submitting}
             onClick={() => handleSubmitPayroll(workerGroup)}
-            style={{ backgroundColor: "#2563eb", border: "none", fontWeight: 600 }}
+            style={{ backgroundColor: executeStripePayouts ? "#635bff" : "#2563eb", border: "none", fontWeight: 600 }}
           >
-            {submitting ? "Submitting..." : "Submit payments"}
+            {submitting ? "Processing..." : executeStripePayouts ? "Submit & Pay via Stripe" : "Submit payments (Ledger)"}
           </Button>
         </div>
       </div>
@@ -825,9 +848,20 @@ const PayrollPayPage = () => {
                       <td style={{ width: "80px" }}><Form.Control size="sm" value={r.invoice_number} onChange={(e) => updateRow(r.staff_id, "invoice_number", e.target.value)} /></td>
                       <td style={{ minWidth: "160px" }}><Form.Control size="sm" placeholder="Tutor / sub / training note" value={r.memo} onChange={(e) => updateRow(r.staff_id, "memo", e.target.value)} /></td>
                       <td>
-                        <span style={{ backgroundColor: r.payment_method === "Check" ? "#fef3c7" : "#dbeafe", color: r.payment_method === "Check" ? "#92400e" : "#1e40af", padding: "0.15rem 0.5rem", borderRadius: "9999px", fontSize: "0.75rem", fontWeight: 600 }}>
-                          {r.payment_method}
-                        </span>
+                        <div className="d-flex flex-column gap-1">
+                          <span style={{ backgroundColor: r.payment_method === "Check" ? "#fef3c7" : "#dbeafe", color: r.payment_method === "Check" ? "#92400e" : "#1e40af", padding: "0.15rem 0.5rem", borderRadius: "9999px", fontSize: "0.74rem", fontWeight: 600, width: "fit-content" }}>
+                            {r.payment_method}
+                          </span>
+                          {r.stripe_connect_account_id ? (
+                            <span style={{ backgroundColor: "#dcfce7", color: "#15803d", padding: "0.1rem 0.45rem", borderRadius: "9999px", fontSize: "0.7rem", fontWeight: 700, width: "fit-content" }}>
+                              ● Stripe Ready
+                            </span>
+                          ) : (
+                            <span style={{ backgroundColor: "#f1f5f9", color: "#64748b", padding: "0.1rem 0.45rem", borderRadius: "9999px", fontSize: "0.7rem", fontWeight: 600, width: "fit-content" }}>
+                              Stripe Not Connected
+                            </span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
